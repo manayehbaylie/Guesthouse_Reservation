@@ -5,6 +5,10 @@ import {
   getGuesthouseById,
   updateGuesthouse,
    deleteGuesthouse,
+  getPendingGuesthouses,
+  approveGuesthouse,
+rejectGuesthouse,
+
 } from "../services/guesthouse.service.js";
 import { successResponse } from "../utils/response.js";
 
@@ -97,4 +101,116 @@ export const remove = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+// ========================================
+// Get Pending Guesthouses
+// ========================================
+export const pendingGuesthouses =
+  async (
+
+    req,
+
+    res,
+
+    next
+
+  ) => {
+
+    try {
+
+      const guesthouses =
+        await getPendingGuesthouses();
+
+      successResponse(
+
+        res,
+
+        guesthouses,
+
+        "Pending guesthouses fetched successfully"
+
+      );
+
+    } catch (error) {
+
+      next(error);
+
+    }
+
+};
+// ========================================
+// Approve Guesthouse
+// ========================================
+export const approve = async (
+
+  req,
+
+  res,
+
+  next
+
+) => {
+
+  try {
+
+    const guesthouse =
+      await approveGuesthouse(
+
+        req.params.id
+
+      );
+
+    successResponse(
+
+      res,
+
+      guesthouse,
+
+      "Guesthouse approved successfully"
+
+    );
+
+  } catch (error) {
+
+    next(error);
+
+  }
+
+};
+// ========================================
+// Reject Guesthouse
+// ========================================
+export const reject = async (
+
+  req,
+
+  res,
+
+  next
+
+) => {
+
+  try {
+
+    const guesthouse =await rejectGuesthouse(
+  req.params.id,
+  req.body.reason
+);
+
+    successResponse(
+
+      res,
+
+      guesthouse,
+
+      "Guesthouse rejected successfully"
+
+    );
+
+  } catch (error) {
+
+    next(error);
+
+  }
+
 };

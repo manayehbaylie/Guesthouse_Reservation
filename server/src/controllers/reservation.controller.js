@@ -1,12 +1,20 @@
 import { reservationSchema } from "../validators/reservation.validator.js";
-import { createReservation,  getAllReservations,  getReservationById,  updateReservationStatus,
 
-   cancelReservation,
+import {
+  createReservation,
+  getAllReservations,
+  getReservationById,
+  updateReservationStatus,
 } from "../services/reservation.service.js";
+
 import { successResponse } from "../utils/response.js";
 
+// ========================================
+// Create Reservation
+// ========================================
 export const create = async (req, res, next) => {
   try {
+
     // Validate request
     const data = reservationSchema.parse(req.body);
 
@@ -19,7 +27,6 @@ export const create = async (req, res, next) => {
       guestId
     );
 
-    // Response
     successResponse(
       res,
       reservation,
@@ -31,9 +38,15 @@ export const create = async (req, res, next) => {
     next(error);
   }
 };
+
+// ========================================
+// Get All Reservations
+// ========================================
 export const getAll = async (req, res, next) => {
   try {
-    const reservations = await getAllReservations();
+
+    const reservations =
+      await getAllReservations();
 
     successResponse(
       res,
@@ -45,14 +58,20 @@ export const getAll = async (req, res, next) => {
     next(error);
   }
 };
+
+// ========================================
+// Get Reservation By ID
+// ========================================
 export const getById = async (req, res, next) => {
   try {
-    const reservation = await getReservationById(
-      req.params.id
-    );
+
+    const reservation =
+      await getReservationById(req.params.id);
 
     if (!reservation) {
-      throw new Error("Reservation not found");
+      throw new Error(
+        "Reservation not found"
+      );
     }
 
     successResponse(
@@ -65,12 +84,17 @@ export const getById = async (req, res, next) => {
     next(error);
   }
 };
+
+// ========================================
+// Update Reservation Status
+// ========================================
 export const updateStatus = async (
   req,
   res,
   next
 ) => {
   try {
+
     const reservation =
       await updateReservationStatus(
         req.params.id,
@@ -81,22 +105,6 @@ export const updateStatus = async (
       res,
       reservation,
       "Reservation status updated successfully"
-    );
-
-  } catch (error) {
-    next(error);
-  }
-};
-export const cancel = async (req, res, next) => {
-  try {
-    const reservation = await cancelReservation(
-      req.params.id
-    );
-
-    successResponse(
-      res,
-      reservation,
-      "Reservation cancelled successfully"
     );
 
   } catch (error) {

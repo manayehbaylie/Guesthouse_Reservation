@@ -18,8 +18,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  guesthouses  Guesthouse[]  @relation("OwnerGuesthouses")
-  reservations Reservation[] @relation("GuestReservations")
+  guesthouses   Guesthouse[]   @relation("OwnerGuesthouses")
+  reservations  Reservation[]  @relation("GuestReservations")
+  notifications Notification[]
 }
 
 enum Role {
@@ -30,16 +31,17 @@ enum Role {
 }
 
 model Guesthouse {
-  id          Int     @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   name        String
   address     String
   city        String
   description String
   image       String?
-  approved    Boolean @default(false)
+  status      GuesthouseStatus @default(PENDING)
 
-  ownerId Int
-  owner   User @relation("OwnerGuesthouses", fields: [ownerId], references: [id], onDelete: Restrict)
+  rejectionReason String?
+  ownerId         Int
+  owner           User    @relation("OwnerGuesthouses", fields: [ownerId], references: [id], onDelete: Restrict)
 
   rooms Room[]
 
@@ -77,6 +79,12 @@ enum RoomType {
   TWIN
   FAMILY
   SUITE
+}
+
+enum GuesthouseStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Reservation {
@@ -141,4 +149,24 @@ enum PaymentMethod {
   TELEBIRR
   CBE_BIRR
   CHAPA
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  title String
+
+  message String
+
+  isRead Boolean @default(false)
+
+  userId Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

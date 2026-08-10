@@ -178,3 +178,108 @@ export const getOwnerRevenue = async (ownerId) => {
     totalRevenue: revenue._sum.amount ?? 0,
   };
 };
+export const getOwnerMonthlyRevenue = async (ownerId) => {
+  const revenue = await prisma.$queryRaw`
+    SELECT
+      DATE_TRUNC('month', p."createdAt") AS month,
+      SUM(p.amount) AS total
+    FROM "Payment" p
+    INNER JOIN "Reservation" r
+      ON p."reservationId" = r.id
+    INNER JOIN "Room" rm
+      ON r."roomId" = rm.id
+    INNER JOIN "Guesthouse" g
+      ON rm."guesthouseId" = g.id
+    WHERE
+      p.status = 'PAID'
+      AND g."ownerId" = ${ownerId}
+    GROUP BY DATE_TRUNC('month', p."createdAt")
+    ORDER BY DATE_TRUNC('month', p."createdAt") ASC;
+  `;
+
+  return revenue;
+};
+export const getOwnerRecentReservations = async (
+  ownerId
+) => {
+  return await prisma.reservation.findMany({
+    take: 10,
+
+    orderBy: {
+      createdAt: "desc",
+    },
+
+    where: {
+      room: {
+        guesthouse: {
+          ownerId,
+        },
+      },
+    },
+
+    include: {
+      guest: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+        },
+      },
+
+      room: {
+        select: {
+          id: true,
+          roomNumber: true,
+          roomType: true,
+          price: true,
+        },
+      },
+    },
+  });
+};
+export const getOwnerRecentPayments = async (
+  ownerId
+) => {
+  return await prisma.payment.findMany({
+    take: 10,
+
+    orderBy: {
+      createdAt: "desc",
+    },
+
+    where: {
+      reservation: {
+        room: {
+          guesthouse: {
+            ownerId,
+          },
+        },
+      },
+    },
+
+    include: {
+      reservation: {
+        include: {
+          guest: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+            },
+          },
+
+          room: {
+            select: {
+              id: true,
+              roomNumber: true,
+              roomType: true,
+              price: true,
+            },
+          },
+        },
+      },
+    },
+  });
+};

@@ -1,7 +1,7 @@
 import express from "express";
 
 import { getStats,  monthlyRevenue,  recentReservations,  recentPayments,  ownerDashboard,
-ownerRevenue,
+ownerRevenue,ownerMonthlyRevenue,ownerRecentReservations,ownerRecentPayments,
  } from "../controllers/dashboard.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -45,4 +45,23 @@ router.get(
   authorize("OWNER"),
   ownerRevenue
 );
+router.get(
+  "/owner/monthly-revenue",
+  authenticate,
+  authorize("OWNER"),
+  ownerMonthlyRevenue
+);
+router.get(
+  "/owner/recent-reservations",
+  authenticate,
+  authorize("OWNER"),
+  ownerRecentReservations
+);
+router.get(
+  "/owner/recent-payments",
+  authenticate,
+  authorize("OWNER"),
+  ownerRecentPayments
+);
+
 export default router;

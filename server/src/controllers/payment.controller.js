@@ -1,30 +1,33 @@
-import { paymentSchema } from "../validators/payment.validator.js";
-import { createPayment,  getAllPayments,  getPaymentById,  updatePaymentStatus,
+import {
+  createPayment,
+  getAllPayments,
+  getPaymentById,
+  updatePaymentStatus,
+} from "../services/payment.service.js";
 
-
- } from "../services/payment.service.js";
 import { successResponse } from "../utils/response.js";
 
+// ========================================
+// Create Payment
+// ========================================
 export const create = async (req, res, next) => {
   try {
-    // Validate request
-    const data = paymentSchema.parse(req.body);
+    const payment = await createPayment(req.body);
 
-    // Create payment
-    const payment = await createPayment(data);
-
-    // Response
     successResponse(
       res,
       payment,
       "Payment created successfully",
       201
     );
-
   } catch (error) {
     next(error);
   }
 };
+
+// ========================================
+// Get All Payments
+// ========================================
 export const getAll = async (req, res, next) => {
   try {
     const payments = await getAllPayments();
@@ -34,11 +37,14 @@ export const getAll = async (req, res, next) => {
       payments,
       "Payments fetched successfully"
     );
-
   } catch (error) {
     next(error);
   }
 };
+
+// ========================================
+// Get Payment By ID
+// ========================================
 export const getById = async (req, res, next) => {
   try {
     const payment = await getPaymentById(req.params.id);
@@ -52,29 +58,26 @@ export const getById = async (req, res, next) => {
       payment,
       "Payment fetched successfully"
     );
-
   } catch (error) {
     next(error);
   }
 };
-export const updateStatus = async (
-  req,
-  res,
-  next
-) => {
+
+// ========================================
+// Update Payment Status
+// ========================================
+export const updateStatus = async (req, res, next) => {
   try {
-    const payment =
-      await updatePaymentStatus(
-        req.params.id,
-        req.body.status
-      );
+    const payment = await updatePaymentStatus(
+      req.params.id,
+      req.body.status
+    );
 
     successResponse(
       res,
       payment,
       "Payment status updated successfully"
     );
-
   } catch (error) {
     next(error);
   }
