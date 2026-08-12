@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import guesthouseRoutes from "./routes/guesthouse.routes.js";
@@ -21,7 +22,10 @@ const app = express();
 
 // Read JSON requests
 app.use(express.json());
-
+app.use(cors());
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 // Authentication Routes
 app.use("/api/auth", authRoutes);
 
