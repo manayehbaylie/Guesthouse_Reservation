@@ -31,7 +31,7 @@ export const AdminDashboard = () => {
       const ghList = await ApiService.getGuesthouses();
       setGuesthouses(ghList);
 
-      const userList = ApiService.getAllUsers();
+      const userList = await ApiService.fetchAdminUsers();
       setUsers(userList);
 
       const logList = ApiService.getAuditLogs();
