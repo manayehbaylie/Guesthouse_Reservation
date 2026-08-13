@@ -151,6 +151,13 @@ export const ApiService = {
     const list = await this.getGuesthouses();
     return list.find((g) => g.id === id) || null;
   },
+  // ========================================
+// Get My Guesthouse - OWNER
+// ========================================
+getMyGuesthouse: async () => {
+  const res = await api.get("/guesthouses/owner/me");
+  return unwrap(res);
+},
 
   async registerGuesthouse(data) {
     const list = getStoredData(STORAGE_KEYS.GUESTHOUSES);

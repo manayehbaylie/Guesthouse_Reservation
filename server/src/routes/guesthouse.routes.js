@@ -4,6 +4,7 @@ import {
   create,
   getAll,
   getById,
+   getMyGuesthouse,
   update,
   remove,
   pendingGuesthouses,
@@ -287,6 +288,12 @@ router.patch(
   authenticate,
   authorize("ADMIN"),
   reject
+);
+router.get(
+  "/owner/me",
+  authenticate,
+  authorize("OWNER"),
+  getMyGuesthouse
 );
 
 export default router;

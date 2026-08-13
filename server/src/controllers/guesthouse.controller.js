@@ -3,6 +3,7 @@ import {
   createGuesthouse,
   getAllGuesthouses,
   getGuesthouseById,
+   getGuesthouseByOwnerId,
   updateGuesthouse,
    deleteGuesthouse,
   getPendingGuesthouses,
@@ -63,6 +64,29 @@ export const getById = async (req, res, next) => {
       res,
       guesthouse,
       "Guesthouse fetched successfully"
+    );
+
+  } catch (error) {
+    next(error);
+  }
+};
+// ========================================
+// Get My Guesthouse
+// ========================================
+export const getMyGuesthouse = async (req, res, next) => {
+  try {
+    const ownerId = req.user.id;
+
+    const guesthouse = await getGuesthouseByOwnerId(ownerId);
+
+    if (!guesthouse) {
+      throw new Error("You have not created a guesthouse yet");
+    }
+
+    successResponse(
+      res,
+      guesthouse,
+      "My guesthouse fetched successfully"
     );
 
   } catch (error) {

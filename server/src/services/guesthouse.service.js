@@ -53,6 +53,13 @@ export const getGuesthouseById = async (id) => {
     },
   });
 };
+export const getGuesthouseByOwnerId = async (ownerId) => {
+  return await prisma.guesthouse.findFirst({
+    where: {
+      ownerId: Number(ownerId),
+    },
+  });
+};
 export const deleteGuesthouse = async (id) => {
   return await prisma.guesthouse.delete({
     where: {
