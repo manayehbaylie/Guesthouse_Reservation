@@ -17,7 +17,7 @@ import {
 
 export const OwnerDashboard = () => {
   const currentUser = ApiService.getCurrentUser();
-  const guesthouseId = currentUser?.guesthouseId || 'gh-1';
+  const [guesthouseId, setGuesthouseId] = useState(null);
 
   const [guesthouse, setGuesthouse] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -48,29 +48,46 @@ export const OwnerDashboard = () => {
 
   const loadData = async () => {
     try {
-      const gh = await ApiService.getGuesthouseById(guesthouseId);
-      setGuesthouse(gh);
+      // Get the owner's guesthouse using the proper API endpoint
+      const gh = await ApiService.getMyGuesthouse();
+      if (gh) {
+        setGuesthouseId(gh.id);
+        setGuesthouse(gh);
 
-      const roomList = await ApiService.getRoomsForGuesthouse(guesthouseId);
-      setRooms(roomList);
+        const roomList = await ApiService.getRoomsForGuesthouse(gh.id);
+        setRooms(roomList);
 
-      const payList = await ApiService.getOwnerPayments(guesthouseId);
-      setPayments(payList);
+        const payList = await ApiService.getOwnerPayments(gh.id);
+        setPayments(payList);
 
-      const rep = await ApiService.getOwnerRevenueReport(guesthouseId);
-      setRevenueReport(rep);
+        const rep = await ApiService.getOwnerRevenueReport(gh.id);
+        setRevenueReport(rep);
 
-      const users = ApiService.getAllUsers();
-      const staff = users.filter((u) => u.role === 'Receptionist' && u.guesthouseId === guesthouseId);
-      setStaffList(staff);
+        const users = await ApiService.getAllUsers();
+        const staff = users.filter((u) => u.role === 'RECEPTIONIST' || u.role === 'Receptionist');
+        setStaffList(staff);
+      } else {
+        setGuesthouseId(null);
+        setGuesthouse(null);
+        setRooms([]);
+        setPayments([]);
+        setRevenueReport(null);
+        setStaffList([]);
+      }
     } catch (err) {
       console.error(err);
+      setGuesthouseId(null);
+      setGuesthouse(null);
+      setRooms([]);
+      setPayments([]);
+      setRevenueReport(null);
+      setStaffList([]);
     }
   };
 
   useEffect(() => {
     loadData();
-  }, [guesthouseId]);
+  }, []);
 
   const handleAddRoomSubmit = async (e) => {
     e.preventDefault();

@@ -2,12 +2,14 @@ import {
   registerUser,
   loginUser,
 } from "../services/auth.service.js";
-
+import { registerSchema } from "../validators/auth.validator.js";
 import { successResponse } from "../utils/response.js";
 
 export const register = async (req, res, next) => {
   try {
-    const user = await registerUser(req.body);
+    // Validate request data
+    const validatedData = registerSchema.parse(req.body);
+    const user = await registerUser(validatedData);
 
     successResponse(res, user, "User registered successfully");
   } catch (error) {

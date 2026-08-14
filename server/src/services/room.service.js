@@ -12,7 +12,23 @@ export const createRoom = async (data, guesthouseId) => {
     },
   });
 };
-export const getAllRooms = async () => {
+export const getAllRooms = async (guesthouseId = null) => {
+  if (guesthouseId) {
+    return await prisma.room.findMany({
+      where: {
+        guesthouseId: Number(guesthouseId),
+      },
+      include: {
+        guesthouse: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+          },
+        },
+      },
+    });
+  }
   return await prisma.room.findMany({
     include: {
       guesthouse: {

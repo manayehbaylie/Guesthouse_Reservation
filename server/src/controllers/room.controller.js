@@ -29,7 +29,8 @@ export const create = async (req, res, next) => {
 };
 export const getAll = async (req, res, next) => {
   try {
-    const rooms = await getAllRooms();
+    const guesthouseId = req.params.guesthouseId;
+    const rooms = await getAllRooms(guesthouseId);
 
     successResponse(
       res,

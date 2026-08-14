@@ -25,7 +25,7 @@ import {
 export function OwnerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const guesthouseId = user?.guesthouseId || 'gh-1';
+  const [guesthouseId, setGuesthouseId] = useState(null);
 
   const [guesthouse, setGuesthouse] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -58,9 +58,11 @@ export function OwnerDashboard() {
   const loadOwnerData = async () => {
     setLoading(true);
     try {
-      const gh = await ApiService.getGuesthouseById(guesthouseId);
+      // First, get the owner's guesthouse using the /owner/me endpoint
+      const gh = await ApiService.getMyGuesthouse();
       setGuesthouse(gh);
       if (gh) {
+        setGuesthouseId(gh.id);
         setPropName(gh.name || '');
         setPropCity(gh.city || 'Addis Ababa');
         setPropLocation(gh.location || '');
@@ -76,11 +78,14 @@ export function OwnerDashboard() {
         const pmts = await ApiService.getOwnerPayments(gh.id);
         setPayments(pmts);
 
-        const allU = ApiService.getAllUsers();
-        setStaff(allU.filter((u) => u.role === 'Receptionist' && (u.guesthouseId === gh.id || !u.guesthouseId)));
+        const allU = await ApiService.getAllUsers();
+        setStaff(allU.filter((u) => u.role === 'RECEPTIONIST' || u.role === 'Receptionist'));
       }
     } catch (err) {
       console.error('Failed to load owner dashboard data:', err);
+      // If owner doesn't have a guesthouse yet, that's okay
+      setGuesthouse(null);
+      setGuesthouseId(null);
     } finally {
       setLoading(false);
     }
@@ -88,7 +93,7 @@ export function OwnerDashboard() {
 
   useEffect(() => {
     loadOwnerData();
-  }, [guesthouseId]);
+  }, []);
 
   const handleToggleRoomStatus = async (roomId, currentStatus) => {
     const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available';

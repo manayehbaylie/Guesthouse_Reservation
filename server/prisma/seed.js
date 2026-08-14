@@ -10,34 +10,64 @@ async function main() {
   // PASSWORD
   // =========================
   const password = await bcrypt.hash("Password123", 10);
-const admin = await prisma.user.upsert({
-  where: {
-    email: "admin@example.com",
-  },
-  update: {
-    role: "ADMIN",
-  },
-  create: {
-    fullName: "System Administrator",
-    email: "admin@example.com",
-    password,
-    phone: "+251933333333",
-    role: "ADMIN",
-  },
-});
+  
+  const admin = await prisma.user.upsert({
+    where: {
+      email: "admin@example.com",
+    },
+    update: {
+      role: "ADMIN",
+    },
+    create: {
+      fullName: "System Administrator",
+      email: "admin@example.com",
+      password,
+      phone: "+251933333333",
+      role: "ADMIN",
+    },
+  });
+
+  // Create test users for each role
+  const guest = await prisma.user.upsert({
+    where: {
+      email: "guest@example.com",
+    },
+    update: {},
+    create: {
+      fullName: "Abebe Bikila",
+      email: "guest@example.com",
+      password,
+      phone: "+251911111112",
+      role: "GUEST",
+    },
+  });
+
+  const receptionist = await prisma.user.upsert({
+    where: {
+      email: "receptionist@example.com",
+    },
+    update: {},
+    create: {
+      fullName: "Tigist Alemu",
+      email: "receptionist@example.com",
+      password,
+      phone: "+251911111114",
+      role: "RECEPTIONIST",
+    },
+  });
   // =========================
   // OWNERS
   // =========================
   const owner1 = await prisma.user.upsert({
     where: {
-      email: "owner1@example.com",
+      email: "owner@example.com",
     },
     update: {},
     create: {
-      fullName: "Abebe Guesthouse Owner",
-      email: "owner1@example.com",
+      fullName: "Solomon Tadesse",
+      email: "owner@example.com",
       password,
-      phone: "+251911111111",
+      phone: "+251911111113",
       role: "OWNER",
     },
   });
@@ -68,7 +98,7 @@ const admin = await prisma.user.upsert({
         "A comfortable guesthouse located near Bole with clean rooms and modern facilities.",
       image:
         "https://images.unsplash.com/photo-1566073771259-6a8506099945",
-      approved: true,
+      status: "APPROVED",
       ownerId: owner1.id,
     },
   });
@@ -82,7 +112,7 @@ const admin = await prisma.user.upsert({
         "A peaceful guesthouse offering comfortable accommodation in the heart of Addis Ababa.",
       image:
         "https://images.unsplash.com/photo-1564501049412-61c2a3083791",
-      approved: true,
+      status: "APPROVED",
       ownerId: owner1.id,
     },
   });
@@ -96,7 +126,7 @@ const admin = await prisma.user.upsert({
         "A relaxing guesthouse close to Lake Hawassa with beautiful surroundings.",
       image:
         "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb",
-      approved: true,
+      status: "APPROVED",
       ownerId: owner2.id,
     },
   });
@@ -110,7 +140,7 @@ const admin = await prisma.user.upsert({
         "A comfortable guesthouse close to Lake Tana and the city center.",
       image:
         "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b",
-      approved: true,
+      status: "APPROVED",
       ownerId: owner2.id,
     },
   });
@@ -223,7 +253,10 @@ const admin = await prisma.user.upsert({
     ],
   });
 
-  console.log("✅ Demo owners created");
+  console.log("✅ Demo admin created");
+  console.log("✅ Demo guest created");
+  console.log("✅ Demo owner created");
+  console.log("✅ Demo receptionist created");
   console.log("✅ Demo guesthouses created");
   console.log("✅ Demo rooms created");
   console.log("🌱 Database seed completed!");

@@ -7,7 +7,7 @@ import { Users, UserPlus, Shield, ChevronLeft } from 'lucide-react';
 export function StaffManage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const guesthouseId = user?.guesthouseId || 'gh-1';
+  const [guesthouseId, setGuesthouseId] = useState(null);
 
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,13 +20,23 @@ export function StaffManage() {
   const loadStaff = async () => {
     setLoading(true);
     try {
-      const allUsers = ApiService.getAllUsers();
-      const staff = allUsers.filter(
-        (u) => u.role === 'Receptionist' && (u.guesthouseId === guesthouseId || !u.guesthouseId)
-      );
-      setStaffList(staff);
+      // First get the owner's guesthouse
+      const gh = await ApiService.getMyGuesthouse();
+      if (gh) {
+        setGuesthouseId(gh.id);
+        const allUsers = await ApiService.getAllUsers();
+        const staff = allUsers.filter(
+          (u) => u.role === 'RECEPTIONIST' || u.role === 'Receptionist'
+        );
+        setStaffList(staff);
+      } else {
+        setGuesthouseId(null);
+        setStaffList([]);
+      }
     } catch (err) {
       console.error('Error loading staff:', err);
+      setGuesthouseId(null);
+      setStaffList([]);
     } finally {
       setLoading(false);
     }
@@ -34,7 +44,7 @@ export function StaffManage() {
 
   useEffect(() => {
     loadStaff();
-  }, [guesthouseId]);
+  }, []);
 
   const handleCreateStaff = async (e) => {
     e.preventDefault();

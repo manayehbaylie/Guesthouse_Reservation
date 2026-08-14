@@ -6,6 +6,9 @@ import { generateToken } from "../utils/jwt.js";
 // Register User
 // ==========================
 export const registerUser = async (data) => {
+  // Clean phone number - remove spaces and special characters
+  const cleanPhone = data.phone.replace(/\s/g, '').replace(/-/g, '');
+
   // Check email
   const existingEmail = await prisma.user.findUnique({
     where: {
@@ -20,7 +23,7 @@ export const registerUser = async (data) => {
   // Check phone
   const existingPhone = await prisma.user.findUnique({
     where: {
-      phone: data.phone,
+      phone: cleanPhone,
     },
   });
 
@@ -37,7 +40,7 @@ export const registerUser = async (data) => {
       fullName: data.fullName,
       email: data.email,
       password: hashedPassword,
-      phone: data.phone,
+      phone: cleanPhone,
       role: data.role,
     },
   });

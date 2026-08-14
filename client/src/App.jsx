@@ -59,7 +59,7 @@ export default function App() {
             <Route
               path="/reservations"
               element={
-                <ProtectedRoute allowedRoles={['Guest', 'Owner', 'Receptionist', 'Admin']}>
+                <ProtectedRoute allowedRoles={['GUEST', 'OWNER', 'RECEPTIONIST', 'ADMIN']}>
                   <GuestBookings />
                 </ProtectedRoute>
               }
@@ -69,7 +69,7 @@ export default function App() {
             <Route
               path="/owner"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute allowedRoles={['OWNER']}>
                   <OwnerDashboard />
                 </ProtectedRoute>
               }
@@ -77,7 +77,7 @@ export default function App() {
             <Route
               path="/owner/guesthouse"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute allowedRoles={['OWNER']}>
                   <GuesthouseManage />
                 </ProtectedRoute>
               }
@@ -85,7 +85,7 @@ export default function App() {
             <Route
               path="/owner/rooms"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute allowedRoles={['OWNER']}>
                   <RoomManage />
                 </ProtectedRoute>
               }
@@ -93,7 +93,7 @@ export default function App() {
             <Route
               path="/owner/staff"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute allowedRoles={['OWNER']}>
                   <StaffManage />
                 </ProtectedRoute>
               }
@@ -101,7 +101,7 @@ export default function App() {
             <Route
               path="/owner/revenue"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute allowedRoles={['OWNER']}>
                   <RevenueReports />
                 </ProtectedRoute>
               }
@@ -111,7 +111,7 @@ export default function App() {
             <Route
               path="/receptionist"
               element={
-                <ProtectedRoute allowedRoles={['Receptionist']}>
+                <ProtectedRoute allowedRoles={['RECEPTIONIST']}>
                   <ReceptionistDashboard />
                 </ProtectedRoute>
               }
@@ -121,7 +121,7 @@ export default function App() {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRoles={['Admin']}>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <AdminDashboard />
                 </ProtectedRoute>
               }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ApiService, initDatabase } from '../services/api.js';
+import { ApiService } from '../services/api.js';
 
 const AuthContext = createContext();
 
@@ -8,14 +8,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    initDatabase();
+    // Check if user is already logged in from localStorage
     const current = ApiService.getCurrentUser();
-    setUser(current);
+    if (current) {
+      setUser(current);
+    }
     setLoading(false);
   }, []);
 
-  const login = async (email) => {
-    const loggedUser = await ApiService.loginUser(email);
+  const login = async (email, password) => {
+    const loggedUser = await ApiService.loginUser(email, password);
     setUser(loggedUser);
     return loggedUser;
   };
@@ -31,9 +33,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const switchUser = (selectedUser) => {
-    ApiService.setCurrentUser(selectedUser);
-    setUser(selectedUser);
+  const switchUser = (targetUser) => {
+    // Development/testing feature to switch between users
+    // This simulates logging in as a different user for testing purposes
+    ApiService.setCurrentUser(targetUser);
+    setUser(targetUser);
   };
 
   const value = {
@@ -43,7 +47,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     switchUser,
-    role: user?.role || 'Guest',
+    role: user?.role || 'GUEST',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

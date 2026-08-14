@@ -22,7 +22,11 @@ const app = express();
 
 // Read JSON requests
 app.use(express.json());
-app.use(cors());
+// CORS configuration
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'],
+  credentials: true,
+}));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

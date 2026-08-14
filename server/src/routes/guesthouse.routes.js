@@ -86,6 +86,31 @@ router.get("/", getAll);
 
 /**
  * @swagger
+ * /api/guesthouses/pending:
+ *   get:
+ *     summary: Get pending guesthouses
+ *     description: Returns guesthouses waiting for administrator approval.
+ *     tags:
+ *       - Guesthouses
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pending guesthouses fetched successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Only ADMIN can view pending guesthouses
+ */
+router.get(
+  "/pending",
+  authenticate,
+  authorize("ADMIN"),
+  pendingGuesthouses
+);
+
+/**
+ * @swagger
  * /api/guesthouses/{id}:
  *   get:
  *     summary: Get guesthouse by ID
@@ -195,31 +220,6 @@ router.delete(
   authenticate,
   authorize("OWNER"),
   remove
-);
-
-/**
- * @swagger
- * /api/guesthouses/pending:
- *   get:
- *     summary: Get pending guesthouses
- *     description: Returns guesthouses waiting for administrator approval.
- *     tags:
- *       - Guesthouses
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Pending guesthouses fetched successfully
- *       401:
- *         description: Authentication required
- *       403:
- *         description: Only ADMIN can view pending guesthouses
- */
-router.get(
-  "/pending",
-  authenticate,
-  authorize("ADMIN"),
-  pendingGuesthouses
 );
 
 /**

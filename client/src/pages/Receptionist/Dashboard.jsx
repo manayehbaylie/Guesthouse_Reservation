@@ -23,7 +23,7 @@ import {
 export function ReceptionistDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const guesthouseId = user?.guesthouseId || 'gh-1';
+  const [guesthouseId, setGuesthouseId] = useState(null);
 
   const [guesthouse, setGuesthouse] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -40,16 +40,32 @@ export function ReceptionistDashboard() {
   const loadFrontDeskData = async () => {
     setLoading(true);
     try {
-      const gh = await ApiService.getGuesthouseById(guesthouseId);
-      setGuesthouse(gh);
+      // Receptionists need to get their assigned guesthouse
+      // For now, we'll use the first available guesthouse or require assignment
+      const guesthouses = await ApiService.getGuesthouses();
+      if (guesthouses.length > 0) {
+        // Use the first approved guesthouse (in a real app, this would be assigned to the receptionist)
+        const gh = guesthouses[0];
+        setGuesthouseId(gh.id);
+        setGuesthouse(gh);
 
-      const rmList = await ApiService.getRoomsForGuesthouse(guesthouseId);
-      setRooms(rmList);
+        const rmList = await ApiService.getRoomsForGuesthouse(gh.id);
+        setRooms(rmList);
 
-      const resList = await ApiService.getReservations({ guesthouseId });
-      setReservations(resList);
+        const resList = await ApiService.getReservations({ guesthouseId: gh.id });
+        setReservations(resList);
+      } else {
+        setGuesthouseId(null);
+        setGuesthouse(null);
+        setRooms([]);
+        setReservations([]);
+      }
     } catch (err) {
       console.error('Error loading receptionist data:', err);
+      setGuesthouseId(null);
+      setGuesthouse(null);
+      setRooms([]);
+      setReservations([]);
     } finally {
       setLoading(false);
     }
@@ -57,7 +73,7 @@ export function ReceptionistDashboard() {
 
   useEffect(() => {
     loadFrontDeskData();
-  }, [guesthouseId]);
+  }, []);
 
   const handleCheckIn = async (reservationId) => {
     try {
