@@ -46,9 +46,12 @@ export function Home() {
           city: city === 'All Cities' ? '' : city,
           maxPrice: Number(maxPrice),
         });
-        setAllGuesthouses(list.filter((g) => g.status === 'approved'));
+        // Backend already filters for APPROVED status, but we keep the filter for safety
+        setAllGuesthouses(list.filter((g) => g.status === 'approved' || g.status === 'APPROVED'));
       } catch (err) {
         console.error('Error loading guesthouses:', err);
+        // If API fails, set empty array
+        setAllGuesthouses([]);
       } finally {
         setLoading(false);
       }

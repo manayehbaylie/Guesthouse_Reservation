@@ -17,20 +17,26 @@ export function GuesthouseManage() {
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
-    async function fetchProperty() {
-      if (user?.guesthouseId) {
-        const gh = await ApiService.getGuesthouseById(user.guesthouseId);
-        if (gh) {
-          setName(gh.name);
-          setCity(gh.city);
-          setLocation(gh.location);
-          setDescription(gh.description);
-          setAmenities(gh.amenities?.join(', ') || '');
-        }
+  async function fetchProperty() {
+    try {
+      const gh = await ApiService.getMyGuesthouse();
+
+      if (gh) {
+        setName(gh.name || '');
+        setCity(gh.city || 'Addis Ababa');
+        setLocation(gh.location || '');
+        setDescription(gh.description || '');
+        setAmenities(gh.amenities?.join(', ') || '');
       }
+    } catch (error) {
+      console.error("Failed to load my guesthouse:", error);
     }
+  }
+
+  if (user?.role === 'OWNER') {
     fetchProperty();
-  }, [user]);
+  }
+}, [user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

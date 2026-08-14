@@ -22,7 +22,7 @@ import {
 
 export const ReceptionistDashboard = () => {
   const currentUser = ApiService.getCurrentUser();
-  const guesthouseId = currentUser?.guesthouseId || 'gh-1';
+  const [guesthouseId, setGuesthouseId] = useState(null);
 
   const [guesthouse, setGuesthouse] = useState(null);
   const [arrivals, setArrivals] = useState([]);
@@ -45,22 +45,40 @@ export const ReceptionistDashboard = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const gh = await ApiService.getGuesthouseById(guesthouseId);
-      setGuesthouse(gh);
+      // Get the first available guesthouse (in production, this would be assigned to the receptionist)
+      const guesthouses = await ApiService.getGuesthouses();
+      if (guesthouses.length > 0) {
+        const gh = guesthouses[0];
+        setGuesthouseId(gh.id);
+        setGuesthouse(gh);
 
-      const arr = await ApiService.getReceptionistArrivals(guesthouseId);
-      setArrivals(arr);
+        const arr = await ApiService.getReceptionistArrivals(gh.id);
+        setArrivals(arr);
 
-      const dep = await ApiService.getReceptionistDepartures(guesthouseId);
-      setDepartures(dep);
+        const dep = await ApiService.getReceptionistDepartures(gh.id);
+        setDepartures(dep);
 
-      const resList = await ApiService.getReservations({ guesthouseId });
-      setAllReservations(resList);
+        const resList = await ApiService.getReservations({ guesthouseId: gh.id });
+        setAllReservations(resList);
 
-      const roomList = await ApiService.getRoomsForGuesthouse(guesthouseId);
-      setRooms(roomList);
+        const roomList = await ApiService.getRoomsForGuesthouse(gh.id);
+        setRooms(roomList);
+      } else {
+        setGuesthouseId(null);
+        setGuesthouse(null);
+        setArrivals([]);
+        setDepartures([]);
+        setAllReservations([]);
+        setRooms([]);
+      }
     } catch (err) {
       console.error(err);
+      setGuesthouseId(null);
+      setGuesthouse(null);
+      setArrivals([]);
+      setDepartures([]);
+      setAllReservations([]);
+      setRooms([]);
     } finally {
       setLoading(false);
     }
@@ -68,7 +86,7 @@ export const ReceptionistDashboard = () => {
 
   useEffect(() => {
     loadData();
-  }, [guesthouseId]);
+  }, []);
 
   const handleCheckIn = async (resId) => {
     try {

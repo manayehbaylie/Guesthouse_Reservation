@@ -29,6 +29,29 @@ router.get("/", getAll);
 
 /**
  * @swagger
+ * /api/rooms/guesthouse/:guesthouseId:
+ *   get:
+ *     summary: Get rooms by guesthouse ID
+ *     description: Returns all rooms for a specific guesthouse.
+ *     tags:
+ *       - Rooms
+ *     parameters:
+ *       - in: path
+ *         name: guesthouseId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Rooms fetched successfully
+ *       404:
+ *         description: Guesthouse not found
+ */
+router.get("/guesthouse/:guesthouseId", getAll);
+
+/**
+ * @swagger
  * /api/rooms/{id}:
  *   get:
  *     summary: Get room by ID

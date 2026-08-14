@@ -41,7 +41,7 @@ export function AdminDashboard() {
       const allGh = await ApiService.getGuesthouses();
       setAllGuesthouses(allGh);
 
-      const uList = await ApiService.fetchAdminUsers();
+      const uList = await ApiService.getAllUsers();
       setUsersList(uList);
     } catch (err) {
       console.error('Error loading admin stats:', err);

@@ -42,7 +42,7 @@ export const AuthModal = ({ isOpen, onClose, onUserChanged }) => {
         email,
         phone,
         role,
-        guesthouseId: role === 'Owner' || role === 'Receptionist' ? 'gh-1' : undefined,
+        // guesthouseId will be set when the owner creates their guesthouse
       });
       onUserChanged(user);
       onClose();

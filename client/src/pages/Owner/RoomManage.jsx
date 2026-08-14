@@ -7,7 +7,7 @@ import { BedDouble, Plus, Trash2, CheckCircle2, ChevronLeft, ToggleLeft, ToggleR
 export function RoomManage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const guesthouseId = user?.guesthouseId || 'gh-1';
+  const [guesthouseId, setGuesthouseId] = useState(null);
 
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,21 +19,31 @@ export function RoomManage() {
   const [capacity, setCapacity] = useState(2);
   const [pricePerNight, setPricePerNight] = useState(2500);
 
-  const loadRooms = async () => {
+  const loadGuesthouseAndRooms = async () => {
     setLoading(true);
     try {
-      const list = await ApiService.getRoomsForGuesthouse(guesthouseId);
-      setRooms(list);
+      // First get the owner's guesthouse
+      const gh = await ApiService.getMyGuesthouse();
+      if (gh) {
+        setGuesthouseId(gh.id);
+        const list = await ApiService.getRoomsForGuesthouse(gh.id);
+        setRooms(list);
+      } else {
+        setGuesthouseId(null);
+        setRooms([]);
+      }
     } catch (err) {
       console.error('Error loading rooms:', err);
+      setGuesthouseId(null);
+      setRooms([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadRooms();
-  }, [guesthouseId]);
+    loadGuesthouseAndRooms();
+  }, []);
 
   const handleAddRoom = async (e) => {
     e.preventDefault();

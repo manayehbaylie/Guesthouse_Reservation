@@ -149,18 +149,39 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
               </Link>
             )}
 
-            {/* Owner specific links */}
-            {role === 'Owner' && (
-              <Link
-                to="/owner"
-                className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                  isActive('/owner') ? 'bg-amber-500/10 text-amber-400' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                }`}
-              >
-                <Building2 className="w-4 h-4" />
-                <span>Owner Hub</span>
-              </Link>
-            )}
+
+{/* Owner specific links */}
+{role === 'Owner' && (
+  <>
+    {/* Owner Dashboard */}
+    <Link
+      to="/owner"
+      className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+        isActive('/owner')
+          ? 'bg-amber-500/10 text-amber-400'
+          : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+      }`}
+    >
+      <Building2 className="w-4 h-4" />
+      <span>Owner Hub</span>
+    </Link>
+
+    {/* Create / Manage Guesthouse */}
+    <Link
+      to="/owner/guesthouse"
+      className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+        isActive('/owner/guesthouse')
+          ? 'bg-amber-500/10 text-amber-400'
+          : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+      }`}
+    >
+      <Building2 className="w-4 h-4" />
+      <span>Create / Manage Guesthouse</span>
+    </Link>
+  </>
+)}
+              
+            
 
             {/* Receptionist specific links */}
             {role === 'Receptionist' && (
@@ -263,14 +284,24 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
             </Link>
           )}
           {role === 'Owner' && (
-            <Link
-              to="/owner"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm font-medium text-amber-400 hover:bg-stone-800"
-            >
-              Owner Dashboard
-            </Link>
-          )}
+  <>
+    <Link
+      to="/owner"
+      onClick={() => setMobileMenuOpen(false)}
+      className="block px-3 py-2 rounded-lg text-sm font-medium text-amber-400 hover:bg-stone-800"
+    >
+      Owner Dashboard
+    </Link>
+
+    <Link
+      to="/owner/guesthouse"
+      onClick={() => setMobileMenuOpen(false)}
+      className="block px-3 py-2 rounded-lg text-sm font-medium text-amber-400 hover:bg-stone-800"
+    >
+      Create / Manage Guesthouse
+    </Link>
+  </>
+)}
           {role === 'Receptionist' && (
             <Link
               to="/receptionist"

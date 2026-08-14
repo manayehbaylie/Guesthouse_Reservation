@@ -5,6 +5,7 @@ import { LogIn, Mail, Lock, Sparkles, Building2 } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -18,24 +19,29 @@ export function Login() {
     setError(null);
     setLoading(true);
     try {
-      const user = await login(email);
-      if (user.role === 'Admin') navigate('/admin');
-      else if (user.role === 'Owner') navigate('/owner');
-      else if (user.role === 'Receptionist') navigate('/receptionist');
+      const user = await login(email, password);
+      if (user.role === 'ADMIN') navigate('/admin');
+      else if (user.role === 'OWNER') navigate('/owner');
+      else if (user.role === 'RECEPTIONIST') navigate('/receptionist');
       else navigate(from);
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your email.');
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
   const sampleAccounts = [
-    { name: 'Abebe Bikila', email: 'guest@example.com', role: 'Guest' },
-    { name: 'Solomon Tadesse', email: 'owner@example.com', role: 'Owner' },
-    { name: 'Tigist Alemu', email: 'receptionist@example.com', role: 'Receptionist' },
-    { name: 'Kassaye Worku', email: 'admin@example.com', role: 'Admin' },
+    { name: 'Abebe Bikila', email: 'guest@example.com', password: 'Password123', role: 'GUEST' },
+    { name: 'Solomon Tadesse', email: 'owner@example.com', password: 'Password123', role: 'OWNER' },
+    { name: 'Tigist Alemu', email: 'receptionist@example.com', password: 'Password123', role: 'RECEPTIONIST' },
+    { name: 'Kassaye Worku', email: 'admin@example.com', password: 'Password123', role: 'ADMIN' },
   ];
+
+  const autofillAccount = (acc) => {
+    setEmail(acc.email);
+    setPassword(acc.password);
+  };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-stone-50">
@@ -77,7 +83,9 @@ export function Login() {
               <input
                 type="password"
                 required
-                defaultValue="password123"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password123"
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
               />
             </div>
@@ -104,7 +112,7 @@ export function Login() {
               <button
                 key={acc.email}
                 type="button"
-                onClick={() => setEmail(acc.email)}
+                onClick={() => autofillAccount(acc)}
                 className="text-left p-2 rounded-lg bg-stone-50 hover:bg-amber-50 border border-stone-200 transition-colors"
               >
                 <div className="font-semibold text-stone-900">{acc.name}</div>

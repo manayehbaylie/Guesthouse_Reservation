@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserPlus, Mail, Phone, User, Building2, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Mail, Phone, User, Lock, Building2, CheckCircle2 } from 'lucide-react';
 
 export function Register() {
-  const [name, setName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('+251 9');
-  const [role, setRole] = useState('Guest');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('GUEST');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -18,8 +19,10 @@ export function Register() {
     setError(null);
     setLoading(true);
     try {
-      const newUser = await register({ name, email, phone, role });
-      if (newUser.role === 'Owner') navigate('/owner');
+      // Clean phone number - remove spaces and special characters except +
+      const cleanPhone = phone.replace(/\s/g, '').replace(/-/g, '');
+      const newUser = await register({ fullName, email, phone: cleanPhone, password, role });
+      if (newUser.role === 'OWNER') navigate('/owner');
       else navigate('/');
     } catch (err) {
       setError(err.message || 'Registration failed.');
@@ -53,8 +56,8 @@ export function Register() {
               <input
                 type="text"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 placeholder="Abebe Bikila"
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
               />
@@ -92,14 +95,29 @@ export function Register() {
           </div>
 
           <div>
+            <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">Password</label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password123"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
             <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">Register As</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white font-medium"
             >
-              <option value="Guest">Guest (Book & Pay Online)</option>
-              <option value="Owner">Guesthouse Owner (List Property)</option>
+              <option value="GUEST">Guest (Book & Pay Online)</option>
+              <option value="OWNER">Guesthouse Owner (List Property)</option>
             </select>
           </div>
 

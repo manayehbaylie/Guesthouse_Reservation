@@ -7,7 +7,7 @@ import { DollarSign, Smartphone, CreditCard, ChevronLeft, ArrowUpRight } from 'l
 export function RevenueReports() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const guesthouseId = user?.guesthouseId || 'gh-1';
+  const [guesthouseId, setGuesthouseId] = useState(null);
 
   const [payments, setPayments] = useState([]);
   const [revenueReport, setRevenueReport] = useState(null);
@@ -17,18 +17,30 @@ export function RevenueReports() {
     async function loadRevenue() {
       setLoading(true);
       try {
-        const pList = await ApiService.getOwnerPayments(guesthouseId);
-        setPayments(pList);
-        const report = await ApiService.getOwnerRevenueReport(guesthouseId);
-        setRevenueReport(report);
+        // First get the owner's guesthouse
+        const gh = await ApiService.getMyGuesthouse();
+        if (gh) {
+          setGuesthouseId(gh.id);
+          const pList = await ApiService.getOwnerPayments(gh.id);
+          setPayments(pList);
+          const report = await ApiService.getOwnerRevenueReport(gh.id);
+          setRevenueReport(report);
+        } else {
+          setGuesthouseId(null);
+          setPayments([]);
+          setRevenueReport(null);
+        }
       } catch (err) {
         console.error('Error loading revenue reports:', err);
+        setGuesthouseId(null);
+        setPayments([]);
+        setRevenueReport(null);
       } finally {
         setLoading(false);
       }
     }
     loadRevenue();
-  }, [guesthouseId]);
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
