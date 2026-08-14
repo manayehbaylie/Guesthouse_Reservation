@@ -45,6 +45,17 @@ export function AdminDashboard() {
       setUsersList(uList);
     } catch (err) {
       console.error('Error loading admin stats:', err);
+      // Set default values on error
+      setStats({
+        totalPlatformRevenue: 0,
+        totalGuesthouses: 0,
+        approvedGuesthouses: 0,
+        totalReservations: 0,
+        totalUsers: 0,
+      });
+      setPendingGuesthouses([]);
+      setAllGuesthouses([]);
+      setUsersList([]);
     } finally {
       setLoading(false);
     }
@@ -63,22 +74,20 @@ export function AdminDashboard() {
     }
   };
 
-  const handlePromoteUserRole = (userId, newRole) => {
+  const handlePromoteUserRole = async (userId, newRole) => {
     try {
-      const allU = ApiService.getAllUsers();
-      const targetUser = allU.find((u) => u.id === userId);
-      if (targetUser) {
-        targetUser.role = newRole;
-        setUsersList([...allU]);
-        alert(`User ${targetUser.name} role updated to ${newRole}`);
-      }
+      await ApiService.updateUserRole(userId, newRole);
+      loadAdminData();
     } catch (err) {
       alert(err.message || 'Error changing user role');
     }
   };
 
   const filteredUsers = usersList.filter((u) => {
-    if (userRoleFilter !== 'All' && u.role !== userRoleFilter) return false;
+    // Normalize role comparison
+    const roleMatch = userRoleFilter === 'All' || u.role === userRoleFilter;
+    if (!roleMatch) return false;
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = u.name.toLowerCase().includes(q);
@@ -258,7 +267,7 @@ export function AdminDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-stone-500">Filter Role:</span>
-              {['All', 'Guest', 'Owner', 'Receptionist', 'Admin'].map((r) => (
+              {['All', 'GUEST', 'OWNER', 'RECEPTIONIST', 'ADMIN'].map((r) => (
                 <button
                   key={r}
                   onClick={() => setUserRoleFilter(r)}
@@ -266,7 +275,7 @@ export function AdminDashboard() {
                     userRoleFilter === r ? 'bg-purple-700 text-white' : 'bg-stone-100 text-stone-700'
                   }`}
                 >
-                  {r}
+                  {r.charAt(0) + r.slice(1).toLowerCase()}
                 </button>
               ))}
             </div>
@@ -311,10 +320,10 @@ export function AdminDashboard() {
                         onChange={(e) => handlePromoteUserRole(u.id, e.target.value)}
                         className="px-2 py-1 rounded-lg border border-stone-300 text-xs bg-white font-bold"
                       >
-                        <option value="Guest">Guest</option>
-                        <option value="Owner">Owner</option>
-                        <option value="Receptionist">Receptionist</option>
-                        <option value="Admin">Admin</option>
+                        <option value="GUEST">Guest</option>
+                        <option value="OWNER">Owner</option>
+                        <option value="RECEPTIONIST">Receptionist</option>
+                        <option value="ADMIN">Admin</option>
                       </select>
                     </td>
                   </tr>

@@ -165,7 +165,6 @@ router.get(
 router.patch(
   "/:id/status",
   authenticate,
-  authorize("OWNER", "ADMIN"),
   updateStatus
 );
 

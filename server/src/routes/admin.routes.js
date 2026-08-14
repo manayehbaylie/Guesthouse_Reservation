@@ -3,6 +3,7 @@ import express from "express";
 import {
   approve,
   getUsers,
+  updateUserRoleController,
   getReports,
   getActivity,
 } from "../controllers/admin.controller.js";
@@ -66,6 +67,32 @@ router.get(
   authenticate,
   authorize("ADMIN"),
   getUsers
+);
+
+/**
+ * @swagger
+ * /api/admin/users/{id}/role:
+ *   patch:
+ *     summary: Update user role
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User role updated successfully
+ */
+router.patch(
+  "/users/:id/role",
+  authenticate,
+  authorize("ADMIN"),
+  updateUserRoleController
 );
 
 /**

@@ -54,11 +54,20 @@ export const getGuesthouseById = async (id) => {
   });
 };
 export const getGuesthouseByOwnerId = async (ownerId) => {
-  return await prisma.guesthouse.findFirst({
+  const guesthouse = await prisma.guesthouse.findFirst({
     where: {
       ownerId: Number(ownerId),
     },
+    include: {
+      rooms: true,
+    },
   });
+
+  if (!guesthouse) {
+    throw new Error("Guesthouse not found");
+  }
+
+  return guesthouse;
 };
 export const deleteGuesthouse = async (id) => {
   return await prisma.guesthouse.delete({

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ApiService } from '../../services/api.js';
+import { ApiService, api } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
   Building2,
@@ -79,7 +79,7 @@ export function OwnerDashboard() {
         setPayments(pmts);
 
         const allU = await ApiService.getAllUsers();
-        setStaff(allU.filter((u) => u.role === 'RECEPTIONIST' || u.role === 'Receptionist'));
+        setStaff(allU.filter((u) => u.role === 'RECEPTIONIST'));
       }
     } catch (err) {
       console.error('Failed to load owner dashboard data:', err);
@@ -127,11 +127,10 @@ export function OwnerDashboard() {
   const handleAddStaffSubmit = async (e) => {
     e.preventDefault();
     try {
-      await ApiService.registerUser({
+      await ApiService.registerReceptionist({
         name: staffName,
         email: staffEmail,
         phone: staffPhone,
-        role: 'Receptionist',
         guesthouseId,
       });
       setShowAddStaffModal(false);
@@ -147,14 +146,12 @@ export function OwnerDashboard() {
     e.preventDefault();
     try {
       const amList = propAmenities.split(',').map((s) => s.trim()).filter(Boolean);
-      await ApiService.registerGuesthouse({
+      // Use the update endpoint instead of register
+      await api.put(`/guesthouses/${guesthouseId}`, {
         name: propName,
         city: propCity,
-        location: propLocation,
+        address: propLocation,
         description: propDesc,
-        amenities: amList,
-        images: guesthouse?.images || ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'],
-        ownerId: user.id,
       });
       alert('Property details updated successfully.');
       loadOwnerData();

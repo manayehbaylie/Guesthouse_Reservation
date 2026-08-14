@@ -121,6 +121,7 @@ export const checkInGuest = async (id) => {
     );
   }
 
+  // Update Reservation and mark room as occupied
   const updatedReservation =
     await prisma.reservation.update({
 
@@ -133,6 +134,16 @@ export const checkInGuest = async (id) => {
       },
 
     });
+
+  // Mark room as occupied
+  await prisma.room.update({
+    where: {
+      id: reservation.roomId,
+    },
+    data: {
+      available: false,
+    },
+  });
 
   await createNotification({
 

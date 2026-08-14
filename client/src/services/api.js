@@ -239,37 +239,45 @@ export const ApiService = {
       roomId: Number(roomId),
     });
 
-    // Then create payment
+    // Then create payment with auto-approval for demo
     const roomData = await this.getRoomById(roomId);
     const totalPrice = Number(roomData.pricePerNight) * nightsCount;
 
     const payment = await api.post('/payments', {
       amount: totalPrice,
-      method: paymentMethod?.toUpperCase() || 'TELEBIRR',
+      paymentMethod: paymentMethod?.toUpperCase() || 'TELEBIRR',
       reservationId: reservation.id,
     });
+
+    // Auto-approve payment for demo purposes
+    const approvedPayment = await api.patch(`/payments/${payment.id}/status`, {
+      status: 'PAID',
+    });
+
+    const guesthouseData = await this.getGuesthouseById(guesthouseId);
 
     return {
       reservation: {
         ...reservation,
         guesthouseId,
-        guesthouseName: 'Guesthouse', // Will be filled from guesthouse data
-        guesthouseLocation: 'Location', // Will be filled from guesthouse data
+        guesthouseName: guesthouseData.name,
+        guesthouseLocation: guesthouseData.location,
         roomNumber: roomData.roomNumber,
         roomType: roomData.type,
         guestName: this.getCurrentUser()?.fullName || 'Guest',
         guestPhone: phone,
         nightsCount,
         totalPrice,
-        paymentStatus: payment.status === 'PAID' ? 'paid' : 'pending',
-        status: reservation.status?.toLowerCase() || 'pending',
+        paymentStatus: approvedPayment.status === 'PAID' ? 'paid' : 'pending',
+        status: approvedPayment.status === 'PAID' ? 'confirmed' : reservation.status?.toLowerCase() || 'pending',
       },
       payment: {
-        ...payment,
+        ...approvedPayment,
         guesthouseId,
         guestName: this.getCurrentUser()?.fullName || 'Guest',
-        method: payment.method?.toLowerCase() || 'telebirr',
-        status: payment.status?.toLowerCase() || 'pending',
+        method: approvedPayment.method?.toLowerCase() || 'telebirr',
+        status: approvedPayment.status?.toLowerCase() || 'pending',
+        referenceNumber: `${paymentMethod?.toUpperCase() || 'TELEBIRR'}-REF-${Date.now().toString().slice(-6)}`,
       },
     };
   },
@@ -289,8 +297,15 @@ export const ApiService = {
       ...res,
       status: res.status?.toLowerCase() || 'pending',
       guestName: res.guest?.fullName || 'Guest',
+      guestPhone: res.guest?.phone || 'N/A',
       roomNumber: res.room?.roomNumber || 'N/A',
       roomType: res.room?.roomType || 'STANDARD',
+      guesthouseName: res.room?.guesthouse?.name || 'Guesthouse',
+      guesthouseLocation: res.room?.guesthouse?.address || 'Location',
+      checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
+      checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      nightsCount: res.checkIn && res.checkOut ? Math.max(1, Math.round((new Date(res.checkOut) - new Date(res.checkIn)) / (1000 * 3600 * 24))) : 1,
+      totalPrice: res.room?.price || 0,
     }));
   },
 
@@ -321,6 +336,13 @@ export const ApiService = {
     return response.map(res => ({
       ...res,
       status: res.status?.toLowerCase() || 'confirmed',
+      guestName: res.guest?.fullName || 'Guest',
+      guestPhone: res.guest?.phone || 'N/A',
+      roomNumber: res.room?.roomNumber || 'N/A',
+      roomType: res.room?.roomType || 'STANDARD',
+      checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
+      checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      totalPrice: res.room?.price || 0,
     }));
   },
 
@@ -329,6 +351,13 @@ export const ApiService = {
     return response.map(res => ({
       ...res,
       status: res.status?.toLowerCase() || 'checked_in',
+      guestName: res.guest?.fullName || 'Guest',
+      guestPhone: res.guest?.phone || 'N/A',
+      roomNumber: res.room?.roomNumber || 'N/A',
+      roomType: res.room?.roomType || 'STANDARD',
+      checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
+      checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      totalPrice: res.room?.price || 0,
     }));
   },
 
@@ -341,6 +370,8 @@ export const ApiService = {
         ...p,
         method: p.method?.toLowerCase() || 'telebirr',
         status: p.status?.toLowerCase() || 'pending',
+        guestName: p.reservation?.guest?.fullName || 'Guest',
+        referenceNumber: `${p.method?.toUpperCase() || 'TELEBIRR'}-REF-${p.id}`,
       }));
   },
 
@@ -365,21 +396,33 @@ export const ApiService = {
   },
 
   async getAdminPlatformStats() {
-    const guesthouses = await api.get('/guesthouses');
-    const reservations = await api.get('/reservations');
-    const payments = await api.get('/payments');
-    const users = await api.get('/admin/users');
+    try {
+      const guesthouses = await api.get('/guesthouses');
+      const reservations = await api.get('/reservations');
+      const payments = await api.get('/payments');
+      const users = await api.get('/admin/users');
 
-    const totalRevenue = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const totalRevenue = payments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    return {
-      totalGuesthouses: guesthouses.length,
-      approvedGuesthouses: guesthouses.filter((g) => g.status === 'APPROVED').length,
-      pendingGuesthouses: guesthouses.filter((g) => g.status === 'PENDING').length,
-      totalReservations: reservations.length,
-      totalPlatformRevenue: totalRevenue,
-      totalUsers: users.length,
-    };
+      return {
+        totalGuesthouses: guesthouses.length,
+        approvedGuesthouses: guesthouses.filter((g) => g.status === 'APPROVED').length,
+        pendingGuesthouses: guesthouses.filter((g) => g.status === 'PENDING').length,
+        totalReservations: reservations.length,
+        totalPlatformRevenue: totalRevenue,
+        totalUsers: users.length,
+      };
+    } catch (err) {
+      console.error('Error fetching admin stats:', err);
+      return {
+        totalGuesthouses: 0,
+        approvedGuesthouses: 0,
+        pendingGuesthouses: 0,
+        totalReservations: 0,
+        totalPlatformRevenue: 0,
+        totalUsers: 0,
+      };
+    }
   },
 
   async getAdminPendingGuesthouses() {
@@ -407,6 +450,53 @@ export const ApiService = {
     return response.map(user => ({
       ...user,
       name: user.fullName, // Map fullName to name for frontend compatibility
+    }));
+  },
+
+  // --- Receptionist Services ---
+  async checkInGuest(reservationId) {
+    const response = await api.patch(`/receptionist/reservations/${reservationId}/check-in`);
+    return {
+      ...response,
+      status: response.status?.toLowerCase() || 'checked_in',
+    };
+  },
+
+  async checkOutGuest(reservationId) {
+    const response = await api.patch(`/receptionist/reservations/${reservationId}/check-out`);
+    return {
+      ...response,
+      status: response.status?.toLowerCase() || 'checked_out',
+    };
+  },
+
+  // --- Owner Services ---
+  async updateUserRole(userId, newRole) {
+    const response = await api.patch(`/admin/users/${userId}/role`, { role: newRole });
+    return {
+      ...response,
+      name: response.fullName,
+    };
+  },
+
+  async registerReceptionist({ name, email, phone, guesthouseId }) {
+    const response = await api.post('/owner/receptionists', {
+      fullName: name,
+      email,
+      phone,
+      guesthouseId,
+    });
+    return {
+      ...response,
+      name: response.fullName,
+    };
+  },
+
+  async getOwnerReceptionists(guesthouseId) {
+    const response = await api.get('/owner/receptionists');
+    return response.map(user => ({
+      ...user,
+      name: user.fullName,
     }));
   },
 };

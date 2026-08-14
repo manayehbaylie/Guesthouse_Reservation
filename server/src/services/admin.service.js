@@ -41,11 +41,38 @@ export const getAllUsers = async () => {
       id: true,
       fullName: true,
       email: true,
+      phone: true,
       role: true,
       createdAt: true,
     },
     orderBy: {
       createdAt: "desc",
+    },
+  });
+};
+
+/*
+==================================================
+2.5 UPDATE USER ROLE
+==================================================
+*/
+export const updateUserRole = async (id, newRole) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: Number(id),
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return await prisma.user.update({
+    where: {
+      id: Number(id),
+    },
+    data: {
+      role: newRole,
     },
   });
 };

@@ -241,7 +241,7 @@ export function Home() {
               <div key={i} className="h-72 rounded-3xl bg-stone-200 animate-pulse"></div>
             ))}
           </div>
-        ) : filteredGuesthouses.length === 0 ? (
+        ) : !loading && filteredGuesthouses.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl border border-stone-200 text-center space-y-3">
             <Building2 className="w-10 h-10 text-stone-300 mx-auto" />
             <h3 className="text-base font-bold text-stone-800">No Matching Guesthouses</h3>

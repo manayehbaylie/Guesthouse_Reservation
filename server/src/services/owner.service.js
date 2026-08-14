@@ -70,6 +70,9 @@ export const createReceptionist = async (
     throw new Error("Guesthouse not found");
   }
 
+  // Clean phone number
+  const cleanPhone = data.phone.replace(/\s/g, '').replace(/-/g, '');
+
   const existingUser =
     await prisma.user.findUnique({
       where: {
@@ -81,16 +84,29 @@ export const createReceptionist = async (
     throw new Error("Email already exists");
   }
 
+  const existingPhone =
+    await prisma.user.findUnique({
+      where: {
+        phone: cleanPhone,
+      },
+    });
+
+  if (existingPhone) {
+    throw new Error("Phone already exists");
+  }
+
+  // Use default password if not provided
+  const password = data.password || "Password123";
   const hashedPassword =
-    await bcrypt.hash(data.password, 10);
+    await bcrypt.hash(password, 10);
 
   return await prisma.user.create({
     data: {
       fullName: data.fullName,
       email: data.email,
       password: hashedPassword,
+      phone: cleanPhone,
       role: "RECEPTIONIST",
-      guesthouseId: guesthouse.id,
     },
   });
 };
@@ -103,26 +119,17 @@ export const createReceptionist = async (
 export const getReceptionists = async (
   ownerId
 ) => {
-  const guesthouse =
-    await prisma.guesthouse.findFirst({
-      where: {
-        ownerId,
-      },
-    });
-
-  if (!guesthouse) {
-    throw new Error("Guesthouse not found");
-  }
-
+  // Since User model doesn't have guesthouseId, we'll return all receptionists
+  // In a real system, you'd need a staff assignment table
   return await prisma.user.findMany({
     where: {
-      guesthouseId: guesthouse.id,
       role: "RECEPTIONIST",
     },
     select: {
       id: true,
       fullName: true,
       email: true,
+      phone: true,
       role: true,
       createdAt: true,
     },

@@ -1,6 +1,7 @@
 import {
   approveGuesthouse,
   getAllUsers,
+  updateUserRole,
   getPlatformReport,
   getSystemActivity,
 } from "../services/admin.service.js";
@@ -40,6 +41,25 @@ export const getUsers = async (req, res, next) => {
       res,
       users,
       "Users fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+==================================================
+UPDATE USER ROLE
+==================================================
+*/
+export const updateUserRoleController = async (req, res, next) => {
+  try {
+    const user = await updateUserRole(req.params.id, req.body.role);
+
+    return successResponse(
+      res,
+      user,
+      "User role updated successfully"
     );
   } catch (error) {
     next(error);
