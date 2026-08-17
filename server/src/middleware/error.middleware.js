@@ -23,12 +23,12 @@ export const errorHandler = (
 
   // Handle Zod validation errors
   if (err.name === 'ZodError') {
-    return res.status(400).json({
-      success: false,
-      message: err.errors[0]?.message || 'Validation error',
-    });
-  }
-
+  return res.status(400).json({
+    success: false,
+    message: err.issues?.[0]?.message || 'Validation error',
+    errors: err.issues || [],
+  });
+}
   // Handle JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
