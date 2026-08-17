@@ -1,1040 +1,1946 @@
-import axios from 'axios';
-import { INITIAL_GUESTHOUSES, INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_USERS, INITIAL_PAYMENTS } from '../data/mockData.js';
+import axios from "axios";
 
-// ─── Backend / Mock configuration ───────────────────────────────────────────
-const BACKEND_MODE_KEY = 'gh_backend_mode';
-const API_URL_KEY = 'gh_api_url';
-const DEFAULT_MODE = import.meta.env.VITE_DEFAULT_BACKEND_MODE || 'api';
-const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
-const FALLBACK_ENABLED = import.meta.env.VITE_API_FALLBACK !== 'false';
-const DEFAULT_PASSWORD = import.meta.env.VITE_DEFAULT_PASSWORD || 'Password123';
+// ============================================================
+// AXIOS INSTANCE
+// ============================================================
 
-let backendCircuitOpen = false;
-
-function openBackendCircuit(reason) {
-  if (!backendCircuitOpen) {
-    backendCircuitOpen = true;
-    console.warn(`[ApiService] Backend unavailable (${reason}). Using mock data for this session.`);
-  }
-}
-
-function hasBackendAuth() {
-  const token = localStorage.getItem('token');
-  return Boolean(token && !token.startsWith('jwt_token_'));
-}
-
-function syncApiBaseUrl() {
-  api.defaults.baseURL = getApiUrl();
-}
-
-export function getBackendMode() {
-  return localStorage.getItem(BACKEND_MODE_KEY) || DEFAULT_MODE;
-}
-
-export function getApiUrl() {
-  return localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL;
-}
-
-export function setBackendMode(mode, apiUrl = DEFAULT_API_URL) {
-  localStorage.setItem(BACKEND_MODE_KEY, mode);
-  localStorage.setItem(API_URL_KEY, apiUrl);
-  backendCircuitOpen = false;
-  syncApiBaseUrl();
-}
-
-function shouldUseBackend() {
-  return getBackendMode() === 'api' && !backendCircuitOpen;
-}
-
-async function withBackendFallback(label, apiFn, mockFn) {
-  if (!shouldUseBackend()) {
-    return mockFn();
-  }
-  try {
-    return await apiFn();
-  } catch (error) {
-    const status = error?.response?.status;
-    const message = error?.response?.data?.message || error.message || 'Request failed';
-
-    if (!status || status >= 500) {
-      openBackendCircuit(message);
-    }
-
-    console.warn(`[ApiService] ${label} failed (${message}). Using mock fallback.`);
-    if (!FALLBACK_ENABLED) {
-      throw error;
-    }
-    return mockFn();
-  }
-}
-
-async function fetchRoomsSafely() {
-  try {
-    const roomsResponse = await api.get('/rooms');
-    return (unwrap(roomsResponse) || []).map(mapRoomFromBackend);
-  } catch {
-    return [];
-  }
-}
-
-function unwrap(response) {
-  return response?.data?.data ?? response?.data;
-}
-
-function mapRoleFromBackend(role) {
-  if (!role) return 'Guest';
-  const normalized = String(role).toUpperCase();
-  const map = { GUEST: 'Guest', OWNER: 'Owner', RECEPTIONIST: 'Receptionist', ADMIN: 'Admin' };
-  return map[normalized] || role;
-}
-
-function mapRoleToBackend(role) {
-  if (!role) return 'GUEST';
-  const map = { Guest: 'GUEST', Owner: 'OWNER', Receptionist: 'RECEPTIONIST', Admin: 'ADMIN' };
-  return map[role] || String(role).toUpperCase();
-}
-
-function mapUserFromBackend(user) {
-  if (!user) return null;
-  return {
-    id: user.id,
-    name: user.fullName || user.name,
-    email: user.email,
-    phone: user.phone,
-    role: mapRoleFromBackend(user.role),
-    guesthouseId: user.guesthouseId ?? null,
-    createdAt: user.createdAt,
-  };
-}
-
-function mapGuesthouseStatus(status) {
-  if (!status) return 'pending';
-  return String(status).toLowerCase();
-}
-
-function mapGuesthouseFromBackend(gh, rooms = []) {
-  const ghRooms = rooms.filter((r) => String(r.guesthouseId) === String(gh.id));
-  const prices = ghRooms.map((r) => Number(r.pricePerNight ?? r.price ?? 0)).filter(Boolean);
-  const minPrice = prices.length ? Math.min(...prices) : 1500;
-  const maxPrice = prices.length ? Math.max(...prices) : 4000;
-
-  return {
-    id: gh.id,
-    ownerId: gh.ownerId,
-    name: gh.name,
-    description: gh.description || '',
-    location: gh.location || gh.address || '',
-    city: gh.city,
-    address: gh.address || gh.location || '',
-    phone: gh.phone || '',
-    email: gh.email || '',
-    status: mapGuesthouseStatus(gh.status),
-    images: gh.images || (gh.image ? [gh.image] : []),
-    amenities: gh.amenities || [],
-    rating: gh.rating ?? 4.5,
-    reviewCount: gh.reviewCount ?? 0,
-    createdAt: gh.createdAt,
-    priceRange: { min: minPrice, max: maxPrice },
-  };
-}
-
-function mapRoomFromBackend(room) {
-  return {
-    id: room.id,
-    guesthouseId: room.guesthouseId,
-    roomNumber: room.roomNumber,
-    type: room.type || room.roomType,
-    capacity: room.capacity,
-    pricePerNight: Number(room.pricePerNight ?? room.price ?? 0),
-    availabilityStatus: room.availabilityStatus ?? (room.available === false ? 'occupied' : 'available'),
-  };
-}
-
-function mapReservationStatus(status) {
-  if (!status) return 'pending';
-  return String(status).toLowerCase();
-}
-
-function mapReservationFromBackend(res) {
-  const room = res.room || {};
-  const guesthouse = room.guesthouse || {};
-  const guest = res.guest || {};
-  const checkIn = res.checkInDate || res.checkIn;
-  const checkOut = res.checkOutDate || res.checkOut;
-
-  return {
-    id: res.id,
-    guesthouseId: res.guesthouseId || guesthouse.id || room.guesthouseId,
-    guesthouseName: res.guesthouseName || guesthouse.name || '',
-    guesthouseLocation: res.guesthouseLocation || guesthouse.address || '',
-    roomId: res.roomId || room.id,
-    roomNumber: res.roomNumber || room.roomNumber || '',
-    roomType: res.roomType || room.roomType || room.type || '',
-    guestId: res.guestId || guest.id,
-    guestName: res.guestName || guest.fullName || guest.name || '',
-    guestPhone: res.guestPhone || guest.phone || '',
-    checkInDate: checkIn ? String(checkIn).slice(0, 10) : '',
-    checkOutDate: checkOut ? String(checkOut).slice(0, 10) : '',
-    nightsCount: res.nightsCount,
-    totalPrice: Number(res.totalPrice ?? res.payment?.amount ?? room.price ?? 0),
-    paymentStatus: res.paymentStatus || (res.payment?.status === 'PAID' ? 'paid' : 'pending'),
-    status: mapReservationStatus(res.status),
-    createdAt: res.createdAt,
-  };
-}
-
-function mapPaymentFromBackend(payment) {
-  return {
-    id: payment.id,
-    reservationId: payment.reservationId,
-    guesthouseId: payment.guesthouseId || payment.reservation?.room?.guesthouseId,
-    guestName: payment.guestName || payment.reservation?.guest?.fullName || '',
-    amount: Number(payment.amount ?? 0),
-    method: String(payment.method || payment.paymentMethod || 'telebirr').toLowerCase(),
-    referenceNumber: payment.referenceNumber || `REF-${payment.id}`,
-    status: String(payment.status || 'completed').toLowerCase(),
-    createdAt: payment.createdAt,
-  };
-}
-
-function mapPaymentMethodToBackend(method) {
-  const map = { telebirr: 'TELEBIRR', chapa: 'CARD', card: 'CARD', cash: 'CASH', bank: 'BANK' };
-  return map[String(method || 'telebirr').toLowerCase()] || 'TELEBIRR';
-}
-
-function toIsoDateTime(dateStr) {
-  if (!dateStr) return new Date().toISOString();
-  if (dateStr.includes('T')) return dateStr;
-  return `${dateStr}T12:00:00.000Z`;
-}
-
-// Axios Instance with JWT Interceptor
 export const api = axios.create({
-  baseURL: DEFAULT_API_URL,
+  baseURL:
+    import.meta.env.VITE_API_URL || "/api",
+
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-syncApiBaseUrl();
+// ============================================================
+// JWT INTERCEPTOR
+// ============================================================
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
+
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-export async function checkBackendHealth() {
-  try {
-    const response = await api.get('/health');
-    const data = response.data;
-    return data?.success === true || data?.status === 'ok';
-  } catch {
-    return false;
-  }
+// ============================================================
+// RESPONSE HELPERS
+// ============================================================
+
+function getResponseData(response) {
+  return response?.data?.data ?? response?.data ?? null;
 }
 
-// Database initialization & Persistence Helper
-const STORAGE_KEYS = {
-  GUESTHOUSES: 'gh_db_guesthouses_v2',
-  ROOMS: 'gh_db_rooms_v2',
-  RESERVATIONS: 'gh_db_reservations_v2',
-  USERS: 'gh_db_users_v2',
-  PAYMENTS: 'gh_db_payments_v2',
-  CURRENT_USER: 'gh_current_user_v2',
-  TOKEN: 'token',
-};
-
-export function initDatabase() {
-  if (!localStorage.getItem(STORAGE_KEYS.GUESTHOUSES)) {
-    localStorage.setItem(STORAGE_KEYS.GUESTHOUSES, JSON.stringify(INITIAL_GUESTHOUSES));
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.ROOMS)) {
-    localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(INITIAL_ROOMS));
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.RESERVATIONS)) {
-    localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(INITIAL_RESERVATIONS));
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.PAYMENTS)) {
-    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(INITIAL_PAYMENTS));
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
-    localStorage.setItem(STORAGE_KEYS.TOKEN, 'jwt_token_sample_guest_1');
-  }
+function getErrorMessage(error, fallback) {
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.response?.data?.details ||
+    error?.message ||
+    fallback
+  );
 }
 
-function getStoredData(key) {
-  initDatabase();
-  const raw = localStorage.getItem(key);
-  return raw ? JSON.parse(raw) : [];
+// ============================================================
+// NORMALIZERS
+// ============================================================
+
+function normalizeUser(user) {
+  if (!user) return null;
+
+  return {
+    ...user,
+
+    id: user.id != null ? Number(user.id) : user.id,
+
+    name:
+      user.name ||
+      user.fullName ||
+      "",
+
+    fullName:
+      user.fullName ||
+      user.name ||
+      "",
+
+    role:
+      user.role ||
+      "GUEST",
+  };
 }
 
-function setStoredData(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+function normalizeGuesthouse(guesthouse) {
+  if (!guesthouse) return null;
+
+  const image =
+    guesthouse.image ||
+    guesthouse.images?.[0] ||
+    "";
+
+  return {
+    ...guesthouse,
+
+    id:
+      guesthouse.id != null
+        ? Number(guesthouse.id)
+        : guesthouse.id,
+
+    ownerId:
+      guesthouse.ownerId != null
+        ? Number(guesthouse.ownerId)
+        : guesthouse.ownerId,
+
+    name:
+      guesthouse.name ||
+      "",
+
+    address:
+      guesthouse.address ||
+      guesthouse.location ||
+      "",
+
+    location:
+      guesthouse.location ||
+      guesthouse.address ||
+      "",
+
+    city:
+      guesthouse.city ||
+      "",
+
+    description:
+      guesthouse.description ||
+      "",
+
+    image,
+
+    images:
+      image
+        ? [image]
+        : [],
+
+    status:
+      String(
+        guesthouse.status ||
+        (guesthouse.approved
+          ? "APPROVED"
+          : "PENDING")
+      ).toUpperCase(),
+
+    amenities:
+      Array.isArray(guesthouse.amenities)
+        ? guesthouse.amenities
+        : [],
+
+    rooms:
+      Array.isArray(guesthouse.rooms)
+        ? guesthouse.rooms.map(normalizeRoom)
+        : [],
+  };
 }
 
-const MockService = {
+function normalizeRoom(room) {
+  if (!room) return null;
+
+  return {
+    ...room,
+
+    id:
+      room.id != null
+        ? Number(room.id)
+        : room.id,
+
+    guesthouseId:
+      room.guesthouseId != null
+        ? Number(room.guesthouseId)
+        : room.guesthouseId,
+
+    roomNumber:
+      room.roomNumber ||
+      "",
+
+    roomType:
+      room.roomType ||
+      room.type ||
+      "SINGLE",
+
+    type:
+      room.type ||
+      room.roomType ||
+      "SINGLE",
+
+    price:
+      room.price != null
+        ? Number(room.price)
+        : 0,
+
+    pricePerNight:
+      room.pricePerNight != null
+        ? Number(room.pricePerNight)
+        : Number(room.price || 0),
+
+    capacity:
+      room.capacity != null
+        ? Number(room.capacity)
+        : 1,
+
+    available:
+      room.available !== false,
+
+    availabilityStatus:
+      room.available === false
+        ? "unavailable"
+        : "available",
+
+    guesthouse:
+      room.guesthouse
+        ? normalizeGuesthouseWithoutRooms(
+            room.guesthouse
+          )
+        : room.guesthouse,
+  };
+}
+
+function normalizeGuesthouseWithoutRooms(
+  guesthouse
+) {
+  if (!guesthouse) return null;
+
+  return {
+    ...guesthouse,
+
+    id:
+      guesthouse.id != null
+        ? Number(guesthouse.id)
+        : guesthouse.id,
+
+    ownerId:
+      guesthouse.ownerId != null
+        ? Number(guesthouse.ownerId)
+        : guesthouse.ownerId,
+
+    name:
+      guesthouse.name || "",
+
+    address:
+      guesthouse.address ||
+      guesthouse.location ||
+      "",
+
+    location:
+      guesthouse.location ||
+      guesthouse.address ||
+      "",
+
+    city:
+      guesthouse.city ||
+      "",
+
+    description:
+      guesthouse.description ||
+      "",
+
+    image:
+      guesthouse.image ||
+      guesthouse.images?.[0] ||
+      "",
+
+    status:
+      String(
+        guesthouse.status ||
+        "PENDING"
+      ).toUpperCase(),
+  };
+}
+
+function normalizeReservation(
+  reservation
+) {
+  if (!reservation) return null;
+
+  return {
+    ...reservation,
+
+    id:
+      reservation.id != null
+        ? Number(reservation.id)
+        : reservation.id,
+
+    guestId:
+      reservation.guestId != null
+        ? Number(reservation.guestId)
+        : reservation.guestId,
+
+    roomId:
+      reservation.roomId != null
+        ? Number(reservation.roomId)
+        : reservation.roomId,
+
+    status:
+      String(
+        reservation.status ||
+        "PENDING"
+      ).toUpperCase(),
+
+    guest:
+      reservation.guest
+        ? normalizeUser(
+            reservation.guest
+          )
+        : reservation.guest,
+
+    room:
+      reservation.room
+        ? normalizeRoom(
+            reservation.room
+          )
+        : reservation.room,
+
+    payment:
+      reservation.payment
+        ? {
+            ...reservation.payment,
+
+            id:
+              reservation.payment.id != null
+                ? Number(
+                    reservation.payment.id
+                  )
+                : reservation.payment.id,
+
+            amount:
+              reservation.payment.amount != null
+                ? Number(
+                    reservation.payment.amount
+                  )
+                : 0,
+
+            method:
+              String(
+                reservation.payment.method ||
+                ""
+              ).toUpperCase(),
+
+            status:
+              String(
+                reservation.payment.status ||
+                ""
+              ).toUpperCase(),
+          }
+        : reservation.payment,
+  };
+}
+
+// ============================================================
+// API SERVICE
+// ============================================================
+
+export const ApiService = {
+
+  // ==========================================================
+  // AUTH
+  // ==========================================================
+
   getCurrentUser() {
-    initDatabase();
-    const raw = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    return raw ? JSON.parse(raw) : INITIAL_USERS[0];
+    const raw =
+      localStorage.getItem(
+        "currentUser"
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return normalizeUser(
+        JSON.parse(raw)
+      );
+    } catch {
+      localStorage.removeItem(
+        "currentUser"
+      );
+
+      return null;
+    }
   },
 
   setCurrentUser(user) {
     if (!user) {
-      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    } else {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
-      localStorage.setItem(STORAGE_KEYS.TOKEN, `jwt_token_${user.id}`);
-    }
-  },
+      localStorage.removeItem(
+        "currentUser"
+      );
 
-  getAllUsers() {
-    return getStoredData(STORAGE_KEYS.USERS);
-  },
+      localStorage.removeItem(
+        "token"
+      );
 
-  async loginUser(email) {
-    const users = getStoredData(STORAGE_KEYS.USERS);
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) {
-      throw new Error('User account not found with this email.');
-    }
-    this.setCurrentUser(user);
-    return user;
-  },
-
-  async registerUser({ name, email, phone, role, guesthouseId }) {
-    const users = getStoredData(STORAGE_KEYS.USERS);
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      throw new Error('An account already exists with this email address.');
+      return;
     }
 
-    const newUser = {
-      id: `usr-${Date.now()}`,
-      name,
-      email,
-      phone,
-      role: role || 'Guest',
-      guesthouseId: guesthouseId || null,
-      createdAt: new Date().toISOString(),
-    };
-
-    users.push(newUser);
-    setStoredData(STORAGE_KEYS.USERS, users);
-    this.setCurrentUser(newUser);
-    return newUser;
+    localStorage.setItem(
+      "currentUser",
+      JSON.stringify(
+        normalizeUser(user)
+      )
+    );
   },
 
-  async getGuesthouses(filters = {}) {
-    let list = getStoredData(STORAGE_KEYS.GUESTHOUSES);
-    const rooms = getStoredData(STORAGE_KEYS.ROOMS);
-
-    if (filters.city) {
-      list = list.filter((g) => g.city.toLowerCase() === filters.city.toLowerCase());
-    }
-
-    list = list.map((gh) => {
-      const ghRooms = rooms.filter((r) => r.guesthouseId === gh.id);
-      const prices = ghRooms.map((r) => r.pricePerNight);
-      const minPrice = prices.length ? Math.min(...prices) : 1500;
-      const maxPrice = prices.length ? Math.max(...prices) : 4000;
-      return {
-        ...gh,
-        priceRange: { min: minPrice, max: maxPrice },
-      };
-    });
-
-    if (filters.maxPrice) {
-      list = list.filter((gh) => gh.priceRange.min <= filters.maxPrice);
-    }
-
-    return list;
-  },
-
-  async getGuesthouseById(id) {
-    const list = await this.getGuesthouses();
-    return list.find((g) => String(g.id) === String(id)) || null;
-  },
-
-  async registerGuesthouse(data) {
-    const list = getStoredData(STORAGE_KEYS.GUESTHOUSES);
-    const newGh = {
-      id: `gh-${Date.now()}`,
-      name: data.name,
-      city: data.city,
-      location: data.location,
-      description: data.description,
-      amenities: data.amenities || [],
-      images: data.images || ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800'],
-      status: 'pending',
-      ownerId: data.ownerId,
-      rating: 5.0,
-      reviewCount: 1,
-      createdAt: new Date().toISOString(),
-    };
-
-    list.push(newGh);
-    setStoredData(STORAGE_KEYS.GUESTHOUSES, list);
-    return newGh;
-  },
-
-  async getRoomsForGuesthouse(guesthouseId) {
-    const rooms = getStoredData(STORAGE_KEYS.ROOMS);
-    return rooms.filter((r) => String(r.guesthouseId) === String(guesthouseId));
-  },
-
-  async addRoom(roomData) {
-    const rooms = getStoredData(STORAGE_KEYS.ROOMS);
-    const newRoom = {
-      id: `room-${Date.now()}`,
-      guesthouseId: roomData.guesthouseId,
-      roomNumber: roomData.roomNumber,
-      type: roomData.type,
-      capacity: roomData.capacity,
-      pricePerNight: roomData.pricePerNight,
-      availabilityStatus: roomData.availabilityStatus || 'available',
-    };
-    rooms.push(newRoom);
-    setStoredData(STORAGE_KEYS.ROOMS, rooms);
-    return newRoom;
-  },
-
-  async updateRoomAvailability(roomId, status) {
-    const rooms = getStoredData(STORAGE_KEYS.ROOMS);
-    const idx = rooms.findIndex((r) => String(r.id) === String(roomId));
-    if (idx !== -1) {
-      rooms[idx].availabilityStatus = status;
-      setStoredData(STORAGE_KEYS.ROOMS, rooms);
-      return rooms[idx];
-    }
-    throw new Error('Room not found');
-  },
-
-  async createBookingAndPay({ guesthouseId, roomId, checkInDate, checkOutDate, nightsCount, paymentMethod, phone }) {
-    const guesthouses = getStoredData(STORAGE_KEYS.GUESTHOUSES);
-    const rooms = getStoredData(STORAGE_KEYS.ROOMS);
-    const reservations = getStoredData(STORAGE_KEYS.RESERVATIONS);
-    const payments = getStoredData(STORAGE_KEYS.PAYMENTS);
-    const currentUser = this.getCurrentUser();
-
-    const room = rooms.find((r) => String(r.id) === String(roomId));
-    const guesthouse = guesthouses.find((g) => String(g.id) === String(guesthouseId));
-
-    if (!room || !guesthouse) throw new Error('Selected room or property not found.');
-
-    const existingConflict = reservations.find(
-      (res) =>
-        String(res.roomId) === String(roomId) &&
-        res.status !== 'cancelled' &&
-        res.checkInDate === checkInDate
+  logout() {
+    localStorage.removeItem(
+      "currentUser"
     );
 
-    if (existingConflict) {
-      throw new Error('Double-booking Prevention: This room is already booked for these dates!');
-    }
-
-    const totalPrice = room.pricePerNight * nightsCount;
-    const resId = `RES-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const newReservation = {
-      id: resId,
-      guesthouseId,
-      guesthouseName: guesthouse.name,
-      guesthouseLocation: guesthouse.location,
-      roomId,
-      roomNumber: room.roomNumber,
-      roomType: room.type,
-      guestId: currentUser?.id || 'usr-guest-1',
-      guestName: currentUser?.name || 'Walk-In Guest',
-      guestPhone: phone,
-      checkInDate,
-      checkOutDate,
-      nightsCount,
-      totalPrice,
-      paymentStatus: 'paid',
-      status: 'confirmed',
-      createdAt: new Date().toISOString(),
-    };
-
-    const newPayment = {
-      id: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
-      reservationId: resId,
-      guesthouseId,
-      guestName: newReservation.guestName,
-      amount: totalPrice,
-      method: paymentMethod,
-      referenceNumber: `${paymentMethod.toUpperCase()}-REF-${Date.now().toString().slice(-6)}`,
-      status: 'completed',
-      createdAt: new Date().toISOString(),
-    };
-
-    reservations.push(newReservation);
-    payments.push(newPayment);
-
-    setStoredData(STORAGE_KEYS.RESERVATIONS, reservations);
-    setStoredData(STORAGE_KEYS.PAYMENTS, payments);
-
-    return { reservation: newReservation, payment: newPayment };
+    localStorage.removeItem(
+      "token"
+    );
   },
 
-  async getReservations(filters = {}) {
-    let list = getStoredData(STORAGE_KEYS.RESERVATIONS);
-    if (filters.guestId) list = list.filter((r) => String(r.guestId) === String(filters.guestId));
-    if (filters.guesthouseId) list = list.filter((r) => String(r.guesthouseId) === String(filters.guesthouseId));
-    return list;
-  },
+  // ==========================================================
+  // LOGIN
+  // ==========================================================
 
-  async performCheckIn(resId) {
-    const reservations = getStoredData(STORAGE_KEYS.RESERVATIONS);
-    const rooms = getStoredData(STORAGE_KEYS.ROOMS);
+  async loginUser(
+    email,
+    password
+  ) {
+    try {
+      const response =
+        await api.post(
+          "/auth/login",
+          {
+            email,
+            password,
+          }
+        );
 
-    const idx = reservations.findIndex((r) => String(r.id) === String(resId));
-    if (idx !== -1) {
-      reservations[idx].status = 'checked_in';
-      setStoredData(STORAGE_KEYS.RESERVATIONS, reservations);
+      const result =
+        getResponseData(response);
 
-      const roomIdx = rooms.findIndex((r) => String(r.id) === String(reservations[idx].roomId));
-      if (roomIdx !== -1) {
-        rooms[roomIdx].availabilityStatus = 'occupied';
-        setStoredData(STORAGE_KEYS.ROOMS, rooms);
+      if (!result) {
+        throw new Error(
+          "Invalid response from server."
+        );
       }
-      return reservations[idx];
-    }
-    throw new Error('Reservation not found');
-  },
 
-  async performCheckOut(resId) {
-    const reservations = getStoredData(STORAGE_KEYS.RESERVATIONS);
-    const rooms = getStoredData(STORAGE_KEYS.ROOMS);
-
-    const idx = reservations.findIndex((r) => String(r.id) === String(resId));
-    if (idx !== -1) {
-      reservations[idx].status = 'checked_out';
-      setStoredData(STORAGE_KEYS.RESERVATIONS, reservations);
-
-      const roomIdx = rooms.findIndex((r) => String(r.id) === String(reservations[idx].roomId));
-      if (roomIdx !== -1) {
-        rooms[roomIdx].availabilityStatus = 'available';
-        setStoredData(STORAGE_KEYS.ROOMS, rooms);
+      if (result.token) {
+        localStorage.setItem(
+          "token",
+          result.token
+        );
       }
-      return reservations[idx];
+
+      const user =
+        normalizeUser(
+          result.user ||
+          result
+        );
+
+      if (user) {
+        this.setCurrentUser(
+          user
+        );
+      }
+
+      return {
+        ...result,
+        user,
+      };
+    } catch (error) {
+      console.error(
+        "Login error:",
+        error
+      );
+
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Login failed."
+        )
+      );
     }
-    throw new Error('Reservation not found');
   },
 
-  async getReceptionistArrivals(guesthouseId) {
-    const list = await this.getReservations({ guesthouseId });
-    return list.filter((r) => r.status === 'confirmed');
+  // ==========================================================
+  // REGISTER
+  // ==========================================================
+
+  async registerUser(
+    userData = {}
+  ) {
+    try {
+      const payload = {
+        fullName:
+          userData.fullName ||
+          userData.name ||
+          "",
+
+        email:
+          userData.email,
+
+        password:
+          userData.password,
+
+        phone:
+          userData.phone,
+
+        role:
+          String(
+            userData.role ||
+            "GUEST"
+          ).toUpperCase(),
+      };
+
+      if (
+        payload.role === "OWNER"
+      ) {
+        if (
+          userData.guesthouseName
+        ) {
+          payload.guesthouseName =
+            userData.guesthouseName;
+        }
+
+        if (
+          userData.guesthouseAddress
+        ) {
+          payload.guesthouseAddress =
+            userData.guesthouseAddress;
+        }
+
+        if (userData.city) {
+          payload.city =
+            userData.city;
+        }
+
+        if (
+          userData.guesthouseDescription
+        ) {
+          payload.guesthouseDescription =
+            userData.guesthouseDescription;
+        }
+
+        if (
+          userData.guesthouseImage
+        ) {
+          payload.guesthouseImage =
+            userData.guesthouseImage;
+        }
+      }
+
+      const response =
+        await api.post(
+          "/auth/register",
+          payload
+        );
+
+      const result =
+        getResponseData(response);
+
+      if (!result) {
+        throw new Error(
+          "Invalid response from server."
+        );
+      }
+
+      if (result.token) {
+        localStorage.setItem(
+          "token",
+          result.token
+        );
+      }
+
+      if (result.user) {
+        const user =
+          normalizeUser(
+            result.user
+          );
+
+        this.setCurrentUser(
+          user
+        );
+
+        return {
+          ...result,
+          user,
+        };
+      }
+
+      return result;
+    } catch (error) {
+      console.error(
+        "Registration error:",
+        error
+      );
+
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Registration failed."
+        )
+      );
+    }
   },
 
-  async getReceptionistDepartures(guesthouseId) {
-    const list = await this.getReservations({ guesthouseId });
-    return list.filter((r) => r.status === 'checked_in');
+  // ==========================================================
+  // USERS
+  // ==========================================================
+
+  async getAllUsers() {
+    try {
+      const response =
+        await api.get(
+          "/admin/users"
+        );
+
+      const users =
+        getResponseData(
+          response
+        ) || [];
+
+      return Array.isArray(users)
+        ? users.map(
+            normalizeUser
+          )
+        : [];
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load users."
+        )
+      );
+    }
   },
 
-  async getOwnerPayments(guesthouseId) {
-    const payments = getStoredData(STORAGE_KEYS.PAYMENTS);
-    return payments.filter((p) => String(p.guesthouseId) === String(guesthouseId));
+  // ==========================================================
+  // GUESTHOUSES - PUBLIC
+  // ==========================================================
+
+  async getGuesthouses(
+    filters = {}
+  ) {
+    try {
+      const params = {};
+
+      // Backend /api/guesthouses reads:
+      // q, city, checkIn, checkOut, maxPrice, minPrice (see guesthouse.service.js)
+      if (
+        filters.city &&
+        filters.city !== "All Cities"
+      ) {
+        params.city =
+          filters.city;
+      }
+
+      if (filters.keyword) {
+        params.q =
+          filters.keyword;
+      }
+
+      if (
+        filters.checkIn &&
+        filters.checkIn !== ""
+      ) {
+        params.checkIn =
+          filters.checkIn;
+      }
+
+      if (
+        filters.checkOut &&
+        filters.checkOut !== ""
+      ) {
+        params.checkOut =
+          filters.checkOut;
+      }
+
+      if (
+        filters.maxPrice !==
+        undefined &&
+        filters.maxPrice !== null &&
+        filters.maxPrice !== ""
+      ) {
+        params.maxPrice =
+          filters.maxPrice;
+      }
+
+      if (
+        filters.minPrice !==
+        undefined &&
+        filters.minPrice !== null &&
+        filters.minPrice !== ""
+      ) {
+        params.minPrice =
+          filters.minPrice;
+      }
+
+      const response =
+        await api.get(
+          "/guesthouses",
+          {
+            params,
+          }
+        );
+
+      let list =
+        getResponseData(
+          response
+        ) || [];
+
+      if (!Array.isArray(list)) {
+        return [];
+      }
+
+      return list
+        .map(
+          normalizeGuesthouse
+        )
+        .filter(Boolean);
+    } catch (error) {
+      console.error(
+        "Get guesthouses error:",
+        error
+      );
+
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load guesthouses."
+        )
+      );
+    }
   },
 
-  async getOwnerRevenueReport(guesthouseId) {
-    const payments = await this.getOwnerPayments(guesthouseId);
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+  // ==========================================================
+  // OWNER GUESTHOUSES
+  // ==========================================================
 
-    const telebirrSum = payments.filter((p) => p.method === 'telebirr').reduce((sum, p) => sum + p.amount, 0);
-    const chapaSum = payments.filter((p) => p.method === 'chapa').reduce((sum, p) => sum + p.amount, 0);
-    const cardSum = payments.filter((p) => p.method === 'card').reduce((sum, p) => sum + p.amount, 0);
+  async getOwnerGuesthouses(
+    ownerId
+  ) {
+    try {
+      const numericOwnerId =
+        Number(ownerId);
+
+      if (
+        !Number.isInteger(
+          numericOwnerId
+        )
+      ) {
+        return [];
+      }
+
+      /*
+       * Important:
+       * Do NOT use getGuesthouses() here because
+       * the public endpoint may only return APPROVED
+       * guesthouses.
+       *
+       * Owners need to see:
+       * PENDING
+       * APPROVED
+       * REJECTED
+       */
+
+      const response =
+        await api.get(
+          "/guesthouses",
+          {
+            params: {
+              ownerId:
+                numericOwnerId,
+            },
+          }
+        );
+
+      let list =
+        getResponseData(
+          response
+        ) || [];
+
+      if (!Array.isArray(list)) {
+        return [];
+      }
+
+      list =
+        list.filter(
+          (guesthouse) =>
+            Number(
+              guesthouse.ownerId
+            ) ===
+            numericOwnerId
+        );
+
+      return list
+        .map(
+          normalizeGuesthouse
+        )
+        .filter(Boolean);
+    } catch (error) {
+      console.error(
+        "Get owner guesthouses error:",
+        error
+      );
+
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load your guesthouses."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // SINGLE GUESTHOUSE
+  // ==========================================================
+
+  async getGuesthouseById(
+    id
+  ) {
+    try {
+      const numericId =
+        Number(id);
+
+      if (
+        !Number.isInteger(
+          numericId
+        )
+      ) {
+        return null;
+      }
+
+      const response =
+        await api.get(
+          `/guesthouses/${numericId}`
+        );
+
+      return normalizeGuesthouse(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load guesthouse."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // CREATE GUESTHOUSE
+  // ==========================================================
+
+  async registerGuesthouse(
+    data = {}
+  ) {
+    try {
+      const payload = {
+        name:
+          data.name ||
+          "",
+
+        address:
+          data.address ||
+          data.location ||
+          "",
+
+        city:
+          data.city ||
+          "",
+
+        description:
+          data.description ||
+          "",
+
+        image:
+          data.image ||
+          data.images?.[0] ||
+          null,
+      };
+
+      const response =
+        data.id
+          ? await api.put(
+              `/guesthouses/${Number(
+                data.id
+              )}`,
+              payload
+            )
+          : await api.post(
+              "/guesthouses",
+              payload
+            );
+
+      return normalizeGuesthouse(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to save guesthouse."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // ROOMS
+  // ==========================================================
+
+  async getRoomsForGuesthouse(
+    guesthouseId
+  ) {
+    try {
+      const id =
+        Number(guesthouseId);
+
+      if (
+        !Number.isInteger(id)
+      ) {
+        return [];
+      }
+
+      const response =
+        await api.get(
+          "/rooms",
+          {
+            params: {
+              guesthouseId: id,
+            },
+          }
+        );
+
+      const rooms =
+        getResponseData(
+          response
+        ) || [];
+
+      if (!Array.isArray(rooms)) {
+        return [];
+      }
+
+      return rooms
+        .map(normalizeRoom)
+        .filter(Boolean);
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load rooms."
+        )
+      );
+    }
+  },
+
+  async getRoomById(
+    roomId
+  ) {
+    try {
+      const response =
+        await api.get(
+          `/rooms/${Number(
+            roomId
+          )}`
+        );
+
+      return normalizeRoom(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load room."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // ADD ROOM
+  // ==========================================================
+
+  async addRoom(
+    roomData = {}
+  ) {
+    try {
+      const roomTypeMap = {
+        Single: "SINGLE",
+        "Single Room": "SINGLE",
+
+        Double: "DOUBLE",
+        "Double Room": "DOUBLE",
+
+        Twin: "TWIN",
+        "Twin Room": "TWIN",
+
+        Family: "FAMILY",
+        "Family Room": "FAMILY",
+
+        Suite: "SUITE",
+        "Deluxe Suite": "SUITE",
+      };
+
+      const rawType =
+        roomData.roomType ||
+        roomData.type ||
+        "SINGLE";
+
+      const roomType =
+        roomTypeMap[rawType] ||
+        String(rawType)
+          .toUpperCase()
+          .replace(
+            /\s+ROOM$/,
+            ""
+          )
+          .replace(
+            /\s+SUITE$/,
+            ""
+          );
+
+      const validTypes = [
+        "SINGLE",
+        "DOUBLE",
+        "TWIN",
+        "FAMILY",
+        "SUITE",
+      ];
+
+      const payload = {
+        roomNumber:
+          roomData.roomNumber,
+
+        roomType:
+          validTypes.includes(
+            roomType
+          )
+            ? roomType
+            : "SINGLE",
+
+        price:
+          Number(
+            roomData.pricePerNight ??
+            roomData.price ??
+            0
+          ),
+
+        capacity:
+          Number(
+            roomData.capacity ||
+            1
+          ),
+
+        available:
+          roomData.availabilityStatus !==
+          "unavailable",
+      };
+
+      const response =
+        await api.post(
+          `/rooms/${Number(
+            roomData.guesthouseId
+          )}`,
+          payload
+        );
+
+      return normalizeRoom(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to add room."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // UPDATE ROOM
+  // ==========================================================
+
+  async updateRoomAvailability(
+    roomId,
+    status
+  ) {
+    try {
+      const existing =
+        await this.getRoomById(
+          roomId
+        );
+
+      if (!existing) {
+        throw new Error(
+          "Room not found."
+        );
+      }
+
+      const response =
+        await api.put(
+          `/rooms/${Number(
+            roomId
+          )}`,
+          {
+            roomNumber:
+              existing.roomNumber,
+
+            roomType:
+              existing.roomType,
+
+            price:
+              Number(
+                existing.price
+              ),
+
+            capacity:
+              Number(
+                existing.capacity
+              ),
+
+            available:
+              status ===
+              "available",
+          }
+        );
+
+      return normalizeRoom(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to update room."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // RESERVATIONS
+  // ==========================================================
+
+  async createReservation({
+    roomId,
+    checkInDate,
+    checkOutDate,
+    checkIn,
+    checkOut,
+  }) {
+    try {
+      const response =
+        await api.post(
+          "/reservations",
+          {
+            roomId:
+              Number(roomId),
+
+            checkIn:
+              checkIn ||
+              checkInDate,
+
+            checkOut:
+              checkOut ||
+              checkOutDate,
+
+            status:
+              "PENDING",
+          }
+        );
+
+      return normalizeReservation(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to create reservation."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // ALL RESERVATIONS
+  // ==========================================================
+
+  async getReservations(
+    filters = {}
+  ) {
+    try {
+      const params = {};
+
+      if (filters.guestId) {
+        params.guestId =
+          Number(
+            filters.guestId
+          );
+      }
+
+      if (filters.guesthouseId) {
+        params.guesthouseId =
+          Number(
+            filters.guesthouseId
+          );
+      }
+
+      if (filters.ownerId) {
+        params.ownerId =
+          Number(
+            filters.ownerId
+          );
+      }
+
+      const response =
+        await api.get(
+          "/reservations",
+          {
+            params,
+          }
+        );
+
+      const list =
+        getResponseData(
+          response
+        ) || [];
+
+      if (!Array.isArray(list)) {
+        return [];
+      }
+
+      return list
+        .map(
+          normalizeReservation
+        )
+        .filter(Boolean);
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load reservations."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // OWNER RESERVATIONS
+  // ==========================================================
+
+  async getOwnerReservations(
+    ownerId
+  ) {
+    try {
+      const numericOwnerId =
+        Number(ownerId);
+
+      if (
+        !Number.isInteger(
+          numericOwnerId
+        )
+      ) {
+        return [];
+      }
+
+      const response =
+        await api.get(
+          "/reservations",
+          {
+            params: {
+              ownerId:
+                numericOwnerId,
+            },
+          }
+        );
+
+      const list =
+        getResponseData(
+          response
+        ) || [];
+
+      if (!Array.isArray(list)) {
+        return [];
+      }
+
+      return list
+        .map(
+          normalizeReservation
+        )
+        .filter(Boolean);
+    } catch (error) {
+      console.error(
+        "Get owner reservations error:",
+        error
+      );
+
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load owner reservations."
+        )
+      );
+    }
+  },
+
+  async getReservationById(
+    reservationId
+  ) {
+    try {
+      const response =
+        await api.get(
+          `/reservations/${Number(
+            reservationId
+          )}`
+        );
+
+      return normalizeReservation(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load reservation."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // CHECK IN
+  // ==========================================================
+
+  async performCheckIn(
+    reservationId
+  ) {
+    try {
+      const response =
+        await api.put(
+          `/reservations/${Number(
+            reservationId
+          )}/checkin`
+        );
+
+      return getResponseData(
+        response
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Check-in failed."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // CHECK OUT
+  // ==========================================================
+
+  async performCheckOut(
+    reservationId
+  ) {
+    try {
+      const response =
+        await api.put(
+          `/reservations/${Number(
+            reservationId
+          )}/checkout`
+        );
+
+      return getResponseData(
+        response
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Check-out failed."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // BOOKING + PAYMENT
+  // ==========================================================
+
+  async createBookingAndPay({
+    roomId,
+    checkInDate,
+    checkOutDate,
+    paymentMethod,
+    phone,
+    accountNumber,
+  }) {
+    try {
+      const reservation =
+        await this.createReservation({
+          roomId,
+          checkInDate,
+          checkOutDate,
+        });
+
+      if (!reservation) {
+        throw new Error(
+          "Reservation was not created."
+        );
+      }
+
+      const payment =
+        await this.initiatePayment({
+          reservationId:
+            reservation.id,
+
+          method:
+            paymentMethod,
+
+          phone,
+
+          accountNumber,
+        });
+
+      return {
+        reservation,
+        payment,
+      };
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Booking failed."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // PAYMENT
+  // ==========================================================
+
+  async initiatePayment({
+    reservationId,
+    method,
+    phone,
+    accountNumber,
+  }) {
+    try {
+      const response =
+        await api.post(
+          "/payments/initiate",
+          {
+            reservationId:
+              Number(
+                reservationId
+              ),
+
+            method:
+              String(
+                method || ""
+              ).toUpperCase(),
+
+            phone:
+              phone ||
+              undefined,
+
+            accountNumber:
+              accountNumber ||
+              undefined,
+          }
+        );
+
+      return getResponseData(
+        response
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Payment initiation failed."
+        )
+      );
+    }
+  },
+
+  async getPaymentHistory() {
+    try {
+      const response =
+        await api.get(
+          "/payments/history"
+        );
+
+      return (
+        getResponseData(
+          response
+        ) || []
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load payment history."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // OWNER PAYMENTS
+  // ==========================================================
+
+  async getOwnerPayments(
+    guesthouseId
+  ) {
+    try {
+      const response =
+        await api.get(
+          "/payments"
+        );
+
+      let payments =
+        getResponseData(
+          response
+        ) || [];
+
+      if (!Array.isArray(payments)) {
+        return [];
+      }
+
+      if (guesthouseId) {
+        payments =
+          payments.filter(
+            (payment) =>
+              Number(
+                payment.reservation
+                  ?.room
+                  ?.guesthouseId
+              ) ===
+              Number(
+                guesthouseId
+              )
+          );
+      }
+
+      return payments.map(
+        (payment) => ({
+          ...payment,
+
+          id:
+            payment.id != null
+              ? Number(
+                  payment.id
+                )
+              : payment.id,
+
+          amount:
+            payment.amount != null
+              ? Number(
+                  payment.amount
+                )
+              : 0,
+
+          method:
+            String(
+              payment.method ||
+              ""
+            ).toLowerCase(),
+
+          status:
+            String(
+              payment.status ||
+              ""
+            ).toLowerCase(),
+
+          guestName:
+            payment.reservation
+              ?.guest
+              ?.fullName ||
+            "Guest",
+        })
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load payments."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // OWNER REVENUE
+  // ==========================================================
+
+  async getOwnerRevenueReport(
+    guesthouseId
+  ) {
+    const payments =
+      await this.getOwnerPayments(
+        guesthouseId
+      );
+
+    const paid =
+      payments.filter(
+        (payment) =>
+          payment.status ===
+          "paid"
+      );
+
+    const totalRevenue =
+      paid.reduce(
+        (sum, payment) =>
+          sum +
+          Number(
+            payment.amount || 0
+          ),
+        0
+      );
 
     return {
       totalRevenue,
-      totalTransactions: payments.length,
+
+      totalTransactions:
+        paid.length,
+
       paymentMethodBreakdown: {
-        telebirr: telebirrSum,
-        chapa: chapaSum,
-        card: cardSum,
+        telebirr:
+          paid
+            .filter(
+              (payment) =>
+                payment.method ===
+                "telebirr"
+            )
+            .reduce(
+              (sum, payment) =>
+                sum +
+                Number(
+                  payment.amount ||
+                  0
+                ),
+              0
+            ),
+
+        bank_transfer:
+          paid
+            .filter(
+              (payment) =>
+                payment.method ===
+                "bank_transfer"
+            )
+            .reduce(
+              (sum, payment) =>
+                sum +
+                Number(
+                  payment.amount ||
+                  0
+                ),
+              0
+            ),
       },
-      occupancyRate: 78,
     };
   },
 
+  // ==========================================================
+  // RECEPTIONIST
+  // ==========================================================
+
+  async getReceptionistArrivals(
+    guesthouseId
+  ) {
+    try {
+      const response =
+        await api.get(
+          "/receptionist/arrivals",
+          {
+            params:
+              guesthouseId
+                ? {
+                    guesthouseId:
+                      Number(
+                        guesthouseId
+                      ),
+                  }
+                : {},
+          }
+        );
+
+      return (
+        getResponseData(
+          response
+        ) || []
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load arrivals."
+        )
+      );
+    }
+  },
+
+  async getReceptionistDepartures(
+    guesthouseId
+  ) {
+    try {
+      const response =
+        await api.get(
+          "/receptionist/departures",
+          {
+            params:
+              guesthouseId
+                ? {
+                    guesthouseId:
+                      Number(
+                        guesthouseId
+                      ),
+                  }
+                : {},
+          }
+        );
+
+      return (
+        getResponseData(
+          response
+        ) || []
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load departures."
+        )
+      );
+    }
+  },
+
+  // ==========================================================
+  // ADMIN
+  // ==========================================================
+
   async getAdminPlatformStats() {
-    const guesthouses = getStoredData(STORAGE_KEYS.GUESTHOUSES);
-    const reservations = getStoredData(STORAGE_KEYS.RESERVATIONS);
-    const payments = getStoredData(STORAGE_KEYS.PAYMENTS);
-    const users = getStoredData(STORAGE_KEYS.USERS);
+    try {
+      const response =
+        await api.get(
+          "/admin/reports"
+        );
 
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+      return (
+        getResponseData(
+          response
+        ) || {}
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load admin statistics."
+        )
+      );
+    }
+  },
 
-    return {
-      totalGuesthouses: guesthouses.length,
-      approvedGuesthouses: guesthouses.filter((g) => g.status === 'approved').length,
-      pendingGuesthouses: guesthouses.filter((g) => g.status === 'pending').length,
-      totalReservations: reservations.length,
-      totalPlatformRevenue: totalRevenue,
-      totalUsers: users.length,
-    };
+  async getAdminReport() {
+    try {
+      const response =
+        await api.get(
+          "/admin/reports"
+        );
+
+      return (
+        getResponseData(
+          response
+        ) || {}
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load platform report."
+        )
+      );
+    }
+  },
+
+  async getSystemActivity() {
+    try {
+      const response =
+        await api.get(
+          "/admin/activity"
+        );
+
+      return (
+        getResponseData(
+          response
+        ) || []
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load system activity."
+        )
+      );
+    }
   },
 
   async getAdminPendingGuesthouses() {
-    const guesthouses = getStoredData(STORAGE_KEYS.GUESTHOUSES);
-    return guesthouses.filter((g) => g.status === 'pending');
+    try {
+      const response =
+        await api.get(
+          "/guesthouses",
+          {
+            params: {
+              status:
+                "PENDING",
+            },
+          }
+        );
+
+      const list =
+        getResponseData(
+          response
+        ) || [];
+
+      if (!Array.isArray(list)) {
+        return [];
+      }
+
+      return list
+        .map(
+          normalizeGuesthouse
+        )
+        .filter(
+          (guesthouse) =>
+            guesthouse.status ===
+            "PENDING"
+        );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to load pending guesthouses."
+        )
+      );
+    }
   },
 
-  async approveGuesthouse(id) {
-    const guesthouses = getStoredData(STORAGE_KEYS.GUESTHOUSES);
-    const idx = guesthouses.findIndex((g) => String(g.id) === String(id));
-    if (idx !== -1) {
-      guesthouses[idx].status = 'approved';
-      setStoredData(STORAGE_KEYS.GUESTHOUSES, guesthouses);
-      return guesthouses[idx];
+  async approveGuesthouse(
+    id
+  ) {
+    try {
+      const response =
+        await api.put(
+          `/admin/guesthouses/${Number(
+            id
+          )}/approve`
+        );
+
+      return normalizeGuesthouse(
+        getResponseData(
+          response
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Failed to approve guesthouse."
+        )
+      );
     }
-    throw new Error('Guesthouse not found');
+  },
+
+  // ==========================================================
+  // SEARCH
+  // ==========================================================
+
+  async searchGuesthouses({
+    location = "",
+    city = "",
+    maxPrice = "",
+    keyword = "",
+  } = {}) {
+    return this.getGuesthouses({
+      location,
+      city,
+      maxPrice,
+      keyword,
+    });
   },
 };
 
-const BackendService = {
-  getCurrentUser() {
-    initDatabase();
-    const raw = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    return raw ? JSON.parse(raw) : null;
-  },
+// ============================================================
+// NAMED EXPORTS
+// ============================================================
 
-  setCurrentUser(user, token) {
-    if (!user) {
-      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
-      return;
-    }
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
-    if (token) {
-      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-    }
-  },
-
-  async loginUser(email, password = DEFAULT_PASSWORD) {
-    const response = await api.post('/auth/login', { email, password });
-    const payload = unwrap(response);
-    const user = mapUserFromBackend(payload.user);
-    this.setCurrentUser(user, payload.token);
-    return user;
-  },
-
-  async registerUser({ name, email, phone, role, guesthouseId, password = DEFAULT_PASSWORD }) {
-    const response = await api.post('/auth/register', {
-      fullName: name,
-      email,
-      phone,
-      password,
-      role: mapRoleToBackend(role || 'Guest'),
-    });
-    const payload = unwrap(response);
-    const user = mapUserFromBackend({ ...payload.user, guesthouseId });
-    this.setCurrentUser(user, payload.token);
-    return user;
-  },
-
-  async getAllUsers() {
-    const response = await api.get('/admin/users');
-    const users = unwrap(response) || [];
-    return users.map(mapUserFromBackend);
-  },
-
-  async getGuesthouses(filters = {}) {
-    const ghResponse = await api.get('/guesthouses', { params: filters });
-    const guesthouses = unwrap(ghResponse) || [];
-    const rooms = await fetchRoomsSafely();
-
-    let list = guesthouses.map((gh) => mapGuesthouseFromBackend(gh, rooms));
-
-    if (filters.city) {
-      list = list.filter((g) => g.city.toLowerCase() === filters.city.toLowerCase());
-    }
-    if (filters.maxPrice) {
-      list = list.filter((gh) => gh.priceRange.min <= filters.maxPrice);
-    }
-
-    return list;
-  },
-
-  async getGuesthouseById(id) {
-    const ghResponse = await api.get(`/guesthouses/${id}`);
-    const guesthouse = unwrap(ghResponse);
-    if (!guesthouse) return null;
-    const rooms = await fetchRoomsSafely();
-    return mapGuesthouseFromBackend(guesthouse, rooms);
-  },
-
-  async registerGuesthouse(data) {
-    const response = await api.post('/guesthouses', {
-      name: data.name,
-      address: data.location || data.address,
-      city: data.city,
-      description: data.description,
-      image: data.images?.[0],
-    });
-    return mapGuesthouseFromBackend(unwrap(response));
-  },
-
-  async getRoomsForGuesthouse(guesthouseId) {
-    const response = await api.get('/rooms');
-    const rooms = unwrap(response) || [];
-    return rooms
-      .filter((room) => String(room.guesthouseId) === String(guesthouseId))
-      .map(mapRoomFromBackend);
-  },
-
-  async addRoom(roomData) {
-    const response = await api.post(`/rooms/${roomData.guesthouseId}`, {
-      roomNumber: roomData.roomNumber,
-      roomType: String(roomData.type || 'DOUBLE').toUpperCase(),
-      price: roomData.pricePerNight,
-      capacity: roomData.capacity,
-      available: roomData.availabilityStatus !== 'occupied',
-    });
-    return mapRoomFromBackend(unwrap(response));
-  },
-
-  async updateRoomAvailability(roomId, status) {
-    const response = await api.put(`/rooms/${roomId}`, {
-      available: status === 'available',
-    });
-    return mapRoomFromBackend(unwrap(response));
-  },
-
-  async createBookingAndPay({ guesthouseId, roomId, checkInDate, checkOutDate, nightsCount, paymentMethod, phone }) {
-    const reservationResponse = await api.post('/reservations', {
-      roomId: Number(roomId),
-      checkIn: toIsoDateTime(checkInDate),
-      checkOut: toIsoDateTime(checkOutDate),
-    });
-    const reservation = unwrap(reservationResponse);
-
-    const roomResponse = await api.get(`/rooms/${roomId}`);
-    const room = mapRoomFromBackend(unwrap(roomResponse));
-    const totalPrice = room.pricePerNight * nightsCount;
-
-    const paymentResponse = await api.post('/payments', {
-      reservationId: reservation.id,
-      amount: totalPrice,
-      paymentMethod: mapPaymentMethodToBackend(paymentMethod),
-    });
-    const payment = mapPaymentFromBackend(unwrap(paymentResponse));
-
-    const guesthouse = await this.getGuesthouseById(guesthouseId);
-    const currentUser = this.getCurrentUser();
-
-    return {
-      reservation: mapReservationFromBackend({
-        ...reservation,
-        guesthouseId,
-        guesthouseName: guesthouse?.name,
-        guesthouseLocation: guesthouse?.location,
-        roomNumber: room.roomNumber,
-        roomType: room.type,
-        guestName: currentUser?.name,
-        guestPhone: phone,
-        nightsCount,
-        totalPrice,
-        paymentStatus: 'paid',
-      }),
-      payment,
-    };
-  },
-
-  async getReservations(filters = {}) {
-    const currentUser = this.getCurrentUser();
-    const role = currentUser?.role;
-
-    let response;
-    if (role === 'Guest') {
-      response = await api.get('/guest/reservations');
-    } else if (role === 'Receptionist') {
-      response = await api.get('/receptionist/reservations');
-    } else {
-      response = await api.get('/reservations');
-    }
-
-    let list = (unwrap(response) || []).map(mapReservationFromBackend);
-
-    if (filters.guestId) {
-      list = list.filter((r) => String(r.guestId) === String(filters.guestId));
-    }
-    if (filters.guesthouseId) {
-      list = list.filter((r) => String(r.guesthouseId) === String(filters.guesthouseId));
-    }
-
-    return list;
-  },
-
-  async performCheckIn(resId) {
-    const response = await api.patch(`/receptionist/reservations/${resId}/check-in`);
-    return mapReservationFromBackend(unwrap(response));
-  },
-
-  async performCheckOut(resId) {
-    const response = await api.patch(`/receptionist/reservations/${resId}/check-out`);
-    return mapReservationFromBackend(unwrap(response));
-  },
-
-  async getReceptionistArrivals(guesthouseId) {
-    const response = await api.get('/receptionist/today-arrivals');
-    const list = (unwrap(response) || []).map(mapReservationFromBackend);
-    return guesthouseId ? list.filter((r) => String(r.guesthouseId) === String(guesthouseId)) : list;
-  },
-
-  async getReceptionistDepartures(guesthouseId) {
-    const response = await api.get('/receptionist/today-departures');
-    const list = (unwrap(response) || []).map(mapReservationFromBackend);
-    return guesthouseId ? list.filter((r) => String(r.guesthouseId) === String(guesthouseId)) : list;
-  },
-
-  async getOwnerPayments(guesthouseId) {
-    const response = await api.get('/dashboard/owner/recent-payments');
-    const payments = (unwrap(response) || []).map(mapPaymentFromBackend);
-    return guesthouseId
-      ? payments.filter((p) => String(p.guesthouseId) === String(guesthouseId))
-      : payments;
-  },
-
-  async getOwnerRevenueReport(guesthouseId) {
-    const response = await api.get('/dashboard/owner/revenue');
-    const data = unwrap(response) || {};
-    const payments = await this.getOwnerPayments(guesthouseId);
-
-    const telebirrSum = payments.filter((p) => p.method === 'telebirr').reduce((sum, p) => sum + p.amount, 0);
-    const chapaSum = payments.filter((p) => p.method === 'chapa').reduce((sum, p) => sum + p.amount, 0);
-    const cardSum = payments.filter((p) => p.method === 'card').reduce((sum, p) => sum + p.amount, 0);
-
-    return {
-      totalRevenue: Number(data.totalRevenue ?? 0),
-      totalTransactions: payments.length,
-      paymentMethodBreakdown: {
-        telebirr: telebirrSum,
-        chapa: chapaSum,
-        card: cardSum,
-      },
-      occupancyRate: data.occupancyRate ?? 0,
-    };
-  },
-
-  async getAdminPlatformStats() {
-    const response = await api.get('/dashboard');
-    const stats = unwrap(response) || {};
-    const pending = await this.getAdminPendingGuesthouses();
-
-    return {
-      totalGuesthouses: stats.totalGuesthouses ?? 0,
-      approvedGuesthouses: (stats.totalGuesthouses ?? 0) - pending.length,
-      pendingGuesthouses: pending.length,
-      totalReservations: stats.totalReservations ?? 0,
-      totalPlatformRevenue: Number(stats.totalRevenue ?? 0),
-      totalUsers: stats.totalUsers ?? 0,
-    };
-  },
-
-  async getAdminPendingGuesthouses() {
-    const response = await api.get('/guesthouses/pending');
-    const guesthouses = unwrap(response) || [];
-    return guesthouses.map((gh) => mapGuesthouseFromBackend(gh));
-  },
-
-  async approveGuesthouse(id) {
-    const response = await api.put(`/admin/guesthouses/${id}/approve`);
-    return mapGuesthouseFromBackend(unwrap(response));
-  },
-};
-
-export const ApiService = {
-  getBackendMode,
-  setBackendMode,
-  getApiUrl,
-
-  getCurrentUser() {
-    return shouldUseBackend() ? BackendService.getCurrentUser() : MockService.getCurrentUser();
-  },
-
-  setCurrentUser(user) {
-    if (shouldUseBackend()) {
-      BackendService.setCurrentUser(user);
-    } else {
-      MockService.setCurrentUser(user);
-    }
-  },
-
-  getAllUsers() {
-    return MockService.getAllUsers();
-  },
-
-  async fetchAdminUsers() {
-    if (!hasBackendAuth()) {
-      return MockService.getAllUsers();
-    }
-    return withBackendFallback(
-      'fetchAdminUsers',
-      () => BackendService.getAllUsers(),
-      () => MockService.getAllUsers()
+export const getGuesthouses =
+  (...args) =>
+    ApiService.getGuesthouses(
+      ...args
     );
-  },
 
-  async loginUser(email, password) {
-    return withBackendFallback(
-      'loginUser',
-      () => BackendService.loginUser(email, password),
-      () => MockService.loginUser(email)
+export const getGuesthouseById =
+  (...args) =>
+    ApiService.getGuesthouseById(
+      ...args
     );
-  },
 
-  async registerUser(payload) {
-    return withBackendFallback(
-      'registerUser',
-      () => BackendService.registerUser(payload),
-      () => MockService.registerUser(payload)
+export const getRoomsForGuesthouse =
+  (...args) =>
+    ApiService.getRoomsForGuesthouse(
+      ...args
     );
-  },
 
-  async getGuesthouses(filters) {
-    return withBackendFallback(
-      'getGuesthouses',
-      () => BackendService.getGuesthouses(filters),
-      () => MockService.getGuesthouses(filters)
+export const createReservation =
+  (...args) =>
+    ApiService.createReservation(
+      ...args
     );
-  },
 
-  async getGuesthouseById(id) {
-    return withBackendFallback(
-      'getGuesthouseById',
-      () => BackendService.getGuesthouseById(id),
-      () => MockService.getGuesthouseById(id)
+export const createBookingAndPay =
+  (...args) =>
+    ApiService.createBookingAndPay(
+      ...args
     );
-  },
 
-  async registerGuesthouse(data) {
-    return withBackendFallback(
-      'registerGuesthouse',
-      () => BackendService.registerGuesthouse(data),
-      () => MockService.registerGuesthouse(data)
+export const loginUser =
+  (...args) =>
+    ApiService.loginUser(
+      ...args
     );
-  },
 
-  async getRoomsForGuesthouse(guesthouseId) {
-    return withBackendFallback(
-      'getRoomsForGuesthouse',
-      () => BackendService.getRoomsForGuesthouse(guesthouseId),
-      () => MockService.getRoomsForGuesthouse(guesthouseId)
+export const registerUser =
+  (...args) =>
+    ApiService.registerUser(
+      ...args
     );
-  },
-
-  async addRoom(roomData) {
-    return withBackendFallback(
-      'addRoom',
-      () => BackendService.addRoom(roomData),
-      () => MockService.addRoom(roomData)
-    );
-  },
-
-  async updateRoomAvailability(roomId, status) {
-    return withBackendFallback(
-      'updateRoomAvailability',
-      () => BackendService.updateRoomAvailability(roomId, status),
-      () => MockService.updateRoomAvailability(roomId, status)
-    );
-  },
-
-  async createBookingAndPay(payload) {
-    return withBackendFallback(
-      'createBookingAndPay',
-      () => BackendService.createBookingAndPay(payload),
-      () => MockService.createBookingAndPay(payload)
-    );
-  },
-
-  async getReservations(filters) {
-    return withBackendFallback(
-      'getReservations',
-      () => BackendService.getReservations(filters),
-      () => MockService.getReservations(filters)
-    );
-  },
-
-  async performCheckIn(resId) {
-    return withBackendFallback(
-      'performCheckIn',
-      () => BackendService.performCheckIn(resId),
-      () => MockService.performCheckIn(resId)
-    );
-  },
-
-  async performCheckOut(resId) {
-    return withBackendFallback(
-      'performCheckOut',
-      () => BackendService.performCheckOut(resId),
-      () => MockService.performCheckOut(resId)
-    );
-  },
-
-  async getReceptionistArrivals(guesthouseId) {
-    return withBackendFallback(
-      'getReceptionistArrivals',
-      () => BackendService.getReceptionistArrivals(guesthouseId),
-      () => MockService.getReceptionistArrivals(guesthouseId)
-    );
-  },
-
-  async getReceptionistDepartures(guesthouseId) {
-    return withBackendFallback(
-      'getReceptionistDepartures',
-      () => BackendService.getReceptionistDepartures(guesthouseId),
-      () => MockService.getReceptionistDepartures(guesthouseId)
-    );
-  },
-
-  async getOwnerPayments(guesthouseId) {
-    return withBackendFallback(
-      'getOwnerPayments',
-      () => BackendService.getOwnerPayments(guesthouseId),
-      () => MockService.getOwnerPayments(guesthouseId)
-    );
-  },
-
-  async getOwnerRevenueReport(guesthouseId) {
-    return withBackendFallback(
-      'getOwnerRevenueReport',
-      () => BackendService.getOwnerRevenueReport(guesthouseId),
-      () => MockService.getOwnerRevenueReport(guesthouseId)
-    );
-  },
-
-  async getAdminPlatformStats() {
-    return withBackendFallback(
-      'getAdminPlatformStats',
-      () => BackendService.getAdminPlatformStats(),
-      () => MockService.getAdminPlatformStats()
-    );
-  },
-
-  async getAdminPendingGuesthouses() {
-    return withBackendFallback(
-      'getAdminPendingGuesthouses',
-      () => BackendService.getAdminPendingGuesthouses(),
-      () => MockService.getAdminPendingGuesthouses()
-    );
-  },
-
-  async approveGuesthouse(id) {
-    return withBackendFallback(
-      'approveGuesthouse',
-      () => BackendService.approveGuesthouse(id),
-      () => MockService.approveGuesthouse(id)
-    );
-  },
-};

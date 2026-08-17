@@ -40,8 +40,9 @@ model Guesthouse {
   status      GuesthouseStatus @default(PENDING)
 
   rejectionReason String?
-  ownerId         Int
-  owner           User    @relation("OwnerGuesthouses", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  ownerId Int
+  owner   User @relation("OwnerGuesthouses", fields: [ownerId], references: [id], onDelete: Restrict)
 
   rooms Room[]
 
@@ -57,9 +58,9 @@ model Room {
 
   roomNumber String
   roomType   RoomType
-  price      Decimal  @db.Decimal(10, 2)
+  price      Decimal @db.Decimal(10, 2)
   capacity   Int
-  available  Boolean  @default(true)
+  available  Boolean @default(true)
 
   guesthouseId Int
   guesthouse   Guesthouse @relation(fields: [guesthouseId], references: [id], onDelete: Restrict)
@@ -93,7 +94,7 @@ model Reservation {
   checkIn  DateTime
   checkOut DateTime
 
-  status ReservationStatus
+  status ReservationStatus @default(PENDING)
 
   guestId Int
   roomId  Int
@@ -126,12 +127,12 @@ model Payment {
   amount Decimal @db.Decimal(10, 2)
 
   method PaymentMethod
-
   status PaymentStatus
 
   reservationId Int @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
-  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  accountNumber String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -147,25 +148,21 @@ enum PaymentStatus {
 
 enum PaymentMethod {
   TELEBIRR
-  CBE_BIRR
-  CHAPA
+  BANK_TRANSFER
 }
 
 model Notification {
   id Int @id @default(autoincrement())
 
-  title String
-
+  title   String
   message String
 
   isRead Boolean @default(false)
 
   userId Int
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
-
   updatedAt DateTime @updatedAt
 
   @@index([userId])
