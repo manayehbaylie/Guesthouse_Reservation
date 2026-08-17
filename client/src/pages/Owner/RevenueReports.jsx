@@ -21,10 +21,21 @@ export function RevenueReports() {
         const gh = await ApiService.getMyGuesthouse();
         if (gh) {
           setGuesthouseId(gh.id);
-          const pList = await ApiService.getOwnerPayments(gh.id);
-          setPayments(pList);
-          const report = await ApiService.getOwnerRevenueReport(gh.id);
-          setRevenueReport(report);
+          // Use the dashboard API endpoints for real data
+          const dashboardStats = await ApiService.getOwnerDashboardStats();
+          const revenueData = await ApiService.getOwnerDashboardRevenue();
+          const paymentsData = await ApiService.getOwnerDashboardRecentPayments();
+          
+          setPayments(paymentsData);
+          setRevenueReport({
+            totalRevenue: revenueData.totalRevenue || 0,
+            totalTransactions: dashboardStats.totalReservations || 0,
+            paymentMethodBreakdown: {
+              telebirr: revenueData.totalRevenue || 0, // Backend doesn't break down by method yet
+              chapa: 0,
+              cbe_birr: 0,
+            },
+          });
         } else {
           setGuesthouseId(null);
           setPayments([]);

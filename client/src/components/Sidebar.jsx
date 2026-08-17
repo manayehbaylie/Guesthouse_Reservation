@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   X,
   Layers,
-  Terminal
+  Terminal,
+  ArrowLeft
 } from 'lucide-react';
 
 export function Sidebar({ isOpen, onClose, onOpenArchModal }) {
@@ -122,74 +123,87 @@ export function Sidebar({ isOpen, onClose, onOpenArchModal }) {
             </div>
           </div>
 
-          {/* Guest Navigation */}
-          <div className="space-y-1">
-            <div className="px-2 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-              Guest Services
-            </div>
-            <Link
-              to="/search"
-              onClick={onClose}
-              className={`w-full px-3 py-2.5 rounded-xl font-semibold flex items-center justify-between transition-colors ${
-                isActive('/search')
-                  ? 'bg-amber-500 text-stone-950 shadow-xs font-bold'
-                  : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Search className="w-4 h-4" />
-                <span>Search Guesthouses</span>
-              </div>
-              <span className="text-[10px] bg-amber-400/20 px-1.5 py-0.5 rounded text-amber-300 font-bold">
-                Live Filter
-              </span>
-            </Link>
-
-            <Link
-              to="/"
-              onClick={onClose}
-              className={`w-full px-3 py-2.5 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
-                isActive('/')
-                  ? 'bg-amber-500/15 text-amber-400 font-bold'
-                  : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <Home className="w-4 h-4" />
-              <span>Explore Homepage</span>
-            </Link>
-
-            <Link
-              to="/reservations"
-              onClick={onClose}
-              className={`w-full px-3 py-2.5 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
-                isActive('/reservations')
-                  ? 'bg-amber-500/15 text-amber-400 font-bold'
-                  : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              <span>My Reservations</span>
-            </Link>
-          </div>
-
-          {/* Owner Navigation */}
-          {(role === 'Owner' || role === 'Admin') && (
+          {/* Guest Navigation - Hide when owner is on their dashboard */}
+          {!(role === 'Owner' && isActive('/owner')) && (
             <div className="space-y-1">
-              <div className="px-2 text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">
-                Property Owner Hub
+              <div className="px-2 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                Guest Services
               </div>
               <Link
-                to="/owner"
+                to="/"
                 onClick={onClose}
-                className={`w-full px-3 py-2 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/owner')
+                className={`w-full px-3 py-2.5 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/')
                     ? 'bg-amber-500/15 text-amber-400 font-bold'
                     : 'text-stone-300 hover:bg-stone-800 hover:text-white'
                 }`}
               >
-                <Building2 className="w-4 h-4" />
-                <span>Property Dashboard</span>
+                <Home className="w-4 h-4" />
+                <span>Explore Homepage</span>
               </Link>
+            </div>
+          )}
+
+          {/* Owner Navigation - Show for owner role */}
+          {role === 'Owner' && (
+            <div className="space-y-1">
+              <div className="px-2 text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">
+                Property Owner Hub
+              </div>
+              
+              {/* Owner-specific navigation items */}
+              {isActive('/owner') && (
+                <>
+                  <button
+                    onClick={() => {
+                      navigate(-1);
+                      onClose();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl font-semibold flex items-center gap-2.5 transition-colors text-stone-300 hover:bg-stone-800 hover:text-white"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                  
+                  <Link
+                    to="/owner"
+                    onClick={onClose}
+                    className={`w-full px-3 py-2 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
+                      isActive('/owner')
+                        ? 'bg-amber-500/15 text-amber-400 font-bold'
+                        : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                  
+                  <Link
+                    to="/"
+                    onClick={onClose}
+                    className={`w-full px-3 py-2 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
+                      isActive('/')
+                        ? 'bg-amber-500/15 text-amber-400 font-bold'
+                        : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+                    }`}
+                  >
+                    <Home className="w-4 h-4" />
+                    <span>Home</span>
+                  </Link>
+                  
+                  <div className="w-full px-3 py-2 rounded-xl font-semibold flex items-center gap-2.5 transition-colors text-stone-300">
+                    <Sliders className="w-4 h-4" />
+                    <span>Functional</span>
+                  </div>
+
+                  <div className="border-t border-stone-800 my-2"></div>
+                  
+                  <div className="px-2 text-[10px] font-bold text-amber-400/80 uppercase tracking-wider mt-2">
+                    Management
+                  </div>
+                </>
+              )}
+              
               <Link
                 to="/owner/rooms"
                 onClick={onClose}
@@ -229,27 +243,6 @@ export function Sidebar({ isOpen, onClose, onOpenArchModal }) {
             </div>
           )}
 
-          {/* Receptionist Navigation */}
-          {(role === 'Receptionist' || role === 'Owner' || role === 'Admin') && (
-            <div className="space-y-1">
-              <div className="px-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                Front Desk Reception
-              </div>
-              <Link
-                to="/receptionist"
-                onClick={onClose}
-                className={`w-full px-3 py-2 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/receptionist')
-                    ? 'bg-emerald-500/15 text-emerald-400 font-bold'
-                    : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                }`}
-              >
-                <UserCheck className="w-4 h-4" />
-                <span>Check-In & Desk Operations</span>
-              </Link>
-            </div>
-          )}
-
           {/* Admin Navigation */}
           {role === 'Admin' && (
             <div className="space-y-1">
@@ -267,6 +260,27 @@ export function Sidebar({ isOpen, onClose, onOpenArchModal }) {
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Platform Admin Dashboard</span>
+              </Link>
+            </div>
+          )}
+
+          {/* Receptionist Navigation */}
+          {role === 'Receptionist' && (
+            <div className="space-y-1">
+              <div className="px-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                Front Desk Reception
+              </div>
+              <Link
+                to="/receptionist"
+                onClick={onClose}
+                className={`w-full px-3 py-2 rounded-xl font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/receptionist')
+                    ? 'bg-emerald-500/15 text-emerald-400 font-bold'
+                    : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Check-In & Desk Operations</span>
               </Link>
             </div>
           )}

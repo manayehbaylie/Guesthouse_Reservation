@@ -67,7 +67,7 @@ export function Booking() {
   const handleProcessPayment = async (e) => {
     e.preventDefault();
     if (!user) {
-      navigate('/login');
+      navigate('/login', { state: { from: { pathname: location.pathname } } });
       return;
     }
 

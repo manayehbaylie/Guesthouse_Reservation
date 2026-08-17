@@ -4,120 +4,58 @@ import prisma from "../config/prisma.js";
 // Top Guesthouses (ADMIN)
 // ========================================
 export const getTopGuesthouses = async () => {
-
-  const guesthouses =
-    await prisma.guesthouse.findMany({
-
-      where: {
-        status: "APPROVED",
-      },
-
-      include: {
-
-        rooms: {
-
-          include: {
-
-            reservations: true,
-
-          },
-
+  const guesthouses = await prisma.guesthouse.findMany({
+    where: {
+      status: "APPROVED",
+    },
+    include: {
+      rooms: {
+        include: {
+          reservations: true,
         },
-
       },
-
-    });
+    },
+  });
 
   return guesthouses
     .map((guesthouse) => {
-
-      const reservationCount =
-        guesthouse.rooms.reduce(
-
-          (total, room) =>
-            total +
-            room.reservations.length,
-
-          0
-
-        );
+      const reservationCount = guesthouse.rooms.reduce(
+        (total, room) => total + room.reservations.length,
+        0
+      );
 
       return {
-
         id: guesthouse.id,
-
         name: guesthouse.name,
-
         city: guesthouse.city,
-
         reservationCount,
-
       };
-
     })
-
-    .sort(
-
-      (a, b) =>
-        b.reservationCount -
-        a.reservationCount
-
-    );
-
+    .sort((a, b) => b.reservationCount - a.reservationCount);
 };
 // ========================================
 // Top Rooms (OWNER)
 // ========================================
-export const getTopRooms = async (
-
-  ownerId
-
-) => {
-
-  const rooms =
-    await prisma.room.findMany({
-
-      where: {
-
-        guesthouse: {
-
-          ownerId,
-
-        },
-
+export const getTopRooms = async (ownerId) => {
+  const rooms = await prisma.room.findMany({
+    where: {
+      guesthouse: {
+        ownerId,
       },
-
-      include: {
-
-        reservations: true,
-
-      },
-
-    });
+    },
+    include: {
+      reservations: true,
+    },
+  });
 
   return rooms
-
     .map((room) => ({
-
       id: room.id,
-
       roomNumber: room.roomNumber,
-
       roomType: room.roomType,
-
-      reservationCount:
-        room.reservations.length,
-
+      reservationCount: room.reservations.length,
     }))
-
-    .sort(
-
-      (a, b) =>
-        b.reservationCount -
-        a.reservationCount
-
-    );
-
+    .sort((a, b) => b.reservationCount - a.reservationCount);
 };
 // ========================================
 // Most Active Guests (OWNER)

@@ -2,6 +2,9 @@ import express from "express";
 
 import {
   approve,
+  reject,
+  deleteGuesthouseController,
+  deleteUserController,
   getUsers,
   updateUserRoleController,
   getReports,
@@ -51,6 +54,67 @@ router.put(
 
 /**
  * @swagger
+ * /api/admin/guesthouses/{id}/reject:
+ *   patch:
+ *     summary: Reject a guesthouse
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Guesthouse rejected successfully
+ */
+router.patch(
+  "/guesthouses/:id/reject",
+  authenticate,
+  authorize("ADMIN"),
+  reject
+);
+
+/**
+ * @swagger
+ * /api/admin/guesthouses/{id}:
+ *   delete:
+ *     summary: Delete a guesthouse
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Guesthouse deleted successfully
+ */
+router.delete(
+  "/guesthouses/:id",
+  authenticate,
+  authorize("ADMIN"),
+  deleteGuesthouseController
+);
+
+/**
+ * @swagger
  * /api/admin/users:
  *   get:
  *     summary: Get all users
@@ -93,6 +157,32 @@ router.patch(
   authenticate,
   authorize("ADMIN"),
   updateUserRoleController
+);
+
+/**
+ * @swagger
+ * /api/admin/users/{id}:
+ *   delete:
+ *     summary: Delete a user
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ */
+router.delete(
+  "/users/:id",
+  authenticate,
+  authorize("ADMIN"),
+  deleteUserController
 );
 
 /**

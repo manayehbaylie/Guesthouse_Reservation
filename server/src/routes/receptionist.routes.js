@@ -8,6 +8,11 @@ import {
   cancel,
   todayArrivals,
   todayDepartures,
+  dashboardStats,
+  receptionistRooms,
+  inHouseGuests,
+  searchReservationsController,
+  updateRoomAvailabilityController,
 } from "../controllers/receptionist.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -20,6 +25,27 @@ const router = express.Router();
  * RECEPTIONIST ROUTES
  * ========================================
  */
+
+/**
+ * @swagger
+ * /api/receptionist/dashboard:
+ *   get:
+ *     summary: Get receptionist dashboard stats
+ *     description: Get dashboard statistics for the receptionist's assigned guesthouse.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard stats fetched successfully
+ */
+router.get(
+  "/dashboard",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  dashboardStats
+);
 
 /**
  * @swagger
@@ -46,6 +72,189 @@ router.get(
   authenticate,
   authorize("RECEPTIONIST"),
   receptionReservations
+);
+
+/**
+ * @swagger
+ * /api/receptionist/reservations/search:
+ *   get:
+ *     summary: Search reservations
+ *     description: Search reservations by guest name, phone, room number, or reservation ID.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: term
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Search results fetched successfully
+ */
+router.get(
+  "/reservations/search",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  searchReservationsController
+);
+
+/**
+ * @swagger
+ * /api/receptionist/arrivals:
+ *   get:
+ *     summary: Get today's arrivals
+ *     description: Get all guests who are expected to check in today.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Today's arrivals fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Receptionist access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/arrivals",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  todayArrivals
+);
+
+/**
+ * @swagger
+ * /api/receptionist/departures:
+ *   get:
+ *     summary: Get today's departures
+ *     description: Get all guests who are expected to check out today.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Today's departures fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Receptionist access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/departures",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  todayDepartures
+);
+
+/**
+ * @swagger
+ * /api/receptionist/in-house:
+ *   get:
+ *     summary: Get in-house guests
+ *     description: Get all guests currently staying in the guesthouse.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: In-house guests fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Receptionist access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/in-house",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  inHouseGuests
+);
+
+/**
+ * @swagger
+ * /api/receptionist/rooms:
+ *   get:
+ *     summary: Get receptionist's rooms
+ *     description: Get all rooms for the receptionist's assigned guesthouse.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Rooms fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Receptionist access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/rooms",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  receptionistRooms
+);
+
+/**
+ * @swagger
+ * /api/receptionist/rooms/:id/availability:
+ *   patch:
+ *     summary: Update room availability
+ *     description: Update room maintenance status and availability.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - maintenanceStatus
+ *             properties:
+ *               maintenanceStatus:
+ *                 type: string
+ *                 enum: [AVAILABLE, UNAVAILABLE, CLEANING, MAINTENANCE]
+ *     responses:
+ *       200:
+ *         description: Room availability updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Receptionist access required
+ *       404:
+ *         description: Room not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch(
+  "/rooms/:id/availability",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  updateRoomAvailabilityController
 );
 
 /**

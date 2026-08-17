@@ -100,7 +100,7 @@ export const createReceptionist = async (
   const hashedPassword =
     await bcrypt.hash(password, 10);
 
-  return await prisma.user.create({
+  const receptionist = await prisma.user.create({
     data: {
       fullName: data.fullName,
       email: data.email,
@@ -109,6 +109,16 @@ export const createReceptionist = async (
       role: "RECEPTIONIST",
     },
   });
+
+  // Assign receptionist to guesthouse
+  await prisma.staffAssignment.create({
+    data: {
+      guesthouseId: guesthouse.id,
+      staffId: receptionist.id,
+    },
+  });
+
+  return receptionist;
 };
 
 /*
@@ -119,19 +129,130 @@ export const createReceptionist = async (
 export const getReceptionists = async (
   ownerId
 ) => {
-  // Since User model doesn't have guesthouseId, we'll return all receptionists
-  // In a real system, you'd need a staff assignment table
-  return await prisma.user.findMany({
+  const guesthouse = await prisma.guesthouse.findFirst({
     where: {
-      role: "RECEPTIONIST",
+      ownerId,
     },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      role: true,
-      createdAt: true,
+  });
+
+  if (!guesthouse) {
+    return [];
+  }
+
+  const assignments = await prisma.staffAssignment.findMany({
+    where: {
+      guesthouseId: guesthouse.id,
+    },
+    include: {
+      staff: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  return assignments.map(assignment => assignment.staff);
+};
+
+/*
+==================================================
+5. ASSIGN EXISTING RECEPTIONIST TO GUESTHOUSE
+==================================================
+*/
+export const assignReceptionistToGuesthouse = async (
+  ownerId,
+  staffId
+) => {
+  const guesthouse = await prisma.guesthouse.findFirst({
+    where: {
+      ownerId,
+    },
+  });
+
+  if (!guesthouse) {
+    throw new Error("Guesthouse not found");
+  }
+
+  const staff = await prisma.user.findUnique({
+    where: {
+      id: staffId,
+    },
+  });
+
+  if (!staff) {
+    throw new Error("Staff not found");
+  }
+
+  if (staff.role !== "RECEPTIONIST") {
+    throw new Error("User is not a receptionist");
+  }
+
+  // Check if already assigned
+  const existingAssignment = await prisma.staffAssignment.findUnique({
+    where: {
+      guesthouseId_staffId: {
+        guesthouseId: guesthouse.id,
+        staffId: staffId,
+      },
+    },
+  });
+
+  if (existingAssignment) {
+    throw new Error("Receptionist already assigned to this guesthouse");
+  }
+
+  return await prisma.staffAssignment.create({
+    data: {
+      guesthouseId: guesthouse.id,
+      staffId: staffId,
+    },
+  });
+};
+
+/*
+==================================================
+6. REMOVE RECEPTIONIST FROM GUESTHOUSE
+==================================================
+*/
+export const removeReceptionistFromGuesthouse = async (
+  ownerId,
+  staffId
+) => {
+  const guesthouse = await prisma.guesthouse.findFirst({
+    where: {
+      ownerId,
+    },
+  });
+
+  if (!guesthouse) {
+    throw new Error("Guesthouse not found");
+  }
+
+  const assignment = await prisma.staffAssignment.findUnique({
+    where: {
+      guesthouseId_staffId: {
+        guesthouseId: guesthouse.id,
+        staffId: Number(staffId),
+      },
+    },
+  });
+
+  if (!assignment) {
+    throw new Error("Receptionist is not assigned to this guesthouse");
+  }
+
+  return await prisma.staffAssignment.delete({
+    where: {
+      guesthouseId_staffId: {
+        guesthouseId: guesthouse.id,
+        staffId: Number(staffId),
+      },
     },
   });
 };

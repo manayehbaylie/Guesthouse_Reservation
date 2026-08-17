@@ -230,6 +230,27 @@ export const ApiService = {
     };
   },
 
+  async updateRoom(roomId, roomData) {
+    const response = await api.put(`/rooms/${roomId}`, {
+      roomNumber: roomData.roomNumber,
+      roomType: roomData.roomType,
+      price: roomData.price,
+      capacity: roomData.capacity,
+      available: roomData.available,
+    });
+    return {
+      ...response,
+      type: response.roomType,
+      pricePerNight: Number(response.price),
+      availabilityStatus: response.available ? 'available' : 'occupied',
+    };
+  },
+
+  async deleteRoom(roomId) {
+    const response = await api.delete(`/rooms/${roomId}`);
+    return response;
+  },
+
   // --- Booking & Payment Services ---
   async createBookingAndPay({ guesthouseId, roomId, checkInDate, checkOutDate, nightsCount, paymentMethod, phone }) {
     // First create reservation
@@ -331,8 +352,30 @@ export const ApiService = {
     };
   },
 
-  async getReceptionistArrivals(guesthouseId) {
-    const response = await api.get('/receptionist/today-arrivals');
+  // --- Receptionist Services ---
+  async getReceptionistDashboardStats() {
+    const response = await api.get('/receptionist/dashboard');
+    return response;
+  },
+
+  async getReceptionistReservations() {
+    const response = await api.get('/receptionist/reservations');
+    return response.map(res => ({
+      ...res,
+      status: res.status?.toLowerCase() || 'pending',
+      guestName: res.guest?.fullName || 'Guest',
+      guestPhone: res.guest?.phone || 'N/A',
+      roomNumber: res.room?.roomNumber || 'N/A',
+      roomType: res.room?.roomType || 'STANDARD',
+      checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
+      checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      nightsCount: res.checkIn && res.checkOut ? Math.max(1, Math.round((new Date(res.checkOut) - new Date(res.checkIn)) / (1000 * 3600 * 24))) : 1,
+      totalPrice: res.room?.price || 0,
+    }));
+  },
+
+  async getReceptionistArrivals() {
+    const response = await api.get('/receptionist/arrivals');
     return response.map(res => ({
       ...res,
       status: res.status?.toLowerCase() || 'confirmed',
@@ -342,12 +385,13 @@ export const ApiService = {
       roomType: res.room?.roomType || 'STANDARD',
       checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
       checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      nightsCount: res.checkIn && res.checkOut ? Math.max(1, Math.round((new Date(res.checkOut) - new Date(res.checkIn)) / (1000 * 3600 * 24))) : 1,
       totalPrice: res.room?.price || 0,
     }));
   },
 
-  async getReceptionistDepartures(guesthouseId) {
-    const response = await api.get('/receptionist/today-departures');
+  async getReceptionistDepartures() {
+    const response = await api.get('/receptionist/departures');
     return response.map(res => ({
       ...res,
       status: res.status?.toLowerCase() || 'checked_in',
@@ -357,11 +401,82 @@ export const ApiService = {
       roomType: res.room?.roomType || 'STANDARD',
       checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
       checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      nightsCount: res.checkIn && res.checkOut ? Math.max(1, Math.round((new Date(res.checkOut) - new Date(res.checkIn)) / (1000 * 3600 * 24))) : 1,
       totalPrice: res.room?.price || 0,
     }));
   },
 
-  // --- Owner & Admin Services ---
+  async getReceptionistInHouse() {
+    const response = await api.get('/receptionist/in-house');
+    return response.map(res => ({
+      ...res,
+      status: res.status?.toLowerCase() || 'checked_in',
+      guestName: res.guest?.fullName || 'Guest',
+      guestPhone: res.guest?.phone || 'N/A',
+      roomNumber: res.room?.roomNumber || 'N/A',
+      roomType: res.room?.roomType || 'STANDARD',
+      checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
+      checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      nightsCount: res.checkIn && res.checkOut ? Math.max(1, Math.round((new Date(res.checkOut) - new Date(res.checkIn)) / (1000 * 3600 * 24))) : 1,
+      totalPrice: res.room?.price || 0,
+    }));
+  },
+
+  async getReceptionistRooms() {
+    const response = await api.get('/receptionist/rooms');
+    return response.map(room => ({
+      ...room,
+      type: room.roomType,
+      pricePerNight: Number(room.price),
+      availabilityStatus: room.available ? 'available' : 'occupied',
+      maintenanceStatus: room.maintenanceStatus || 'AVAILABLE',
+    }));
+  },
+
+  async updateReceptionistRoomAvailability(roomId, maintenanceStatus) {
+    const response = await api.patch(`/receptionist/rooms/${roomId}/availability`, {
+      maintenanceStatus,
+    });
+    return {
+      ...response,
+      type: response.roomType,
+      pricePerNight: Number(response.price),
+      availabilityStatus: response.available ? 'available' : 'occupied',
+      maintenanceStatus: response.maintenanceStatus || 'AVAILABLE',
+    };
+  },
+
+  async searchReceptionistReservations(term) {
+    const response = await api.get(`/receptionist/reservations/search?term=${term}`);
+    return response.map(res => ({
+      ...res,
+      status: res.status?.toLowerCase() || 'pending',
+      guestName: res.guest?.fullName || 'Guest',
+      guestPhone: res.guest?.phone || 'N/A',
+      roomNumber: res.room?.roomNumber || 'N/A',
+      roomType: res.room?.roomType || 'STANDARD',
+      checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
+      checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      nightsCount: res.checkIn && res.checkOut ? Math.max(1, Math.round((new Date(res.checkOut) - new Date(res.checkIn)) / (1000 * 3600 * 24))) : 1,
+      totalPrice: res.room?.price || 0,
+    }));
+  },
+
+  async checkInGuest(reservationId) {
+    const response = await api.patch(`/receptionist/reservations/${reservationId}/check-in`);
+    return {
+      ...response,
+      status: response.status?.toLowerCase() || 'checked_in',
+    };
+  },
+
+  async checkOutGuest(reservationId) {
+    const response = await api.patch(`/receptionist/reservations/${reservationId}/check-out`);
+    return {
+      ...response,
+      status: response.status?.toLowerCase() || 'checked_out',
+    };
+  },
   async getOwnerPayments(guesthouseId) {
     const response = await api.get('/payments');
     return response
@@ -492,11 +607,77 @@ export const ApiService = {
     };
   },
 
+  async assignReceptionist({ staffId }) {
+    const response = await api.post('/owner/receptionists/assign', {
+      staffId,
+    });
+    return response;
+  },
+
+  async removeReceptionistFromGuesthouse(staffId) {
+    const response = await api.delete(`/owner/receptionists/${staffId}`);
+    return response;
+  },
+
   async getOwnerReceptionists(guesthouseId) {
     const response = await api.get('/owner/receptionists');
     return response.map(user => ({
       ...user,
       name: user.fullName,
+    }));
+  },
+
+  // --- Review Services ---
+  async createReview(reviewData) {
+    const response = await api.post('/reviews', reviewData);
+    return response;
+  },
+
+  async getOwnerReviews() {
+    const response = await api.get('/reviews/owner-reviews');
+    return response;
+  },
+
+  async respondToReview(reviewId, ownerResponse) {
+    const apiResponse = await api.put(`/reviews/${reviewId}/respond`, { response: ownerResponse });
+    return apiResponse;
+  },
+
+  // --- Owner Dashboard Services ---
+  async getOwnerDashboardStats() {
+    const response = await api.get('/dashboard/owner');
+    return response;
+  },
+
+  async getOwnerDashboardRevenue() {
+    const response = await api.get('/dashboard/owner/revenue');
+    return response;
+  },
+
+  async getOwnerDashboardRecentReservations() {
+    const response = await api.get('/dashboard/owner/recent-reservations');
+    return response.map(res => ({
+      ...res,
+      status: res.status?.toLowerCase() || 'pending',
+      guestName: res.guest?.fullName || 'Guest',
+      guestPhone: res.guest?.phone || 'N/A',
+      roomNumber: res.room?.roomNumber || 'N/A',
+      roomType: res.room?.roomType || 'STANDARD',
+      checkInDate: res.checkIn ? new Date(res.checkIn).toISOString().split('T')[0] : 'N/A',
+      checkOutDate: res.checkOut ? new Date(res.checkOut).toISOString().split('T')[0] : 'N/A',
+      totalPrice: res.room?.price || 0,
+    }));
+  },
+
+  async getOwnerDashboardRecentPayments() {
+    const response = await api.get('/dashboard/owner/recent-payments');
+    return response.map(p => ({
+      ...p,
+      method: p.method?.toLowerCase() || 'telebirr',
+      status: p.status?.toLowerCase() || 'pending',
+      guestName: p.reservation?.guest?.fullName || 'Guest',
+      referenceNumber: `${p.method?.toUpperCase() || 'TELEBIRR'}-REF-${p.id}`,
+      amount: Number(p.amount),
     }));
   },
 };

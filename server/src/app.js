@@ -12,6 +12,7 @@ import searchRoutes from "./routes/search.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import receptionistRoutes from "./routes/receptionist.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import reviewRoutes from "./routes/review.routes.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./docs/swagger.js";
 import ownerRoutes from "./routes/owner.routes.js";
@@ -22,9 +23,10 @@ const app = express();
 
 // Read JSON requests
 app.use(express.json());
+
 // CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177', 'http://localhost:5178', 'http://localhost:5179', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', 'http://127.0.0.1:5175', 'http://127.0.0.1:5176', 'http://127.0.0.1:5177', 'http://127.0.0.1:5178', 'http://127.0.0.1:5179'],
   credentials: true,
 }));
 app.get('/api/health', (req, res) => {
@@ -43,6 +45,7 @@ app.use("/api/reports", reportRoutes);
  app.use("/api/notifications",notificationRoutes);
  app.use("/api/receptionist",receptionistRoutes);
  app.use("/api/analytics", analyticsRoutes);
+ app.use("/api/reviews", reviewRoutes);
  app.use("/api-docs",swaggerUi.serve,swaggerUi.setup(swaggerSpec));
  app.use("/api/owner", ownerRoutes);
  app.use("/api/admin", adminRoutes);

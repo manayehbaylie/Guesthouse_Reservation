@@ -32,6 +32,79 @@ export const approveGuesthouse = async (id) => {
 
 /*
 ==================================================
+1.5 REJECT GUESTHOUSE
+==================================================
+*/
+export const rejectGuesthouse = async (id, reason) => {
+  const guesthouse = await prisma.guesthouse.findUnique({
+    where: {
+      id: Number(id),
+    },
+  });
+
+  if (!guesthouse) {
+    throw new Error("Guesthouse not found");
+  }
+
+  return await prisma.guesthouse.update({
+    where: {
+      id: Number(id),
+    },
+    data: {
+      status: "REJECTED",
+      rejectionReason: reason,
+    },
+  });
+};
+
+/*
+==================================================
+1.6 DELETE GUESTHOUSE
+==================================================
+*/
+export const deleteGuesthouse = async (id) => {
+  const guesthouse = await prisma.guesthouse.findUnique({
+    where: {
+      id: Number(id),
+    },
+  });
+
+  if (!guesthouse) {
+    throw new Error("Guesthouse not found");
+  }
+
+  return await prisma.guesthouse.delete({
+    where: {
+      id: Number(id),
+    },
+  });
+};
+
+/*
+==================================================
+1.7 DELETE USER
+==================================================
+*/
+export const deleteUser = async (id) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: Number(id),
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return await prisma.user.delete({
+    where: {
+      id: Number(id),
+    },
+  });
+};
+
+/*
+==================================================
 2. GET ALL USERS
 ==================================================
 */

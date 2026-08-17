@@ -9,7 +9,6 @@ export const createPayment = async (data) => {
     where: {
       id: Number(data.reservationId),
     },
-
     include: {
       room: true,
     },
@@ -21,9 +20,7 @@ export const createPayment = async (data) => {
 
   // Payment only for pending reservation
   if (reservation.status !== "PENDING") {
-    throw new Error(
-      "Payment can only be made for a pending reservation."
-    );
+    throw new Error("Payment can only be made for a pending reservation.");
   }
 
   // Check existing payment
@@ -34,9 +31,7 @@ export const createPayment = async (data) => {
   });
 
   if (existingPayment) {
-    throw new Error(
-      "Payment already exists for this reservation."
-    );
+    throw new Error("Payment already exists for this reservation.");
   }
 
   // Create payment
@@ -52,8 +47,7 @@ export const createPayment = async (data) => {
   // Notify guest
   await createNotification({
     title: "Payment Created",
-    message:
-      "Your payment request has been created. Please complete the payment.",
+    message: "Your payment request has been created. Please complete the payment.",
     userId: reservation.guestId,
   });
 
@@ -75,7 +69,6 @@ export const getAllPayments = async () => {
               email: true,
             },
           },
-
           room: {
             select: {
               id: true,
@@ -86,7 +79,6 @@ export const getAllPayments = async () => {
         },
       },
     },
-
     orderBy: {
       createdAt: "desc",
     },
@@ -101,7 +93,6 @@ export const getPaymentById = async (id) => {
     where: {
       id: Number(id),
     },
-
     include: {
       reservation: {
         include: {
@@ -112,7 +103,6 @@ export const getPaymentById = async (id) => {
               email: true,
             },
           },
-
           room: {
             select: {
               id: true,
@@ -134,7 +124,6 @@ export const updatePaymentStatus = async (id, status) => {
     where: {
       id: Number(id),
     },
-
     include: {
       reservation: {
         include: {
@@ -151,9 +140,7 @@ export const updatePaymentStatus = async (id, status) => {
 
   // Paid payment cannot be changed
   if (payment.status === "PAID") {
-    throw new Error(
-      "Paid payment cannot be changed."
-    );
+    throw new Error("Paid payment cannot be changed.");
   }
 
   // Update payment
@@ -161,11 +148,9 @@ export const updatePaymentStatus = async (id, status) => {
     where: {
       id: Number(id),
     },
-
     data: {
       status,
     },
-
     include: {
       reservation: {
         include: {
@@ -185,7 +170,6 @@ export const updatePaymentStatus = async (id, status) => {
       where: {
         id: payment.reservationId,
       },
-
       data: {
         status: "CONFIRMED",
       },
@@ -196,7 +180,6 @@ export const updatePaymentStatus = async (id, status) => {
       where: {
         id: payment.reservation.roomId,
       },
-
       data: {
         available: false,
       },
@@ -205,10 +188,7 @@ export const updatePaymentStatus = async (id, status) => {
     // Notify guest
     await createNotification({
       title: "Payment Successful",
-
-      message:
-        "Your payment was successful and your reservation has been confirmed.",
-
+      message: "Your payment was successful and your reservation has been confirmed.",
       userId: payment.reservation.guestId,
     });
   }
@@ -222,7 +202,6 @@ export const updatePaymentStatus = async (id, status) => {
       where: {
         id: payment.reservation.roomId,
       },
-
       data: {
         available: true,
       },
@@ -233,7 +212,6 @@ export const updatePaymentStatus = async (id, status) => {
       where: {
         id: payment.reservationId,
       },
-
       data: {
         status: "PENDING",
       },
@@ -242,10 +220,7 @@ export const updatePaymentStatus = async (id, status) => {
     // Notify guest
     await createNotification({
       title: "Payment Failed",
-
-      message:
-        "Your payment was not successful. The room is still available. Please try again.",
-
+      message: "Your payment was not successful. The room is still available. Please try again.",
       userId: payment.reservation.guestId,
     });
   }
@@ -260,7 +235,6 @@ export const getOwnerPaymentReport = async (ownerId) => {
   return await prisma.payment.findMany({
     where: {
       status: "PAID",
-
       reservation: {
         room: {
           guesthouse: {
@@ -269,7 +243,6 @@ export const getOwnerPaymentReport = async (ownerId) => {
         },
       },
     },
-
     include: {
       reservation: {
         include: {
@@ -280,7 +253,6 @@ export const getOwnerPaymentReport = async (ownerId) => {
               email: true,
             },
           },
-
           room: {
             select: {
               id: true,
@@ -292,7 +264,6 @@ export const getOwnerPaymentReport = async (ownerId) => {
         },
       },
     },
-
     orderBy: {
       createdAt: "desc",
     },

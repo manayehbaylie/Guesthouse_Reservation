@@ -79,127 +79,87 @@ export const deleteGuesthouse = async (id) => {
 // ========================================
 // Get Pending Guesthouses
 // ========================================
-export const getPendingGuesthouses =
-  async () => {
-
-    return await prisma.guesthouse.findMany({
+export const getPendingGuesthouses = async () => {
+  return await prisma.guesthouse.findMany({
     where: {
-  status: "PENDING",
-},
-      orderBy: {
-        createdAt: "desc",
-      },
-
-      include: {
-
-        owner: {
-
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-          },
-
+      status: "PENDING",
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
         },
-
       },
-
-    });
-
+    },
+  });
 };
 // ========================================
 // Approve Guesthouse
 // ========================================
 export const approveGuesthouse = async (id) => {
-
-  const guesthouse =
-    await prisma.guesthouse.findUnique({
-
-      where: {
-        id: Number(id),
-      },
-
-    });
+  const guesthouse = await prisma.guesthouse.findUnique({
+    where: {
+      id: Number(id),
+    },
+  });
 
   if (!guesthouse) {
     throw new Error("Guesthouse not found");
   }
 
-  const updatedGuesthouse =
-    await prisma.guesthouse.update({
-
-      where: {
-        id: Number(id),
-      },
-
-      data: {
-  status: "APPROVED",
-  rejectionReason: null,
-},
-
-    });
+  const updatedGuesthouse = await prisma.guesthouse.update({
+    where: {
+      id: Number(id),
+    },
+    data: {
+      status: "APPROVED",
+      rejectionReason: null,
+    },
+  });
 
   await createNotification({
-
     title: "Guesthouse Approved",
-
-    message:
-      "Congratulations! Your guesthouse has been approved by the administrator.",
-
+    message: "Congratulations! Your guesthouse has been approved by the administrator.",
     userId: guesthouse.ownerId,
-
   });
 
   return updatedGuesthouse;
-
 };
 // ========================================
 // Reject Guesthouse
 // ========================================
-export const rejectGuesthouse = async (
-  id,
-  reason
-) => {
-
-  const guesthouse =
-    await prisma.guesthouse.findUnique({
-
-      where: {
-        id: Number(id),
-      },
-
-    });
+export const rejectGuesthouse = async (id, reason) => {
+  const guesthouse = await prisma.guesthouse.findUnique({
+    where: {
+      id: Number(id),
+    },
+  });
 
   if (!guesthouse) {
     throw new Error("Guesthouse not found");
   }
 
-  const updatedGuesthouse =
-    await prisma.guesthouse.update({
-
-      where: {
-        id: Number(id),
-      },
-
-      data: {
-        status: "REJECTED",
-        rejectionReason: reason,
-      },
-
-    });
+  const updatedGuesthouse = await prisma.guesthouse.update({
+    where: {
+      id: Number(id),
+    },
+    data: {
+      status: "REJECTED",
+      rejectionReason: reason,
+    },
+  });
 
   await createNotification({
-
     title: "Guesthouse Rejected",
-
-    message:
-      `Reason: ${reason}`,
-
+    message: `Reason: ${reason}`,
     userId: guesthouse.ownerId,
-
   });
 
   return updatedGuesthouse;
-
 };

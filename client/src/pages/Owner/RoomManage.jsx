@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { BedDouble, Plus, Trash2, CheckCircle2, ChevronLeft, ToggleLeft, ToggleRight } from 'lucide-react';
+import { BedDouble, Plus, Trash2, CheckCircle2, ChevronLeft, ToggleLeft, ToggleRight, X, Edit } from 'lucide-react';
 
 export function RoomManage() {
   const { user } = useAuth();
@@ -15,9 +15,18 @@ export function RoomManage() {
   // New room modal / form state
   const [showForm, setShowForm] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
-  const [type, setType] = useState('Deluxe King Suite');
+  const [type, setType] = useState('SUITE');
   const [capacity, setCapacity] = useState(2);
   const [pricePerNight, setPricePerNight] = useState(2500);
+
+  // Update room modal / form state
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
+  const [updatingRoomId, setUpdatingRoomId] = useState(null);
+  const [updateRoomNumber, setUpdateRoomNumber] = useState('');
+  const [updateType, setUpdateType] = useState('SUITE');
+  const [updateCapacity, setUpdateCapacity] = useState(2);
+  const [updatePricePerNight, setUpdatePricePerNight] = useState(2500);
+  const [updateAvailability, setUpdateAvailability] = useState(true);
 
   const loadGuesthouseAndRooms = async () => {
     setLoading(true);
@@ -58,7 +67,10 @@ export function RoomManage() {
       });
       setShowForm(false);
       setRoomNumber('');
-      loadRooms();
+      setType('SUITE');
+      setCapacity(2);
+      setPricePerNight(2500);
+      loadGuesthouseAndRooms();
     } catch (err) {
       alert(err.message || 'Failed to add room');
     }
@@ -68,9 +80,54 @@ export function RoomManage() {
     const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available';
     try {
       await ApiService.updateRoomAvailability(roomId, nextStatus);
-      loadRooms();
+      loadGuesthouseAndRooms();
     } catch (err) {
       alert(err.message || 'Error updating room status');
+    }
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    if (!confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await ApiService.deleteRoom(roomId);
+      loadGuesthouseAndRooms();
+    } catch (err) {
+      alert(err.message || 'Failed to delete room');
+    }
+  };
+
+  const handleUpdateRoomClick = (room) => {
+    setUpdatingRoomId(room.id);
+    setUpdateRoomNumber(room.roomNumber);
+    setUpdateType(room.type);
+    setUpdateCapacity(room.capacity);
+    setUpdatePricePerNight(room.pricePerNight);
+    setUpdateAvailability(room.availabilityStatus === 'available');
+    setShowUpdateForm(true);
+  };
+
+  const handleUpdateRoom = async (e) => {
+    e.preventDefault();
+    try {
+      await ApiService.updateRoom(updatingRoomId, {
+        roomNumber: updateRoomNumber,
+        roomType: updateType,
+        capacity: Number(updateCapacity),
+        price: Number(updatePricePerNight),
+        available: updateAvailability,
+      });
+      setShowUpdateForm(false);
+      setUpdatingRoomId(null);
+      setUpdateRoomNumber('');
+      setUpdateType('SUITE');
+      setUpdateCapacity(2);
+      setUpdatePricePerNight(2500);
+      setUpdateAvailability(true);
+      loadGuesthouseAndRooms();
+    } catch (err) {
+      alert(err.message || 'Failed to update room');
     }
   };
 
@@ -117,14 +174,18 @@ export function RoomManage() {
             </div>
             <div>
               <label className="block text-stone-700 uppercase mb-1">Room Type</label>
-              <input
-                type="text"
+              <select
                 required
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                placeholder="Standard Double Room"
-                className="w-full px-3 py-2 rounded-xl border border-stone-300"
-              />
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
+              >
+                <option value="SINGLE">Single Room</option>
+                <option value="DOUBLE">Double Room</option>
+                <option value="TWIN">Twin Room</option>
+                <option value="FAMILY">Family Room</option>
+                <option value="SUITE">Suite</option>
+              </select>
             </div>
             <div>
               <label className="block text-stone-700 uppercase mb-1">Max Guests</label>
@@ -165,6 +226,96 @@ export function RoomManage() {
         </form>
       )}
 
+      {/* Update Room Form */}
+      {showUpdateForm && (
+        <form onSubmit={handleUpdateRoom} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-md space-y-4 text-xs font-semibold">
+          <h3 className="text-base font-bold text-stone-900 border-b border-stone-100 pb-2">Update Room</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-stone-700 uppercase mb-1">Room Number</label>
+              <input
+                type="text"
+                required
+                value={updateRoomNumber}
+                onChange={(e) => setUpdateRoomNumber(e.target.value)}
+                placeholder="101"
+                className="w-full px-3 py-2 rounded-xl border border-stone-300"
+              />
+            </div>
+            <div>
+              <label className="block text-stone-700 uppercase mb-1">Room Type</label>
+              <select
+                required
+                value={updateType}
+                onChange={(e) => setUpdateType(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
+              >
+                <option value="SINGLE">Single Room</option>
+                <option value="DOUBLE">Double Room</option>
+                <option value="TWIN">Twin Room</option>
+                <option value="FAMILY">Family Room</option>
+                <option value="SUITE">Suite</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-stone-700 uppercase mb-1">Max Guests</label>
+              <input
+                type="number"
+                required
+                value={updateCapacity}
+                onChange={(e) => setUpdateCapacity(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-stone-300"
+              />
+            </div>
+            <div>
+              <label className="block text-stone-700 uppercase mb-1">Price per Night (ETB)</label>
+              <input
+                type="number"
+                required
+                value={updatePricePerNight}
+                onChange={(e) => setUpdatePricePerNight(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-stone-300"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="updateAvailability"
+              checked={updateAvailability}
+              onChange={(e) => setUpdateAvailability(e.target.checked)}
+              className="w-4 h-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500"
+            />
+            <label htmlFor="updateAvailability" className="text-stone-700">
+              Room is available for booking
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowUpdateForm(false);
+                setUpdatingRoomId(null);
+                setUpdateRoomNumber('');
+                setUpdateType('SUITE');
+                setUpdateCapacity(2);
+                setUpdatePricePerNight(2500);
+                setUpdateAvailability(true);
+              }}
+              className="px-4 py-2 bg-stone-100 text-stone-700 rounded-xl text-xs font-bold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-500 text-white font-bold rounded-xl text-xs shadow-xs"
+            >
+              Update Room
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* Room Table */}
       <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
@@ -198,12 +349,28 @@ export function RoomManage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleToggleStatus(room.id, room.availabilityStatus)}
-                      className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-lg text-xs"
-                    >
-                      Toggle Availability
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleUpdateRoomClick(room)}
+                        className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold rounded-lg text-xs flex items-center gap-1"
+                      >
+                        <Edit className="w-3 h-3" />
+                        Update
+                      </button>
+                      <button
+                        onClick={() => handleToggleStatus(room.id, room.availabilityStatus)}
+                        className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-lg text-xs"
+                      >
+                        Toggle Availability
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRoom(room.id)}
+                        className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-bold rounded-lg text-xs flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -7,6 +7,7 @@ import { Building2, MapPin, CheckCircle2, ChevronLeft } from 'lucide-react';
 export function GuesthouseManage() {
   const { user, switchUser } = useAuth();
   const navigate = useNavigate();
+  const { api } = ApiService;
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('Addis Ababa');
@@ -15,6 +16,7 @@ export function GuesthouseManage() {
   const [amenities, setAmenities] = useState('Free Wi-Fi, Breakfast Included, Generator Backup');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [existingGuesthouse, setExistingGuesthouse] = useState(null);
 
   useEffect(() => {
   async function fetchProperty() {
@@ -22,6 +24,7 @@ export function GuesthouseManage() {
       const gh = await ApiService.getMyGuesthouse();
 
       if (gh) {
+        setExistingGuesthouse(gh);
         setName(gh.name || '');
         setCity(gh.city || 'Addis Ababa');
         setLocation(gh.location || '');
@@ -45,19 +48,33 @@ export function GuesthouseManage() {
 
     try {
       const amArray = amenities.split(',').map((s) => s.trim()).filter(Boolean);
-      const registered = await ApiService.registerGuesthouse({
-        name,
-        city,
-        location,
-        description,
-        amenities: amArray,
-        images: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800'],
-        ownerId: user.id,
-      });
 
-      setSuccess('Guesthouse submitted successfully! Pending Admin verification.');
-      const updated = { ...user, guesthouseId: registered.id };
-      switchUser(updated);
+      if (existingGuesthouse) {
+        // Update existing guesthouse using owner-specific endpoint
+        await api.put('/owner/guesthouse', {
+          name,
+          city,
+          address: location,
+          description,
+        });
+        setSuccess('Guesthouse updated successfully!');
+      } else {
+        // Register new guesthouse
+        const registered = await ApiService.registerGuesthouse({
+          name,
+          city,
+          location,
+          description,
+          amenities: amArray,
+          images: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800'],
+          ownerId: user.id,
+        });
+
+        setSuccess('Guesthouse submitted successfully! Pending Admin verification.');
+        setExistingGuesthouse(registered);
+        const updated = { ...user, guesthouseId: registered.id };
+        switchUser(updated);
+      }
     } catch (err) {
       alert(err.message || 'Error saving guesthouse');
     } finally {
@@ -77,8 +94,14 @@ export function GuesthouseManage() {
 
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-6">
         <div>
-          <h1 className="text-2xl font-black text-stone-900 tracking-tight">Register / Edit Guesthouse</h1>
-          <p className="text-xs text-stone-500">Provide property details for Admin approval and public guest discovery</p>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight">
+            {existingGuesthouse ? 'Edit Guesthouse' : 'Register Guesthouse'}
+          </h1>
+          <p className="text-xs text-stone-500">
+            {existingGuesthouse 
+              ? 'Update your property details' 
+              : 'Provide property details for Admin approval and public guest discovery'}
+          </p>
         </div>
 
         {success && (
@@ -158,7 +181,11 @@ export function GuesthouseManage() {
             disabled={loading}
             className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl transition-colors shadow-xs"
           >
-            {loading ? 'Submitting Property...' : 'Save & Submit Property for Approval'}
+            {loading 
+              ? 'Saving...' 
+              : existingGuesthouse 
+                ? 'Update Property Details' 
+                : 'Save & Submit Property for Approval'}
           </button>
         </form>
       </div>

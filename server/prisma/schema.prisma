@@ -21,6 +21,8 @@ model User {
   guesthouses   Guesthouse[]   @relation("OwnerGuesthouses")
   reservations  Reservation[]  @relation("GuestReservations")
   notifications Notification[]
+  staffAssignments StaffAssignment[]
+  reviews       Review[]       @relation("GuestReviews")
 }
 
 enum Role {
@@ -44,6 +46,8 @@ model Guesthouse {
   owner           User    @relation("OwnerGuesthouses", fields: [ownerId], references: [id], onDelete: Restrict)
 
   rooms Room[]
+  staffAssignments StaffAssignment[]
+  reviews Review[] @relation("GuesthouseReviews")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -57,9 +61,10 @@ model Room {
 
   roomNumber String
   roomType   RoomType
-  price      Decimal  @db.Decimal(10, 2)
+  price      Float
   capacity   Int
   available  Boolean  @default(true)
+  maintenanceStatus RoomMaintenanceStatus @default(AVAILABLE)
 
   guesthouseId Int
   guesthouse   Guesthouse @relation(fields: [guesthouseId], references: [id], onDelete: Restrict)
@@ -79,6 +84,13 @@ enum RoomType {
   TWIN
   FAMILY
   SUITE
+}
+
+enum RoomMaintenanceStatus {
+  AVAILABLE
+  UNAVAILABLE
+  CLEANING
+  MAINTENANCE
 }
 
 enum GuesthouseStatus {
@@ -104,6 +116,8 @@ model Reservation {
 
   payment Payment?
 
+  reviews Review[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -123,7 +137,7 @@ enum ReservationStatus {
 model Payment {
   id Int @id @default(autoincrement())
 
-  amount Decimal @db.Decimal(10, 2)
+  amount Float
 
   method PaymentMethod
 
@@ -169,4 +183,45 @@ model Notification {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+model StaffAssignment {
+  id Int @id @default(autoincrement())
+
+  guesthouseId Int
+  guesthouse Guesthouse @relation(fields: [guesthouseId], references: [id], onDelete: Cascade)
+
+  staffId Int
+  staff User @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@unique([guesthouseId, staffId])
+  @@index([guesthouseId])
+  @@index([staffId])
+}
+
+model Review {
+  id Int @id @default(autoincrement())
+
+  rating Int
+  comment String
+
+  guestId Int
+  guest User @relation("GuestReviews", fields: [guestId], references: [id], onDelete: Cascade)
+
+  guesthouseId Int
+  guesthouse Guesthouse @relation("GuesthouseReviews", fields: [guesthouseId], references: [id], onDelete: Cascade)
+
+  reservationId Int
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  ownerResponse String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guestId])
+  @@index([guesthouseId])
+  @@index([reservationId])
 }

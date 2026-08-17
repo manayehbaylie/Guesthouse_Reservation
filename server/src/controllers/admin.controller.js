@@ -1,5 +1,8 @@
 import {
   approveGuesthouse,
+  rejectGuesthouse,
+  deleteGuesthouse,
+  deleteUser,
   getAllUsers,
   updateUserRole,
   getPlatformReport,
@@ -15,14 +18,50 @@ APPROVE GUESTHOUSE
 */
 export const approve = async (req, res, next) => {
   try {
-    const guesthouse =
-      await approveGuesthouse(req.params.id);
+    const guesthouse = await approveGuesthouse(req.params.id);
+    return successResponse(res, guesthouse, "Guesthouse approved successfully");
+  } catch (error) {
+    next(error);
+  }
+};
 
-    return successResponse(
-      res,
-      guesthouse,
-      "Guesthouse approved successfully"
-    );
+/*
+==================================================
+REJECT GUESTHOUSE
+==================================================
+*/
+export const reject = async (req, res, next) => {
+  try {
+    const guesthouse = await rejectGuesthouse(req.params.id, req.body.reason);
+    return successResponse(res, guesthouse, "Guesthouse rejected successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+==================================================
+DELETE GUESTHOUSE
+==================================================
+*/
+export const deleteGuesthouseController = async (req, res, next) => {
+  try {
+    const guesthouse = await deleteGuesthouse(req.params.id);
+    return successResponse(res, guesthouse, "Guesthouse deleted successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+==================================================
+DELETE USER
+==================================================
+*/
+export const deleteUserController = async (req, res, next) => {
+  try {
+    const user = await deleteUser(req.params.id);
+    return successResponse(res, user, "User deleted successfully");
   } catch (error) {
     next(error);
   }

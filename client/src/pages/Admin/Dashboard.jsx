@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -14,9 +15,11 @@ import {
   Sliders,
   Terminal,
   FileCode2,
+  ArrowLeft,
 } from 'lucide-react';
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [pendingGuesthouses, setPendingGuesthouses] = useState([]);
@@ -74,6 +77,39 @@ export function AdminDashboard() {
     }
   };
 
+  const handleRejectGuesthouse = async (id, reason = 'Does not meet platform standards') => {
+    try {
+      await ApiService.rejectGuesthouse(id, reason);
+      loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Error rejecting guesthouse');
+    }
+  };
+
+  const handleDeleteGuesthouse = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this guesthouse? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await ApiService.deleteGuesthouse(id);
+      loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Error deleting guesthouse');
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await ApiService.deleteUser(id);
+      loadAdminData();
+    } catch (err) {
+      alert(err.message || 'Error deleting user');
+    }
+  };
+
   const handlePromoteUserRole = async (userId, newRole) => {
     try {
       await ApiService.updateUserRole(userId, newRole);
@@ -102,14 +138,22 @@ export function AdminDashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-bold uppercase text-purple-700 tracking-wider">
-            Platform System Administration Console
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 hover:bg-stone-100 rounded-xl transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-stone-600" />
+          </button>
+          <div>
+            <div className="text-xs font-bold uppercase text-purple-700 tracking-wider">
+              Platform System Administration Console
+            </div>
+            <h1 className="text-2xl font-black text-stone-900 tracking-tight">System Control & Operations</h1>
+            <p className="text-xs text-stone-500">
+              Platform Operator ID: <strong className="text-stone-900">{user?.email}</strong> • Mode: Superadmin
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-stone-900 tracking-tight">System Control & Operations</h1>
-          <p className="text-xs text-stone-500">
-            Platform Operator ID: <strong className="text-stone-900">{user?.email}</strong> • Mode: Superadmin
-          </p>
         </div>
       </div>
 
@@ -198,6 +242,13 @@ export function AdminDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => handleRejectGuesthouse(gh.id)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span>Reject</span>
+                    </button>
+                    <button
                       onClick={() => handleApproveGuesthouse(gh.id)}
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs"
                     >
@@ -224,7 +275,7 @@ export function AdminDashboard() {
                   <th className="px-6 py-3.5">City</th>
                   <th className="px-6 py-3.5">Rating</th>
                   <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-right">Action</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-stone-800">
@@ -244,14 +295,22 @@ export function AdminDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {gh.status === 'pending' && (
+                      <div className="flex items-center justify-end gap-2">
+                        {gh.status === 'pending' && (
+                          <button
+                            onClick={() => handleApproveGuesthouse(gh.id)}
+                            className="px-3 py-1 bg-emerald-600 text-white font-bold rounded-lg text-xs"
+                          >
+                            Approve
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleApproveGuesthouse(gh.id)}
-                          className="px-3 py-1 bg-emerald-600 text-white font-bold rounded-lg text-xs"
+                          onClick={() => handleDeleteGuesthouse(gh.id)}
+                          className="px-3 py-1 bg-red-600 text-white font-bold rounded-lg text-xs"
                         >
-                          Approve
+                          Delete
                         </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -300,7 +359,7 @@ export function AdminDashboard() {
                   <th className="px-6 py-3.5">Email</th>
                   <th className="px-6 py-3.5">Phone</th>
                   <th className="px-6 py-3.5">Current Role</th>
-                  <th className="px-6 py-3.5 text-right">Role Management</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-stone-800">
@@ -315,16 +374,24 @@ export function AdminDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <select
-                        value={u.role}
-                        onChange={(e) => handlePromoteUserRole(u.id, e.target.value)}
-                        className="px-2 py-1 rounded-lg border border-stone-300 text-xs bg-white font-bold"
-                      >
-                        <option value="GUEST">Guest</option>
-                        <option value="OWNER">Owner</option>
-                        <option value="RECEPTIONIST">Receptionist</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
+                      <div className="flex items-center justify-end gap-2">
+                        <select
+                          value={u.role}
+                          onChange={(e) => handlePromoteUserRole(u.id, e.target.value)}
+                          className="px-2 py-1 rounded-lg border border-stone-300 text-xs bg-white font-bold"
+                        >
+                          <option value="GUEST">Guest</option>
+                          <option value="OWNER">Owner</option>
+                          <option value="RECEPTIONIST">Receptionist</option>
+                          <option value="ADMIN">Admin</option>
+                        </select>
+                        <button
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="px-3 py-1 bg-red-600 text-white font-bold rounded-lg text-xs"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

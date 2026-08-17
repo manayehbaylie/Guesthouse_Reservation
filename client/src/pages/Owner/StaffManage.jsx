@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Users, UserPlus, Shield, ChevronLeft } from 'lucide-react';
+import { Users, UserPlus, Shield, ChevronLeft, Trash2 } from 'lucide-react';
 
 export function StaffManage() {
   const { user } = useAuth();
@@ -24,10 +24,8 @@ export function StaffManage() {
       const gh = await ApiService.getMyGuesthouse();
       if (gh) {
         setGuesthouseId(gh.id);
-        const allUsers = await ApiService.getAllUsers();
-        const staff = allUsers.filter(
-          (u) => u.role === 'RECEPTIONIST' || u.role === 'Receptionist'
-        );
+        // Use the owner-specific endpoint to get assigned receptionists
+        const staff = await ApiService.getOwnerReceptionists(gh.id);
         setStaffList(staff);
       } else {
         setGuesthouseId(null);
@@ -49,11 +47,10 @@ export function StaffManage() {
   const handleCreateStaff = async (e) => {
     e.preventDefault();
     try {
-      await ApiService.registerUser({
+      await ApiService.registerReceptionist({
         name,
         email,
         phone,
-        role: 'Receptionist',
         guesthouseId,
       });
       setName('');
@@ -62,6 +59,18 @@ export function StaffManage() {
       loadStaff();
     } catch (err) {
       alert(err.message || 'Error registering receptionist staff');
+    }
+  };
+
+  const handleDeleteStaff = async (staffId) => {
+    if (!confirm('Are you sure you want to remove this receptionist from your guesthouse? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await ApiService.removeReceptionistFromGuesthouse(staffId);
+      loadStaff();
+    } catch (err) {
+      alert(err.message || 'Error removing receptionist');
     }
   };
 
@@ -138,12 +147,21 @@ export function StaffManage() {
             {staffList.map((st) => (
               <div key={st.id} className="p-4 flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-stone-900">{st.name}</div>
+                  <div className="font-bold text-stone-900">{st.fullName || st.name}</div>
                   <div className="text-stone-500">{st.email} • {st.phone}</div>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
-                  Receptionist
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
+                    Receptionist
+                  </span>
+                  <button
+                    onClick={() => handleDeleteStaff(Number(st.id))}
+                    className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-bold rounded-lg text-xs flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>

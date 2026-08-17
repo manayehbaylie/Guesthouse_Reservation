@@ -73,10 +73,7 @@ export const loginUser = async (email, password) => {
   }
 
   // Compare password
-  const isMatch = await comparePassword(
-    password,
-    user.password
-  );
+  const isMatch = await comparePassword(password, user.password);
 
   if (!isMatch) {
     throw new Error("Invalid email or password");

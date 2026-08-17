@@ -26,5 +26,10 @@ export function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/" replace />;
   }
 
+  // Additional check for owner route specifically
+  if (location.pathname.startsWith('/owner') && user.role !== 'OWNER') {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 }

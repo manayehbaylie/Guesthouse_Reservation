@@ -5,6 +5,8 @@ import {
   updateGuesthouse,
   addReceptionist,
   getStaff,
+  assignStaff,
+  removeReceptionist,
 } from "../controllers/owner.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -50,6 +52,61 @@ router.put(
   authenticate,
   authorize("OWNER"),
   updateGuesthouse
+);
+
+/**
+ * @swagger
+ * /api/owner/receptionists/:staffId:
+ *   delete:
+ *     summary: Remove receptionist from guesthouse
+ *     tags:
+ *       - Owner
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staffId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Receptionist removed successfully
+ */
+router.delete(
+  "/receptionists/:staffId",
+  authenticate,
+  authorize("OWNER"),
+  removeReceptionist
+);
+
+/**
+ * @swagger
+ * /api/owner/receptionists/assign:
+ *   post:
+ *     summary: Assign existing receptionist to guesthouse
+ *     tags:
+ *       - Owner
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               staffId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Receptionist assigned successfully
+ */
+router.post(
+  "/receptionists/assign",
+  authenticate,
+  authorize("OWNER"),
+  assignStaff
 );
 
 /**

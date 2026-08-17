@@ -3,6 +3,8 @@ import {
   updateMyGuesthouse,
   createReceptionist,
   getReceptionists,
+  assignReceptionistToGuesthouse,
+  removeReceptionistFromGuesthouse,
 } from "../services/owner.service.js";
 
 import { successResponse } from "../utils/response.js";
@@ -69,10 +71,16 @@ export const addReceptionist = async (
   next
 ) => {
   try {
+    // Handle both 'name' and 'fullName' from frontend
+    const data = {
+      ...req.body,
+      fullName: req.body.fullName || req.body.name,
+    };
+
     const receptionist =
       await createReceptionist(
         req.user.id,
-        req.body
+        data
       );
 
     return successResponse(
@@ -103,6 +111,60 @@ export const getStaff = async (
       res,
       receptionists,
       "Receptionists fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+==================================================
+ASSIGN RECEPTIONIST TO GUESTHOUSE
+==================================================
+*/
+export const assignStaff = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const assignment =
+      await assignReceptionistToGuesthouse(
+        req.user.id,
+        req.body.staffId
+      );
+
+    return successResponse(
+      res,
+      assignment,
+      "Receptionist assigned successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+==================================================
+REMOVE RECEPTIONIST FROM GUESTHOUSE
+==================================================
+*/
+export const removeReceptionist = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const assignment =
+      await removeReceptionistFromGuesthouse(
+        req.user.id,
+        req.params.staffId
+      );
+
+    return successResponse(
+      res,
+      assignment,
+      "Receptionist removed successfully"
     );
   } catch (error) {
     next(error);
