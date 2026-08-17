@@ -6,11 +6,25 @@ import { createNotification } from "./notification.service.js";
 // ========================================
 export const createReservation = async (data, guestId) => {
   // ------------------------------------
-  // 1. Check room
+  // 1. Validate dates
+  // ------------------------------------
+  const checkIn = new Date(data.checkIn);
+  const checkOut = new Date(data.checkOut);
+
+  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+    throw new Error("Invalid check-in or check-out date");
+  }
+
+  if (checkOut <= checkIn) {
+    throw new Error("Check-out date must be after check-in date");
+  }
+
+  // ------------------------------------
+  // 2. Check room exists
   // ------------------------------------
   const room = await prisma.room.findUnique({
     where: {
-      id: data.roomId,
+      id: Number(data.roomId),
     },
   });
 
@@ -19,41 +33,52 @@ export const createReservation = async (data, guestId) => {
   }
 
   // ------------------------------------
-  // 2. Check room availability
+  // 3. Check reservation date overlap
   // ------------------------------------
-  if (!room.available) {
-    throw new Error("Room is not available");
+  const existingReservation = await prisma.reservation.findFirst({
+    where: {
+      roomId: Number(data.roomId),
+
+      status: {
+        in: ["CONFIRMED", "CHECKED_IN"],
+      },
+
+      checkIn: {
+        lt: checkOut,
+      },
+
+      checkOut: {
+        gt: checkIn,
+      },
+    },
+  });
+
+  if (existingReservation) {
+    throw new Error("Room is not available for the selected dates");
   }
 
   // ------------------------------------
-  // 3. Create PENDING reservation
+  // 4. Create PENDING reservation
   // ------------------------------------
   const reservation = await prisma.reservation.create({
     data: {
-      checkIn: new Date(data.checkIn),
-      checkOut: new Date(data.checkOut),
+      checkIn,
+      checkOut,
       status: "PENDING",
       guestId,
-      roomId: data.roomId,
+      roomId: Number(data.roomId),
     },
   });
 
   // ------------------------------------
-  // 4. Notification
+  // 5. Notification
   // ------------------------------------
   await createNotification({
     title: "Reservation Created",
-    message: "Your reservation has been created. Please complete payment to confirm your reservation.",
+    message:
+      "Your reservation has been created. Please complete payment to confirm your reservation.",
     userId: guestId,
   });
-
-  // ------------------------------------
-  // IMPORTANT
-  // ------------------------------------
-  // DO NOT update room.available here.
-  //
-  // Room becomes unavailable only
-  // after payment status becomes PAID.
 
   return reservation;
 };
@@ -71,6 +96,7 @@ export const getAllReservations = async () => {
           email: true,
         },
       },
+
       room: {
         select: {
           id: true,
@@ -80,8 +106,10 @@ export const getAllReservations = async () => {
           available: true,
         },
       },
+
       payment: true,
     },
+
     orderBy: {
       createdAt: "desc",
     },
@@ -96,6 +124,7 @@ export const getReservationById = async (id) => {
     where: {
       id: Number(id),
     },
+
     include: {
       guest: {
         select: {
@@ -104,6 +133,7 @@ export const getReservationById = async (id) => {
           email: true,
         },
       },
+
       room: {
         select: {
           id: true,
@@ -113,6 +143,7 @@ export const getReservationById = async (id) => {
           available: true,
         },
       },
+
       payment: true,
     },
   });
@@ -136,7 +167,9 @@ export const updateReservationStatus = async (id, status) => {
   // PENDING
   // ======================================
   if (reservation.status === "PENDING") {
-    throw new Error("Pending reservation must be confirmed through successful payment.");
+    throw new Error(
+      "Pending reservation must be confirmed through successful payment."
+    );
   }
 
   // ======================================
@@ -178,6 +211,7 @@ export const updateReservationStatus = async (id, status) => {
     where: {
       id: Number(id),
     },
+
     data: {
       status,
     },
@@ -198,11 +232,11 @@ export const updateReservationStatus = async (id, status) => {
   // CHECKED_OUT
   // ======================================
   if (status === "CHECKED_OUT") {
-    // Room becomes available again
     await prisma.room.update({
       where: {
         id: reservation.roomId,
       },
+
       data: {
         available: true,
       },

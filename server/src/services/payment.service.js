@@ -5,49 +5,106 @@ import { createNotification } from "./notification.service.js";
 // Create Payment
 // ========================================
 export const createPayment = async (data) => {
+  const reservationId = Number(data.reservationId);
+  const amount = Number(data.amount);
+
+  // ----------------------------------------
+  // Validate reservation ID
+  // ----------------------------------------
+  if (!reservationId || Number.isNaN(reservationId)) {
+    throw new Error("Valid reservation ID is required.");
+  }
+
+  // ----------------------------------------
+  // Validate amount
+  // ----------------------------------------
+  if (!amount || Number.isNaN(amount) || amount <= 0) {
+    throw new Error("Valid payment amount is required.");
+  }
+
+  // ----------------------------------------
+  // Get payment method
+  // ----------------------------------------
+  const paymentMethod = data.paymentMethod || data.method;
+
+  if (!paymentMethod) {
+    throw new Error("Payment method is required.");
+  }
+
+  // ----------------------------------------
+  // Allowed payment methods
+  // ----------------------------------------
+  const allowedMethods = [
+    "CASH",
+    "CARD",
+    "TELEBIRR",
+    "BANK_TRANSFER",
+  ];
+
+  if (!allowedMethods.includes(paymentMethod)) {
+    throw new Error(`Invalid payment method: ${paymentMethod}`);
+  }
+
+  // ----------------------------------------
+  // Find reservation
+  // ----------------------------------------
   const reservation = await prisma.reservation.findUnique({
     where: {
-      id: Number(data.reservationId),
+      id: reservationId,
     },
     include: {
       room: true,
+      guest: true,
     },
   });
 
   if (!reservation) {
-    throw new Error("Reservation not found");
+    throw new Error("Reservation not found.");
   }
 
-  // Payment only for pending reservation
+  // ----------------------------------------
+  // Payment only for PENDING reservation
+  // ----------------------------------------
   if (reservation.status !== "PENDING") {
-    throw new Error("Payment can only be made for a pending reservation.");
+    throw new Error(
+      "Payment can only be made for a pending reservation."
+    );
   }
 
+  // ----------------------------------------
   // Check existing payment
+  // ----------------------------------------
   const existingPayment = await prisma.payment.findUnique({
     where: {
-      reservationId: Number(data.reservationId),
+      reservationId,
     },
   });
 
   if (existingPayment) {
-    throw new Error("Payment already exists for this reservation.");
+    throw new Error(
+      "Payment already exists for this reservation."
+    );
   }
 
+  // ----------------------------------------
   // Create payment
+  // ----------------------------------------
   const payment = await prisma.payment.create({
     data: {
-      amount: data.amount,
-      method: data.paymentMethod,
+      amount,
+      method: paymentMethod,
       status: "PENDING",
-      reservationId: Number(data.reservationId),
+      reservationId,
     },
   });
 
-  // Notify guest
+  // ----------------------------------------
+  // Notification
+  // ----------------------------------------
   await createNotification({
     title: "Payment Created",
-    message: "Your payment request has been created. Please complete the payment.",
+    message:
+      "Your payment request has been created. Please complete the payment.",
     userId: reservation.guestId,
   });
 
@@ -69,16 +126,19 @@ export const getAllPayments = async () => {
               email: true,
             },
           },
+
           room: {
             select: {
               id: true,
               roomNumber: true,
               roomType: true,
+              price: true,
             },
           },
         },
       },
     },
+
     orderBy: {
       createdAt: "desc",
     },
@@ -89,10 +149,17 @@ export const getAllPayments = async () => {
 // Get Payment By ID
 // ========================================
 export const getPaymentById = async (id) => {
+  const paymentId = Number(id);
+
+  if (!paymentId || Number.isNaN(paymentId)) {
+    throw new Error("Invalid payment ID.");
+  }
+
   return await prisma.payment.findUnique({
     where: {
-      id: Number(id),
+      id: paymentId,
     },
+
     include: {
       reservation: {
         include: {
@@ -103,11 +170,13 @@ export const getPaymentById = async (id) => {
               email: true,
             },
           },
+
           room: {
             select: {
               id: true,
               roomNumber: true,
               roomType: true,
+              price: true,
             },
           },
         },
@@ -120,10 +189,33 @@ export const getPaymentById = async (id) => {
 // Update Payment Status
 // ========================================
 export const updatePaymentStatus = async (id, status) => {
+  const paymentId = Number(id);
+
+  if (!paymentId || Number.isNaN(paymentId)) {
+    throw new Error("Invalid payment ID.");
+  }
+
+  // ----------------------------------------
+  // Validate status
+  // ----------------------------------------
+  const allowedStatuses = [
+    "PENDING",
+    "PAID",
+    "FAILED",
+  ];
+
+  if (!allowedStatuses.includes(status)) {
+    throw new Error(`Invalid payment status: ${status}`);
+  }
+
+  // ----------------------------------------
+  // Find payment
+  // ----------------------------------------
   const payment = await prisma.payment.findUnique({
     where: {
-      id: Number(id),
+      id: paymentId,
     },
+
     include: {
       reservation: {
         include: {
@@ -135,22 +227,28 @@ export const updatePaymentStatus = async (id, status) => {
   });
 
   if (!payment) {
-    throw new Error("Payment not found");
+    throw new Error("Payment not found.");
   }
 
+  // ----------------------------------------
   // Paid payment cannot be changed
+  // ----------------------------------------
   if (payment.status === "PAID") {
     throw new Error("Paid payment cannot be changed.");
   }
 
-  // Update payment
+  // ----------------------------------------
+  // Update payment status
+  // ----------------------------------------
   const updatedPayment = await prisma.payment.update({
     where: {
-      id: Number(id),
+      id: paymentId,
     },
+
     data: {
       status,
     },
+
     include: {
       reservation: {
         include: {
@@ -161,66 +259,84 @@ export const updatePaymentStatus = async (id, status) => {
     },
   });
 
-  // ======================================
+  // ========================================
   // PAYMENT PAID
-  // ======================================
+  // ========================================
   if (status === "PAID") {
+    // --------------------------------------
     // Confirm reservation
+    // --------------------------------------
     await prisma.reservation.update({
       where: {
         id: payment.reservationId,
       },
+
       data: {
         status: "CONFIRMED",
       },
     });
 
+    // --------------------------------------
     // Make room unavailable
+    // --------------------------------------
     await prisma.room.update({
       where: {
         id: payment.reservation.roomId,
       },
+
       data: {
         available: false,
       },
     });
 
-    // Notify guest
+    // --------------------------------------
+    // Notification
+    // --------------------------------------
     await createNotification({
       title: "Payment Successful",
-      message: "Your payment was successful and your reservation has been confirmed.",
+      message:
+        "Your payment was successful and your reservation has been confirmed.",
       userId: payment.reservation.guestId,
     });
   }
 
-  // ======================================
+  // ========================================
   // PAYMENT FAILED
-  // ======================================
+  // ========================================
   if (status === "FAILED") {
-    // Room becomes available
+    // --------------------------------------
+    // Make room available
+    // --------------------------------------
     await prisma.room.update({
       where: {
         id: payment.reservation.roomId,
       },
+
       data: {
         available: true,
       },
     });
 
-    // Reservation stays pending
+    // --------------------------------------
+    // Keep reservation pending
+    // --------------------------------------
     await prisma.reservation.update({
       where: {
         id: payment.reservationId,
       },
+
       data: {
         status: "PENDING",
       },
     });
 
-    // Notify guest
+    // --------------------------------------
+    // Notification
+    // --------------------------------------
     await createNotification({
       title: "Payment Failed",
-      message: "Your payment was not successful. The room is still available. Please try again.",
+      message:
+        "Your payment was not successful. The room is still available.",
       userId: payment.reservation.guestId,
     });
   }
@@ -232,17 +348,25 @@ export const updatePaymentStatus = async (id, status) => {
 // Get Owner Payment Report
 // ========================================
 export const getOwnerPaymentReport = async (ownerId) => {
+  const id = Number(ownerId);
+
+  if (!id || Number.isNaN(id)) {
+    throw new Error("Invalid owner ID.");
+  }
+
   return await prisma.payment.findMany({
     where: {
       status: "PAID",
+
       reservation: {
         room: {
           guesthouse: {
-            ownerId: Number(ownerId),
+            ownerId: id,
           },
         },
       },
     },
+
     include: {
       reservation: {
         include: {
@@ -253,6 +377,7 @@ export const getOwnerPaymentReport = async (ownerId) => {
               email: true,
             },
           },
+
           room: {
             select: {
               id: true,
@@ -264,6 +389,7 @@ export const getOwnerPaymentReport = async (ownerId) => {
         },
       },
     },
+
     orderBy: {
       createdAt: "desc",
     },
