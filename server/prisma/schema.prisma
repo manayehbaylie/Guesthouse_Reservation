@@ -18,11 +18,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  guesthouses   Guesthouse[]   @relation("OwnerGuesthouses")
-  reservations  Reservation[]  @relation("GuestReservations")
-  notifications Notification[]
+  guesthouses      Guesthouse[]      @relation("OwnerGuesthouses")
+  reservations     Reservation[]     @relation("GuestReservations")
+  notifications    Notification[]
   staffAssignments StaffAssignment[]
-  reviews       Review[]       @relation("GuestReviews")
+  reviews          Review[]          @relation("GuestReviews")
 }
 
 enum Role {
@@ -42,12 +42,13 @@ model Guesthouse {
   status      GuesthouseStatus @default(PENDING)
 
   rejectionReason String?
-  ownerId         Int
-  owner           User    @relation("OwnerGuesthouses", fields: [ownerId], references: [id], onDelete: Restrict)
 
-  rooms Room[]
+  ownerId Int
+  owner   User @relation("OwnerGuesthouses", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  rooms            Room[]
   staffAssignments StaffAssignment[]
-  reviews Review[] @relation("GuesthouseReviews")
+  reviews          Review[]          @relation("GuesthouseReviews")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -59,11 +60,11 @@ model Guesthouse {
 model Room {
   id Int @id @default(autoincrement())
 
-  roomNumber String
-  roomType   RoomType
-  price      Float
-  capacity   Int
-  available  Boolean  @default(true)
+  roomNumber        String
+  roomType          RoomType
+  price             Float
+  capacity          Int
+  available         Boolean               @default(true)
   maintenanceStatus RoomMaintenanceStatus @default(AVAILABLE)
 
   guesthouseId Int
@@ -105,18 +106,16 @@ model Reservation {
   checkIn  DateTime
   checkOut DateTime
 
-  status ReservationStatus
+  status ReservationStatus @default(PENDING)
 
   guestId Int
   roomId  Int
 
   guest User @relation("GuestReservations", fields: [guestId], references: [id], onDelete: Restrict)
-
-  room Room @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  room  Room @relation(fields: [roomId], references: [id], onDelete: Restrict)
 
   payment Payment?
-
-  reviews Review[]
+  review  Review?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -140,12 +139,12 @@ model Payment {
   amount Float
 
   method PaymentMethod
-
   status PaymentStatus
 
-  reservationId Int @unique
+  reservationId Int         @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
-  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  accountNumber String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -161,7 +160,6 @@ enum PaymentStatus {
 
 enum PaymentMethod {
   TELEBIRR
-    CARD
   CBE_BIRR
   CHAPA
 }
@@ -169,18 +167,15 @@ enum PaymentMethod {
 model Notification {
   id Int @id @default(autoincrement())
 
-  title String
-
+  title   String
   message String
 
   isRead Boolean @default(false)
 
   userId Int
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
-
   updatedAt DateTime @updatedAt
 
   @@index([userId])
@@ -190,10 +185,10 @@ model StaffAssignment {
   id Int @id @default(autoincrement())
 
   guesthouseId Int
-  guesthouse Guesthouse @relation(fields: [guesthouseId], references: [id], onDelete: Cascade)
+  guesthouse   Guesthouse @relation(fields: [guesthouseId], references: [id], onDelete: Cascade)
 
   staffId Int
-  staff User @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff   User @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   assignedAt DateTime @default(now())
 
@@ -205,17 +200,17 @@ model StaffAssignment {
 model Review {
   id Int @id @default(autoincrement())
 
-  rating Int
+  rating  Int
   comment String
 
   guestId Int
-  guest User @relation("GuestReviews", fields: [guestId], references: [id], onDelete: Cascade)
+  guest   User @relation("GuestReviews", fields: [guestId], references: [id], onDelete: Cascade)
 
   guesthouseId Int
-  guesthouse Guesthouse @relation("GuesthouseReviews", fields: [guesthouseId], references: [id], onDelete: Cascade)
+  guesthouse   Guesthouse @relation("GuesthouseReviews", fields: [guesthouseId], references: [id], onDelete: Cascade)
 
-  reservationId Int
-  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservationId Int         @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
   ownerResponse String?
 

@@ -11,11 +11,9 @@ import {
 
 import { successResponse } from "../utils/response.js";
 
-/*
-==================================================
-APPROVE GUESTHOUSE
-==================================================
-*/
+/**
+ * Approve guesthouse
+ */
 export const approve = async (req, res, next) => {
   try {
     const guesthouse = await approveGuesthouse(req.params.id);
@@ -67,11 +65,9 @@ export const deleteUserController = async (req, res, next) => {
   }
 };
 
-/*
-==================================================
-GET ALL USERS
-==================================================
-*/
+/**
+ * Get all users
+ */
 export const getUsers = async (req, res, next) => {
   try {
     const users = await getAllUsers();
@@ -124,11 +120,9 @@ export const getReports = async (req, res, next) => {
   }
 };
 
-/*
-==================================================
-GET SYSTEM ACTIVITY
-==================================================
-*/
+/**
+ * Get system activity
+ */
 export const getActivity = async (req, res, next) => {
   try {
     const activity = await getSystemActivity();

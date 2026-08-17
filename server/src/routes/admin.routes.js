@@ -1,3 +1,4 @@
+
 import express from "express";
 
 import {
@@ -31,19 +32,6 @@ ADMIN ROUTES
  *       - Admin
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Guesthouse approved successfully
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Admin access required
  */
 router.put(
   "/guesthouses/:id/approve",
@@ -122,9 +110,6 @@ router.delete(
  *       - Admin
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Users fetched successfully
  */
 router.get(
   "/users",
@@ -194,9 +179,6 @@ router.delete(
  *       - Admin
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Platform report fetched successfully
  */
 router.get(
   "/reports",
@@ -214,9 +196,6 @@ router.get(
  *       - Admin
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: System activity fetched successfully
  */
 router.get(
   "/activity",
@@ -226,3 +205,4 @@ router.get(
 );
 
 export default router;
+
