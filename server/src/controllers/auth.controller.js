@@ -5,18 +5,26 @@ import {
 import { registerSchema } from "../validators/auth.validator.js";
 import { successResponse } from "../utils/response.js";
 
+/**
+ * Register user
+ */
 export const register = async (req, res, next) => {
   try {
-    // Validate request data
-    const validatedData = registerSchema.parse(req.body);
-    const user = await registerUser(validatedData);
+    const result = await registerUser(req.body);
 
-    successResponse(res, user, "User registered successfully");
+    return successResponse(
+      res,
+      result,
+      "User registered successfully"
+    );
   } catch (error) {
     next(error);
   }
 };
 
+/**
+ * Login user
+ */
 export const login = async (req, res, next) => {
   try {
     const result = await loginUser(
@@ -24,7 +32,11 @@ export const login = async (req, res, next) => {
       req.body.password
     );
 
-    successResponse(res, result, "Login successful");
+    return successResponse(
+      res,
+      result,
+      "Login successful"
+    );
   } catch (error) {
     next(error);
   }
