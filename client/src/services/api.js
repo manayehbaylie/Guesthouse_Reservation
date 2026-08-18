@@ -7,7 +7,7 @@ const API_URL_KEY = 'gh_api_url';
 const DEFAULT_MODE = import.meta.env.VITE_DEFAULT_BACKEND_MODE || 'api';
 const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const FALLBACK_ENABLED = import.meta.env.VITE_API_FALLBACK !== 'false';
-const DEFAULT_PASSWORD = import.meta.env.VITE_DEFAULT_PASSWORD || 'Password123';
+const DEFAULT_PASSWORD = import.meta.env.VITE_DEFAULT_PASSWORD || 'password123';
 
 let backendCircuitOpen = false;
 
@@ -46,6 +46,21 @@ function shouldUseBackend() {
   return getBackendMode() === 'api' && !backendCircuitOpen;
 }
 
+async function withAuthBackend(apiFn, mockFn) {
+  if (getBackendMode() !== 'api') {
+    return mockFn();
+  }
+
+  backendCircuitOpen = false;
+
+  try {
+    return await apiFn();
+  } catch (error) {
+    const message = error?.response?.data?.message || error.message || 'Request failed';
+    throw new Error(message);
+  }
+}
+
 async function withBackendFallback(label, apiFn, mockFn) {
   if (!shouldUseBackend()) {
     return mockFn();
@@ -81,11 +96,15 @@ function unwrap(response) {
   return response?.data?.data ?? response?.data;
 }
 
+function normalizeRole(role) {
+  if (!role) return 'GUEST';
+  const upper = String(role).toUpperCase();
+  const valid = ['GUEST', 'OWNER', 'RECEPTIONIST', 'ADMIN'];
+  return valid.includes(upper) ? upper : 'GUEST';
+}
+
 function mapRoleFromBackend(role) {
-  if (!role) return 'Guest';
-  const normalized = String(role).toUpperCase();
-  const map = { GUEST: 'Guest', OWNER: 'Owner', RECEPTIONIST: 'Receptionist', ADMIN: 'Admin' };
-  return map[normalized] || role;
+  return normalizeRole(role);
 }
 
 function mapRoleToBackend(role) {
@@ -198,8 +217,20 @@ function mapPaymentFromBackend(payment) {
 }
 
 function mapPaymentMethodToBackend(method) {
-  const map = { telebirr: 'TELEBIRR', chapa: 'CARD', card: 'CARD', cash: 'CASH', bank: 'BANK' };
-  return map[String(method || 'telebirr').toLowerCase()] || 'TELEBIRR';
+  const normalized = String(method || 'TELEBIRR').toUpperCase();
+  if (normalized === 'CBE_BIRR' || normalized === 'BANK' || normalized === 'BANK_TRANSFER') {
+    return 'BANK_TRANSFER';
+  }
+  return 'TELEBIRR';
+}
+
+function formatEthiopianPhone(phone) {
+  if (!phone) return '';
+  const cleaned = String(phone).replace(/\s+/g, '');
+  if (cleaned.startsWith('+251')) return cleaned;
+  if (cleaned.startsWith('09')) return cleaned;
+  if (cleaned.startsWith('9')) return `0${cleaned}`;
+  return cleaned;
 }
 
 function toIsoDateTime(dateStr) {
@@ -227,6 +258,17 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error?.response?.data?.message;
+    if (message) {
+      error.message = message;
+    }
+    return Promise.reject(error);
+  }
 );
 
 export async function checkBackendHealth() {
@@ -266,7 +308,8 @@ export function initDatabase() {
   if (!localStorage.getItem(STORAGE_KEYS.PAYMENTS)) {
     localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(INITIAL_PAYMENTS));
   }
-  if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
+  // In API mode, do not auto-login a mock user (requires real JWT from backend)
+  if (getBackendMode() !== 'api' && !localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
     localStorage.setItem(STORAGE_KEYS.TOKEN, 'jwt_token_sample_guest_1');
   }
@@ -629,17 +672,38 @@ const BackendService = {
     return user;
   },
 
-  async registerUser({ name, email, phone, role, guesthouseId, password = DEFAULT_PASSWORD }) {
-    const response = await api.post('/auth/register', {
-      fullName: name,
-      email,
-      phone,
-      password,
-      role: mapRoleToBackend(role || 'Guest'),
-    });
-    const payload = unwrap(response);
-    const user = mapUserFromBackend({ ...payload.user, guesthouseId });
-    this.setCurrentUser(user, payload.token);
+  async registerUser(payload) {
+    const role = mapRoleToBackend(payload.role || 'Guest');
+    const body = {
+      fullName: payload.name,
+      email: payload.email,
+      phone: payload.phone,
+      password: payload.password || DEFAULT_PASSWORD,
+      role,
+    };
+
+    if (role === 'OWNER') {
+      body.guesthouseName = payload.guesthouseName;
+      body.guesthouseAddress = payload.guesthouseAddress;
+      body.city = payload.city;
+      body.guesthouseDescription = payload.description;
+      body.guesthouseImage = payload.guesthousePhotos?.[0] || null;
+    }
+
+    const response = await api.post('/auth/register', body);
+    const result = unwrap(response) || {};
+
+    if (result.requiresApproval || !result.token) {
+      return {
+        ...mapUserFromBackend(result.user),
+        requiresApproval: Boolean(result.requiresApproval),
+        message: result.message,
+        guesthouse: result.guesthouse,
+      };
+    }
+
+    const user = mapUserFromBackend({ ...result.user, guesthouseId: payload.guesthouseId });
+    this.setCurrentUser(user, result.token);
     return user;
   },
 
@@ -711,7 +775,17 @@ const BackendService = {
     return mapRoomFromBackend(unwrap(response));
   },
 
-  async createBookingAndPay({ guesthouseId, roomId, checkInDate, checkOutDate, nightsCount, paymentMethod, phone }) {
+  async createBookingAndPay({
+    guesthouseId,
+    roomId,
+    checkInDate,
+    checkOutDate,
+    nightsCount,
+    paymentMethod,
+    phone,
+    bankName,
+    accountNumber,
+  }) {
     const reservationResponse = await api.post('/reservations', {
       roomId: Number(roomId),
       checkIn: toIsoDateTime(checkInDate),
@@ -723,11 +797,14 @@ const BackendService = {
     const room = mapRoomFromBackend(unwrap(roomResponse));
     const totalPrice = room.pricePerNight * nightsCount;
 
-    const paymentResponse = await api.post('/payments', {
+    const initiatePayload = {
       reservationId: reservation.id,
-      amount: totalPrice,
-      paymentMethod: mapPaymentMethodToBackend(paymentMethod),
-    });
+      method: mapPaymentMethodToBackend(paymentMethod) === 'BANK_TRANSFER' ? 'CBE_BIRR' : 'TELEBIRR',
+      phone: formatEthiopianPhone(phone),
+      accountNumber: accountNumber || undefined,
+    };
+
+    const paymentResponse = await api.post('/payments/initiate', initiatePayload);
     const payment = mapPaymentFromBackend(unwrap(paymentResponse));
 
     const guesthouse = await this.getGuesthouseById(guesthouseId);
@@ -756,9 +833,9 @@ const BackendService = {
     const role = currentUser?.role;
 
     let response;
-    if (role === 'Guest') {
+    if (role === 'GUEST') {
       response = await api.get('/guest/reservations');
-    } else if (role === 'Receptionist') {
+    } else if (role === 'RECEPTIONIST') {
       response = await api.get('/receptionist/reservations');
     } else {
       response = await api.get('/reservations');
@@ -887,16 +964,14 @@ export const ApiService = {
   },
 
   async loginUser(email, password) {
-    return withBackendFallback(
-      'loginUser',
+    return withAuthBackend(
       () => BackendService.loginUser(email, password),
       () => MockService.loginUser(email)
     );
   },
 
   async registerUser(payload) {
-    return withBackendFallback(
-      'registerUser',
+    return withAuthBackend(
       () => BackendService.registerUser(payload),
       () => MockService.registerUser(payload)
     );

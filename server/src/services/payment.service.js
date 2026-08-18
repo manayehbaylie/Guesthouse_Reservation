@@ -194,22 +194,16 @@ export const createPayment = async (data) => {
    * The payment starts as PENDING.
    * It becomes PAID only after payment verification.
    */
+  const method =
+    paymentMethod === "BANK_TRANSFER" ? "CBE_BIRR" : paymentMethod;
+
   const payment =
     await prisma.payment.create({
       data: {
         amount,
-
-        paymentMethod,
-
+        method,
         status: "PENDING",
-
         reservationId,
-
-        mobileNumber,
-
-        bankName,
-
-        accountNumber,
       },
 
       include: {
@@ -330,7 +324,7 @@ export const initiatePayment = async ({
   // (CBE_BIRR, bank transfer, card, ...) maps to BANK_TRANSFER.
   const rawMethod = String(method || "").toUpperCase();
   const paymentMethod =
-    rawMethod === "TELEBIRR" ? "TELEBIRR" : "BANK_TRANSFER";
+    rawMethod === "TELEBIRR" ? "TELEBIRR" : "CBE_BIRR";
 
   let bankAccountNumber = null;
 
@@ -386,7 +380,6 @@ export const initiatePayment = async ({
         amount,
         method: paymentMethod,
         status: "PAID",
-        accountNumber: bankAccountNumber,
       },
     });
 

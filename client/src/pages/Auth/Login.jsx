@@ -32,10 +32,10 @@ export function Login() {
   };
 
   const sampleAccounts = [
-    { name: 'Abebe Bikila', email: 'guest@example.com', password: 'Password123', role: 'GUEST' },
-    { name: 'Solomon Tadesse', email: 'owner@example.com', password: 'Password123', role: 'OWNER' },
-    { name: 'Tigist Alemu', email: 'receptionist@example.com', password: 'Password123', role: 'RECEPTIONIST' },
-    { name: 'Kassaye Worku', email: 'admin@example.com', password: 'Password123', role: 'ADMIN' },
+    { name: 'Admin', email: 'admin@gmail.com', password: 'password123', role: 'ADMIN' },
+    { name: 'Owner', email: 'manayeh@gmail.com', password: 'password123', role: 'OWNER' },
+    { name: 'Receptionist', email: 'marta@gmail.com', password: 'password123', role: 'RECEPTIONIST' },
+    { name: 'Guest', email: 'senayt@gmail.com', password: 'password123', role: 'GUEST' },
   ];
 
   const autofillAccount = (acc) => {

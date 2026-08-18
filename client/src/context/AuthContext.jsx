@@ -37,11 +37,13 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (userData) => {
-    const newUser = await ApiService.registerUser(userData);
+    const result = await ApiService.registerUser(userData);
 
-    setUser(newUser);
+    if (!result?.requiresApproval) {
+      setUser(result);
+    }
 
-    return newUser;
+    return result;
   };
 
   const logout = () => {
@@ -63,7 +65,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     switchUser,
-    role: user?.role || "GUEST",
+    role: user?.role ? String(user.role).toUpperCase() : 'GUEST',
   };
 
   return (
