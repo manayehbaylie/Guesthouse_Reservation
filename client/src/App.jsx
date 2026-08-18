@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar.jsx';
+import { Sidebar } from './components/Sidebar.jsx';
 import { ArchitectureModal } from './components/ArchitectureModal.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 
@@ -18,118 +19,119 @@ import { GuesthouseManage } from './pages/Owner/GuesthouseManage.jsx';
 import { RoomManage } from './pages/Owner/RoomManage.jsx';
 import { StaffManage } from './pages/Owner/StaffManage.jsx';
 import { RevenueReports } from './pages/Owner/RevenueReports.jsx';
-import { GuestReviews } from './pages/Owner/GuestReviews.jsx';
 
 import { ReceptionistDashboard } from './pages/Receptionist/Dashboard.jsx';
 import { AdminDashboard } from './pages/Admin/Dashboard.jsx';
 
 export default function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [archModalOpen, setArchModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col font-sans">
       {/* Top Navbar */}
       <Navbar
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onOpenArchModal={() => setArchModalOpen(true)}
       />
 
-      {/* Main Layout Container */}
-      <main className="flex-1 min-w-0 pb-12">
-        <Routes>
-          {/* Public / Guest Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/search" element={<GuesthouseSearch />} />
-          <Route path="/guesthouse/:id" element={<GuesthouseDetail />} />
-          <Route path="/booking" element={<Booking />} />
+      {/* Main Layout Container with Sidebar */}
+      <div className="flex-1 flex w-full">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onOpenArchModal={() => setArchModalOpen(true)}
+        />
 
-          {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+        <main className="flex-1 min-w-0 pb-12">
+          <Routes>
+            {/* Public / Guest Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/search" element={<GuesthouseSearch />} />
+            <Route path="/guesthouse/:id" element={<GuesthouseDetail />} />
+            <Route path="/booking" element={<Booking />} />
 
-          {/* Protected Guest Reservations */}
-          <Route
-            path="/reservations"
-            element={
-              <ProtectedRoute allowedRoles={['GUEST', 'OWNER', 'RECEPTIONIST', 'ADMIN']}>
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            {/* Protected Guest Reservations */}
+            <Route
+              path="/reservations"
+              element={
+                <ProtectedRoute allowedRoles={['Guest', 'Owner', 'Receptionist', 'Admin']}>
                   <GuestBookings />
                 </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          {/* Protected Owner Routes */}
-          <Route
-            path="/owner"
-            element={
-              <ProtectedRoute allowedRoles={['OWNER']}>
+            {/* Protected Owner Routes */}
+            <Route
+              path="/owner"
+              element={
+                <ProtectedRoute allowedRoles={['Owner']}>
                   <OwnerDashboard />
                 </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/owner/guesthouse"
-            element={
-              <ProtectedRoute allowedRoles={['OWNER']}>
+              }
+            />
+            <Route
+              path="/owner/guesthouse"
+              element={
+                <ProtectedRoute allowedRoles={['Owner']}>
                   <GuesthouseManage />
                 </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/owner/rooms"
-            element={
-              <ProtectedRoute allowedRoles={['OWNER']}>
+              }
+            />
+            <Route
+              path="/owner/rooms"
+              element={
+                <ProtectedRoute allowedRoles={['Owner']}>
                   <RoomManage />
                 </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/owner/staff"
-            element={
-              <ProtectedRoute allowedRoles={['OWNER']}>
+              }
+            />
+            <Route
+              path="/owner/staff"
+              element={
+                <ProtectedRoute allowedRoles={['Owner']}>
                   <StaffManage />
                 </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/owner/revenue"
-            element={
-              <ProtectedRoute allowedRoles={['OWNER']}>
+              }
+            />
+            <Route
+              path="/owner/revenue"
+              element={
+                <ProtectedRoute allowedRoles={['Owner']}>
                   <RevenueReports />
                 </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/owner/reviews"
-            element={
-              <ProtectedRoute allowedRoles={['OWNER']}>
-                  <GuestReviews />
-                </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          {/* Protected Receptionist Route */}
-          <Route
-            path="/receptionist"
-            element={
-              <ProtectedRoute allowedRoles={['RECEPTIONIST']}>
+            {/* Protected Receptionist Route */}
+            <Route
+              path="/receptionist"
+              element={
+                <ProtectedRoute allowedRoles={['Receptionist']}>
                   <ReceptionistDashboard />
                 </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          {/* Protected Admin Route */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+            {/* Protected Admin Route */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={['Admin']}>
                   <AdminDashboard />
                 </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/search" replace />} />
-        </Routes>
-      </main>
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/search" replace />} />
+          </Routes>
+        </main>
+      </div>
 
       <footer className="bg-stone-950 border-t border-stone-800 py-6 text-center text-xs text-stone-400">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">

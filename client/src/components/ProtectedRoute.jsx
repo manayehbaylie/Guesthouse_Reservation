@@ -19,15 +19,10 @@ export function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect to fallback dashboard based on actual role (backend uses uppercase)
-    if (user.role === 'ADMIN') return <Navigate to="/admin" replace />;
-    if (user.role === 'OWNER') return <Navigate to="/owner" replace />;
-    if (user.role === 'RECEPTIONIST') return <Navigate to="/receptionist" replace />;
-    return <Navigate to="/" replace />;
-  }
-
-  // Additional check for owner route specifically
-  if (location.pathname.startsWith('/owner') && user.role !== 'OWNER') {
+    // Redirect to fallback dashboard based on actual role
+    if (user.role === 'Admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'Owner') return <Navigate to="/owner" replace />;
+    if (user.role === 'Receptionist') return <Navigate to="/receptionist" replace />;
     return <Navigate to="/" replace />;
   }
 
