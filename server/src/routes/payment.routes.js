@@ -5,8 +5,6 @@ import {
   getAll,
   getById,
   updateStatus,
-  initiate,
-  getHistory,
 } from "../controllers/payment.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -14,76 +12,159 @@ import { authorize } from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
-/*
-==================================================
-PAYMENT ROUTES
-==================================================
-*/
-
 /**
- * Initiate payment for a pending reservation
- * ("Payment & Confirmation" flow from the booking page)
- */
-router.post(
-  "/initiate",
-  authenticate,
-  initiate
-);
-
-/**
- * Get the logged-in guest's payment history
- */
-router.get(
-  "/history",
-  authenticate,
-  getHistory
-);
-
-/**
- * Create a payment request
+ * @swagger
+ * /api/payments:
+ *   post:
+ *     summary: Create a payment
+ *     description: Guest creates a payment for a pending reservation.
+ *     tags:
+ *       - Payments
+ *     security:
+ *       - bearerAuth: []
  *
- * Guest only
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reservationId
+ *               - amount
+ *               - paymentMethod
+ *             properties:
+ *               reservationId:
+ *                 type: integer
+ *                 example: 1
+ *               amount:
+ *                 type: number
+ *                 example: 1500
+ *               paymentMethod:
+ *                 type: string
+ *                 example: CASH
+ *
+ *     responses:
+ *       201:
+ *         description: Payment created successfully
+ *       400:
+ *         description: Reservation is not pending or payment already exists
+ *       401:
+ *         description: Authentication required
  */
 router.post(
   "/",
   authenticate,
-  authorize("GUEST"),
   create
 );
 
 /**
- * Get all payments
+ * @swagger
+ * /api/payments:
+ *   get:
+ *     summary: Get all payments
+ *     description: Get all payments in the system.
+ *     tags:
+ *       - Payments
+ *     security:
+ *       - bearerAuth: []
  *
- * Admin only
+ *     responses:
+ *       200:
+ *         description: Payments fetched successfully
+ *       401:
+ *         description: Authentication required
  */
 router.get(
   "/",
   authenticate,
-  authorize("ADMIN"),
   getAll
 );
 
 /**
- * Get payment by ID
+ * @swagger
+ * /api/payments/{id}:
+ *   get:
+ *     summary: Get payment by ID
+ *     description: Get a specific payment using its ID.
+ *     tags:
+ *       - Payments
+ *     security:
+ *       - bearerAuth: []
  *
- * Admin or Guest
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *
+ *     responses:
+ *       200:
+ *         description: Payment fetched successfully
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: Payment not found
  */
 router.get(
   "/:id",
   authenticate,
-  authorize("ADMIN", "GUEST"),
   getById
 );
 
 /**
- * Update payment status
+ * @swagger
+ * /api/payments/{id}/status:
+ *   patch:
+ *     summary: Update payment status
+ *     description: OWNER or ADMIN can update a payment status. When payment becomes PAID, the reservation becomes CONFIRMED and the room becomes unavailable. When payment becomes FAILED, the reservation remains PENDING and the room becomes available.
+ *     tags:
+ *       - Payments
+ *     security:
+ *       - bearerAuth: []
  *
- * Admin only
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - PENDING
+ *                   - PAID
+ *                   - FAILED
+ *                 example: PAID
+ *
+ *     responses:
+ *       200:
+ *         description: Payment status updated successfully
+ *       400:
+ *         description: Invalid payment status or paid payment cannot be changed
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Access denied. OWNER or ADMIN role required
+ *       404:
+ *         description: Payment not found
  */
-router.put(
+router.patch(
   "/:id/status",
   authenticate,
-  authorize("ADMIN"),
   updateStatus
 );
 

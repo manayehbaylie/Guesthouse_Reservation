@@ -1,21 +1,15 @@
 import { z } from "zod";
 
-const isParsableDate = (value) =>
-  typeof value === "string" &&
-  !Number.isNaN(new Date(value).getTime());
-
 export const reservationSchema = z.object({
-  checkIn: z
-    .string()
-    .refine(isParsableDate, {
-      message: "checkIn must be a valid date (YYYY-MM-DD or ISO date-time)",
-    }),
+  checkIn: z.string().regex(
+    /^\d{4}-\d{2}-\d{2}$/,
+    "Check-in date must be in YYYY-MM-DD format"
+  ),
 
-  checkOut: z
-    .string()
-    .refine(isParsableDate, {
-      message: "checkOut must be a valid date (YYYY-MM-DD or ISO date-time)",
-    }),
+  checkOut: z.string().regex(
+    /^\d{4}-\d{2}-\d{2}$/,
+    "Check-out date must be in YYYY-MM-DD format"
+  ),
 
   roomId: z.number().int().positive(),
 });

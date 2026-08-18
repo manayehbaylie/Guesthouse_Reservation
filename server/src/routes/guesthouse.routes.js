@@ -18,11 +18,50 @@ import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
-// ==========================================================
-// OWNER
-// ==========================================================
-
-// Create a guesthouse
+/**
+ * @swagger
+ * /api/guesthouses:
+ *   post:
+ *     summary: Create a new guesthouse
+ *     description: Allows an OWNER to create a guesthouse with an optional image.
+ *     tags:
+ *       - Guesthouses
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - address
+ *               - city
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Sunrise Guesthouse
+ *               address:
+ *                 type: string
+ *                 example: Bole, Addis Ababa
+ *               city:
+ *                 type: string
+ *                 example: Addis Ababa
+ *               description:
+ *                 type: string
+ *                 example: Comfortable guesthouse in Addis Ababa.
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Guesthouse created successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Only OWNER can create a guesthouse
+ */
 router.post(
   "/",
   authenticate,
@@ -45,12 +84,29 @@ router.post(
  */
 router.get("/", getAll);
 
-// Get current owner's guesthouse
+/**
+ * @swagger
+ * /api/guesthouses/pending:
+ *   get:
+ *     summary: Get pending guesthouses
+ *     description: Returns guesthouses waiting for administrator approval.
+ *     tags:
+ *       - Guesthouses
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pending guesthouses fetched successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Only ADMIN can view pending guesthouses
+ */
 router.get(
-  "/owner/me",
+  "/pending",
   authenticate,
-  authorize("OWNER"),
-  getMyGuesthouse
+  authorize("ADMIN"),
+  pendingGuesthouses
 );
 
 /**
@@ -168,43 +224,76 @@ router.delete(
 
 /**
  * @swagger
- * /api/guesthouses/pending:
- *   get:
- *     summary: Get pending guesthouses
- *     description: Returns guesthouses waiting for administrator approval.
+ * /api/guesthouses/{id}/approve:
+ *   patch:
+ *     summary: Approve guesthouse
+ *     description: Allows an ADMIN to approve a pending guesthouse.
  *     tags:
  *       - Guesthouses
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
  *     responses:
  *       200:
- *         description: Pending guesthouses fetched successfully
+ *         description: Guesthouse approved successfully
  *       401:
  *         description: Authentication required
  *       403:
- *         description: Only ADMIN can view pending guesthouses
+ *         description: Only ADMIN can approve guesthouses
+ *       404:
+ *         description: Guesthouse not found
  */
-router.get(
-  "/pending",
-  authenticate,
-  authorize("ADMIN"),
-  pendingGuesthouses
-);
-
-// Approve guesthouse
-router.put(
+router.patch(
   "/:id/approve",
   authenticate,
   authorize("ADMIN"),
   approve
 );
 
-// Reject guesthouse
-router.put(
+/**
+ * @swagger
+ * /api/guesthouses/{id}/reject:
+ *   patch:
+ *     summary: Reject guesthouse
+ *     description: Allows an ADMIN to reject a guesthouse.
+ *     tags:
+ *       - Guesthouses
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Guesthouse rejected successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Only ADMIN can reject guesthouses
+ *       404:
+ *         description: Guesthouse not found
+ */
+router.patch(
   "/:id/reject",
   authenticate,
   authorize("ADMIN"),
   reject
+);
+router.get(
+  "/owner/me",
+  authenticate,
+  authorize("OWNER"),
+  getMyGuesthouse
 );
 
 export default router;

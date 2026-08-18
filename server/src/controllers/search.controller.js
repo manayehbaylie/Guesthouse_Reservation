@@ -1,77 +1,70 @@
-import {
-  searchGuesthouses,
-  searchRooms,
-  searchReservations,
+import { searchGuesthouses ,  searchRooms,  searchReservations,
 } from "../services/search.service.js";
-
 import { successResponse } from "../utils/response.js";
 
-
-/*
-==================================================
-SEARCH GUESTHOUSES
-==================================================
-*/
-export const search = async (req, res, next) => {
+export const search = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const guesthouses =
+    const result =
       await searchGuesthouses(req.query);
 
-    return successResponse(
+    successResponse(
       res,
-      guesthouses,
-      "Verified guesthouses fetched successfully"
+      result,
+      "Guesthouses fetched successfully"
     );
+
   } catch (error) {
     next(error);
   }
 };
+// ======================================
+// Search Rooms
+// ======================================
 
-
-/*
-==================================================
-SEARCH ROOMS
-==================================================
-*/
 export const roomSearch = async (
   req,
   res,
   next
 ) => {
   try {
-    const rooms =
+
+    const result =
       await searchRooms(req.query);
 
-    return successResponse(
+    successResponse(
       res,
-      rooms,
+      result,
       "Rooms fetched successfully"
     );
+
   } catch (error) {
     next(error);
   }
 };
+// ======================================
+// Search Reservations
+// ======================================
 
-
-/*
-==================================================
-SEARCH RESERVATIONS
-==================================================
-*/
 export const reservationSearch = async (
   req,
   res,
   next
 ) => {
   try {
-    const reservations =
+
+    const result =
       await searchReservations(req.query);
 
-    return successResponse(
+    successResponse(
       res,
-      reservations,
+      result,
       "Reservations fetched successfully"
     );
+
   } catch (error) {
     next(error);
   }

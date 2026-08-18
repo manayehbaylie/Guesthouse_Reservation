@@ -1,4 +1,3 @@
-
 import express from "express";
 
 import {
@@ -13,9 +12,7 @@ const router = express.Router();
  * /api/auth/register:
  *   post:
  *     summary: Register a new user
- *     description: >
- *       Registers a Guest or Owner. Guest accounts are activated immediately.
- *       Owner registrations create a pending guesthouse application.
+ *     description: Creates a new user account.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -28,7 +25,6 @@ const router = express.Router();
  *               - fullName
  *               - email
  *               - password
- *               - phone
  *               - role
  *             properties:
  *               fullName:
@@ -47,32 +43,12 @@ const router = express.Router();
  *                 example: "0924392994"
  *               role:
  *                 type: string
- *                 enum:
- *                   - GUEST
- *                   - OWNER
  *                 example: GUEST
- *               guesthouseName:
- *                 type: string
- *                 description: Required when registering as an OWNER.
- *               guesthouseAddress:
- *                 type: string
- *                 description: Required when registering as an OWNER.
- *               city:
- *                 type: string
- *                 description: Required when registering as an OWNER.
- *               guesthouseDescription:
- *                 type: string
- *                 description: Required when registering as an OWNER.
- *               guesthouseImage:
- *                 type: string
- *                 nullable: true
  *     responses:
  *       201:
- *         description: Registration successful.
+ *         description: User registered successfully
  *       400:
- *         description: Invalid request data.
- *       409:
- *         description: Email or phone already exists.
+ *         description: Invalid request data
  */
 router.post("/register", register);
 
@@ -81,9 +57,7 @@ router.post("/register", register);
  * /api/auth/login:
  *   post:
  *     summary: Login user
- *     description: >
- *       Authenticates a user and returns a JWT token.
- *       Owners must have an approved guesthouse before they can log in.
+ *     description: Authenticates a user and returns a JWT token.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -106,11 +80,9 @@ router.post("/register", register);
  *                 example: 12345678
  *     responses:
  *       200:
- *         description: Login successful.
+ *         description: Login successful
  *       401:
- *         description: Invalid email/password or owner account is not approved.
- *       400:
- *         description: Invalid request data.
+ *         description: Invalid email or password
  */
 router.post("/login", login);
 

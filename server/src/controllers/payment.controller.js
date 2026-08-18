@@ -1,24 +1,23 @@
-import { paymentSchema } from "../validators/payment.validator.js";
 import {
   createPayment,
   getAllPayments,
   getPaymentById,
   updatePaymentStatus,
-  initiatePayment,
-  getPaymentHistory,
 } from "../services/payment.service.js";
+
 import { successResponse } from "../utils/response.js";
 
+// ========================================
+// Create Payment
+// ========================================
 export const create = async (req, res, next) => {
   try {
-    const data = paymentSchema.parse(req.body);
+    const payment = await createPayment(req.body);
 
-    const payment = await createPayment(data);
-
-    return successResponse(
+    successResponse(
       res,
       payment,
-      "Payment request created successfully",
+      "Payment created successfully",
       201
     );
   } catch (error) {
@@ -26,46 +25,14 @@ export const create = async (req, res, next) => {
   }
 };
 
-// ==========================================================
-// INITIATE PAYMENT (Guest "Payment & Confirmation")
-// ==========================================================
-export const initiate = async (req, res, next) => {
-  try {
-    const payment = await initiatePayment(req.body);
-
-    return successResponse(
-      res,
-      payment,
-      "Payment processed successfully",
-      201
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ==========================================================
-// PAYMENT HISTORY (for the logged-in guest)
-// ==========================================================
-export const getHistory = async (req, res, next) => {
-  try {
-    const payments = await getPaymentHistory(req.user.id);
-
-    return successResponse(
-      res,
-      payments,
-      "Payment history fetched successfully"
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
+// ========================================
+// Get All Payments
+// ========================================
 export const getAll = async (req, res, next) => {
   try {
     const payments = await getAllPayments();
 
-    return successResponse(
+    successResponse(
       res,
       payments,
       "Payments fetched successfully"
@@ -75,6 +42,9 @@ export const getAll = async (req, res, next) => {
   }
 };
 
+// ========================================
+// Get Payment By ID
+// ========================================
 export const getById = async (req, res, next) => {
   try {
     const payment = await getPaymentById(req.params.id);
@@ -83,7 +53,7 @@ export const getById = async (req, res, next) => {
       throw new Error("Payment not found");
     }
 
-    return successResponse(
+    successResponse(
       res,
       payment,
       "Payment fetched successfully"
@@ -93,6 +63,9 @@ export const getById = async (req, res, next) => {
   }
 };
 
+// ========================================
+// Update Payment Status
+// ========================================
 export const updateStatus = async (req, res, next) => {
   try {
     const payment = await updatePaymentStatus(
@@ -100,7 +73,7 @@ export const updateStatus = async (req, res, next) => {
       req.body.status
     );
 
-    return successResponse(
+    successResponse(
       res,
       payment,
       "Payment status updated successfully"
