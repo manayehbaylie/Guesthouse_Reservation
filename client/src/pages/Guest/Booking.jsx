@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 const ETHIOPIAN_BANKS = [
-  "Commercial Bank of Ethiopia (CBE)",
+  "CBE",
   "Awash Bank",
   "Dashen Bank",
   "Bank of Abyssinia",
