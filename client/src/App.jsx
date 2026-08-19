@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
 import { Navbar } from './components/Navbar.jsx';
 import { ArchitectureModal } from './components/ArchitectureModal.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 
+// Authentication
 import { Login } from './pages/Auth/Login.jsx';
 import { Register } from './pages/Auth/Register.jsx';
 
+// Guest
 import { Home } from './pages/Guest/Home.jsx';
 import { GuesthouseSearch } from './pages/Guest/Search.jsx';
 import { GuesthouseDetail } from './pages/Guest/GuesthouseDetail.jsx';
 import { Booking } from './pages/Guest/Booking.jsx';
 import { GuestBookings } from './pages/Guest/Reservations.jsx';
 
+// Owner
 import { OwnerDashboard } from './pages/Owner/Dashboard.jsx';
 import { GuesthouseManage } from './pages/Owner/GuesthouseManage.jsx';
 import { RoomManage } from './pages/Owner/RoomManage.jsx';
@@ -20,134 +24,197 @@ import { StaffManage } from './pages/Owner/StaffManage.jsx';
 import { RevenueReports } from './pages/Owner/RevenueReports.jsx';
 import { GuestReviews } from './pages/Owner/GuestReviews.jsx';
 
+// Receptionist
 import { ReceptionistDashboard } from './pages/Receptionist/Dashboard.jsx';
+
+// Admin
 import { AdminDashboard } from './pages/Admin/Dashboard.jsx';
 
 export default function App() {
   const [archModalOpen, setArchModalOpen] = useState(false);
 
+  const openArchitectureModal = () => {
+    setArchModalOpen(true);
+  };
+
+  const closeArchitectureModal = () => {
+    setArchModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col font-sans">
-      {/* Top Navbar */}
-      <Navbar
-        onOpenArchModal={() => setArchModalOpen(true)}
-      />
+      
+      {/* Navigation */}
+      <Navbar onOpenArchModal={openArchitectureModal} />
 
-      {/* Main Layout Container */}
+      {/* Main Application */}
       <main className="flex-1 min-w-0 pb-12">
         <Routes>
-          {/* Public / Guest Routes */}
+
+          {/* ==================== PUBLIC / GUEST ==================== */}
+
           <Route path="/" element={<Home />} />
-          <Route path="/search" element={<GuesthouseSearch />} />
-          <Route path="/guesthouse/:id" element={<GuesthouseDetail />} />
-          <Route path="/booking" element={<Booking />} />
 
-          {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route
+            path="/search"
+            element={<GuesthouseSearch />}
+          />
 
-          {/* Protected Guest Reservations */}
+          <Route
+            path="/guesthouse/:id"
+            element={<GuesthouseDetail />}
+          />
+
+          <Route
+            path="/booking"
+            element={<Booking />}
+          />
+
+          {/* ==================== AUTHENTICATION ==================== */}
+
+          <Route
+            path="/login"
+            element={<Login />}
+          />
+
+          <Route
+            path="/register"
+            element={<Register />}
+          />
+
+          {/* ==================== GUEST RESERVATIONS ==================== */}
+
           <Route
             path="/reservations"
             element={
-              <ProtectedRoute allowedRoles={['GUEST', 'OWNER', 'RECEPTIONIST', 'ADMIN']}>
-                  <GuestBookings />
-                </ProtectedRoute>
+              <ProtectedRoute
+                allowedRoles={[
+                  'GUEST',
+                  'OWNER',
+                  'RECEPTIONIST',
+                  'ADMIN',
+                ]}
+              >
+                <GuestBookings />
+              </ProtectedRoute>
             }
           />
 
-          {/* Protected Owner Routes */}
+          {/* ==================== OWNER ==================== */}
+
           <Route
             path="/owner"
             element={
               <ProtectedRoute allowedRoles={['OWNER']}>
-                  <OwnerDashboard />
-                </ProtectedRoute>
+                <OwnerDashboard />
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/owner/guesthouse"
             element={
               <ProtectedRoute allowedRoles={['OWNER']}>
-                  <GuesthouseManage />
-                </ProtectedRoute>
+                <GuesthouseManage />
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/owner/rooms"
             element={
               <ProtectedRoute allowedRoles={['OWNER']}>
-                  <RoomManage />
-                </ProtectedRoute>
+                <RoomManage />
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/owner/staff"
             element={
               <ProtectedRoute allowedRoles={['OWNER']}>
-                  <StaffManage />
-                </ProtectedRoute>
+                <StaffManage />
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/owner/revenue"
             element={
               <ProtectedRoute allowedRoles={['OWNER']}>
-                  <RevenueReports />
-                </ProtectedRoute>
+                <RevenueReports />
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/owner/reviews"
             element={
               <ProtectedRoute allowedRoles={['OWNER']}>
-                  <GuestReviews />
-                </ProtectedRoute>
+                <GuestReviews />
+              </ProtectedRoute>
             }
           />
 
-          {/* Protected Receptionist Route */}
+          {/* ==================== RECEPTIONIST ==================== */}
+
           <Route
             path="/receptionist"
             element={
               <ProtectedRoute allowedRoles={['RECEPTIONIST']}>
-                  <ReceptionistDashboard />
-                </ProtectedRoute>
+                <ReceptionistDashboard />
+              </ProtectedRoute>
             }
           />
 
-          {/* Protected Admin Route */}
+          {/* ==================== ADMIN ==================== */}
+
           <Route
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
             }
           />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/search" replace />} />
+          {/* ==================== FALLBACK ==================== */}
+
+          <Route
+            path="*"
+            element={<Navigate to="/search" replace />}
+          />
+
         </Routes>
       </main>
 
+      {/* ==================== FOOTER ==================== */}
+
       <footer className="bg-stone-950 border-t border-stone-800 py-6 text-center text-xs text-stone-400">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 Guesthouse Reservation Platform. All Rights Reserved.</p>
+          
+          <p>
+            © 2026 Guesthouse Reservation Platform. All Rights Reserved.
+          </p>
+
           <button
-            onClick={() => setArchModalOpen(true)}
+            type="button"
+            onClick={openArchitectureModal}
             className="text-amber-400 hover:underline font-semibold"
           >
             View Full-Stack API & Architecture Specs
           </button>
+
         </div>
       </footer>
 
-      {/* Architecture Documentation Modal */}
+      {/* ==================== ARCHITECTURE MODAL ==================== */}
+
       <ArchitectureModal
         isOpen={archModalOpen}
-        onClose={() => setArchModalOpen(false)}
+        onClose={closeArchitectureModal}
       />
+
     </div>
   );
 }

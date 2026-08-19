@@ -3,9 +3,9 @@ import React, {
   useContext,
   useState,
   useEffect,
-} from "react";
+} from 'react';
 
-import { ApiService } from "../services/api.js";
+import { ApiService } from '../services/api.js';
 
 const AuthContext = createContext(null);
 
@@ -13,47 +13,62 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Restore logged-in user when the application starts
   useEffect(() => {
     try {
       const currentUser = ApiService.getCurrentUser();
-      setUser(currentUser || null);
+
+      if (currentUser) {
+        setUser({
+          ...currentUser,
+          role: currentUser.role?.toUpperCase(),
+        });
+      } else {
+        setUser(null);
+      }
     } catch (error) {
-      console.error("Auth initialization failed:", error);
+      console.error('Auth initialization failed:', error);
       setUser(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Login
   const login = async (email, password) => {
     const loggedUser = await ApiService.loginUser(
       email,
       password
     );
 
-    setUser(loggedUser);
+    const normalizedUser = {
+      ...loggedUser,
+      role: loggedUser.role?.toUpperCase(),
+    };
 
-    return loggedUser;
+    setUser(normalizedUser);
+
+    return normalizedUser;
   };
 
+  // Registration
   const register = async (userData) => {
     const newUser = await ApiService.registerUser(userData);
 
-    setUser(newUser);
+    const normalizedUser = {
+      ...newUser,
+      role: newUser.role?.toUpperCase(),
+    };
 
-    return newUser;
+    setUser(normalizedUser);
+
+    return normalizedUser;
   };
 
+  // Logout
   const logout = () => {
     ApiService.setCurrentUser(null);
     setUser(null);
-  };
-
-  const switchUser = (targetUser) => {
-    // Development/testing feature to switch between users
-    // This simulates logging in as a different user for testing purposes
-    ApiService.setCurrentUser(targetUser);
-    setUser(targetUser);
   };
 
   const value = {
@@ -62,8 +77,9 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    switchUser,
-    role: user?.role || "GUEST",
+
+    // Always return an uppercase backend role
+    role: user?.role?.toUpperCase() || 'GUEST',
   };
 
   return (
@@ -78,7 +94,7 @@ export function useAuth() {
 
   if (!context) {
     throw new Error(
-      "useAuth must be used within an AuthProvider"
+      'useAuth must be used within an AuthProvider'
     );
   }
 
