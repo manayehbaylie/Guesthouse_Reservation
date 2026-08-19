@@ -513,9 +513,9 @@ export function ReceptionistDashboard() {
                           {r.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="p-3.5 font-mono">ETB {r.totalPrice.toLocaleString()}</td>
-                      <td className="p-3.5">
-                        <div className="flex gap-2">
+                      <td className="p-3.5 font-mono">ETB {(r.payment?.amount || 0).toLocaleString()}</td>
+                        <td className="p-3.5">                       
+                         <div className="flex gap-2">
                           {r.status === 'confirmed' && (
                             <button
                               onClick={() => handleCheckIn(r.id)}
@@ -563,22 +563,22 @@ export function ReceptionistDashboard() {
                       <span className="font-mono text-xs font-bold text-stone-900 bg-stone-100 px-2 py-0.5 rounded">
                         Room {rm.roomNumber}
                       </span>
-                      <h3 className="font-bold text-stone-900 text-base mt-1">{rm.type}</h3>
-                    </div>
+                  <h3 className="font-bold text-stone-900 text-base mt-1">{rm.roomType}</h3>                    
+                  </div>
                     <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${getMaintenanceStatusColor(rm.maintenanceStatus)}`}>
                       {rm.maintenanceStatus || 'AVAILABLE'}
                     </span>
                   </div>
 
                   <div className="text-xs text-stone-500 font-mono">
-                    {rm.capacity} Guests &bull; Rate ETB {rm.pricePerNight.toLocaleString()}
-                  </div>
+                   {rm.capacity} Guests &bull; Rate ETB {(rm.price || 0).toLocaleString()}                  
+                   </div>
 
                   <div className="text-xs text-stone-500">
-                    Occupancy: <span className={`font-bold ${rm.availabilityStatus === 'available' ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {rm.availabilityStatus === 'available' ? 'Vacant' : 'Occupied'}
-                    </span>
-                  </div>
+                  Occupancy: <span className={`font-bold ${rm.available ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {rm.available ? 'Vacant' : 'Occupied'}
+                         </span>
+                          </div>
 
                   <div className="flex gap-2">
                     {rm.maintenanceStatus !== 'AVAILABLE' && (

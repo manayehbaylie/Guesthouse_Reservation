@@ -1746,6 +1746,14 @@ export const ApiService = {
     );
   },
 
+    async updateReceptionistRoomAvailability(roomId, maintenanceStatus) {
+    const response = await api.patch(
+      `/receptionist/rooms/${roomId}/availability`,
+      { maintenanceStatus }
+    );
+
+    return unwrap(response);
+  },
 
   async performCheckIn(
     reservationId
