@@ -890,6 +890,33 @@ export const ApiService = {
   },
 
 
+  async updateRoom(
+    roomId,
+    roomData
+  ) {
+    const payload = {};
+    if (roomData.roomNumber !== undefined) payload.roomNumber = String(roomData.roomNumber);
+    if (roomData.roomType || roomData.type) payload.roomType = String(roomData.roomType || roomData.type).toUpperCase();
+    if (roomData.price !== undefined || roomData.pricePerNight !== undefined) {
+      payload.price = Number(roomData.price !== undefined ? roomData.price : roomData.pricePerNight);
+    }
+    if (roomData.capacity !== undefined) payload.capacity = Number(roomData.capacity);
+    if (roomData.available !== undefined) payload.available = Boolean(roomData.available);
+    if (roomData.availabilityStatus !== undefined) payload.available = roomData.availabilityStatus === 'available';
+
+    const response = await api.put(`/rooms/${roomId}`, payload);
+    return mapRoomFromBackend(unwrap(response));
+  },
+
+
+  async deleteRoom(
+    roomId
+  ) {
+    const response = await api.delete(`/rooms/${roomId}`);
+    return unwrap(response);
+  },
+
+
   // ----------------------------------------------------------
   // RESERVATIONS
   // ----------------------------------------------------------
@@ -1356,114 +1383,171 @@ async checkInGuest(reservationId) {
   // OWNER
   // ----------------------------------------------------------
 
-  async getOwnerPayments(
-    guesthouseId
-  ) {
+  api,
 
-    const response =
-      await api.get(
-        '/dashboard/owner/recent-payments'
-      );
+  async getMyGuesthouse() {
+    try {
+      const response = await api.get('/owner/guesthouse');
+      const data = unwrap(response);
+      if (!data) return null;
+      let rooms = [];
+      try {
+        const roomsRes = await api.get(`/rooms/guesthouse/${data.id}`);
+        rooms = unwrap(roomsRes) || [];
+      } catch {
+        rooms = [];
+      }
+      return mapGuesthouseFromBackend(data, rooms);
+    } catch {
+      try {
+        const fallbackRes = await api.get('/guesthouses/owner/me');
+        const data = unwrap(fallbackRes);
+        if (!data) return null;
+        return mapGuesthouseFromBackend(data);
+      } catch {
+        return null;
+      }
+    }
+  },
 
-    const payments =
-      (
-        unwrap(response) || []
-      ).map(
-        mapPaymentFromBackend
-      );
+  async updateMyGuesthouse(data) {
+    const response = await api.put('/owner/guesthouse', {
+      name: data.name,
+      address: data.location || data.address,
+      city: data.city,
+      description: data.description,
+      image: data.images?.[0] || data.image || null,
+    });
+    return mapGuesthouseFromBackend(unwrap(response));
+  },
+
+  async getOwnerReceptionists(guesthouseId) {
+    const response = await api.get('/owner/receptionists');
+    const staff = unwrap(response) || [];
+    return staff.map(mapUserFromBackend);
+  },
+
+  async registerReceptionist(staffData) {
+    const response = await api.post('/owner/receptionists', {
+      fullName: staffData.fullName || staffData.name,
+      name: staffData.fullName || staffData.name,
+      email: staffData.email,
+      phone: staffData.phone,
+      password: staffData.password || 'Reception@123',
+    });
+    return mapUserFromBackend(unwrap(response));
+  },
+
+  async removeReceptionistFromGuesthouse(staffId) {
+    const response = await api.delete(`/owner/receptionists/${staffId}`);
+    return unwrap(response);
+  },
+
+  async assignReceptionistToGuesthouse(staffId) {
+    const response = await api.post('/owner/receptionists/assign', {
+      staffId: Number(staffId),
+    });
+    return unwrap(response);
+  },
+
+  async getOwnerDashboardStats() {
+    const response = await api.get('/dashboard/owner');
+    return unwrap(response) || {};
+  },
+
+  async getOwnerDashboardRevenue() {
+    const response = await api.get('/dashboard/owner/revenue');
+    const data = unwrap(response) || {};
+    return {
+      totalRevenue: Number(data.totalRevenue ?? 0),
+      breakdown: {
+        telebirr: Number(data.breakdown?.telebirr ?? 0),
+        chapa: Number(data.breakdown?.chapa ?? 0),
+        cbe_birr: Number(data.breakdown?.cbe_birr ?? 0),
+      },
+    };
+  },
+
+  async getOwnerDashboardMonthlyRevenue() {
+    const response = await api.get('/dashboard/owner/monthly-revenue');
+    return unwrap(response) || [];
+  },
+
+  async getOwnerDashboardRecentReservations() {
+    const response = await api.get('/dashboard/owner/recent-reservations');
+    const list = unwrap(response) || [];
+    return list.map(mapReservationFromBackend);
+  },
+
+  async getOwnerDashboardRecentPayments() {
+    const response = await api.get('/dashboard/owner/recent-payments');
+    const list = unwrap(response) || [];
+    return list.map(mapPaymentFromBackend);
+  },
+
+  async getOwnerPayments(guesthouseId) {
+    const response = await api.get('/dashboard/owner/recent-payments');
+    const payments = (unwrap(response) || []).map(mapPaymentFromBackend);
 
     if (!guesthouseId) {
       return payments;
     }
 
     return payments.filter(
-      (payment) =>
-        String(
-          payment.guesthouseId
-        ) ===
-        String(
-          guesthouseId
-        )
+      (payment) => String(payment.guesthouseId) === String(guesthouseId)
     );
   },
 
+  async getOwnerRevenueReport(guesthouseId) {
+    const response = await api.get('/dashboard/owner/revenue');
+    const data = unwrap(response) || {};
 
-  async getOwnerRevenueReport(
-    guesthouseId
-  ) {
+    const payments = await this.getOwnerPayments(guesthouseId);
 
-    const response =
-      await api.get(
-        '/dashboard/owner/revenue'
-      );
+    const telebirr = data.breakdown?.telebirr ?? payments
+      .filter((p) => p.method === 'telebirr')
+      .reduce((sum, p) => sum + p.amount, 0);
 
-    const data =
-      unwrap(response) || {};
+    const chapa = data.breakdown?.chapa ?? payments
+      .filter((p) => p.method === 'chapa' || p.method === 'card')
+      .reduce((sum, p) => sum + p.amount, 0);
 
-    const payments =
-      await this.getOwnerPayments(
-        guesthouseId
-      );
-
-    const telebirr =
-      payments
-        .filter(
-          (payment) =>
-            payment.method ===
-            'telebirr'
-        )
-        .reduce(
-          (sum, payment) =>
-            sum + payment.amount,
-          0
-        );
-
-    const chapa =
-      payments
-        .filter(
-          (payment) =>
-            payment.method ===
-            'chapa'
-        )
-        .reduce(
-          (sum, payment) =>
-            sum + payment.amount,
-          0
-        );
-
-    const card =
-      payments
-        .filter(
-          (payment) =>
-            payment.method ===
-            'card'
-        )
-        .reduce(
-          (sum, payment) =>
-            sum + payment.amount,
-          0
-        );
+    const cbe_birr = data.breakdown?.cbe_birr ?? payments
+      .filter((p) => p.method === 'cbe_birr' || p.method === 'bank_transfer')
+      .reduce((sum, p) => sum + p.amount, 0);
 
     return {
-      totalRevenue:
-        Number(
-          data.totalRevenue ?? 0
-        ),
-
-      totalTransactions:
-        payments.length,
-
+      totalRevenue: Number(data.totalRevenue ?? (telebirr + chapa + cbe_birr)),
+      totalTransactions: payments.length,
       paymentMethodBreakdown: {
         telebirr,
         chapa,
-        card,
+        cbe_birr,
+        card: chapa,
       },
-
-      occupancyRate:
-        Number(
-          data.occupancyRate ?? 0
-        ),
+      occupancyRate: Number(data.occupancyRate ?? 0),
     };
+  },
+
+  // ----------------------------------------------------------
+  // REVIEWS
+  // ----------------------------------------------------------
+
+  async getOwnerReviews() {
+    const response = await api.get('/reviews/owner-reviews');
+    return unwrap(response) || [];
+  },
+
+  async getGuesthouseReviews(guesthouseId) {
+    const response = await api.get(`/reviews/guesthouse/${guesthouseId}`);
+    return unwrap(response) || [];
+  },
+
+  async respondToReview(reviewId, responseText) {
+    const response = await api.put(`/reviews/${reviewId}/respond`, {
+      response: responseText,
+    });
+    return unwrap(response);
   },
 
 

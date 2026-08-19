@@ -32,6 +32,8 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
 
   const role = user?.role || 'Guest';
 
+  const isDashboardRoute = /^\/(owner|receptionist|admin)(\/|$)/.test(location.pathname);
+
   const handleQuickSwitchRole = (targetRole) => {
     const allUsers = ApiService.getAllUsers();
     const userToSet = allUsers.find((u) => u.role === targetRole) || allUsers[0];
@@ -58,7 +60,7 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
           <span className="hidden sm:inline text-stone-400">{user?.email || 'Guest Mode'}</span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* <div className="flex items-center gap-1.5">
           <span className="text-stone-500 font-medium mr-1 text-[11px] hidden md:inline">Quick Role Switch:</span>
           {['Guest', 'Receptionist', 'Owner', 'Admin'].map((r) => (
             <button
@@ -83,7 +85,7 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
               <span className="hidden sm:inline">Backend/Frontend Specs</span>
             </button>
           )}
-        </div>
+        </div> */}
       </div>
 
       {/* Main Navbar */}
@@ -119,17 +121,19 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
 
           {/* Navigation Links for Desktop */}
           <nav className="hidden md:flex items-center gap-1">
-            <Link
-              to="/search"
-              className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
-                isActive('/search')
-                  ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
-                  : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <Search className="w-4 h-4" />
-              <span>Search Guesthouses</span>
-            </Link>
+            {!isDashboardRoute && (
+              <Link
+                to="/search"
+                className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                  isActive('/search')
+                    ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
+                    : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <Search className="w-4 h-4" />
+                <span>Search Guesthouses</span>
+              </Link>
+            )}
 
             <Link
               to="/"
@@ -141,7 +145,7 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
               <span>Home</span>
             </Link>
 
-            {user && (
+            {user && !isDashboardRoute && (
               <Link
                 to="/reservations"
                 className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
@@ -248,13 +252,15 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-stone-800 bg-stone-900 px-4 py-3 space-y-2">
-          <Link
-            to="/search"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-bold bg-amber-500 text-stone-950"
-          >
-            🔍 Search Guesthouses
-          </Link>
+          {!isDashboardRoute && (
+            <Link
+              to="/search"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-bold bg-amber-500 text-stone-950"
+            >
+              🔍 Search Guesthouses
+            </Link>
+          )}
           <Link
             to="/"
             onClick={() => setMobileMenuOpen(false)}
@@ -262,7 +268,7 @@ export function Navbar({ onToggleSidebar, onOpenArchModal }) {
           >
             Home
           </Link>
-          {user && (
+          {user && !isDashboardRoute && (
             <Link
               to="/reservations"
               onClick={() => setMobileMenuOpen(false)}

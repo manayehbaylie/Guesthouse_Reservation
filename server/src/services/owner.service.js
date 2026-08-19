@@ -42,10 +42,14 @@ export const updateMyGuesthouse = async (
       id: guesthouse.id,
     },
     data: {
-      name: data.name,
-      description: data.description,
-      location: data.location,
-      address: data.address,
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...((data.address !== undefined || data.location !== undefined) && {
+        address: data.address || data.location,
+      }),
+      ...(data.city !== undefined && { city: data.city }),
+      ...(data.image !== undefined && { image: data.image }),
+      ...(data.images?.[0] && { image: data.images[0] }),
     },
   });
 };

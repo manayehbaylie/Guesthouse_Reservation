@@ -1,4 +1,4 @@
-import { roomSchema } from "../validators/room.validator.js";
+import { roomSchema, roomUpdateSchema } from "../validators/room.validator.js";
 import { createRoom ,  getAllRooms,getRoomById,  updateRoom,  deleteRoom,
 
 } from "../services/room.service.js";
@@ -62,7 +62,7 @@ export const getById = async (req, res, next) => {
 };
 export const update = async (req, res, next) => {
   try {
-    const data = roomSchema.parse(req.body);
+    const data = roomUpdateSchema.parse(req.body);
 
     const room = await updateRoom(
       req.params.id,

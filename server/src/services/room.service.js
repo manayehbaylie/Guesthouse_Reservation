@@ -63,11 +63,11 @@ export const updateRoom = async (id, data) => {
       id: Number(id),
     },
     data: {
-      roomNumber: data.roomNumber,
-      roomType: data.roomType,
-      price: data.price,
-      capacity: data.capacity,
-      available: data.available,
+      ...(data.roomNumber !== undefined && { roomNumber: data.roomNumber }),
+      ...(data.roomType !== undefined && { roomType: data.roomType }),
+      ...(data.price !== undefined && { price: data.price }),
+      ...(data.capacity !== undefined && { capacity: data.capacity }),
+      ...(data.available !== undefined && { available: data.available }),
     },
   });
 };

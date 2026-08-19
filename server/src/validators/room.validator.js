@@ -17,3 +17,5 @@ export const roomSchema = z.object({
 
   available: z.boolean().optional(),
 });
+
+export const roomUpdateSchema = roomSchema.partial();

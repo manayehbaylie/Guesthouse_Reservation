@@ -174,8 +174,81 @@ export const getOwnerRevenue = async (ownerId) => {
     },
   });
 
+  const telebirr = await prisma.payment.aggregate({
+    where: {
+      status: "PAID",
+      method: "TELEBIRR",
+      reservation: {
+        room: {
+          guesthouse: {
+            ownerId,
+          },
+        },
+      },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  const chapa = await prisma.payment.aggregate({
+    where: {
+      status: "PAID",
+      method: "CHAPA",
+      reservation: {
+        room: {
+          guesthouse: {
+            ownerId,
+          },
+        },
+      },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  const cbe = await prisma.payment.aggregate({
+    where: {
+      status: "PAID",
+      method: "CBE_BIRR",
+      reservation: {
+        room: {
+          guesthouse: {
+            ownerId,
+          },
+        },
+      },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  const card = await prisma.payment.aggregate({
+    where: {
+      status: "PAID",
+      method: "CARD",
+      reservation: {
+        room: {
+          guesthouse: {
+            ownerId,
+          },
+        },
+      },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
   return {
     totalRevenue: revenue._sum.amount ?? 0,
+    breakdown: {
+      telebirr: telebirr._sum.amount ?? 0,
+      chapa: (chapa._sum.amount ?? 0) + (card._sum.amount ?? 0),
+      cbe_birr: cbe._sum.amount ?? 0,
+    },
   };
 };
 export const getOwnerMonthlyRevenue = async (ownerId) => {
