@@ -1783,7 +1783,7 @@ export const ApiService = {
   },
 
 
-  async performCheckOut(
+    async performCheckOut(
     reservationId
   ) {
     const response =
@@ -1796,6 +1796,19 @@ export const ApiService = {
     );
   },
 
+
+  async checkOutGuest(
+    reservationId
+  ) {
+    const response =
+      await api.patch(
+        `/receptionist/reservations/${reservationId}/check-out`
+      );
+
+    return mapReservationFromBackend(
+      unwrap(response)
+    );
+  },
 
   // ----------------------------------------------------------
   // OWNER
