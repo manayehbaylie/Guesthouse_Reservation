@@ -20,21 +20,31 @@ export function ProtectedRoute({ children, allowedRoles }) {
 
   if (allowedRoles) {
     const userRole = String(user.role || '').toUpperCase();
-    const allowed = allowedRoles.map((r) => String(r).toUpperCase());
+    const allowed = allowedRoles.map((role) =>
+      String(role).toUpperCase()
+    );
+
     if (!allowed.includes(userRole)) {
-      if (userRole === 'ADMIN') return <Navigate to="/admin" replace />;
-      if (userRole === 'OWNER') return <Navigate to="/owner" replace />;
-      if (userRole === 'RECEPTIONIST') return <Navigate to="/receptionist" replace />;
+      if (userRole === 'ADMIN') {
+        return <Navigate to="/admin" replace />;
+      }
+
+      if (userRole === 'OWNER') {
+        return <Navigate to="/owner" replace />;
+      }
+
+      if (userRole === 'RECEPTIONIST') {
+        return <Navigate to="/receptionist" replace />;
+      }
+
       return <Navigate to="/" replace />;
     }
   }
 
-  if (location.pathname.startsWith('/owner') && String(user.role).toUpperCase() !== 'OWNER') {
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect to fallback dashboard based on actual role
-    if (user.role === 'Admin') return <Navigate to="/admin" replace />;
-    if (user.role === 'Owner') return <Navigate to="/owner" replace />;
-    if (user.role === 'Receptionist') return <Navigate to="/receptionist" replace />;
+  if (
+    location.pathname.startsWith('/owner') &&
+    String(user.role || '').toUpperCase() !== 'OWNER'
+  ) {
     return <Navigate to="/" replace />;
   }
 
