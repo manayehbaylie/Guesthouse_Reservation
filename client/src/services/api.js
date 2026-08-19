@@ -2070,7 +2070,62 @@ export const ApiService = {
       .filter(Boolean);
   },
 
+  async deleteGuesthouse(id) {
+    if (!id) {
+      throw new Error('Guesthouse ID is required');
+    }
 
+    const response = await api.delete(
+      `/admin/guesthouses/${id}`
+    );
+
+    return unwrap(response);
+  },
+
+  async deleteUser(id) {
+    if (!id) {
+      throw new Error('User ID is required');
+    }
+
+    const response = await api.delete(
+      `/admin/users/${id}`
+    );
+
+    return unwrap(response);
+  },
+
+  async updateUserRole(userId, role) {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    const response = await api.put(
+      `/admin/users/${userId}/role`,
+      {
+        role: String(role).toUpperCase(),
+      }
+    );
+
+    return mapUserFromBackend(
+      unwrap(response)
+    );
+  },
+    async rejectGuesthouse(id, reason = 'Does not meet platform standards') {
+    if (!id) {
+      throw new Error('Guesthouse ID is required');
+    }
+
+    const response = await api.put(
+      `/admin/guesthouses/${id}/reject`,
+      {
+        reason,
+      }
+    );
+
+    return mapGuesthouseFromBackend(
+      unwrap(response)
+    );
+  },
   async approveGuesthouse(
     id
   ) {
