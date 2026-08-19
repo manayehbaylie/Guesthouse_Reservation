@@ -1985,6 +1985,17 @@ export const ApiService = {
   // ----------------------------------------------------------
   // ADMIN
   // ----------------------------------------------------------
+  async deleteGuesthouse(id) {
+  if (!id) {
+    throw new Error('Guesthouse ID is required.');
+  }
+
+  const response = await api.delete(
+    `/admin/guesthouses/${id}`
+  );
+
+  return unwrap(response);
+},
 
   async getAdminPlatformStats() {
     const response =
