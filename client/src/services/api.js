@@ -4,7 +4,8 @@ import axios from 'axios';
 // API CONFIGURATION
 // ============================================================
 
-const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const DEFAULT_API_URL =
+  import.meta.env.VITE_API_BASE_URL || '/api';
 
 const BACKEND_MODE_KEY = 'gh_backend_mode';
 const API_URL_KEY = 'gh_api_url';
@@ -17,16 +18,31 @@ const TOKEN_KEY = 'token';
 // ============================================================
 
 export function getBackendMode() {
-  return localStorage.getItem(BACKEND_MODE_KEY) || 'api';
+  return (
+    localStorage.getItem(BACKEND_MODE_KEY) || 'api'
+  );
 }
 
 export function getApiUrl() {
-  return localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL;
+  return (
+    localStorage.getItem(API_URL_KEY) ||
+    DEFAULT_API_URL
+  );
 }
 
-export function setBackendMode(mode = 'api', apiUrl = DEFAULT_API_URL) {
-  localStorage.setItem(BACKEND_MODE_KEY, mode);
-  localStorage.setItem(API_URL_KEY, apiUrl);
+export function setBackendMode(
+  mode = 'api',
+  apiUrl = DEFAULT_API_URL
+) {
+  localStorage.setItem(
+    BACKEND_MODE_KEY,
+    mode
+  );
+
+  localStorage.setItem(
+    API_URL_KEY,
+    apiUrl
+  );
 
   api.defaults.baseURL = apiUrl;
 }
@@ -38,6 +54,7 @@ export function setBackendMode(mode = 'api', apiUrl = DEFAULT_API_URL) {
 
 export const api = axios.create({
   baseURL: DEFAULT_API_URL,
+
   headers: {
     'Content-Type': 'application/json',
   },
@@ -50,16 +67,22 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token =
+      localStorage.getItem(TOKEN_KEY);
 
     if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers =
+        config.headers || {};
+
+      config.headers.Authorization =
+        `Bearer ${token}`;
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+
+  (error) =>
+    Promise.reject(error)
 );
 
 
@@ -89,13 +112,22 @@ api.interceptors.response.use(
 // ============================================================
 
 function unwrap(response) {
-  return response?.data?.data ?? response?.data;
+  return (
+    response?.data?.data ??
+    response?.data
+  );
 }
+
+
+// ============================================================
+// ROLE HELPERS
+// ============================================================
 
 function normalizeRole(role) {
   if (!role) return 'GUEST';
 
-  const normalized = String(role).toUpperCase();
+  const normalized =
+    String(role).toUpperCase();
 
   const validRoles = [
     'GUEST',
@@ -119,22 +151,49 @@ function mapRoleToBackend(role) {
     Admin: 'ADMIN',
   };
 
-  return map[role] || String(role).toUpperCase();
+  return (
+    map[role] ||
+    String(role).toUpperCase()
+  );
 }
+
+
+// ============================================================
+// USER MAPPING
+// ============================================================
 
 function mapUserFromBackend(user) {
   if (!user) return null;
 
   return {
     id: user.id,
-    name: user.fullName || user.name || '',
-    email: user.email || '',
-    phone: user.phone || '',
-    role: normalizeRole(user.role),
-    guesthouseId: user.guesthouseId ?? null,
-    createdAt: user.createdAt,
+
+    name:
+      user.fullName ||
+      user.name ||
+      '',
+
+    email:
+      user.email || '',
+
+    phone:
+      user.phone || '',
+
+    role:
+      normalizeRole(user.role),
+
+    guesthouseId:
+      user.guesthouseId ?? null,
+
+    createdAt:
+      user.createdAt,
   };
 }
+
+
+// ============================================================
+// GUESTHOUSE STATUS
+// ============================================================
 
 function mapGuesthouseStatus(status) {
   if (!status) return 'pending';
@@ -142,54 +201,250 @@ function mapGuesthouseStatus(status) {
   return String(status).toLowerCase();
 }
 
-function mapGuesthouseFromBackend(guesthouse, rooms = []) {
-  if (!guesthouse) return null;
 
-  const guesthouseRooms = rooms.filter(
-    (room) =>
-      String(room.guesthouseId) === String(guesthouse.id)
-  );
+// ============================================================
+// IMAGE HELPERS
+// ============================================================
 
-  const prices = guesthouseRooms
-    .map((room) =>
-      Number(room.pricePerNight ?? room.price ?? 0)
+function normalizeImageUrl(image) {
+  if (!image) {
+    return '';
+  }
+
+  if (typeof image !== 'string') {
+    return '';
+  }
+
+  const trimmed =
+    image.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  // Already an absolute URL
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+
+  // Keep normal root-relative URLs.
+  if (trimmed.startsWith('/')) {
+    return trimmed;
+  }
+
+  // If backend returns a relative path,
+  // make it root-relative.
+  return `/${trimmed}`;
+}
+
+function getGuesthouseImages(
+  guesthouse
+) {
+  if (!guesthouse) {
+    return [];
+  }
+
+  const result = [];
+
+  // Backend may return:
+  // image: "..."
+  const singleImage =
+    normalizeImageUrl(
+      guesthouse.image
+    );
+
+  if (singleImage) {
+    result.push(singleImage);
+  }
+
+  // Backend may return:
+  // images: ["...", "..."]
+  if (
+    Array.isArray(
+      guesthouse.images
     )
-    .filter((price) => price > 0);
+  ) {
+    guesthouse.images.forEach(
+      (image) => {
+        const normalized =
+          normalizeImageUrl(image);
+
+        if (
+          normalized &&
+          !result.includes(normalized)
+        ) {
+          result.push(normalized);
+        }
+      }
+    );
+  }
+
+  // Some APIs may return photos
+  // instead of images.
+  if (
+    Array.isArray(
+      guesthouse.photos
+    )
+  ) {
+    guesthouse.photos.forEach(
+      (image) => {
+        const normalized =
+          normalizeImageUrl(image);
+
+        if (
+          normalized &&
+          !result.includes(normalized)
+        ) {
+          result.push(normalized);
+        }
+      }
+    );
+  }
+
+  // Some APIs may return imageUrl.
+  const imageUrl =
+    normalizeImageUrl(
+      guesthouse.imageUrl
+    );
+
+  if (
+    imageUrl &&
+    !result.includes(imageUrl)
+  ) {
+    result.push(imageUrl);
+  }
+
+  return result;
+}
+
+
+// ============================================================
+// GUESTHOUSE MAPPING
+// ============================================================
+
+function mapGuesthouseFromBackend(
+  guesthouse,
+  rooms = []
+) {
+  if (!guesthouse) {
+    return null;
+  }
+
+  const guesthouseRooms =
+    rooms.filter(
+      (room) =>
+        String(
+          room.guesthouseId
+        ) ===
+        String(
+          guesthouse.id
+        )
+    );
+
+  const prices =
+    guesthouseRooms
+      .map((room) =>
+        Number(
+          room.pricePerNight ??
+          room.price ??
+          0
+        )
+      )
+      .filter(
+        (price) => price > 0
+      );
 
   const minPrice =
-    prices.length > 0 ? Math.min(...prices) : 0;
+    prices.length > 0
+      ? Math.min(...prices)
+      : 0;
 
   const maxPrice =
-    prices.length > 0 ? Math.max(...prices) : 0;
+    prices.length > 0
+      ? Math.max(...prices)
+      : 0;
+
+  // ----------------------------------------------------------
+  // IMAGE FIX
+  // ----------------------------------------------------------
+
+  const images =
+    getGuesthouseImages(
+      guesthouse
+    );
+
+  const image =
+    images[0] || '';
 
   return {
-    id: guesthouse.id,
-    ownerId: guesthouse.ownerId,
-    name: guesthouse.name || '',
-    description: guesthouse.description || '',
+    id:
+      guesthouse.id,
+
+    ownerId:
+      guesthouse.ownerId,
+
+    name:
+      guesthouse.name || '',
+
+    description:
+      guesthouse.description || '',
+
     location:
       guesthouse.location ||
       guesthouse.address ||
       '',
-    city: guesthouse.city || '',
+
+    city:
+      guesthouse.city || '',
+
     address:
       guesthouse.address ||
       guesthouse.location ||
       '',
-    phone: guesthouse.phone || '',
-    email: guesthouse.email || '',
-    status: mapGuesthouseStatus(guesthouse.status),
-    images:
-      guesthouse.images ||
-      (guesthouse.image
-        ? [guesthouse.image]
-        : []),
-    amenities: guesthouse.amenities || [],
-    rating: Number(guesthouse.rating ?? 0),
-    reviewCount: Number(
-      guesthouse.reviewCount ?? 0
-    ),
-    createdAt: guesthouse.createdAt,
+
+    phone:
+      guesthouse.phone || '',
+
+    email:
+      guesthouse.email || '',
+
+    status:
+      mapGuesthouseStatus(
+        guesthouse.status
+      ),
+
+    // Primary image
+    // Home.jsx can use this.
+    image,
+
+    // Full image list
+    // Other pages can use this.
+    images,
+
+    amenities:
+      Array.isArray(
+        guesthouse.amenities
+      )
+        ? guesthouse.amenities
+        : [],
+
+    rating:
+      Number(
+        guesthouse.rating ?? 0
+      ),
+
+    reviewCount:
+      Number(
+        guesthouse.reviewCount ?? 0
+      ),
+
+    createdAt:
+      guesthouse.createdAt,
 
     priceRange: {
       min: minPrice,
@@ -198,48 +453,76 @@ function mapGuesthouseFromBackend(guesthouse, rooms = []) {
   };
 }
 
+
+// ============================================================
+// ROOM MAPPING
+// ============================================================
+
 function mapRoomFromBackend(room) {
   if (!room) return null;
 
   return {
-    id: room.id,
-    guesthouseId: room.guesthouseId,
-    roomNumber: room.roomNumber,
-    type: room.type || room.roomType,
-    capacity: room.capacity,
+    id:
+      room.id,
 
-    pricePerNight: Number(
-      room.pricePerNight ??
-      room.price ??
-      0
-    ),
+    guesthouseId:
+      room.guesthouseId,
+
+    roomNumber:
+      room.roomNumber,
+
+    type:
+      room.type ||
+      room.roomType,
+
+    capacity:
+      room.capacity,
+
+    pricePerNight:
+      Number(
+        room.pricePerNight ??
+        room.price ??
+        0
+      ),
 
     availabilityStatus:
       room.availabilityStatus ??
-      (room.available === false
-        ? 'occupied'
-        : 'available'),
+      (
+        room.available === false
+          ? 'occupied'
+          : 'available'
+      ),
   };
 }
 
-function mapReservationStatus(status) {
+
+// ============================================================
+// RESERVATION MAPPING
+// ============================================================
+
+function mapReservationStatus(
+  status
+) {
   if (!status) return 'pending';
 
   return String(status).toLowerCase();
 }
 
-function mapReservationFromBackend(reservation) {
+function mapReservationFromBackend(
+  reservation
+) {
   if (!reservation) return null;
 
-  const room = reservation.room || {};
+  const room =
+    reservation.room || {};
+
   const guesthouse =
     room.guesthouse ||
     reservation.guesthouse ||
     {};
 
   const guest =
-    reservation.guest ||
-    {};
+    reservation.guest || {};
 
   const checkIn =
     reservation.checkInDate ||
@@ -250,7 +533,8 @@ function mapReservationFromBackend(reservation) {
     reservation.checkOut;
 
   return {
-    id: reservation.id,
+    id:
+      reservation.id,
 
     guesthouseId:
       reservation.guesthouseId ||
@@ -298,103 +582,147 @@ function mapReservationFromBackend(reservation) {
       guest.phone ||
       '',
 
-    checkInDate: checkIn
-      ? String(checkIn).slice(0, 10)
-      : '',
+    checkInDate:
+      checkIn
+        ? String(checkIn).slice(0, 10)
+        : '',
 
-    checkOutDate: checkOut
-      ? String(checkOut).slice(0, 10)
-      : '',
+    checkOutDate:
+      checkOut
+        ? String(checkOut).slice(0, 10)
+        : '',
 
     nightsCount:
       reservation.nightsCount ??
-      calculateNights(checkIn, checkOut),
+      calculateNights(
+        checkIn,
+        checkOut
+      ),
 
-    totalPrice: Number(
-      reservation.totalPrice ??
-      reservation.payment?.amount ??
-      room.price ??
-      0
-    ),
+    totalPrice:
+      Number(
+        reservation.totalPrice ??
+        reservation.payment?.amount ??
+        room.price ??
+        0
+      ),
 
     paymentStatus:
       reservation.paymentStatus ||
       (
-        reservation.payment?.status === 'PAID'
+        reservation.payment?.status ===
+        'PAID'
           ? 'paid'
           : 'pending'
       ),
 
-    status: mapReservationStatus(
-      reservation.status
-    ),
+    status:
+      mapReservationStatus(
+        reservation.status
+      ),
 
-    createdAt: reservation.createdAt,
+    createdAt:
+      reservation.createdAt,
   };
 }
 
-function calculateNights(checkIn, checkOut) {
-  if (!checkIn || !checkOut) return 0;
 
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
+// ============================================================
+// CALCULATE NIGHTS
+// ============================================================
+
+function calculateNights(
+  checkIn,
+  checkOut
+) {
+  if (!checkIn || !checkOut) {
+    return 0;
+  }
+
+  const start =
+    new Date(checkIn);
+
+  const end =
+    new Date(checkOut);
 
   const difference =
-    end.getTime() - start.getTime();
+    end.getTime() -
+    start.getTime();
 
-  const nights = Math.ceil(
-    difference / (1000 * 60 * 60 * 24)
-  );
+  const nights =
+    Math.ceil(
+      difference /
+        (1000 * 60 * 60 * 24)
+    );
 
-  return nights > 0 ? nights : 0;
+  return nights > 0
+    ? nights
+    : 0;
 }
 
-function mapPaymentFromBackend(payment) {
+
+// ============================================================
+// PAYMENT MAPPING
+// ============================================================
+
+function mapPaymentFromBackend(
+  payment
+) {
   if (!payment) return null;
 
   return {
-    id: payment.id,
+    id:
+      payment.id,
 
     reservationId:
       payment.reservationId,
 
     guesthouseId:
       payment.guesthouseId ||
-      payment.reservation?.room?.guesthouseId,
+      payment.reservation?.room
+        ?.guesthouseId,
 
     guestName:
       payment.guestName ||
-      payment.reservation?.guest?.fullName ||
+      payment.reservation?.guest
+        ?.fullName ||
       '',
 
-    amount: Number(
-      payment.amount ?? 0
-    ),
+    amount:
+      Number(
+        payment.amount ?? 0
+      ),
 
-    method: String(
-      payment.method ||
-      payment.paymentMethod ||
-      'telebirr'
-    ).toLowerCase(),
+    method:
+      String(
+        payment.method ||
+        payment.paymentMethod ||
+        'telebirr'
+      ).toLowerCase(),
 
     referenceNumber:
       payment.referenceNumber ||
       `REF-${payment.id}`,
 
-    status: String(
-      payment.status ||
-      'completed'
-    ).toLowerCase(),
+    status:
+      String(
+        payment.status ||
+        'completed'
+      ).toLowerCase(),
 
     createdAt:
       payment.createdAt,
   };
 }
 
-function mapPaymentMethodToBackend(method) {
+
+function mapPaymentMethodToBackend(
+  method
+) {
   const normalized =
-    String(method || 'TELEBIRR')
-      .toUpperCase();
+    String(
+      method || 'TELEBIRR'
+    ).toUpperCase();
 
   if (
     normalized === 'CBE_BIRR' ||
@@ -407,33 +735,51 @@ function mapPaymentMethodToBackend(method) {
   return 'TELEBIRR';
 }
 
+
+// ============================================================
+// PHONE / DATE HELPERS
+// ============================================================
+
 function formatEthiopianPhone(phone) {
   if (!phone) return '';
 
   const cleaned =
-    String(phone).replace(/\s+/g, '');
+    String(phone)
+      .replace(/\s+/g, '');
 
-  if (cleaned.startsWith('+251')) {
+  if (
+    cleaned.startsWith('+251')
+  ) {
     return cleaned;
   }
 
-  if (cleaned.startsWith('09')) {
+  if (
+    cleaned.startsWith('09')
+  ) {
     return cleaned;
   }
 
-  if (cleaned.startsWith('9')) {
+  if (
+    cleaned.startsWith('9')
+  ) {
     return `0${cleaned}`;
   }
 
   return cleaned;
 }
 
-function toIsoDateTime(dateString) {
+
+function toIsoDateTime(
+  dateString
+) {
   if (!dateString) {
-    return new Date().toISOString();
+    return new Date()
+      .toISOString();
   }
 
-  if (dateString.includes('T')) {
+  if (
+    dateString.includes('T')
+  ) {
     return dateString;
   }
 
@@ -447,22 +793,37 @@ function toIsoDateTime(dateString) {
 
 function getCurrentUser() {
   const raw =
-    localStorage.getItem(CURRENT_USER_KEY);
+    localStorage.getItem(
+      CURRENT_USER_KEY
+    );
 
   if (!raw) return null;
 
   try {
     return JSON.parse(raw);
   } catch {
-    localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem(
+      CURRENT_USER_KEY
+    );
+
     return null;
   }
 }
 
-function setCurrentUser(user, token = null) {
+
+function setCurrentUser(
+  user,
+  token = null
+) {
   if (!user) {
-    localStorage.removeItem(CURRENT_USER_KEY);
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(
+      CURRENT_USER_KEY
+    );
+
+    localStorage.removeItem(
+      TOKEN_KEY
+    );
+
     return;
   }
 
@@ -479,9 +840,15 @@ function setCurrentUser(user, token = null) {
   }
 }
 
+
 function logoutUser() {
-  localStorage.removeItem(CURRENT_USER_KEY);
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(
+    CURRENT_USER_KEY
+  );
+
+  localStorage.removeItem(
+    TOKEN_KEY
+  );
 }
 
 
@@ -494,7 +861,8 @@ export async function checkBackendHealth() {
     const response =
       await api.get('/health');
 
-    const data = response.data;
+    const data =
+      response.data;
 
     return (
       data?.success === true ||
@@ -531,17 +899,27 @@ export const ApiService = {
     return getCurrentUser();
   },
 
-  setCurrentUser(user, token) {
-    setCurrentUser(user, token);
+
+  setCurrentUser(
+    user,
+    token
+  ) {
+    setCurrentUser(
+      user,
+      token
+    );
   },
+
 
   logoutUser() {
     logoutUser();
   },
 
 
-  async loginUser(email, password) {
-
+  async loginUser(
+    email,
+    password
+  ) {
     const response =
       await api.post(
         '/auth/login',
@@ -568,25 +946,32 @@ export const ApiService = {
   },
 
 
-  async registerUser(payload) {
-
+  async registerUser(
+    payload
+  ) {
     const role =
       mapRoleToBackend(
         payload.role || 'Guest'
       );
 
     const body = {
-      fullName: payload.name,
-      email: payload.email,
-      phone: payload.phone,
+      fullName:
+        payload.name,
+
+      email:
+        payload.email,
+
+      phone:
+        payload.phone,
+
       password:
         payload.password ||
         'password123',
+
       role,
     };
 
     if (role === 'OWNER') {
-
       body.guesthouseName =
         payload.guesthouseName;
 
@@ -638,6 +1023,7 @@ export const ApiService = {
     const user =
       mapUserFromBackend({
         ...result.user,
+
         guesthouseId:
           payload.guesthouseId,
       });
@@ -656,7 +1042,6 @@ export const ApiService = {
   // ----------------------------------------------------------
 
   async getAllUsers() {
-
     const response =
       await api.get(
         '/admin/users'
@@ -670,8 +1055,8 @@ export const ApiService = {
     );
   },
 
-  async fetchAdminUsers() {
 
+  async fetchAdminUsers() {
     return this.getAllUsers();
   },
 
@@ -680,8 +1065,9 @@ export const ApiService = {
   // GUESTHOUSES
   // ----------------------------------------------------------
 
-  async getGuesthouses(filters = {}) {
-
+  async getGuesthouses(
+    filters = {}
+  ) {
     const response =
       await api.get(
         '/guesthouses',
@@ -696,44 +1082,49 @@ export const ApiService = {
     let rooms = [];
 
     try {
-
       const roomsResponse =
         await api.get('/rooms');
 
       rooms =
-        unwrap(roomsResponse) || [];
-
+        unwrap(
+          roomsResponse
+        ) || [];
     } catch {
       rooms = [];
     }
 
     let list =
-      guesthouses.map(
-        (guesthouse) =>
-          mapGuesthouseFromBackend(
-            guesthouse,
-            rooms
-          )
-      );
+      guesthouses
+        .map(
+          (guesthouse) =>
+            mapGuesthouseFromBackend(
+              guesthouse,
+              rooms
+            )
+        )
+        .filter(Boolean);
 
     if (filters.city) {
-
       list =
         list.filter(
           (guesthouse) =>
             guesthouse.city
               ?.toLowerCase() ===
-            filters.city.toLowerCase()
+            String(
+              filters.city
+            ).toLowerCase()
         );
     }
 
     if (filters.maxPrice) {
-
       list =
         list.filter(
           (guesthouse) =>
-            guesthouse.priceRange.min <=
-            Number(filters.maxPrice)
+            guesthouse.priceRange
+              .min <=
+            Number(
+              filters.maxPrice
+            )
         );
     }
 
@@ -741,8 +1132,9 @@ export const ApiService = {
   },
 
 
-  async getGuesthouseById(id) {
-
+  async getGuesthouseById(
+    id
+  ) {
     const response =
       await api.get(
         `/guesthouses/${id}`
@@ -758,13 +1150,13 @@ export const ApiService = {
     let rooms = [];
 
     try {
-
       const roomsResponse =
         await api.get('/rooms');
 
       rooms =
-        unwrap(roomsResponse) || [];
-
+        unwrap(
+          roomsResponse
+        ) || [];
     } catch {
       rooms = [];
     }
@@ -776,26 +1168,37 @@ export const ApiService = {
   },
 
 
-  async registerGuesthouse(data) {
+  async registerGuesthouse(
+    data
+  ) {
+    const images =
+      Array.isArray(data.images)
+        ? data.images
+        : [];
+
+    const image =
+      images[0] ||
+      data.image ||
+      null;
 
     const response =
       await api.post(
         '/guesthouses',
         {
-          name: data.name,
+          name:
+            data.name,
 
           address:
             data.location ||
             data.address,
 
-          city: data.city,
+          city:
+            data.city,
 
           description:
             data.description,
 
-          image:
-            data.images?.[0] ||
-            null,
+          image,
         }
       );
 
@@ -812,7 +1215,6 @@ export const ApiService = {
   async getRoomsForGuesthouse(
     guesthouseId
   ) {
-
     const response =
       await api.get('/rooms');
 
@@ -825,7 +1227,9 @@ export const ApiService = {
           String(
             room.guesthouseId
           ) ===
-          String(guesthouseId)
+          String(
+            guesthouseId
+          )
       )
       .map(
         mapRoomFromBackend
@@ -833,8 +1237,9 @@ export const ApiService = {
   },
 
 
-  async addRoom(roomData) {
-
+  async addRoom(
+    roomData
+  ) {
     const response =
       await api.post(
         `/rooms/${roomData.guesthouseId}`,
@@ -874,7 +1279,6 @@ export const ApiService = {
     roomId,
     status
   ) {
-
     const response =
       await api.put(
         `/rooms/${roomId}`,
@@ -932,7 +1336,6 @@ export const ApiService = {
     bankName,
     accountNumber,
   }) {
-
     const reservationResponse =
       await api.post(
         '/reservations',
@@ -1062,7 +1465,6 @@ export const ApiService = {
   async getReservations(
     filters = {}
   ) {
-
     const currentUser =
       getCurrentUser();
 
@@ -1072,23 +1474,18 @@ export const ApiService = {
     let response;
 
     if (role === 'GUEST') {
-
       response =
         await api.get(
           '/guest/reservations'
         );
-
     } else if (
       role === 'RECEPTIONIST'
     ) {
-
       response =
         await api.get(
           '/receptionist/reservations'
         );
-
     } else {
-
       response =
         await api.get(
           '/reservations'
@@ -1103,7 +1500,6 @@ export const ApiService = {
       );
 
     if (filters.guestId) {
-
       list =
         list.filter(
           (reservation) =>
@@ -1117,7 +1513,6 @@ export const ApiService = {
     }
 
     if (filters.guesthouseId) {
-
       list =
         list.filter(
           (reservation) =>
@@ -1139,7 +1534,6 @@ export const ApiService = {
   // ----------------------------------------------------------
 
   async getReceptionistDashboardStats() {
-
     const response =
       await api.get(
         '/receptionist/reservations'
@@ -1162,10 +1556,12 @@ export const ApiService = {
         (reservation) =>
           reservation.checkInDate ===
             today &&
-          ['confirmed', 'pending']
-            .includes(
-              reservation.status
-            )
+          [
+            'confirmed',
+            'pending',
+          ].includes(
+            reservation.status
+          )
       );
 
     const todayDepartures =
@@ -1237,7 +1633,6 @@ export const ApiService = {
   async getReceptionistArrivals(
     guesthouseId
   ) {
-
     const response =
       await api.get(
         '/receptionist/today-arrivals'
@@ -1269,7 +1664,6 @@ export const ApiService = {
   async getReceptionistDepartures(
     guesthouseId
   ) {
-
     const response =
       await api.get(
         '/receptionist/today-departures'
@@ -1296,54 +1690,66 @@ export const ApiService = {
         )
     );
   },
-async getReceptionistInHouse() {
-  const response = await api.get(
-    '/receptionist/in-house'
-  );
 
-  return unwrap(response) || [];
-},
 
-async getReceptionistReservations(
-  guesthouseId
-) {
-  const response =
-    await api.get(
-      '/receptionist/reservations'
-    );
+  async getReceptionistInHouse() {
+    const response =
+      await api.get(
+        '/receptionist/in-house'
+      );
 
-  const list =
-    (
+    return (
       unwrap(response) || []
-    ).map(
-      mapReservationFromBackend
     );
+  },
 
-  if (!guesthouseId) {
-    return list;
-  }
 
-  return list.filter(
-    (reservation) =>
-      String(
-        reservation.guesthouseId
-      ) ===
-      String(
-        guesthouseId
-      )
-  );
-},
-async getReceptionistRooms() {
-  const response = await api.get(
-    '/receptionist/rooms'
-  );
+  async getReceptionistReservations(
+    guesthouseId
+  ) {
+    const response =
+      await api.get(
+        '/receptionist/reservations'
+      );
 
-  return unwrap(response) || [];
-},
+    const list =
+      (
+        unwrap(response) || []
+      ).map(
+        mapReservationFromBackend
+      );
+
+    if (!guesthouseId) {
+      return list;
+    }
+
+    return list.filter(
+      (reservation) =>
+        String(
+          reservation.guesthouseId
+        ) ===
+        String(
+          guesthouseId
+        )
+    );
+  },
+
+
+  async getReceptionistRooms() {
+    const response =
+      await api.get(
+        '/receptionist/rooms'
+      );
+
+    return (
+      unwrap(response) || []
+    );
+  },
+
+
   async performCheckIn(
     reservationId
   ) {
-
     const response =
       await api.patch(
         `/receptionist/reservations/${reservationId}/check-in`
@@ -1354,20 +1760,24 @@ async getReceptionistRooms() {
     );
   },
 
-async checkInGuest(reservationId) {
-  const response = await api.patch(
-    `/receptionist/reservations/${reservationId}/check-in`
-  );
 
-  return mapReservationFromBackend(
-    unwrap(response)
-  );
-},
+  async checkInGuest(
+    reservationId
+  ) {
+    const response =
+      await api.patch(
+        `/receptionist/reservations/${reservationId}/check-in`
+      );
+
+    return mapReservationFromBackend(
+      unwrap(response)
+    );
+  },
+
 
   async performCheckOut(
     reservationId
   ) {
-
     const response =
       await api.patch(
         `/receptionist/reservations/${reservationId}/check-out`
@@ -1556,7 +1966,6 @@ async checkInGuest(reservationId) {
   // ----------------------------------------------------------
 
   async getAdminPlatformStats() {
-
     const response =
       await api.get(
         '/dashboard'
@@ -1578,6 +1987,7 @@ async checkInGuest(reservationId) {
       approvedGuesthouses:
         Math.max(
           0,
+
           Number(
             stats.totalGuesthouses ??
             0
@@ -1610,7 +2020,6 @@ async checkInGuest(reservationId) {
 
 
   async getAdminPendingGuesthouses() {
-
     const response =
       await api.get(
         '/guesthouses/pending'
@@ -1619,17 +2028,20 @@ async checkInGuest(reservationId) {
     const guesthouses =
       unwrap(response) || [];
 
-    return guesthouses.map(
-      (guesthouse) =>
-        mapGuesthouseFromBackend(
-          guesthouse
-        )
-    );
+    return guesthouses
+      .map(
+        (guesthouse) =>
+          mapGuesthouseFromBackend(
+            guesthouse
+          )
+      )
+      .filter(Boolean);
   },
 
 
-  async approveGuesthouse(id) {
-
+  async approveGuesthouse(
+    id
+  ) {
     const response =
       await api.put(
         `/admin/guesthouses/${id}/approve`
