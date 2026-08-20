@@ -6,9 +6,7 @@ import {
   Calendar,
   Home,
   Search,
-  ShieldCheck,
   LogOut,
-  UserCheck,
   Menu,
   X,
 } from "lucide-react";
@@ -20,9 +18,14 @@ export function Navbar({ onToggleSidebar }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const role = user?.role || "GUEST";
+  const normalizedRole = String(user?.role || "GUEST").toUpperCase();
 
-  const normalizedRole = String(role).toUpperCase();
+  const isDashboardUser =
+    normalizedRole === "ADMIN" ||
+    normalizedRole === "OWNER" ||
+    normalizedRole === "RECEPTIONIST";
+
+  const isGuest = normalizedRole === "GUEST";
 
   const isActive = (path) => {
     if (path === "/") {
@@ -46,21 +49,33 @@ export function Navbar({ onToggleSidebar }) {
     <header className="sticky top-0 z-50 border-b border-stone-800 bg-stone-950 text-white shadow-lg">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          {/* BRAND */}
+
+          {/* =====================================================
+              LEFT SIDE / BRAND
+              ===================================================== */}
           <div className="flex min-w-0 items-center gap-3">
-            {onToggleSidebar && (
+
+            {/* 
+              IMPORTANT:
+              This button only controls the dashboard-specific
+              sidebar passed from the dashboard layout.
+
+              It does NOT render the shared PortalSidebar.
+            */}
+            {onToggleSidebar && isDashboardUser && (
               <button
                 type="button"
                 onClick={onToggleSidebar}
                 className="rounded-lg bg-stone-800 p-2 text-amber-400 transition hover:bg-stone-700"
-                title="Toggle sidebar"
+                title="Toggle dashboard sidebar"
+                aria-label="Toggle dashboard sidebar"
               >
-                <span className="text-lg">☰</span>
+                <Menu className="h-5 w-5" />
               </button>
             )}
 
             <Link
-              to="/"
+              to={isDashboardUser ? location.pathname : "/"}
               className="flex items-center gap-3"
               onClick={closeMobileMenu}
             >
@@ -80,92 +95,69 @@ export function Navbar({ onToggleSidebar }) {
             </Link>
           </div>
 
-          {/* DESKTOP NAVIGATION */}
-          <nav className="hidden items-center gap-1 md:flex">
-            <Link
-              to="/"
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                isActive("/")
-                  ? "bg-amber-500 text-stone-950"
-                  : "text-stone-300 hover:bg-stone-800 hover:text-white"
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              Home
-            </Link>
+          {/* =====================================================
+              DESKTOP NAVIGATION
 
-            {/* SEARCH GUESTHOUSES */}
-            <Link
-              to="/search"
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-black transition ${
-                isActive("/search")
-                  ? "bg-amber-500 text-stone-950 shadow-md"
-                  : "bg-stone-800 text-amber-400 hover:bg-stone-700"
-              }`}
-            >
-              <Search className="h-4 w-4" />
-              Search Guesthouses
-            </Link>
+              Only normal guest/public navigation appears here.
 
-            {user && normalizedRole === "GUEST" && (
+              NO:
+              - SWITCH PORTAL MODE
+              - GUEST SERVICES sidebar
+              - Admin portal switch
+              - Owner portal switch
+              - Receptionist portal switch
+              ===================================================== */}
+          {!isDashboardUser && (
+            <nav className="hidden items-center gap-1 md:flex">
+
+              {/* HOME */}
               <Link
-                to="/reservations"
+                to="/"
                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  isActive("/reservations")
-                    ? "bg-amber-500/10 text-amber-400"
+                  isActive("/")
+                    ? "bg-amber-500 text-stone-950"
                     : "text-stone-300 hover:bg-stone-800 hover:text-white"
                 }`}
               >
-                <Calendar className="h-4 w-4" />
-                My Bookings
+                <Home className="h-4 w-4" />
+                Home
               </Link>
-            )}
 
-            {user && normalizedRole === "OWNER" && (
+              {/* SEARCH */}
               <Link
-                to="/owner"
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  isActive("/owner")
-                    ? "bg-amber-500/10 text-amber-400"
-                    : "text-stone-300 hover:bg-stone-800 hover:text-white"
+                to="/search"
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-black transition ${
+                  isActive("/search")
+                    ? "bg-amber-500 text-stone-950 shadow-md"
+                    : "bg-stone-800 text-amber-400 hover:bg-stone-700"
                 }`}
               >
-                <Building2 className="h-4 w-4" />
-                Owner Dashboard
+                <Search className="h-4 w-4" />
+                Search Guesthouses
               </Link>
-            )}
 
-            {user && normalizedRole === "RECEPTIONIST" && (
-              <Link
-                to="/receptionist"
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  isActive("/receptionist")
-                    ? "bg-amber-500/10 text-emerald-400"
-                    : "text-stone-300 hover:bg-stone-800 hover:text-white"
-                }`}
-              >
-                <UserCheck className="h-4 w-4" />
-                Front Desk
-              </Link>
-            )}
+              {/* MY RESERVATIONS */}
+              {user && isGuest && (
+                <Link
+                  to="/reservations"
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    isActive("/reservations")
+                      ? "bg-amber-500/10 text-amber-400"
+                      : "text-stone-300 hover:bg-stone-800 hover:text-white"
+                  }`}
+                >
+                  <Calendar className="h-4 w-4" />
+                  My Bookings
+                </Link>
+              )}
+            </nav>
+          )}
 
-            {user && normalizedRole === "ADMIN" && (
-              <Link
-                to="/admin"
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  isActive("/admin")
-                    ? "bg-purple-500/10 text-purple-400"
-                    : "text-stone-300 hover:bg-stone-800 hover:text-white"
-                }`}
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Admin Console
-              </Link>
-            )}
-          </nav>
-
-          {/* DESKTOP AUTH */}
+          {/* =====================================================
+              DESKTOP USER / AUTH
+              ===================================================== */}
           <div className="hidden items-center gap-3 md:flex">
+
             {user ? (
               <>
                 <div className="border-l border-stone-800 pl-3 text-right">
@@ -183,6 +175,7 @@ export function Navbar({ onToggleSidebar }) {
                   onClick={handleLogout}
                   className="rounded-lg p-2 text-stone-400 transition hover:bg-stone-800 hover:text-white"
                   title="Log out"
+                  aria-label="Log out"
                 >
                   <LogOut className="h-5 w-5" />
                 </button>
@@ -206,12 +199,18 @@ export function Navbar({ onToggleSidebar }) {
             )}
           </div>
 
-          {/* MOBILE BUTTON */}
+          {/* =====================================================
+              MOBILE BUTTON
+              ===================================================== */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen((value) => !value)}
             className="rounded-lg p-2 text-stone-300 transition hover:bg-stone-800 hover:text-white md:hidden"
-            aria-label="Open navigation menu"
+            aria-label={
+              mobileMenuOpen
+                ? "Close navigation menu"
+                : "Open navigation menu"
+            }
           >
             {mobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -222,80 +221,96 @@ export function Navbar({ onToggleSidebar }) {
         </div>
       </div>
 
-      {/* MOBILE MENU */}
+      {/* =====================================================
+          MOBILE MENU
+
+          NO PORTAL SIDEBAR HERE.
+          Dashboard-specific sidebars remain outside Navbar.
+          ===================================================== */}
       {mobileMenuOpen && (
         <div className="border-t border-stone-800 bg-stone-950 px-4 py-4 md:hidden">
           <nav className="space-y-2">
-            <Link
-              to="/"
-              onClick={closeMobileMenu}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold ${
-                isActive("/")
-                  ? "bg-amber-500 text-stone-950"
-                  : "text-stone-300 hover:bg-stone-800"
-              }`}
-            >
-              <Home className="h-5 w-5" />
-              Home
-            </Link>
 
-            <Link
-              to="/search"
-              onClick={closeMobileMenu}
-              className="flex items-center gap-3 rounded-lg bg-amber-500 px-4 py-3 text-sm font-black text-stone-950"
-            >
-              <Search className="h-5 w-5" />
-              Search Guesthouses
-            </Link>
+            {/* =================================================
+                GUEST / PUBLIC NAVIGATION
+                ================================================= */}
+            {!isDashboardUser && (
+              <>
+                <Link
+                  to="/"
+                  onClick={closeMobileMenu}
+                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold ${
+                    isActive("/")
+                      ? "bg-amber-500 text-stone-950"
+                      : "text-stone-300 hover:bg-stone-800"
+                  }`}
+                >
+                  <Home className="h-5 w-5" />
+                  Home
+                </Link>
 
-            {user && normalizedRole === "GUEST" && (
-              <Link
-                to="/reservations"
-                onClick={closeMobileMenu}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold ${
-                  isActive("/reservations")
-                    ? "bg-amber-500/10 text-amber-400"
-                    : "text-stone-300 hover:bg-stone-800"
-                }`}
-              >
-                <Calendar className="h-5 w-5" />
-                My Bookings
-              </Link>
+                <Link
+                  to="/search"
+                  onClick={closeMobileMenu}
+                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-black ${
+                    isActive("/search")
+                      ? "bg-amber-500 text-stone-950"
+                      : "bg-stone-800 text-amber-400 hover:bg-stone-700"
+                  }`}
+                >
+                  <Search className="h-5 w-5" />
+                  Search Guesthouses
+                </Link>
+
+                {user && isGuest && (
+                  <Link
+                    to="/reservations"
+                    onClick={closeMobileMenu}
+                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold ${
+                      isActive("/reservations")
+                        ? "bg-amber-500/10 text-amber-400"
+                        : "text-stone-300 hover:bg-stone-800"
+                    }`}
+                  >
+                    <Calendar className="h-5 w-5" />
+                    My Bookings
+                  </Link>
+                )}
+              </>
             )}
 
-            {user && normalizedRole === "OWNER" && (
-              <Link
-                to="/owner"
-                onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-stone-800"
-              >
-                <Building2 className="h-5 w-5" />
-                Owner Dashboard
-              </Link>
+            {/* =================================================
+                DASHBOARD USERS
+
+                We intentionally do NOT render:
+                - PortalSidebar
+                - Switch Portal Mode
+                - Guest Services
+                - Admin Console
+                - Owner Dashboard
+                - Receptionist Dashboard
+
+                Their own dashboard sidebar handles navigation.
+                ================================================= */}
+            {isDashboardUser && (
+              <div className="rounded-lg border border-stone-800 bg-stone-900 p-4">
+                <p className="text-sm font-bold text-white">
+                  {user?.fullName || user?.name || "User"}
+                </p>
+
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-400">
+                  {normalizedRole}
+                </p>
+
+                <p className="mt-2 text-xs text-stone-500">
+                  Use your dashboard sidebar for navigation.
+                </p>
+              </div>
             )}
 
-            {user && normalizedRole === "RECEPTIONIST" && (
-              <Link
-                to="/receptionist"
-                onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-emerald-400 hover:bg-stone-800"
-              >
-                <UserCheck className="h-5 w-5" />
-                Front Desk
-              </Link>
-            )}
-
-            {user && normalizedRole === "ADMIN" && (
-              <Link
-                to="/admin"
-                onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-purple-400 hover:bg-stone-800"
-              >
-                <ShieldCheck className="h-5 w-5" />
-                Admin Console
-              </Link>
-            )}
-
+            {/* =================================================
+                NOT LOGGED IN
+                ================================================= */}
             {!user && (
               <div className="grid grid-cols-2 gap-2 border-t border-stone-800 pt-3">
                 <Link
@@ -316,8 +331,12 @@ export function Navbar({ onToggleSidebar }) {
               </div>
             )}
 
+            {/* =================================================
+                USER INFORMATION + LOGOUT
+                ================================================= */}
             {user && (
               <div className="mt-3 border-t border-stone-800 pt-3">
+
                 <div className="mb-3 rounded-lg bg-stone-900 p-3">
                   <p className="text-sm font-bold text-white">
                     {user.fullName || user.name || "User"}
