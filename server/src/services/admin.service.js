@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { hashPassword } from "../utils/hash.js";
 
 /*
 ==================================================
@@ -149,7 +150,166 @@ export const updateUserRole = async (id, newRole) => {
     },
   });
 };
+/*
+==================================================
+2.6 UPDATE ADMIN PROFILE
+==================================================
+*/
+export const updateAdminProfile = async (
+  id,
+  data
+) => {
+  if (!id) {
+    throw new Error(
+      "Admin user ID is required."
+    );
+  }
 
+  const updateData = {};
+
+  // -----------------------------------------------
+  // FULL NAME
+  // -----------------------------------------------
+
+  if (data.fullName !== undefined) {
+    const fullName =
+      String(data.fullName).trim();
+
+    if (!fullName) {
+      throw new Error(
+        "Full name is required."
+      );
+    }
+
+    updateData.fullName = fullName;
+  }
+
+  // -----------------------------------------------
+  // EMAIL
+  // -----------------------------------------------
+
+  if (data.email !== undefined) {
+    const email =
+      String(data.email)
+        .trim()
+        .toLowerCase();
+
+    if (!email) {
+      throw new Error(
+        "Email is required."
+      );
+    }
+
+    updateData.email = email;
+  }
+
+  // -----------------------------------------------
+  // PHONE
+  // -----------------------------------------------
+
+  if (data.phone !== undefined) {
+    updateData.phone =
+      String(data.phone).trim();
+  }
+
+  // -----------------------------------------------
+  // PASSWORD
+  // -----------------------------------------------
+
+  if (
+    data.password !== undefined &&
+    String(data.password).trim()
+  ) {
+    const password =
+      String(data.password).trim();
+
+    if (password.length < 6) {
+      throw new Error(
+        "Password must be at least 6 characters."
+      );
+    }
+
+    updateData.password =
+      await hashPassword(password);
+  }
+
+  // -----------------------------------------------
+  // CHECK ADMIN EXISTS
+  // -----------------------------------------------
+
+  const existingUser =
+    await prisma.user.findUnique({
+      where: {
+        id: Number(id),
+      },
+      select: {
+        id: true,
+        role: true,
+        email: true,
+      },
+    });
+
+  if (!existingUser) {
+    throw new Error(
+      "Administrator account not found."
+    );
+  }
+
+  if (existingUser.role !== "ADMIN") {
+    throw new Error(
+      "Only an administrator can update this profile."
+    );
+  }
+
+  // -----------------------------------------------
+  // PREVENT DUPLICATE EMAIL
+  // -----------------------------------------------
+
+  if (
+    updateData.email &&
+    updateData.email !== existingUser.email
+  ) {
+    const emailOwner =
+      await prisma.user.findUnique({
+        where: {
+          email: updateData.email,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (
+      emailOwner &&
+      emailOwner.id !== Number(id)
+    ) {
+      throw new Error(
+        "Email address is already in use."
+      );
+    }
+  }
+
+  // -----------------------------------------------
+  // UPDATE DATABASE
+  // -----------------------------------------------
+
+  return await prisma.user.update({
+    where: {
+      id: Number(id),
+    },
+
+    data: updateData,
+
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+};
 /*
 ==================================================
 3. GET PLATFORM REPORT

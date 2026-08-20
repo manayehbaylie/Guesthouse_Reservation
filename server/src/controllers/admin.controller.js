@@ -5,6 +5,7 @@ import {
   deleteUser,
   getAllUsers,
   updateUserRole,
+  updateAdminProfile,
   getPlatformReport,
   getSystemActivity,
 } from "../services/admin.service.js";
@@ -137,6 +138,41 @@ export const getActivity = async (req, res, next) => {
       res,
       activity,
       "System activity fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+export const updateAdminProfileController = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const user = await updateAdminProfile(
+      req.user.id,
+      req.body
+    );
+
+    return successResponse(
+      res,
+      {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        guesthouseId: user.guesthouseId,
+        createdAt: user.createdAt,
+      },
+      "Profile updated successfully"
     );
   } catch (error) {
     next(error);

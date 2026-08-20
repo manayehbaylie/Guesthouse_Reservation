@@ -7,6 +7,7 @@ import {
   deleteUserController,
   getUsers,
   updateUserRoleController,
+  updateAdminProfileController,
   getReports,
   getActivity,
 } from "../controllers/admin.controller.js";
@@ -224,5 +225,10 @@ router.get(
   authorize("ADMIN"),
   getActivity
 );
-
+router.put(
+  "/profile",
+  authenticate,
+  authorize("ADMIN"),
+  updateAdminProfileController
+);
 export default router;

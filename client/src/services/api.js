@@ -849,6 +849,7 @@ export const ApiService = {
 
   getApiUrl,
 
+
   // ----------------------------------------------------------
   // AUTH
   // ----------------------------------------------------------
@@ -856,6 +857,7 @@ export const ApiService = {
   getCurrentUser() {
     return getCurrentUser();
   },
+
 
   setCurrentUser(
     user,
@@ -867,9 +869,66 @@ export const ApiService = {
     );
   },
 
+
   logoutUser() {
     logoutUser();
   },
+
+  
+   // ==========================================================
+  // UPDATE CURRENT ADMIN/USER PROFILE
+  // ==========================================================
+
+  async updateProfile(data) {
+    if (!data) {
+      throw new Error(
+        'Profile data is required.'
+      );
+    }
+
+    const response = await api.put(
+      '/admin/profile',
+      {
+        fullName:
+          data.name ?? '',
+
+        email:
+          data.email ?? '',
+
+        phone:
+          data.phone ?? '',
+
+        ...(data.password?.trim()
+          ? {
+              password:
+                data.password.trim(),
+            }
+          : {}),
+      }
+    );
+
+    const updatedUser =
+      mapUserFromBackend(
+        unwrap(response)
+      );
+
+    if (!updatedUser) {
+      throw new Error(
+        'Profile update returned no user data.'
+      );
+    }
+
+    const currentUser =
+      getCurrentUser();
+
+    setCurrentUser({
+      ...(currentUser || {}),
+      ...updatedUser,
+    });
+
+    return updatedUser;
+  },
+
 
   async loginUser(
     email,
@@ -2304,30 +2363,28 @@ export const ApiService = {
   },
 
   async updateUserRole(
-    userId,
-    role
-  ) {
-    if (!userId) {
-      throw new Error(
-        'User ID is required'
-      );
-    }
-
-    const response =
-      await api.put(
-        `/admin/users/${userId}/role`,
-        {
-          role:
-            String(
-              role
-            ).toUpperCase(),
-        }
-      );
-
-    return mapUserFromBackend(
-      unwrap(response)
+  userId,
+  role
+) {
+  if (!userId) {
+    throw new Error(
+      'User ID is required'
     );
-  },
+  }
+
+  const response =
+    await api.patch(
+      `/admin/users/${userId}/role`,
+      {
+        role:
+          String(role).toUpperCase(),
+      }
+    );
+
+  return mapUserFromBackend(
+    unwrap(response)
+  );
+},
 
   async rejectGuesthouse(
     id,
