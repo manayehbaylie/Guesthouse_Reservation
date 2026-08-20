@@ -9,105 +9,153 @@ import {
 
 import { successResponse } from "../utils/response.js";
 
-// ========================================
-// Create Reservation
-// ========================================
-export const create = async (req, res, next) => {
-  try {
 
-    // Validate request
-    const data = reservationSchema.parse(req.body);
+// ============================================================
+// CREATE RESERVATION
+// ============================================================
 
-    // Logged-in guest ID
-    const guestId = req.user.id;
-
-    // Create reservation
-    const reservation = await createReservation(
-      data,
-      guestId
-    );
-
-    successResponse(
-      res,
-      reservation,
-      "Reservation created successfully",
-      201
-    );
-
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ========================================
-// Get All Reservations
-// ========================================
-export const getAll = async (req, res, next) => {
-  try {
-
-    const reservations =
-      await getAllReservations();
-
-    successResponse(
-      res,
-      reservations,
-      "Reservations fetched successfully"
-    );
-
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ========================================
-// Get Reservation By ID
-// ========================================
-export const getById = async (req, res, next) => {
-  try {
-
-    const reservation =
-      await getReservationById(req.params.id);
-
-    if (!reservation) {
-      throw new Error(
-        "Reservation not found"
-      );
-    }
-
-    successResponse(
-      res,
-      reservation,
-      "Reservation fetched successfully"
-    );
-
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ========================================
-// Update Reservation Status
-// ========================================
-export const updateStatus = async (
+export const create = async (
   req,
   res,
   next
 ) => {
   try {
+    // --------------------------------------------------------
+    // Authentication
+    // --------------------------------------------------------
 
-    const reservation =
-      await updateReservationStatus(
-        req.params.id,
-        req.body.status
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // Validate request body
+    // --------------------------------------------------------
+
+    const data =
+      reservationSchema.parse(
+        req.body
       );
 
-    successResponse(
+    // --------------------------------------------------------
+    // Create reservation
+    // --------------------------------------------------------
+
+    const reservation =
+      await createReservation(
+        data,
+        req.user.id
+      );
+
+    return successResponse(
       res,
       reservation,
-      "Reservation status updated successfully"
+      "Reservation created successfully",
+      201
     );
-
   } catch (error) {
     next(error);
   }
 };
+
+
+// ============================================================
+// GET ALL RESERVATIONS
+// ============================================================
+
+export const getAll = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const reservations =
+      await getAllReservations();
+
+    return successResponse(
+      res,
+      reservations,
+      "Reservations fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// ============================================================
+// GET RESERVATION BY ID
+// ============================================================
+
+export const getById = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const reservation =
+      await getReservationById(
+        req.params.id
+      );
+
+    if (!reservation) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Reservation not found.",
+      });
+    }
+
+    return successResponse(
+      res,
+      reservation,
+      "Reservation fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// ============================================================
+// UPDATE RESERVATION STATUS
+// ============================================================
+
+export const updateStatus =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const {
+        status,
+      } = req.body;
+
+      if (!status) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Reservation status is required.",
+        });
+      }
+
+      const reservation =
+        await updateReservationStatus(
+          req.params.id,
+          status
+        );
+
+      return successResponse(
+        res,
+        reservation,
+        "Reservation status updated successfully"
+      );
+    } catch (error) {
+      next(error);
+    }
+  };

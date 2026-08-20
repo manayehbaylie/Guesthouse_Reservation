@@ -12,7 +12,6 @@ const API_URL_KEY = 'gh_api_url';
 const CURRENT_USER_KEY = 'gh_current_user';
 const TOKEN_KEY = 'token';
 
-
 // ============================================================
 // API URL / BACKEND MODE
 // ============================================================
@@ -47,7 +46,6 @@ export function setBackendMode(
   api.defaults.baseURL = apiUrl;
 }
 
-
 // ============================================================
 // AXIOS INSTANCE
 // ============================================================
@@ -59,7 +57,6 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
 
 // ============================================================
 // REQUEST INTERCEPTOR
@@ -85,7 +82,6 @@ api.interceptors.request.use(
     Promise.reject(error)
 );
 
-
 // ============================================================
 // RESPONSE INTERCEPTOR
 // ============================================================
@@ -106,7 +102,6 @@ api.interceptors.response.use(
   }
 );
 
-
 // ============================================================
 // HELPERS
 // ============================================================
@@ -117,7 +112,6 @@ function unwrap(response) {
     response?.data
   );
 }
-
 
 // ============================================================
 // ROLE HELPERS
@@ -157,7 +151,6 @@ function mapRoleToBackend(role) {
   );
 }
 
-
 // ============================================================
 // USER MAPPING
 // ============================================================
@@ -190,7 +183,6 @@ function mapUserFromBackend(user) {
   };
 }
 
-
 // ============================================================
 // GUESTHOUSE STATUS
 // ============================================================
@@ -200,7 +192,6 @@ function mapGuesthouseStatus(status) {
 
   return String(status).toLowerCase();
 }
-
 
 // ============================================================
 // IMAGE HELPERS
@@ -222,7 +213,6 @@ function normalizeImageUrl(image) {
     return '';
   }
 
-  // Already an absolute URL
   if (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
@@ -232,13 +222,10 @@ function normalizeImageUrl(image) {
     return trimmed;
   }
 
-  // Keep normal root-relative URLs.
   if (trimmed.startsWith('/')) {
     return trimmed;
   }
 
-  // If backend returns a relative path,
-  // make it root-relative.
   return `/${trimmed}`;
 }
 
@@ -251,8 +238,6 @@ function getGuesthouseImages(
 
   const result = [];
 
-  // Backend may return:
-  // image: "..."
   const singleImage =
     normalizeImageUrl(
       guesthouse.image
@@ -262,8 +247,6 @@ function getGuesthouseImages(
     result.push(singleImage);
   }
 
-  // Backend may return:
-  // images: ["...", "..."]
   if (
     Array.isArray(
       guesthouse.images
@@ -284,8 +267,6 @@ function getGuesthouseImages(
     );
   }
 
-  // Some APIs may return photos
-  // instead of images.
   if (
     Array.isArray(
       guesthouse.photos
@@ -306,7 +287,6 @@ function getGuesthouseImages(
     );
   }
 
-  // Some APIs may return imageUrl.
   const imageUrl =
     normalizeImageUrl(
       guesthouse.imageUrl
@@ -321,7 +301,6 @@ function getGuesthouseImages(
 
   return result;
 }
-
 
 // ============================================================
 // GUESTHOUSE MAPPING
@@ -369,10 +348,6 @@ function mapGuesthouseFromBackend(
       ? Math.max(...prices)
       : 0;
 
-  // ----------------------------------------------------------
-  // IMAGE FIX
-  // ----------------------------------------------------------
-
   const images =
     getGuesthouseImages(
       guesthouse
@@ -418,12 +393,8 @@ function mapGuesthouseFromBackend(
         guesthouse.status
       ),
 
-    // Primary image
-    // Home.jsx can use this.
     image,
 
-    // Full image list
-    // Other pages can use this.
     images,
 
     amenities:
@@ -452,7 +423,6 @@ function mapGuesthouseFromBackend(
     },
   };
 }
-
 
 // ============================================================
 // ROOM MAPPING
@@ -494,7 +464,6 @@ function mapRoomFromBackend(room) {
       ),
   };
 }
-
 
 // ============================================================
 // RESERVATION MAPPING
@@ -626,7 +595,6 @@ function mapReservationFromBackend(
   };
 }
 
-
 // ============================================================
 // CALCULATE NIGHTS
 // ============================================================
@@ -659,7 +627,6 @@ function calculateNights(
     ? nights
     : 0;
 }
-
 
 // ============================================================
 // PAYMENT MAPPING
@@ -715,7 +682,6 @@ function mapPaymentFromBackend(
   };
 }
 
-
 function mapPaymentMethodToBackend(
   method
 ) {
@@ -734,7 +700,6 @@ function mapPaymentMethodToBackend(
 
   return 'TELEBIRR';
 }
-
 
 // ============================================================
 // PHONE / DATE HELPERS
@@ -768,7 +733,6 @@ function formatEthiopianPhone(phone) {
   return cleaned;
 }
 
-
 function toIsoDateTime(
   dateString
 ) {
@@ -785,7 +749,6 @@ function toIsoDateTime(
 
   return `${dateString}T12:00:00.000Z`;
 }
-
 
 // ============================================================
 // AUTH / CURRENT USER
@@ -809,7 +772,6 @@ function getCurrentUser() {
     return null;
   }
 }
-
 
 function setCurrentUser(
   user,
@@ -840,7 +802,6 @@ function setCurrentUser(
   }
 }
 
-
 function logoutUser() {
   localStorage.removeItem(
     CURRENT_USER_KEY
@@ -850,7 +811,6 @@ function logoutUser() {
     TOKEN_KEY
   );
 }
-
 
 // ============================================================
 // HEALTH CHECK
@@ -873,7 +833,6 @@ export async function checkBackendHealth() {
   }
 }
 
-
 // ============================================================
 // API SERVICE
 // ============================================================
@@ -890,7 +849,6 @@ export const ApiService = {
 
   getApiUrl,
 
-
   // ----------------------------------------------------------
   // AUTH
   // ----------------------------------------------------------
@@ -898,7 +856,6 @@ export const ApiService = {
   getCurrentUser() {
     return getCurrentUser();
   },
-
 
   setCurrentUser(
     user,
@@ -910,11 +867,9 @@ export const ApiService = {
     );
   },
 
-
   logoutUser() {
     logoutUser();
   },
-
 
   async loginUser(
     email,
@@ -944,7 +899,6 @@ export const ApiService = {
 
     return user;
   },
-
 
   async registerUser(
     payload
@@ -1036,7 +990,6 @@ export const ApiService = {
     return user;
   },
 
-
   // ----------------------------------------------------------
   // USERS
   // ----------------------------------------------------------
@@ -1055,11 +1008,9 @@ export const ApiService = {
     );
   },
 
-
   async fetchAdminUsers() {
     return this.getAllUsers();
   },
-
 
   // ----------------------------------------------------------
   // GUESTHOUSES
@@ -1131,7 +1082,6 @@ export const ApiService = {
     return list;
   },
 
-
   async getGuesthouseById(
     id
   ) {
@@ -1166,7 +1116,6 @@ export const ApiService = {
       rooms
     );
   },
-
 
   async registerGuesthouse(
     data
@@ -1207,7 +1156,6 @@ export const ApiService = {
     );
   },
 
-
   // ----------------------------------------------------------
   // ROOMS
   // ----------------------------------------------------------
@@ -1235,7 +1183,6 @@ export const ApiService = {
         mapRoomFromBackend
       );
   },
-
 
   async addRoom(
     roomData
@@ -1274,7 +1221,6 @@ export const ApiService = {
     );
   },
 
-
   async updateRoomAvailability(
     roomId,
     status
@@ -1293,33 +1239,92 @@ export const ApiService = {
     );
   },
 
-
   async updateRoom(
     roomId,
     roomData
   ) {
     const payload = {};
-    if (roomData.roomNumber !== undefined) payload.roomNumber = String(roomData.roomNumber);
-    if (roomData.roomType || roomData.type) payload.roomType = String(roomData.roomType || roomData.type).toUpperCase();
-    if (roomData.price !== undefined || roomData.pricePerNight !== undefined) {
-      payload.price = Number(roomData.price !== undefined ? roomData.price : roomData.pricePerNight);
+
+    if (
+      roomData.roomNumber !== undefined
+    ) {
+      payload.roomNumber =
+        String(
+          roomData.roomNumber
+        );
     }
-    if (roomData.capacity !== undefined) payload.capacity = Number(roomData.capacity);
-    if (roomData.available !== undefined) payload.available = Boolean(roomData.available);
-    if (roomData.availabilityStatus !== undefined) payload.available = roomData.availabilityStatus === 'available';
 
-    const response = await api.put(`/rooms/${roomId}`, payload);
-    return mapRoomFromBackend(unwrap(response));
+    if (
+      roomData.roomType ||
+      roomData.type
+    ) {
+      payload.roomType =
+        String(
+          roomData.roomType ||
+          roomData.type
+        ).toUpperCase();
+    }
+
+    if (
+      roomData.price !== undefined ||
+      roomData.pricePerNight !== undefined
+    ) {
+      payload.price =
+        Number(
+          roomData.price !== undefined
+            ? roomData.price
+            : roomData.pricePerNight
+        );
+    }
+
+    if (
+      roomData.capacity !== undefined
+    ) {
+      payload.capacity =
+        Number(
+          roomData.capacity
+        );
+    }
+
+    if (
+      roomData.available !== undefined
+    ) {
+      payload.available =
+        Boolean(
+          roomData.available
+        );
+    }
+
+    if (
+      roomData.availabilityStatus !==
+      undefined
+    ) {
+      payload.available =
+        roomData.availabilityStatus ===
+        'available';
+    }
+
+    const response =
+      await api.put(
+        `/rooms/${roomId}`,
+        payload
+      );
+
+    return mapRoomFromBackend(
+      unwrap(response)
+    );
   },
-
 
   async deleteRoom(
     roomId
   ) {
-    const response = await api.delete(`/rooms/${roomId}`);
+    const response =
+      await api.delete(
+        `/rooms/${roomId}`
+      );
+
     return unwrap(response);
   },
-
 
   // ----------------------------------------------------------
   // RESERVATIONS
@@ -1454,43 +1459,29 @@ export const ApiService = {
           totalPrice,
 
           paymentStatus:
-            'paid',
+            payment?.status ||
+            'pending',
+
+          status:
+            reservation.status ||
+            'pending',
         }),
 
       payment,
     };
   },
 
+  // ==========================================================
+  // CORRECTED RESERVATION FETCHING
+  // ==========================================================
 
   async getReservations(
     filters = {}
   ) {
-    const currentUser =
-      getCurrentUser();
-
-    const role =
-      currentUser?.role;
-
-    let response;
-
-    if (role === 'GUEST') {
-      response =
-        await api.get(
-          '/guest/reservations'
-        );
-    } else if (
-      role === 'RECEPTIONIST'
-    ) {
-      response =
-        await api.get(
-          '/receptionist/reservations'
-        );
-    } else {
-      response =
-        await api.get(
-          '/reservations'
-        );
-    }
+    const response =
+      await api.get(
+        '/reservations'
+      );
 
     let list =
       (
@@ -1527,7 +1518,6 @@ export const ApiService = {
 
     return list;
   },
-
 
   // ----------------------------------------------------------
   // RECEPTIONIST
@@ -1629,7 +1619,6 @@ export const ApiService = {
     };
   },
 
-
   async getReceptionistArrivals(
     guesthouseId
   ) {
@@ -1659,7 +1648,6 @@ export const ApiService = {
         )
     );
   },
-
 
   async getReceptionistDepartures(
     guesthouseId
@@ -1691,7 +1679,6 @@ export const ApiService = {
     );
   },
 
-
   async getReceptionistInHouse() {
     const response =
       await api.get(
@@ -1702,7 +1689,6 @@ export const ApiService = {
       unwrap(response) || []
     );
   },
-
 
   async getReceptionistReservations(
     guesthouseId
@@ -1734,7 +1720,6 @@ export const ApiService = {
     );
   },
 
-
   async getReceptionistRooms() {
     const response =
       await api.get(
@@ -1746,11 +1731,17 @@ export const ApiService = {
     );
   },
 
-    async updateReceptionistRoomAvailability(roomId, maintenanceStatus) {
-    const response = await api.patch(
-      `/receptionist/rooms/${roomId}/availability`,
-      { maintenanceStatus }
-    );
+  async updateReceptionistRoomAvailability(
+    roomId,
+    maintenanceStatus
+  ) {
+    const response =
+      await api.patch(
+        `/receptionist/rooms/${roomId}/availability`,
+        {
+          maintenanceStatus,
+        }
+      );
 
     return unwrap(response);
   },
@@ -1768,7 +1759,6 @@ export const ApiService = {
     );
   },
 
-
   async checkInGuest(
     reservationId
   ) {
@@ -1782,8 +1772,7 @@ export const ApiService = {
     );
   },
 
-
-    async performCheckOut(
+  async performCheckOut(
     reservationId
   ) {
     const response =
@@ -1795,7 +1784,6 @@ export const ApiService = {
       unwrap(response)
     );
   },
-
 
   async checkOutGuest(
     reservationId
@@ -1818,145 +1806,355 @@ export const ApiService = {
 
   async getMyGuesthouse() {
     try {
-      const response = await api.get('/owner/guesthouse');
-      const data = unwrap(response);
+      const response =
+        await api.get(
+          '/owner/guesthouse'
+        );
+
+      const data =
+        unwrap(response);
+
       if (!data) return null;
+
       let rooms = [];
+
       try {
-        const roomsRes = await api.get(`/rooms/guesthouse/${data.id}`);
-        rooms = unwrap(roomsRes) || [];
+        const roomsRes =
+          await api.get(
+            `/rooms/guesthouse/${data.id}`
+          );
+
+        rooms =
+          unwrap(roomsRes) || [];
       } catch {
         rooms = [];
       }
-      return mapGuesthouseFromBackend(data, rooms);
+
+      return mapGuesthouseFromBackend(
+        data,
+        rooms
+      );
     } catch {
       try {
-        const fallbackRes = await api.get('/guesthouses/owner/me');
-        const data = unwrap(fallbackRes);
+        const fallbackRes =
+          await api.get(
+            '/guesthouses/owner/me'
+          );
+
+        const data =
+          unwrap(fallbackRes);
+
         if (!data) return null;
-        return mapGuesthouseFromBackend(data);
+
+        return mapGuesthouseFromBackend(
+          data
+        );
       } catch {
         return null;
       }
     }
   },
 
-  async updateMyGuesthouse(data) {
-    const response = await api.put('/owner/guesthouse', {
-      name: data.name,
-      address: data.location || data.address,
-      city: data.city,
-      description: data.description,
-      image: data.images?.[0] || data.image || null,
-    });
-    return mapGuesthouseFromBackend(unwrap(response));
+  async updateMyGuesthouse(
+    data
+  ) {
+    const response =
+      await api.put(
+        '/owner/guesthouse',
+        {
+          name:
+            data.name,
+
+          address:
+            data.location ||
+            data.address,
+
+          city:
+            data.city,
+
+          description:
+            data.description,
+
+          image:
+            data.images?.[0] ||
+            data.image ||
+            null,
+        }
+      );
+
+    return mapGuesthouseFromBackend(
+      unwrap(response)
+    );
   },
 
-  async getOwnerReceptionists(guesthouseId) {
-    const response = await api.get('/owner/receptionists');
-    const staff = unwrap(response) || [];
-    return staff.map(mapUserFromBackend);
+  async getOwnerReceptionists(
+    guesthouseId
+  ) {
+    const response =
+      await api.get(
+        '/owner/receptionists'
+      );
+
+    const staff =
+      unwrap(response) || [];
+
+    return staff.map(
+      mapUserFromBackend
+    );
   },
 
-  async registerReceptionist(staffData) {
-    const response = await api.post('/owner/receptionists', {
-      fullName: staffData.fullName || staffData.name,
-      name: staffData.fullName || staffData.name,
-      email: staffData.email,
-      phone: staffData.phone,
-      password: staffData.password || 'Reception@123',
-    });
-    return mapUserFromBackend(unwrap(response));
+  async registerReceptionist(
+    staffData
+  ) {
+    const response =
+      await api.post(
+        '/owner/receptionists',
+        {
+          fullName:
+            staffData.fullName ||
+            staffData.name,
+
+          name:
+            staffData.fullName ||
+            staffData.name,
+
+          email:
+            staffData.email,
+
+          phone:
+            staffData.phone,
+
+          password:
+            staffData.password ||
+            'Reception@123',
+        }
+      );
+
+    return mapUserFromBackend(
+      unwrap(response)
+    );
   },
 
-  async removeReceptionistFromGuesthouse(staffId) {
-    const response = await api.delete(`/owner/receptionists/${staffId}`);
+  async removeReceptionistFromGuesthouse(
+    staffId
+  ) {
+    const response =
+      await api.delete(
+        `/owner/receptionists/${staffId}`
+      );
+
     return unwrap(response);
   },
 
-  async assignReceptionistToGuesthouse(staffId) {
-    const response = await api.post('/owner/receptionists/assign', {
-      staffId: Number(staffId),
-    });
+  async assignReceptionistToGuesthouse(
+    staffId
+  ) {
+    const response =
+      await api.post(
+        '/owner/receptionists/assign',
+        {
+          staffId:
+            Number(staffId),
+        }
+      );
+
     return unwrap(response);
   },
 
   async getOwnerDashboardStats() {
-    const response = await api.get('/dashboard/owner');
+    const response =
+      await api.get(
+        '/dashboard/owner'
+      );
+
     return unwrap(response) || {};
   },
 
   async getOwnerDashboardRevenue() {
-    const response = await api.get('/dashboard/owner/revenue');
-    const data = unwrap(response) || {};
+    const response =
+      await api.get(
+        '/dashboard/owner/revenue'
+      );
+
+    const data =
+      unwrap(response) || {};
+
     return {
-      totalRevenue: Number(data.totalRevenue ?? 0),
+      totalRevenue:
+        Number(
+          data.totalRevenue ?? 0
+        ),
+
       breakdown: {
-        telebirr: Number(data.breakdown?.telebirr ?? 0),
-        chapa: Number(data.breakdown?.chapa ?? 0),
-        cbe_birr: Number(data.breakdown?.cbe_birr ?? 0),
+        telebirr:
+          Number(
+            data.breakdown?.telebirr ?? 0
+          ),
+
+        chapa:
+          Number(
+            data.breakdown?.chapa ?? 0
+          ),
+
+        cbe_birr:
+          Number(
+            data.breakdown?.cbe_birr ?? 0
+          ),
       },
     };
   },
 
   async getOwnerDashboardMonthlyRevenue() {
-    const response = await api.get('/dashboard/owner/monthly-revenue');
+    const response =
+      await api.get(
+        '/dashboard/owner/monthly-revenue'
+      );
+
     return unwrap(response) || [];
   },
 
   async getOwnerDashboardRecentReservations() {
-    const response = await api.get('/dashboard/owner/recent-reservations');
-    const list = unwrap(response) || [];
-    return list.map(mapReservationFromBackend);
+    const response =
+      await api.get(
+        '/dashboard/owner/recent-reservations'
+      );
+
+    const list =
+      unwrap(response) || [];
+
+    return list.map(
+      mapReservationFromBackend
+    );
   },
 
   async getOwnerDashboardRecentPayments() {
-    const response = await api.get('/dashboard/owner/recent-payments');
-    const list = unwrap(response) || [];
-    return list.map(mapPaymentFromBackend);
+    const response =
+      await api.get(
+        '/dashboard/owner/recent-payments'
+      );
+
+    const list =
+      unwrap(response) || [];
+
+    return list.map(
+      mapPaymentFromBackend
+    );
   },
 
-  async getOwnerPayments(guesthouseId) {
-    const response = await api.get('/dashboard/owner/recent-payments');
-    const payments = (unwrap(response) || []).map(mapPaymentFromBackend);
+  async getOwnerPayments(
+    guesthouseId
+  ) {
+    const response =
+      await api.get(
+        '/dashboard/owner/recent-payments'
+      );
+
+    const payments =
+      (
+        unwrap(response) || []
+      ).map(
+        mapPaymentFromBackend
+      );
 
     if (!guesthouseId) {
       return payments;
     }
 
     return payments.filter(
-      (payment) => String(payment.guesthouseId) === String(guesthouseId)
+      (payment) =>
+        String(
+          payment.guesthouseId
+        ) ===
+        String(
+          guesthouseId
+        )
     );
   },
 
-  async getOwnerRevenueReport(guesthouseId) {
-    const response = await api.get('/dashboard/owner/revenue');
-    const data = unwrap(response) || {};
+  async getOwnerRevenueReport(
+    guesthouseId
+  ) {
+    const response =
+      await api.get(
+        '/dashboard/owner/revenue'
+      );
 
-    const payments = await this.getOwnerPayments(guesthouseId);
+    const data =
+      unwrap(response) || {};
 
-    const telebirr = data.breakdown?.telebirr ?? payments
-      .filter((p) => p.method === 'telebirr')
-      .reduce((sum, p) => sum + p.amount, 0);
+    const payments =
+      await this.getOwnerPayments(
+        guesthouseId
+      );
 
-    const chapa = data.breakdown?.chapa ?? payments
-      .filter((p) => p.method === 'chapa' || p.method === 'card')
-      .reduce((sum, p) => sum + p.amount, 0);
+    const telebirr =
+      data.breakdown?.telebirr ??
+      payments
+        .filter(
+          (p) =>
+            p.method ===
+            'telebirr'
+        )
+        .reduce(
+          (sum, p) =>
+            sum + p.amount,
+          0
+        );
 
-    const cbe_birr = data.breakdown?.cbe_birr ?? payments
-      .filter((p) => p.method === 'cbe_birr' || p.method === 'bank_transfer')
-      .reduce((sum, p) => sum + p.amount, 0);
+    const chapa =
+      data.breakdown?.chapa ??
+      payments
+        .filter(
+          (p) =>
+            p.method === 'chapa' ||
+            p.method === 'card'
+        )
+        .reduce(
+          (sum, p) =>
+            sum + p.amount,
+          0
+        );
+
+    const cbe_birr =
+      data.breakdown?.cbe_birr ??
+      payments
+        .filter(
+          (p) =>
+            p.method === 'cbe_birr' ||
+            p.method ===
+              'bank_transfer'
+        )
+        .reduce(
+          (sum, p) =>
+            sum + p.amount,
+          0
+        );
 
     return {
-      totalRevenue: Number(data.totalRevenue ?? (telebirr + chapa + cbe_birr)),
-      totalTransactions: payments.length,
+      totalRevenue:
+        Number(
+          data.totalRevenue ??
+          (
+            telebirr +
+            chapa +
+            cbe_birr
+          )
+        ),
+
+      totalTransactions:
+        payments.length,
+
       paymentMethodBreakdown: {
         telebirr,
         chapa,
         cbe_birr,
         card: chapa,
       },
-      occupancyRate: Number(data.occupancyRate ?? 0),
+
+      occupancyRate:
+        Number(
+          data.occupancyRate ?? 0
+        ),
     };
   },
 
@@ -1965,37 +2163,59 @@ export const ApiService = {
   // ----------------------------------------------------------
 
   async getOwnerReviews() {
-    const response = await api.get('/reviews/owner-reviews');
+    const response =
+      await api.get(
+        '/reviews/owner-reviews'
+      );
+
     return unwrap(response) || [];
   },
 
-  async getGuesthouseReviews(guesthouseId) {
-    const response = await api.get(`/reviews/guesthouse/${guesthouseId}`);
+  async getGuesthouseReviews(
+    guesthouseId
+  ) {
+    const response =
+      await api.get(
+        `/reviews/guesthouse/${guesthouseId}`
+      );
+
     return unwrap(response) || [];
   },
 
-  async respondToReview(reviewId, responseText) {
-    const response = await api.put(`/reviews/${reviewId}/respond`, {
-      response: responseText,
-    });
+  async respondToReview(
+    reviewId,
+    responseText
+  ) {
+    const response =
+      await api.put(
+        `/reviews/${reviewId}/respond`,
+        {
+          response:
+            responseText,
+        }
+      );
+
     return unwrap(response);
   },
-
 
   // ----------------------------------------------------------
   // ADMIN
   // ----------------------------------------------------------
+
   async deleteGuesthouse(id) {
-  if (!id) {
-    throw new Error('Guesthouse ID is required.');
-  }
+    if (!id) {
+      throw new Error(
+        'Guesthouse ID is required.'
+      );
+    }
 
-  const response = await api.delete(
-    `/admin/guesthouses/${id}`
-  );
+    const response =
+      await api.delete(
+        `/admin/guesthouses/${id}`
+      );
 
-  return unwrap(response);
-},
+    return unwrap(response);
+  },
 
   async getAdminPlatformStats() {
     const response =
@@ -2019,7 +2239,6 @@ export const ApiService = {
       approvedGuesthouses:
         Math.max(
           0,
-
           Number(
             stats.totalGuesthouses ??
             0
@@ -2050,7 +2269,6 @@ export const ApiService = {
     };
   },
 
-
   async getAdminPendingGuesthouses() {
     const response =
       await api.get(
@@ -2070,62 +2288,71 @@ export const ApiService = {
       .filter(Boolean);
   },
 
-  async deleteGuesthouse(id) {
-    if (!id) {
-      throw new Error('Guesthouse ID is required');
-    }
-
-    const response = await api.delete(
-      `/admin/guesthouses/${id}`
-    );
-
-    return unwrap(response);
-  },
-
   async deleteUser(id) {
     if (!id) {
-      throw new Error('User ID is required');
+      throw new Error(
+        'User ID is required'
+      );
     }
 
-    const response = await api.delete(
-      `/admin/users/${id}`
-    );
+    const response =
+      await api.delete(
+        `/admin/users/${id}`
+      );
 
     return unwrap(response);
   },
 
-  async updateUserRole(userId, role) {
+  async updateUserRole(
+    userId,
+    role
+  ) {
     if (!userId) {
-      throw new Error('User ID is required');
+      throw new Error(
+        'User ID is required'
+      );
     }
 
-    const response = await api.put(
-      `/admin/users/${userId}/role`,
-      {
-        role: String(role).toUpperCase(),
-      }
-    );
+    const response =
+      await api.put(
+        `/admin/users/${userId}/role`,
+        {
+          role:
+            String(
+              role
+            ).toUpperCase(),
+        }
+      );
 
     return mapUserFromBackend(
       unwrap(response)
     );
   },
-    async rejectGuesthouse(id, reason = 'Does not meet platform standards') {
+
+  async rejectGuesthouse(
+    id,
+    reason =
+      'Does not meet platform standards'
+  ) {
     if (!id) {
-      throw new Error('Guesthouse ID is required');
+      throw new Error(
+        'Guesthouse ID is required'
+      );
     }
 
-    const response = await api.put(
-      `/admin/guesthouses/${id}/reject`,
-      {
-        reason,
-      }
-    );
+    const response =
+      await api.put(
+        `/admin/guesthouses/${id}/reject`,
+        {
+          reason,
+        }
+      );
 
     return mapGuesthouseFromBackend(
       unwrap(response)
     );
   },
+
   async approveGuesthouse(
     id
   ) {
@@ -2139,7 +2366,6 @@ export const ApiService = {
     );
   },
 };
-
 
 // ============================================================
 // DEFAULT EXPORT

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 import {
   MapPin,
   ShieldCheck,
@@ -168,28 +169,14 @@ const FALLBACK_GUESTHOUSES = [
 |--------------------------------------------------------------------------
 | BACKEND IMAGE URL
 |--------------------------------------------------------------------------
-|
-| Handles:
-|   https://example.com/image.jpg
-|   /uploads/image.jpg
-|   uploads/image.jpg
-|
-|--------------------------------------------------------------------------
 */
 
 const getBackendBaseUrl = () => {
-  const configuredUrl =
-    import.meta.env.VITE_API_BASE_URL || "";
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL || "";
 
-  /*
-   * If VITE_API_BASE_URL is something like:
-   * http://localhost:5000/api
-   *
-   * We remove /api because uploaded images normally live at:
-   * http://localhost:5000/uploads/...
-   */
-
-  return configuredUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
+  return configuredUrl
+    .replace(/\/api\/?$/, "")
+    .replace(/\/$/, "");
 };
 
 const resolveImageUrl = (image) => {
@@ -261,10 +248,6 @@ const getGuesthouseImage = (guesthouse) => {
     return "";
   }
 
-  /*
-   * Check the common backend/frontend image fields.
-   */
-
   const possibleImages = [
     guesthouse.image,
     guesthouse.imageUrl,
@@ -274,17 +257,9 @@ const getGuesthouseImage = (guesthouse) => {
     guesthouse.thumbnail,
   ];
 
-  /*
-   * Check images array.
-   */
-
   if (Array.isArray(guesthouse.images)) {
     possibleImages.push(...guesthouse.images);
   }
-
-  /*
-   * Find the first valid image.
-   */
 
   const image = possibleImages.find(
     (item) => typeof item === "string" && item.trim() !== ""
@@ -300,9 +275,7 @@ const getGuesthouseImage = (guesthouse) => {
 */
 
 const isVerifiedGuesthouse = (guesthouse) => {
-  const status = String(
-    guesthouse?.status || ""
-  ).toUpperCase();
+  const status = String(guesthouse?.status || "").toUpperCase();
 
   return (
     status === "APPROVED" ||
@@ -358,15 +331,8 @@ const normalizeGuesthouse = (guesthouse) => {
         0
     ),
 
-    /*
-     * IMPORTANT:
-     * Home.jsx will now always use guesthouse.image.
-     */
     image,
 
-    /*
-     * Keep images available for other pages.
-     */
     images: Array.isArray(guesthouse.images)
       ? guesthouse.images
           .map(resolveImageUrl)
@@ -403,12 +369,6 @@ const removeDuplicates = (guesthouses) => {
       .trim()
       .toLowerCase();
 
-    /*
-     * If the backend has an ID, use it.
-     * This prevents two different guesthouses with the
-     * same name/city from accidentally being treated as one.
-     */
-
     const id = guesthouse.id
       ? String(guesthouse.id)
       : "";
@@ -434,15 +394,15 @@ const removeDuplicates = (guesthouses) => {
 */
 
 const handleImageError = (event) => {
-  /*
-   * Prevent an infinite image-error loop.
-   */
-
-  if (event.currentTarget.dataset.fallbackApplied === "true") {
+  if (
+    event.currentTarget.dataset.fallbackApplied ===
+    "true"
+  ) {
     return;
   }
 
-  event.currentTarget.dataset.fallbackApplied = "true";
+  event.currentTarget.dataset.fallbackApplied =
+    "true";
 
   event.currentTarget.style.display = "none";
 
@@ -464,6 +424,17 @@ const handleImageError = (event) => {
 
 export function Home() {
   const navigate = useNavigate();
+
+  /*
+   * Get the currently logged-in user.
+   *
+   * user === null/undefined
+   *     -> visitor is not logged in
+   *
+   * user exists
+   *     -> visitor is logged in
+   */
+  const { user } = useAuth();
 
   const [guesthouses, setGuesthouses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -536,13 +507,7 @@ export function Home() {
 
         /*
         |--------------------------------------------------------------------------
-        | IMPORTANT
-        |--------------------------------------------------------------------------
-        |
-        | API guesthouses are shown first.
-        | Fallback guesthouses are only added if they don't duplicate
-        | a real backend guesthouse.
-        |
+        | COMBINE API + FALLBACK
         |--------------------------------------------------------------------------
         */
 
@@ -598,19 +563,67 @@ export function Home() {
 
   /*
   |--------------------------------------------------------------------------
-  | VIEW GUESTHOUSE
+  | VIEW & BOOK
+  |--------------------------------------------------------------------------
+  |
+  | IMPORTANT:
+  |
+  | If the visitor is NOT logged in:
+  |     Home
+  |       ↓
+  |     View & Book
+  |       ↓
+  |     Login
+  |
+  | If the visitor IS logged in:
+  |     Home
+  |       ↓
+  |     View & Book
+  |       ↓
+  |     Guesthouse Details
+  |
   |--------------------------------------------------------------------------
   */
 
   const handleViewAndBook = (guesthouse) => {
-    navigate(
-      `/guesthouses/${guesthouse.id}`,
-      {
+    if (!guesthouse?.id) {
+      console.error(
+        "Cannot open guesthouse because the guesthouse ID is missing."
+      );
+
+      return;
+    }
+
+    /*
+     * USER IS NOT LOGGED IN
+     *
+     * Send them to the login page.
+     *
+     * We also send the selected guesthouse information
+     * through router state so Login.jsx can know where
+     * the user wanted to go.
+     */
+    if (!user) {
+      navigate("/login", {
         state: {
+          from: `/guesthouses/${guesthouse.id}`,
           guesthouse,
         },
-      }
-    );
+      });
+
+      return;
+    }
+
+    /*
+     * USER IS ALREADY LOGGED IN
+     *
+     * Continue directly to the guesthouse details page.
+     */
+    navigate(`/guesthouses/${guesthouse.id}`, {
+      state: {
+        guesthouse,
+      },
+    });
   };
 
   /*
@@ -737,13 +750,14 @@ export function Home() {
 
                   <div className="relative h-52 overflow-hidden bg-stone-200">
 
-                    {/* IMAGE */}
-
                     {imageUrl ? (
 
                       <img
                         src={imageUrl}
-                        alt={guesthouse.name || "Guesthouse"}
+                        alt={
+                          guesthouse.name ||
+                          "Guesthouse"
+                        }
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                         loading="lazy"
                         onError={handleImageError}
@@ -776,7 +790,8 @@ export function Home() {
 
                     <div className="absolute bottom-3 right-3 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-stone-800 shadow">
 
-                      {guesthouse.city || "Ethiopia"}
+                      {guesthouse.city ||
+                        "Ethiopia"}
 
                     </div>
 
