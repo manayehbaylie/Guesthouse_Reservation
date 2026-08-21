@@ -21,6 +21,7 @@ import {
   X,
   SlidersHorizontal,
   ArrowLeft,
+  Printer,
 } from 'lucide-react';
 
 export function ReceptionistDashboard() {
@@ -37,6 +38,8 @@ export function ReceptionistDashboard() {
   const [activeTab, setActiveTab] = useState('arrivals');
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState(null);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [receiptReservation, setReceiptReservation] = useState(null);
 
 
 
@@ -105,20 +108,26 @@ export function ReceptionistDashboard() {
   };
 
   const handleCheckIn = async (resId) => {
+    setActionLoadingId(resId);
     try {
       await ApiService.checkInGuest(resId);
       await loadData();
     } catch (err) {
       setError(err.message || 'Check-in error');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const handleCheckOut = async (resId) => {
+    setActionLoadingId(resId);
     try {
       await ApiService.checkOutGuest(resId);
       await loadData();
     } catch (err) {
       setError(err.message || 'Check-out error');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -256,6 +265,21 @@ export function ReceptionistDashboard() {
           </button>
 
           <button
+            onClick={() => { setActiveTab('inhouse'); setSearchTerm(''); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
+              activeTab === 'inhouse' 
+                ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border-2 border-teal-400' 
+                : 'text-stone-600 bg-white border-2 border-stone-200 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700'
+            }`}
+          >
+            <BedDouble className={`w-5 h-5 ${activeTab === 'inhouse' ? 'text-white' : 'text-teal-500'}`} />
+            <div className="flex-1 text-left">
+              <div className="font-bold">In-House Guests</div>
+              <div className={`text-xs ${activeTab === 'inhouse' ? 'text-teal-100' : 'text-stone-500'}`}>{dashboardStats?.inHouse ?? inHouseGuests.length} staying</div>
+            </div>
+          </button>
+
+          <button
             onClick={() => { setActiveTab('rooms'); setSearchTerm(''); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
               activeTab === 'rooms' 
@@ -315,12 +339,14 @@ export function ReceptionistDashboard() {
               <h1 className="text-2xl font-bold text-stone-900">
                 {activeTab === 'arrivals' && "Today's Expected Arrivals"}
                 {activeTab === 'departures' && "Today's Expected Departures"}
+                {activeTab === 'inhouse' && "Guests Currently In-House"}
                 {activeTab === 'all' && "Property Reservation Master List"}
                 {activeTab === 'rooms' && "Room Availability Management"}
               </h1>
               <p className="text-sm text-stone-500 mt-1">
                 {activeTab === 'arrivals' && "Guests scheduled to check in today"}
                 {activeTab === 'departures' && "Guests currently checked in scheduled to depart today"}
+                {activeTab === 'inhouse' && "All guests currently staying, regardless of departure date"}
                 {activeTab === 'all' && `Full list of reservations for ${guesthouse?.name || 'guesthouse'}`}
                 {activeTab === 'rooms' && "Receptionists can toggle room status after check-out, for housekeeping, or maintenance"}
               </p>
@@ -338,7 +364,10 @@ export function ReceptionistDashboard() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-2xl border-2 border-blue-200 shadow-lg shadow-blue-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl">
+          <button
+            onClick={() => { setActiveTab('arrivals'); setSearchTerm(''); }}
+            className="text-left bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-2xl border-2 border-blue-200 shadow-lg shadow-blue-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
+          >
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-blue-600 block">Today's Arrivals</span>
               <span className="text-2xl font-mono font-extrabold text-blue-900">{dashboardStats?.arrivals || 0}</span>
@@ -347,9 +376,12 @@ export function ReceptionistDashboard() {
             <div className="p-3 bg-blue-500 text-white rounded-xl shadow-lg">
               <UserCheck className="w-6 h-6" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-2xl border-2 border-amber-200 shadow-lg shadow-amber-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl">
+          <button
+            onClick={() => { setActiveTab('departures'); setSearchTerm(''); }}
+            className="text-left bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-2xl border-2 border-amber-200 shadow-lg shadow-amber-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
+          >
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-amber-600 block">Today's Departures</span>
               <span className="text-2xl font-mono font-extrabold text-amber-900">{dashboardStats?.departures || 0}</span>
@@ -358,9 +390,12 @@ export function ReceptionistDashboard() {
             <div className="p-3 bg-amber-500 text-white rounded-xl shadow-lg">
               <UserX className="w-6 h-6" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-5 rounded-2xl border-2 border-emerald-200 shadow-lg shadow-emerald-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl">
+          <button
+            onClick={() => { setActiveTab('inhouse'); setSearchTerm(''); }}
+            className="text-left bg-gradient-to-br from-emerald-50 to-emerald-100 p-5 rounded-2xl border-2 border-emerald-200 shadow-lg shadow-emerald-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
+          >
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 block">In-House Guests</span>
               <span className="text-2xl font-mono font-extrabold text-emerald-900">{dashboardStats?.inHouse || 0}</span>
@@ -369,9 +404,12 @@ export function ReceptionistDashboard() {
             <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg">
               <BedDouble className="w-6 h-6" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-2xl border-2 border-purple-200 shadow-lg shadow-purple-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl">
+          <button
+            onClick={() => { setActiveTab('rooms'); setSearchTerm(''); }}
+            className="text-left bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-2xl border-2 border-purple-200 shadow-lg shadow-purple-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
+          >
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-purple-600 block">Available Rooms</span>
               <span className="text-2xl font-mono font-extrabold text-purple-900">
@@ -382,7 +420,7 @@ export function ReceptionistDashboard() {
             <div className="p-3 bg-purple-500 text-white rounded-xl shadow-lg">
               <SlidersHorizontal className="w-6 h-6" />
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Search Bar */}
@@ -426,20 +464,29 @@ export function ReceptionistDashboard() {
                       <p className="text-xs text-stone-500">
                         {formatDate(res.checkInDate)} - {formatDate(res.checkOutDate)} ({res.nightsCount} night{res.nightsCount > 1 ? 's' : ''})
                       </p>
-                      {res.payment && (
+                      {res.paymentStatus && (
                         <p className="text-xs text-stone-500 flex items-center gap-1">
                           <CreditCard className="w-3 h-3" />
-                          {res.payment.method?.toUpperCase() || 'TELEBIRR'} - {res.payment.status?.toUpperCase() || 'PAID'}
+                          ETB {res.totalPrice.toLocaleString()} &bull; {res.paymentStatus.toUpperCase()}
                         </p>
                       )}
                     </div>
 
-                    <button
-                      onClick={() => handleCheckIn(res.id)}
-                      className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/30 transition-all duration-200 transform hover:scale-105 flex items-center gap-1.5 shrink-0 border-2 border-emerald-400"
-                    >
-                      <CheckCircle className="w-4 h-4" /> Check In
-                    </button>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => setReceiptReservation(res)}
+                        className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 border-2 border-stone-200"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleCheckIn(res.id)}
+                        disabled={actionLoadingId === res.id}
+                        className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/30 transition-all duration-200 transform hover:scale-105 flex items-center gap-1.5 border-2 border-emerald-400"
+                      >
+                        <CheckCircle className="w-4 h-4" /> {actionLoadingId === res.id ? 'Checking In...' : 'Check In'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -467,16 +514,77 @@ export function ReceptionistDashboard() {
                         Phone: <span className="font-mono">{res.guestPhone}</span> &bull; Room {res.roomNumber} ({res.roomType})
                       </p>
                       <p className="text-xs text-stone-500">
-                        Checked in at {formatTime(res.checkInDate)}
+                        Stayed {formatDate(res.checkInDate)} - {formatDate(res.checkOutDate)} &bull; ETB {res.totalPrice.toLocaleString()}
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => handleCheckOut(res.id)}
-                      className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-200 transform hover:scale-105 flex items-center gap-1.5 shrink-0 border-2 border-amber-400"
-                    >
-                      <UserX className="w-4 h-4" /> Perform Check-Out & Free Room
-                    </button>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => setReceiptReservation(res)}
+                        className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 border-2 border-stone-200"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleCheckOut(res.id)}
+                        disabled={actionLoadingId === res.id}
+                        className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-200 transform hover:scale-105 flex items-center gap-1.5 border-2 border-amber-400"
+                      >
+                        <UserX className="w-4 h-4" /> {actionLoadingId === res.id ? 'Checking Out...' : 'Perform Check-Out & Free Room'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab Content: In-House Guests */}
+        {activeTab === 'inhouse' && (
+          <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
+            {inHouseGuests.length === 0 ? (
+              <div className="p-8 text-center text-stone-500 text-xs">No guests currently in-house.</div>
+            ) : (
+              <div className="divide-y divide-stone-200">
+                {inHouseGuests.map((res) => (
+                  <div key={res.id} className="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-teal-900 bg-teal-100 px-2 py-0.5 rounded">
+                          #{res.id}
+                        </span>
+                        <span className="font-bold text-stone-900 text-sm">{res.guestName}</span>
+                        <span className="uppercase text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                          Checked In
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-500">
+                        Phone: <span className="font-mono">{res.guestPhone}</span> &bull; Room {res.roomNumber} ({res.roomType})
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        {formatDate(res.checkInDate)} - {formatDate(res.checkOutDate)} ({res.nightsCount} night{res.nightsCount > 1 ? 's' : ''})
+                        {res.checkOutDate === new Date().toISOString().slice(0, 10) && (
+                          <span className="ml-2 font-bold text-amber-700">Departs today</span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => setReceiptReservation(res)}
+                        className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 border-2 border-stone-200"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleCheckOut(res.id)}
+                        disabled={actionLoadingId === res.id}
+                        className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/30 transition-all duration-200 transform hover:scale-105 flex items-center gap-1.5 border-2 border-teal-400"
+                      >
+                        <UserX className="w-4 h-4" /> {actionLoadingId === res.id ? 'Checking Out...' : 'Check Out Now'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -513,13 +621,14 @@ export function ReceptionistDashboard() {
                           {r.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="p-3.5 font-mono">ETB {(r.payment?.amount || 0).toLocaleString()}</td>
+                      <td className="p-3.5 font-mono">ETB {r.totalPrice.toLocaleString()}</td>
                         <td className="p-3.5">                       
                          <div className="flex gap-2">
                           {r.status === 'confirmed' && (
                             <button
                               onClick={() => handleCheckIn(r.id)}
-                              className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xs rounded-lg shadow-lg shadow-emerald-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-emerald-400 font-bold"
+                              disabled={actionLoadingId === r.id}
+                              className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-60 text-white text-xs rounded-lg shadow-lg shadow-emerald-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-emerald-400 font-bold"
                             >
                               Check In
                             </button>
@@ -527,12 +636,16 @@ export function ReceptionistDashboard() {
                           {r.status === 'checked_in' && (
                             <button
                               onClick={() => handleCheckOut(r.id)}
-                              className="px-3 py-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs rounded-lg shadow-lg shadow-amber-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-amber-400 font-bold"
+                              disabled={actionLoadingId === r.id}
+                              className="px-3 py-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-60 text-white text-xs rounded-lg shadow-lg shadow-amber-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-amber-400 font-bold"
                             >
                               Check Out
                             </button>
                           )}
-                          <button className="px-3 py-1 bg-stone-200 text-stone-700 text-xs rounded hover:bg-stone-300">
+                          <button
+                            onClick={() => setReceiptReservation(r)}
+                            className="px-3 py-1 bg-stone-200 text-stone-700 text-xs rounded hover:bg-stone-300 font-bold"
+                          >
                             Receipt
                           </button>
                         </div>
@@ -612,6 +725,95 @@ export function ReceptionistDashboard() {
           </div>
         )}
       </div>
+
+      {/* Receipt Modal */}
+      {receiptReservation && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setReceiptReservation(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-bold text-stone-900 text-lg">{guesthouse?.name || 'Guesthouse'}</h3>
+                <p className="text-xs text-stone-500">Reservation Receipt</p>
+              </div>
+              <button
+                onClick={() => setReceiptReservation(null)}
+                className="text-stone-400 hover:text-stone-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm border-t border-b border-dashed border-stone-300 py-4">
+              <div className="flex justify-between">
+                <span className="text-stone-500">Reservation #</span>
+                <span className="font-mono font-bold">{receiptReservation.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Guest</span>
+                <span className="font-semibold">{receiptReservation.guestName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Phone</span>
+                <span className="font-mono">{receiptReservation.guestPhone}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Room</span>
+                <span>{receiptReservation.roomNumber} ({receiptReservation.roomType})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Check-in</span>
+                <span>{formatDate(receiptReservation.checkInDate)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Check-out</span>
+                <span>{formatDate(receiptReservation.checkOutDate)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Nights</span>
+                <span>{receiptReservation.nightsCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Status</span>
+                <span className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded ${getReservationStatusColor(receiptReservation.status)}`}>
+                  {receiptReservation.status.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Payment</span>
+                <span className="uppercase font-semibold">{receiptReservation.paymentStatus}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center mt-4 mb-6">
+              <span className="font-bold text-stone-900">Total</span>
+              <span className="font-mono font-extrabold text-xl text-stone-900">
+                ETB {receiptReservation.totalPrice.toLocaleString()}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.print()}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                <Printer className="w-4 h-4" /> Print
+              </button>
+              <button
+                onClick={() => setReceiptReservation(null)}
+                className="flex-1 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-sm rounded-xl transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

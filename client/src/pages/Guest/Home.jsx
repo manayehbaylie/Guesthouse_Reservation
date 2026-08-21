@@ -670,18 +670,18 @@ export function Home() {
         {/* SECTION HEADER */}
 
         <div className="mb-7 flex items-center justify-between">
-
+{/* 
           <div className="flex items-center gap-2">
 
             <ShieldCheck className="h-6 w-6 text-green-600" />
 
             <h2 className="text-2xl font-black tracking-tight text-stone-900">
-              Verified Guesthouses
+            
             </h2>
 
-          </div>
+          </div> */}
 
-          <button
+          {/* <button
             type="button"
             onClick={() => navigate("/search")}
             className="flex items-center gap-1 text-sm font-bold text-amber-700 transition hover:text-amber-800"
@@ -689,7 +689,7 @@ export function Home() {
             View all
 
             <ChevronRight className="h-4 w-4" />
-          </button>
+          </button> */}
 
         </div>
 

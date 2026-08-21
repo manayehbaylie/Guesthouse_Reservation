@@ -124,7 +124,7 @@ export function Navbar({ onToggleSidebar }) {
               </Link>
 
               {/* SEARCH */}
-              <Link
+              {/* <Link
                 to="/search"
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-black transition ${
                   isActive("/search")
@@ -134,7 +134,7 @@ export function Navbar({ onToggleSidebar }) {
               >
                 <Search className="h-4 w-4" />
                 Search Guesthouses
-              </Link>
+              </Link> */}
 
               {/* MY RESERVATIONS */}
               {user && isGuest && (

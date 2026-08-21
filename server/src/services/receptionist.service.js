@@ -181,10 +181,19 @@ export const getInHouseGuests = async (receptionistId) => {
       },
       room: {
         select: {
+          id: true,
           roomNumber: true,
           roomType: true,
+          price: true,
+          guesthouse: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
+      payment: true,
     },
   });
 };

@@ -247,40 +247,6 @@ export function Login() {
             </span>
           </button>
         </form>
-
-        {/* QUICK DEMO ACCOUNTS */}
-        <div className="bg-white p-4 rounded-2xl border border-stone-200 text-xs">
-
-          <div className="font-bold text-stone-800 mb-2 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-
-            <span>
-              Click any Demo Account to autofill:
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {sampleAccounts.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() =>
-                  autofillAccount(acc)
-                }
-                className="text-left p-2 rounded-lg bg-stone-50 hover:bg-amber-50 border border-stone-200 transition-colors"
-              >
-                <div className="font-semibold text-stone-900">
-                  {acc.name}
-                </div>
-
-                <div className="text-[10px] text-amber-700 font-medium">
-                  {acc.role}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* REGISTER LINK */}
         <p className="text-center text-xs text-stone-500">
           Don't have an account?{' '}
