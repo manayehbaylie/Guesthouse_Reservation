@@ -568,11 +568,21 @@ function mapReservationFromBackend(
         checkOut
       ),
 
+    // Prefer an actual recorded payment amount (what the guest was really charged).
+    // Fall back to room rate x nights (not just a single night) so multi-night
+    // stays without a payment record yet still show an accurate total.
     totalPrice:
       Number(
         reservation.totalPrice ??
         reservation.payment?.amount ??
-        room.price ??
+        (
+          (room.price ?? 0) *
+          Math.max(
+            1,
+            reservation.nightsCount ??
+            calculateNights(checkIn, checkOut)
+          )
+        ) ??
         0
       ),
 
@@ -1579,99 +1589,35 @@ export const ApiService = {
   // ----------------------------------------------------------
 
   async getReceptionistDashboardStats() {
+    // Hits the real server-computed stats endpoint (server/src/services/receptionist.service.js:getDashboardStats)
+    // which returns { arrivals, departures, inHouse, availableRooms, totalRooms } straight from the database.
     const response =
       await api.get(
-        '/receptionist/reservations'
+        '/receptionist/dashboard'
       );
 
-    const reservations =
-      (
-        unwrap(response) || []
-      ).map(
-        mapReservationFromBackend
-      );
-
-    const today =
-      new Date()
-        .toISOString()
-        .slice(0, 10);
-
-    const todayArrivals =
-      reservations.filter(
-        (reservation) =>
-          reservation.checkInDate ===
-            today &&
-          [
-            'confirmed',
-            'pending',
-          ].includes(
-            reservation.status
-          )
-      );
-
-    const todayDepartures =
-      reservations.filter(
-        (reservation) =>
-          reservation.checkOutDate ===
-            today &&
-          reservation.status ===
-            'checked_in'
-      );
-
-    const activeReservations =
-      reservations.filter(
-        (reservation) =>
-          ![
-            'cancelled',
-            'checked_out',
-          ].includes(
-            reservation.status
-          )
-      );
-
-    const checkedInGuests =
-      reservations.filter(
-        (reservation) =>
-          reservation.status ===
-          'checked_in'
-      );
-
-    const checkedOutGuests =
-      reservations.filter(
-        (reservation) =>
-          reservation.status ===
-          'checked_out'
-      );
-
-    const confirmedReservations =
-      reservations.filter(
-        (reservation) =>
-          reservation.status ===
-          'confirmed'
-      );
+    const stats = unwrap(response) || {};
 
     return {
-      totalReservations:
-        reservations.length,
-
-      todayArrivals:
-        todayArrivals.length,
-
-      todayDepartures:
-        todayDepartures.length,
-
-      activeReservations:
-        activeReservations.length,
-
-      confirmedReservations:
-        confirmedReservations.length,
-
-      checkedInGuests:
-        checkedInGuests.length,
-
-      checkedOutGuests:
-        checkedOutGuests.length,
+      arrivals: stats.arrivals ?? 0,
+      departures: stats.departures ?? 0,
+      inHouse: stats.inHouse ?? 0,
+      availableRooms: stats.availableRooms ?? 0,
+      totalRooms: stats.totalRooms ?? 0,
     };
+  },
+
+  async searchReceptionistReservations(term) {
+    const response =
+      await api.get(
+        `/receptionist/reservations/search?term=${encodeURIComponent(term ?? '')}`
+      );
+
+    return (
+      unwrap(response) || []
+    ).map(
+      mapReservationFromBackend
+    );
   },
 
   async getReceptionistArrivals(
@@ -1742,6 +1688,8 @@ export const ApiService = {
 
     return (
       unwrap(response) || []
+    ).map(
+      mapReservationFromBackend
     );
   },
 
