@@ -1,40 +1,144 @@
 import prisma from "../config/prisma.js";
 
-export const createReview = async (guestId, data) => {
-  const { guesthouseId, reservationId, rating, comment } = data;
+// ============================================================
+// CREATE REVIEW
+// ============================================================
 
-  // Verify the guest has a reservation for this guesthouse
-  const reservation = await prisma.reservation.findFirst({
-    where: {
-      id: reservationId,
-      guestId,
-      room: {
-        guesthouseId,
+export const createReview = async (guestId, data) => {
+  const {
+    guesthouseId,
+    reservationId,
+    rating,
+    comment,
+  } = data;
+
+  const parsedGuesthouseId =
+    Number(guesthouseId);
+
+  const parsedReservationId =
+    Number(reservationId);
+
+  const parsedRating =
+    Number(rating);
+
+  // ----------------------------------------------------------
+  // VALIDATION
+  // ----------------------------------------------------------
+
+  if (
+    !parsedGuesthouseId ||
+    !parsedReservationId
+  ) {
+    throw new Error(
+      "Guesthouse ID and reservation ID are required"
+    );
+  }
+
+  if (
+    !Number.isInteger(parsedRating) ||
+    parsedRating < 1 ||
+    parsedRating > 5
+  ) {
+    throw new Error(
+      "Rating must be between 1 and 5"
+    );
+  }
+
+  if (
+    !comment ||
+    !String(comment).trim()
+  ) {
+    throw new Error(
+      "Review comment is required"
+    );
+  }
+
+  // ----------------------------------------------------------
+  // VERIFY RESERVATION
+  //
+  // The reservation must:
+  // 1. Belong to the logged-in guest
+  // 2. Belong to the selected guesthouse
+  // 3. Be completed / checked out
+  // ----------------------------------------------------------
+
+  const reservation =
+    await prisma.reservation.findFirst({
+      where: {
+        id: parsedReservationId,
+        guestId,
+        room: {
+          guesthouseId:
+            parsedGuesthouseId,
+        },
       },
-    },
-  });
+    });
 
   if (!reservation) {
-    throw new Error("Invalid reservation or guesthouse");
+    throw new Error(
+      "Invalid reservation or guesthouse"
+    );
   }
 
-  // Check if review already exists for this reservation
-  const existingReview = await prisma.review.findUnique({
-    where: { reservationId },
-  });
+  // ----------------------------------------------------------
+  // ONLY ALLOW REVIEWS AFTER THE STAY
+  // ----------------------------------------------------------
+
+  const reservationStatus =
+    String(
+      reservation.status || ""
+    ).toUpperCase();
+
+  if (
+    ![
+      "CHECKED_OUT",
+      "COMPLETED",
+    ].includes(reservationStatus)
+  ) {
+    throw new Error(
+      "You can only review a guesthouse after checking out"
+    );
+  }
+
+  // ----------------------------------------------------------
+  // CHECK IF REVIEW ALREADY EXISTS
+  // ----------------------------------------------------------
+
+  const existingReview =
+    await prisma.review.findUnique({
+      where: {
+        reservationId:
+          parsedReservationId,
+      },
+    });
 
   if (existingReview) {
-    throw new Error("Review already exists for this reservation");
+    throw new Error(
+      "Review already exists for this reservation"
+    );
   }
+
+  // ----------------------------------------------------------
+  // CREATE REVIEW
+  // ----------------------------------------------------------
 
   return await prisma.review.create({
     data: {
       guestId,
-      guesthouseId,
-      reservationId,
-      rating,
-      comment,
+
+      guesthouseId:
+        parsedGuesthouseId,
+
+      reservationId:
+        parsedReservationId,
+
+      rating:
+        parsedRating,
+
+      comment:
+        String(comment).trim(),
     },
+
     include: {
       guest: {
         select: {
@@ -43,21 +147,48 @@ export const createReview = async (guestId, data) => {
           email: true,
         },
       },
+
       guesthouse: {
         select: {
           id: true,
           name: true,
         },
       },
+
+      reservation: {
+        select: {
+          id: true,
+          checkIn: true,
+          checkOut: true,
+          status: true,
+        },
+      },
     },
   });
 };
 
-export const getReviewsByGuesthouse = async (guesthouseId) => {
+// ============================================================
+// GET REVIEWS BY GUESTHOUSE
+// ============================================================
+
+export const getReviewsByGuesthouse = async (
+  guesthouseId
+) => {
+  const parsedGuesthouseId =
+    Number(guesthouseId);
+
+  if (!parsedGuesthouseId) {
+    throw new Error(
+      "Guesthouse ID is required"
+    );
+  }
+
   return await prisma.review.findMany({
     where: {
-      guesthouseId: Number(guesthouseId),
+      guesthouseId:
+        parsedGuesthouseId,
     },
+
     include: {
       guest: {
         select: {
@@ -66,25 +197,35 @@ export const getReviewsByGuesthouse = async (guesthouseId) => {
           email: true,
         },
       },
+
       reservation: {
         select: {
           id: true,
           checkIn: true,
           checkOut: true,
+          status: true,
         },
       },
     },
+
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   });
 };
 
-export const getReviewsByGuest = async (guestId) => {
+// ============================================================
+// GET REVIEWS BY GUEST
+// ============================================================
+
+export const getReviewsByGuest = async (
+  guestId
+) => {
   return await prisma.review.findMany({
     where: {
       guestId,
     },
+
     include: {
       guesthouse: {
         select: {
@@ -93,28 +234,85 @@ export const getReviewsByGuest = async (guestId) => {
           city: true,
         },
       },
+
       reservation: {
         select: {
           id: true,
           checkIn: true,
           checkOut: true,
+          status: true,
         },
       },
     },
+
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   });
 };
 
-export const respondToReview = async (reviewId, response) => {
+// ============================================================
+// RESPOND TO REVIEW
+// ============================================================
+
+export const respondToReview = async (
+  ownerId,
+  reviewId,
+  response
+) => {
+  const parsedReviewId =
+    Number(reviewId);
+
+  if (!parsedReviewId) {
+    throw new Error(
+      "Review ID is required"
+    );
+  }
+
+  if (
+    !response ||
+    !String(response).trim()
+  ) {
+    throw new Error(
+      "Response is required"
+    );
+  }
+
+  // ----------------------------------------------------------
+  // VERIFY REVIEW BELONGS TO OWNER'S GUESTHOUSE
+  // ----------------------------------------------------------
+
+  const review =
+    await prisma.review.findFirst({
+      where: {
+        id: parsedReviewId,
+
+        guesthouse: {
+          ownerId,
+        },
+      },
+    });
+
+  if (!review) {
+    throw new Error(
+      "Review not found or you are not authorized to respond to this review"
+    );
+  }
+
+  // ----------------------------------------------------------
+  // UPDATE REVIEW
+  // ----------------------------------------------------------
+
   return await prisma.review.update({
     where: {
-      id: Number(reviewId),
+      id: parsedReviewId,
     },
+
     data: {
-      ownerResponse: response,
+      ownerResponse:
+        String(response).trim(),
     },
+
     include: {
       guest: {
         select: {
@@ -123,33 +321,62 @@ export const respondToReview = async (reviewId, response) => {
           email: true,
         },
       },
+
       guesthouse: {
         select: {
           id: true,
           name: true,
         },
       },
+
+      reservation: {
+        select: {
+          id: true,
+          checkIn: true,
+          checkOut: true,
+          status: true,
+        },
+      },
     },
   });
 };
 
-export const getOwnerReviews = async (ownerId) => {
-  // First get the owner's guesthouse
-  const guesthouse = await prisma.guesthouse.findFirst({
-    where: {
-      ownerId,
-    },
-  });
+// ============================================================
+// GET OWNER REVIEWS
+// ============================================================
+
+export const getOwnerReviews = async (
+  ownerId
+) => {
+  // ----------------------------------------------------------
+  // FIND OWNER'S GUESTHOUSE
+  // ----------------------------------------------------------
+
+  const guesthouse =
+    await prisma.guesthouse.findFirst({
+      where: {
+        ownerId,
+      },
+
+      select: {
+        id: true,
+      },
+    });
 
   if (!guesthouse) {
     return [];
   }
 
-  // Get all reviews for the owner's guesthouse
+  // ----------------------------------------------------------
+  // GET REVIEWS
+  // ----------------------------------------------------------
+
   return await prisma.review.findMany({
     where: {
-      guesthouseId: guesthouse.id,
+      guesthouseId:
+        guesthouse.id,
     },
+
     include: {
       guest: {
         select: {
@@ -158,16 +385,27 @@ export const getOwnerReviews = async (ownerId) => {
           email: true,
         },
       },
+
       reservation: {
         select: {
           id: true,
           checkIn: true,
           checkOut: true,
+          status: true,
+        },
+      },
+
+      guesthouse: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
         },
       },
     },
+
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   });
 };

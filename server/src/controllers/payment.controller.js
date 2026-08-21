@@ -1,4 +1,5 @@
 import { paymentSchema } from "../validators/payment.validator.js";
+
 import {
   createPayment,
   getAllPayments,
@@ -7,6 +8,7 @@ import {
   initiatePayment,
   getPaymentHistory,
 } from "../services/payment.service.js";
+
 import { successResponse } from "../utils/response.js";
 
 export const create = async (req, res, next) => {
@@ -26,9 +28,6 @@ export const create = async (req, res, next) => {
   }
 };
 
-// ==========================================================
-// INITIATE PAYMENT (Guest "Payment & Confirmation")
-// ==========================================================
 export const initiate = async (req, res, next) => {
   try {
     const payment = await initiatePayment(req.body);
@@ -44,9 +43,6 @@ export const initiate = async (req, res, next) => {
   }
 };
 
-// ==========================================================
-// PAYMENT HISTORY (for the logged-in guest)
-// ==========================================================
 export const getHistory = async (req, res, next) => {
   try {
     const payments = await getPaymentHistory(req.user.id);

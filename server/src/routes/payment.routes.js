@@ -14,36 +14,22 @@ import { authorize } from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
-/*
-==================================================
-PAYMENT ROUTES
-==================================================
-*/
+/* ==========================================================
+   PAYMENT ROUTES
+========================================================== */
 
-/**
- * Initiate payment for a pending reservation
- * ("Payment & Confirmation" flow from the booking page)
- */
 router.post(
   "/initiate",
   authenticate,
   initiate
 );
 
-/**
- * Get the logged-in guest's payment history
- */
 router.get(
   "/history",
   authenticate,
   getHistory
 );
 
-/**
- * Create a payment request
- *
- * Guest only
- */
 router.post(
   "/",
   authenticate,
@@ -51,11 +37,6 @@ router.post(
   create
 );
 
-/**
- * Get all payments
- *
- * Admin only
- */
 router.get(
   "/",
   authenticate,
@@ -63,11 +44,6 @@ router.get(
   getAll
 );
 
-/**
- * Get payment by ID
- *
- * Admin or Guest
- */
 router.get(
   "/:id",
   authenticate,
@@ -75,11 +51,6 @@ router.get(
   getById
 );
 
-/**
- * Update payment status
- *
- * Admin only
- */
 router.put(
   "/:id/status",
   authenticate,

@@ -1530,10 +1530,6 @@ export const ApiService = {
     };
   },
 
-  // ==========================================================
-  // CORRECTED RESERVATION FETCHING
-  // ==========================================================
-
   async getReservations(
     filters = {}
   ) {
@@ -2233,6 +2229,12 @@ export const ApiService = {
   async getGuesthouseReviews(
     guesthouseId
   ) {
+    if (!guesthouseId) {
+      throw new Error(
+        'Guesthouse ID is required.'
+      );
+    }
+
     const response =
       await api.get(
         `/reviews/guesthouse/${guesthouseId}`
@@ -2241,10 +2243,178 @@ export const ApiService = {
     return unwrap(response) || [];
   },
 
+  // ----------------------------------------------------------
+  // CREATE GUEST REVIEW
+  // ----------------------------------------------------------
+
+  async createReview({
+    guesthouseId,
+    reservationId,
+    rating,
+    comment,
+  }) {
+    if (!guesthouseId) {
+      throw new Error(
+        'Guesthouse ID is required.'
+      );
+    }
+
+    if (!reservationId) {
+      throw new Error(
+        'Reservation ID is required.'
+      );
+    }
+
+    if (!rating) {
+      throw new Error(
+        'Rating is required.'
+      );
+    }
+
+    const numericRating =
+      Number(rating);
+
+    if (
+      numericRating < 1 ||
+      numericRating > 5
+    ) {
+      throw new Error(
+        'Rating must be between 1 and 5.'
+      );
+    }
+
+    if (
+      !comment ||
+      !String(comment).trim()
+    ) {
+      throw new Error(
+        'Please write a review before submitting.'
+      );
+    }
+
+    const response =
+      await api.post(
+        '/reviews',
+        {
+          guesthouseId:
+            Number(guesthouseId),
+
+          reservationId:
+            Number(reservationId),
+
+          rating:
+            numericRating,
+
+          comment:
+            String(comment).trim(),
+        }
+      );
+
+    return unwrap(response);
+  },
+
+  // ----------------------------------------------------------
+  // GET REVIEW FOR ONE RESERVATION
+  // ----------------------------------------------------------
+
+  async getReviewForReservation(
+    reservationId
+  ) {
+    if (!reservationId) {
+      throw new Error(
+        'Reservation ID is required.'
+      );
+    }
+
+    const response =
+      await api.get(
+        `/reviews/reservation/${reservationId}`
+      );
+
+    return unwrap(response);
+  },
+
+  // ----------------------------------------------------------
+  // UPDATE GUEST REVIEW
+  // ----------------------------------------------------------
+
+  async updateReview(
+    reviewId,
+    {
+      rating,
+      comment,
+    }
+  ) {
+    if (!reviewId) {
+      throw new Error(
+        'Review ID is required.'
+      );
+    }
+
+    const numericRating =
+      Number(rating);
+
+    if (
+      numericRating < 1 ||
+      numericRating > 5
+    ) {
+      throw new Error(
+        'Rating must be between 1 and 5.'
+      );
+    }
+
+    const response =
+      await api.put(
+        `/reviews/${reviewId}`,
+        {
+          rating:
+            numericRating,
+
+          comment:
+            String(
+              comment || ''
+            ).trim(),
+        }
+      );
+
+    return unwrap(response);
+  },
+
+  // ----------------------------------------------------------
+  // DELETE GUEST REVIEW
+  // ----------------------------------------------------------
+
+  async deleteReview(
+    reviewId
+  ) {
+    if (!reviewId) {
+      throw new Error(
+        'Review ID is required.'
+      );
+    }
+
+    const response =
+      await api.delete(
+        `/reviews/${reviewId}`
+      );
+
+    return unwrap(response);
+  },
+
+  // ----------------------------------------------------------
+  // OWNER RESPONSE TO REVIEW
+  // ----------------------------------------------------------
+
   async respondToReview(
     reviewId,
     responseText
   ) {
+    if (!reviewId) {
+      throw new Error(
+        'Review ID is required.'
+      );
+    }
+
     const response =
       await api.put(
         `/reviews/${reviewId}/respond`,

@@ -48,7 +48,12 @@ const router = express.Router();
  *       201:
  *         description: Review created successfully
  */
-router.post("/", authenticate, authorize("GUEST"), create);
+router.post(
+  "/",
+  authenticate,
+  authorize("GUEST"),
+  create
+);
 
 /**
  * @swagger
@@ -67,7 +72,10 @@ router.post("/", authenticate, authorize("GUEST"), create);
  *       200:
  *         description: Reviews fetched successfully
  */
-router.get("/guesthouse/:guesthouseId", getByGuesthouse);
+router.get(
+  "/guesthouse/:guesthouseId",
+  getByGuesthouse
+);
 
 /**
  * @swagger
@@ -82,7 +90,12 @@ router.get("/guesthouse/:guesthouseId", getByGuesthouse);
  *       200:
  *         description: Guest reviews fetched successfully
  */
-router.get("/my-reviews", authenticate, authorize("GUEST"), getByGuest);
+router.get(
+  "/my-reviews",
+  authenticate,
+  authorize("GUEST"),
+  getByGuest
+);
 
 /**
  * @swagger
@@ -97,7 +110,12 @@ router.get("/my-reviews", authenticate, authorize("GUEST"), getByGuest);
  *       200:
  *         description: Owner reviews fetched successfully
  */
-router.get("/owner-reviews", authenticate, authorize("OWNER"), getOwnerReviews);
+router.get(
+  "/owner-reviews",
+  authenticate,
+  authorize("OWNER"),
+  getOwnerReviews
+);
 
 /**
  * @swagger
@@ -129,6 +147,11 @@ router.get("/owner-reviews", authenticate, authorize("OWNER"), getOwnerReviews);
  *       200:
  *         description: Response added successfully
  */
-router.put("/:reviewId/respond", authenticate, authorize("OWNER"), respond);
+router.put(
+  "/:reviewId/respond",
+  authenticate,
+  authorize("OWNER"),
+  respond
+);
 
 export default router;
