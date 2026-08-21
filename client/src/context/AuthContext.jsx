@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -16,9 +17,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     try {
       const currentUser = ApiService.getCurrentUser();
+
       setUser(currentUser || null);
     } catch (error) {
-      console.error("Auth initialization failed:", error);
+      console.error(
+        "Auth initialization failed:",
+        error
+      );
+
       setUser(null);
     } finally {
       setLoading(false);
@@ -26,10 +32,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const loggedUser = await ApiService.loginUser(
-      email,
-      password
-    );
+    const loggedUser =
+      await ApiService.loginUser(
+        email,
+        password
+      );
 
     setUser(loggedUser);
 
@@ -37,7 +44,10 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (userData) => {
-    const result = await ApiService.registerUser(userData);
+    const result =
+      await ApiService.registerUser(
+        userData
+      );
 
     if (!result?.requiresApproval) {
       setUser(result);
@@ -52,8 +62,6 @@ export function AuthProvider({ children }) {
   };
 
   const switchUser = (targetUser) => {
-    // Development/testing feature to switch between users
-    // This simulates logging in as a different user for testing purposes
     ApiService.setCurrentUser(targetUser);
     setUser(targetUser);
   };
@@ -65,7 +73,9 @@ export function AuthProvider({ children }) {
     register,
     logout,
     switchUser,
-    role: user?.role ? String(user.role).toUpperCase() : 'GUEST',
+    role: user?.role
+      ? String(user.role).toUpperCase()
+      : null,
   };
 
   return (
@@ -76,7 +86,8 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
+  const context =
+    useContext(AuthContext);
 
   if (!context) {
     throw new Error(
@@ -86,3 +97,4 @@ export function useAuth() {
 
   return context;
 }
+

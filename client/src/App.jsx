@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
 import { Navbar } from './components/Navbar.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
 import { ArchitectureModal } from './components/ArchitectureModal.jsx';
@@ -29,14 +31,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col font-sans">
-      {/* Top Navbar */}
+
+      {/* =====================================================
+          NAVBAR
+      ====================================================== */}
       <Navbar
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onOpenArchModal={() => setArchModalOpen(true)}
       />
 
-      {/* Main Layout Container with Sidebar */}
+      {/* =====================================================
+          MAIN LAYOUT
+      ====================================================== */}
       <div className="flex-1 flex w-full">
+
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -44,112 +52,217 @@ export default function App() {
         />
 
         <main className="flex-1 min-w-0 pb-12">
+
           <Routes>
-            {/* Public / Guest Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/search" element={<GuesthouseSearch />} />
-            <Route path="/guesthouse/:id" element={<GuesthouseDetail />} />
-            <Route path="/booking" element={<Booking />} />
 
-            {/* Auth Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            {/* =================================================
+                PUBLIC / GUEST PAGES
+            ================================================= */}
 
-            {/* Protected Guest Reservations */}
+            <Route
+              path="/"
+              element={<Home />}
+            />
+
+            <Route
+              path="/search"
+              element={<GuesthouseSearch />}
+            />
+
+            <Route
+              path="/guesthouse/:id"
+              element={<GuesthouseDetail />}
+            />
+
+            <Route
+              path="/booking"
+              element={<Booking />}
+            />
+
+
+            {/* =================================================
+                AUTHENTICATION
+            ================================================= */}
+
+            <Route
+              path="/login"
+              element={<Login />}
+            />
+
+            <Route
+              path="/register"
+              element={<Register />}
+            />
+
+
+            {/* =================================================
+                GUEST RESERVATIONS
+            ================================================= */}
+
             <Route
               path="/reservations"
               element={
-                <ProtectedRoute allowedRoles={['Guest', 'Owner', 'Receptionist', 'Admin']}>
+                <ProtectedRoute
+                  allowedRoles={[
+                    'GUEST',
+                    'OWNER',
+                    'RECEPTIONIST',
+                    'ADMIN',
+                  ]}
+                >
                   <GuestBookings />
                 </ProtectedRoute>
               }
             />
 
-            {/* Protected Owner Routes */}
+
+            {/* =================================================
+                OWNER
+            ================================================= */}
+
             <Route
               path="/owner"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute
+                  allowedRoles={['OWNER']}
+                >
                   <OwnerDashboard />
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/owner/guesthouse"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute
+                  allowedRoles={['OWNER']}
+                >
                   <GuesthouseManage />
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/owner/rooms"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute
+                  allowedRoles={['OWNER']}
+                >
                   <RoomManage />
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/owner/staff"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute
+                  allowedRoles={['OWNER']}
+                >
                   <StaffManage />
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/owner/revenue"
               element={
-                <ProtectedRoute allowedRoles={['Owner']}>
+                <ProtectedRoute
+                  allowedRoles={['OWNER']}
+                >
                   <RevenueReports />
                 </ProtectedRoute>
               }
             />
 
-            {/* Protected Receptionist Route */}
+
+            {/* =================================================
+                RECEPTIONIST
+            ================================================= */}
+
             <Route
               path="/receptionist"
               element={
-                <ProtectedRoute allowedRoles={['Receptionist']}>
+                <ProtectedRoute
+                  allowedRoles={['RECEPTIONIST']}
+                >
                   <ReceptionistDashboard />
                 </ProtectedRoute>
               }
             />
 
-            {/* Protected Admin Route */}
+
+            {/* =================================================
+                ADMIN
+            ================================================= */}
+
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRoles={['Admin']}>
+                <ProtectedRoute
+                  allowedRoles={['ADMIN']}
+                >
                   <AdminDashboard />
                 </ProtectedRoute>
               }
             />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/search" replace />} />
+
+            {/* =================================================
+                FALLBACK
+            ================================================= */}
+
+            <Route
+              path="*"
+              element={
+                <Navigate
+                  to="/search"
+                  replace
+                />
+              }
+            />
+
           </Routes>
+
         </main>
       </div>
 
+
+      {/* =====================================================
+          FOOTER
+      ====================================================== */}
+
       <footer className="bg-stone-950 border-t border-stone-800 py-6 text-center text-xs text-stone-400">
+
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 Guesthouse Reservation Platform. All Rights Reserved.</p>
+
+          <p>
+            © 2026 Guesthouse Reservation Platform.
+            All Rights Reserved.
+          </p>
+
           <button
             onClick={() => setArchModalOpen(true)}
             className="text-amber-400 hover:underline font-semibold"
           >
             View Full-Stack API & Architecture Specs
           </button>
+
         </div>
+
       </footer>
 
-      {/* Architecture Documentation Modal */}
+
+      {/* =====================================================
+          ARCHITECTURE MODAL
+      ====================================================== */}
+
       <ArchitectureModal
         isOpen={archModalOpen}
         onClose={() => setArchModalOpen(false)}
       />
+
     </div>
   );
 }
+

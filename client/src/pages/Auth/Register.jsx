@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -7,7 +8,8 @@ import {
   Mail,
   Phone,
   User,
-  Lock, Building2,
+  Lock,
+  Building2,
   CheckCircle2,
   ArrowLeft,
   CreditCard,
@@ -15,6 +17,7 @@ import {
   FileText,
   Image as ImageIcon,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 
 export function Register() {
@@ -34,22 +37,15 @@ export function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('+251 9');
-
-  // FIX:
-  // Password was missing from the original form.
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // ============================================================
-  // OWNER PERSONAL INFORMATION
-  // ============================================================
-
-  const [dateOfBirth, setDateOfBirth] = useState('');
-  const [address, setAddress] = useState('');
-
-  // ============================================================
   // OWNER IDENTIFICATION
+  // Date of Birth removed
   // ============================================================
+
+  const [address, setAddress] = useState('');
 
   const [idType, setIdType] = useState('National ID');
   const [idNumber, setIdNumber] = useState('');
@@ -59,10 +55,10 @@ export function Register() {
 
   // ============================================================
   // GUESTHOUSE INFORMATION
+  // Guesthouse Type removed
   // ============================================================
 
   const [guesthouseName, setGuesthouseName] = useState('');
-  const [guesthouseType, setGuesthouseType] = useState('Guesthouse');
   const [guesthouseAddress, setGuesthouseAddress] = useState('');
   const [city, setCity] = useState('');
   const [subCity, setSubCity] = useState('');
@@ -74,14 +70,13 @@ export function Register() {
 
   // ============================================================
   // BUSINESS INFORMATION
+  // Ownership Type removed
+  // Proof of Ownership removed
+  // Authorization Letter removed
   // ============================================================
 
   const [businessLicenseNumber, setBusinessLicenseNumber] = useState('');
-  const [ownershipType, setOwnershipType] = useState('Owner');
-
   const [businessLicense, setBusinessLicense] = useState(null);
-  const [ownershipProof, setOwnershipProof] = useState(null);
-  const [authorizationLetter, setAuthorizationLetter] = useState(null);
 
   // ============================================================
   // GUESTHOUSE PHOTOS
@@ -138,7 +133,6 @@ export function Register() {
     setPassword('');
     setConfirmPassword('');
 
-    setDateOfBirth('');
     setAddress('');
 
     setIdType('National ID');
@@ -148,7 +142,6 @@ export function Register() {
     setIdBack(null);
 
     setGuesthouseName('');
-    setGuesthouseType('Guesthouse');
     setGuesthouseAddress('');
     setCity('');
     setSubCity('');
@@ -159,11 +152,7 @@ export function Register() {
     setDescription('');
 
     setBusinessLicenseNumber('');
-    setOwnershipType('Owner');
-
     setBusinessLicense(null);
-    setOwnershipProof(null);
-    setAuthorizationLetter(null);
 
     setGuesthousePhotos([]);
 
@@ -215,10 +204,6 @@ export function Register() {
     setLoading(true);
 
     try {
-      /*
-       * FIX:
-       * Password is now included in the registration request.
-       */
       const newUser = await register({
         name: name.trim(),
         email: email.trim(),
@@ -229,9 +214,6 @@ export function Register() {
 
       console.log('Guest registration successful:', newUser);
 
-      /*
-       * Guest should go to the guest/home page.
-       */
       if (
         newUser?.role === 'Owner' ||
         newUser?.role === 'OWNER'
@@ -262,10 +244,7 @@ export function Register() {
 
     setError('');
 
-    // ----------------------------------------------------------
     // PASSWORD
-    // ----------------------------------------------------------
-
     const passwordError = validatePassword();
 
     if (passwordError) {
@@ -273,10 +252,7 @@ export function Register() {
       return;
     }
 
-    // ----------------------------------------------------------
     // TERMS
-    // ----------------------------------------------------------
-
     if (!agreedToTerms) {
       setError(
         'You must agree to the verification terms before submitting.'
@@ -284,24 +260,22 @@ export function Register() {
       return;
     }
 
-    // ----------------------------------------------------------
     // ID DOCUMENTS
-    // ----------------------------------------------------------
-
     if (!idFront) {
-      setError('Please upload the front side of your identification document.');
+      setError(
+        'Please upload the front side of your identification document.'
+      );
       return;
     }
 
     if (!idBack) {
-      setError('Please upload the back side of your identification document.');
+      setError(
+        'Please upload the back side of your identification document.'
+      );
       return;
     }
 
-    // ----------------------------------------------------------
     // BUSINESS LICENSE
-    // ----------------------------------------------------------
-
     if (!businessLicense) {
       setError(
         'Please upload your business registration/license document.'
@@ -309,37 +283,13 @@ export function Register() {
       return;
     }
 
-    // ----------------------------------------------------------
-    // OWNERSHIP DOCUMENT
-    // ----------------------------------------------------------
-
-    if (ownershipType === 'Owner' && !ownershipProof) {
-      setError('Please upload proof of ownership.');
-      return;
-    }
-
-    if (
-      ownershipType !== 'Owner' &&
-      !authorizationLetter
-    ) {
-      setError('Please upload an authorization letter.');
-      return;
-    }
-
-    // ----------------------------------------------------------
     // GUESTHOUSE PHOTOS
-    // ----------------------------------------------------------
-
     if (!guesthousePhotos.length) {
-      setError(
-        'Please upload at least one guesthouse photo.'
-      );
+      setError('Please upload at least one guesthouse photo.');
       return;
     }
 
-    // ----------------------------------------------------------
     // BASIC OWNER VALIDATION
-    // ----------------------------------------------------------
 
     if (!name.trim()) {
       setError('Full name is required.');
@@ -356,11 +306,6 @@ export function Register() {
       return;
     }
 
-    if (!dateOfBirth) {
-      setError('Date of birth is required.');
-      return;
-    }
-
     if (!address.trim()) {
       setError('Residential address is required.');
       return;
@@ -371,9 +316,7 @@ export function Register() {
       return;
     }
 
-    // ----------------------------------------------------------
     // GUESTHOUSE VALIDATION
-    // ----------------------------------------------------------
 
     if (!guesthouseName.trim()) {
       setError('Guesthouse name is required.');
@@ -423,44 +366,26 @@ export function Register() {
     setLoading(true);
 
     try {
-      /*
-       * FIX:
-       * Password is now included here as well.
-       */
       const ownerApplication = {
         role: 'Owner',
 
-        // ------------------------------------------------------
         // ACCOUNT INFORMATION
-        // ------------------------------------------------------
-
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
         password,
 
-        // ------------------------------------------------------
         // PERSONAL INFORMATION
-        // ------------------------------------------------------
-
-        dateOfBirth,
         address: address.trim(),
 
-        // ------------------------------------------------------
         // IDENTIFICATION
-        // ------------------------------------------------------
-
         idType,
         idNumber: idNumber.trim(),
         idFront,
         idBack,
 
-        // ------------------------------------------------------
         // GUESTHOUSE
-        // ------------------------------------------------------
-
         guesthouseName: guesthouseName.trim(),
-        guesthouseType,
         guesthouseAddress: guesthouseAddress.trim(),
         city: city.trim(),
         subCity: subCity.trim(),
@@ -470,33 +395,14 @@ export function Register() {
         numberOfRooms: Number(numberOfRooms),
         description: description.trim(),
 
-        // ------------------------------------------------------
         // BUSINESS
-        // ------------------------------------------------------
-
-        businessLicenseNumber:
-          businessLicenseNumber.trim(),
-
+        businessLicenseNumber: businessLicenseNumber.trim(),
         businessLicense,
 
-        // ------------------------------------------------------
-        // OWNERSHIP
-        // ------------------------------------------------------
-
-        ownershipType,
-        ownershipProof,
-        authorizationLetter,
-
-        // ------------------------------------------------------
         // PROPERTY PHOTOS
-        // ------------------------------------------------------
-
         guesthousePhotos,
 
-        // ------------------------------------------------------
         // AGREEMENT
-        // ------------------------------------------------------
-
         agreedToTerms: true,
       };
 
@@ -511,11 +417,6 @@ export function Register() {
         'Owner registration result:',
         result
       );
-
-      /*
-       * Owner registration should normally remain pending
-       * until administrator verification.
-       */
 
       navigate('/login', {
         state: {
@@ -566,9 +467,7 @@ export function Register() {
 
           <div className="grid md:grid-cols-2 gap-5">
 
-            {/* ==================================================
-                GUEST OPTION
-            ================================================== */}
+            {/* GUEST OPTION */}
 
             <button
               type="button"
@@ -596,9 +495,7 @@ export function Register() {
               </div>
             </button>
 
-            {/* ==================================================
-                OWNER OPTION
-            ================================================== */}
+            {/* OWNER OPTION */}
 
             <button
               type="button"
@@ -662,8 +559,6 @@ export function Register() {
       <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-stone-50">
         <div className="max-w-md w-full space-y-6">
 
-          {/* BACK */}
-
           <button
             type="button"
             onClick={handleBackToOptions}
@@ -672,8 +567,6 @@ export function Register() {
             <ArrowLeft className="w-4 h-4" />
             Back to registration options
           </button>
-
-          {/* HEADER */}
 
           <div className="text-center">
 
@@ -693,14 +586,10 @@ export function Register() {
 
           {errorMessage}
 
-          {/* FORM */}
-
           <form
             onSubmit={handleGuestSubmit}
             className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-4"
           >
-
-            {/* FULL NAME */}
 
             <InputField
               label="Full Name"
@@ -710,8 +599,6 @@ export function Register() {
               required
               icon={<User className="w-4 h-4" />}
             />
-
-            {/* EMAIL */}
 
             <InputField
               label="Email Address"
@@ -723,8 +610,6 @@ export function Register() {
               icon={<Mail className="w-4 h-4" />}
             />
 
-            {/* PHONE */}
-
             <InputField
               label="Phone Number"
               value={phone}
@@ -733,10 +618,6 @@ export function Register() {
               required
               icon={<Phone className="w-4 h-4" />}
             />
-
-            {/* ==================================================
-                PASSWORD — FIXED
-            ================================================== */}
 
             <InputField
               label="Password"
@@ -748,8 +629,6 @@ export function Register() {
               icon={<Lock className="w-4 h-4" />}
             />
 
-            {/* CONFIRM PASSWORD */}
-
             <InputField
               label="Confirm Password"
               type="password"
@@ -760,15 +639,11 @@ export function Register() {
               icon={<Lock className="w-4 h-4" />}
             />
 
-            {/* PASSWORD INFORMATION */}
-
             <div className="rounded-xl bg-stone-50 border border-stone-200 p-3">
               <p className="text-xs text-stone-500">
                 Password must contain at least 6 characters.
               </p>
             </div>
-
-            {/* SUBMIT */}
 
             <button
               type="submit"
@@ -809,8 +684,6 @@ export function Register() {
     <div className="min-h-screen px-4 py-10 bg-stone-50">
       <div className="max-w-4xl mx-auto space-y-6">
 
-        {/* BACK */}
-
         <button
           type="button"
           onClick={handleBackToOptions}
@@ -819,8 +692,6 @@ export function Register() {
           <ArrowLeft className="w-4 h-4" />
           Back to registration options
         </button>
-
-        {/* HEADER */}
 
         <div className="text-center">
 
@@ -887,8 +758,6 @@ export function Register() {
                 icon={<Phone className="w-4 h-4" />}
               />
 
-              {/* PASSWORD */}
-
               <InputField
                 label="Password"
                 type="password"
@@ -898,8 +767,6 @@ export function Register() {
                 required
                 icon={<Lock className="w-4 h-4" />}
               />
-
-              {/* CONFIRM PASSWORD */}
 
               <InputField
                 label="Confirm Password"
@@ -911,13 +778,7 @@ export function Register() {
                 icon={<Lock className="w-4 h-4" />}
               />
 
-              <InputField
-                label="Date of Birth"
-                type="date"
-                value={dateOfBirth}
-                onChange={setDateOfBirth}
-                required
-              />
+              {/* DATE OF BIRTH REMOVED */}
 
               <div className="md:col-span-2">
 
@@ -1027,41 +888,7 @@ export function Register() {
                 icon={<Building2 className="w-4 h-4" />}
               />
 
-              <div>
-
-                <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
-                  Guesthouse Type
-                </label>
-
-                <select
-                  value={guesthouseType}
-                  onChange={(e) =>
-                    setGuesthouseType(e.target.value)
-                  }
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                >
-                  <option value="Guesthouse">
-                    Guesthouse
-                  </option>
-
-                  <option value="Hotel">
-                    Hotel
-                  </option>
-
-                  <option value="Lodge">
-                    Lodge
-                  </option>
-
-                  <option value="Hostel">
-                    Hostel
-                  </option>
-
-                  <option value="Other">
-                    Other
-                  </option>
-                </select>
-
-              </div>
+              {/* GUESTHOUSE TYPE REMOVED */}
 
               <InputField
                 label="Guesthouse Address"
@@ -1168,60 +995,12 @@ export function Register() {
                 required
               />
 
-              <div>
-
-                <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
-                  Ownership Type
-                </label>
-
-                <select
-                  value={ownershipType}
-                  onChange={(e) =>
-                    setOwnershipType(e.target.value)
-                  }
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                >
-                  <option value="Owner">
-                    Property Owner
-                  </option>
-
-                  <option value="Manager">
-                    Manager
-                  </option>
-
-                  <option value="Authorized Representative">
-                    Authorized Representative
-                  </option>
-                </select>
-
-              </div>
-
               <FileField
                 label="Business Registration / License"
                 file={businessLicense}
                 onChange={setBusinessLicense}
                 required
               />
-
-              <FileField
-                label="Proof of Ownership"
-                file={ownershipProof}
-                onChange={setOwnershipProof}
-                required={ownershipType === 'Owner'}
-              />
-
-              {ownershipType !== 'Owner' && (
-                <div className="md:col-span-2">
-
-                  <FileField
-                    label="Authorization Letter"
-                    file={authorizationLetter}
-                    onChange={setAuthorizationLetter}
-                    required
-                  />
-
-                </div>
-              )}
 
             </div>
 
@@ -1255,9 +1034,40 @@ export function Register() {
                 </p>
 
                 {guesthousePhotos.length > 0 && (
-                  <p className="text-xs text-amber-600 font-semibold mt-3">
-                    {guesthousePhotos.length} photo(s) selected
-                  </p>
+                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {guesthousePhotos.map((photo, index) => (
+                      <div
+                        key={`${photo.name}-${index}`}
+                        className="relative group"
+                      >
+
+                        <img
+                          src={URL.createObjectURL(photo)}
+                          alt={`Guesthouse ${index + 1}`}
+                          className="w-full h-28 object-cover rounded-lg border border-stone-200"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+
+                            setGuesthousePhotos((previous) =>
+                              previous.filter(
+                                (_, photoIndex) =>
+                                  photoIndex !== index
+                              )
+                            );
+                          }}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Remove photo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+
+                      </div>
+                    ))}
+                  </div>
                 )}
 
               </div>
@@ -1326,8 +1136,6 @@ export function Register() {
               </label>
 
             </div>
-
-            {/* SUBMIT */}
 
             <button
               type="submit"
@@ -1509,3 +1317,4 @@ function FileField({
 }
 
 export default Register;
+

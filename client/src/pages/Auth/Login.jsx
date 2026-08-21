@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -22,7 +23,10 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+  // Keep the page the guest originally came from.
+  // If there is no previous page, use the homepage.
+  const from =
+    location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,15 +36,54 @@ export function Login() {
     try {
       const user = await login(email, password);
 
+      // ------------------------------------------------------
+      // ROLE-BASED REDIRECTION
+      // ------------------------------------------------------
+
       if (user.role === 'ADMIN') {
-        navigate('/admin');
+        navigate('/admin', { replace: true });
+
       } else if (user.role === 'OWNER') {
-        navigate('/owner');
+        navigate('/owner', { replace: true });
+
       } else if (user.role === 'RECEPTIONIST') {
-        navigate('/receptionist');
+        navigate('/receptionist', { replace: true });
+
+      } else if (user.role === 'GUEST') {
+        /*
+         * IMPORTANT:
+         *
+         * If the guest came from "View & Book", the protected
+         * page should be stored in location.state.from.
+         *
+         * Otherwise, after a normal guest login, send the guest
+         * to the Guest Search Dashboard instead of the homepage.
+         */
+
+        const cameFromProtectedPage =
+          location.state?.from?.pathname;
+
+        if (cameFromProtectedPage) {
+          navigate(
+            cameFromProtectedPage +
+              (location.state?.from?.search || ''),
+            {
+              replace: true,
+              state: location.state?.from?.state,
+            }
+          );
+        } else {
+          navigate('/guest/search', {
+            replace: true,
+          });
+        }
+
       } else {
-        navigate(from);
+        navigate(from, {
+          replace: true,
+        });
       }
+
     } catch (err) {
       setError(
         err.message ||
@@ -144,11 +187,8 @@ export function Login() {
             </label>
 
             <div className="relative">
-
-              {/* LOCK ICON */}
               <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
 
-              {/* PASSWORD INPUT */}
               <input
                 type={
                   showPassword
@@ -164,7 +204,6 @@ export function Login() {
                 className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
               />
 
-              {/* SHOW / HIDE PASSWORD BUTTON */}
               <button
                 type="button"
                 onClick={() =>
@@ -190,7 +229,6 @@ export function Login() {
                   <Eye className="w-4 h-4" />
                 )}
               </button>
-
             </div>
           </div>
 
@@ -259,3 +297,4 @@ export function Login() {
     </div>
   );
 }
+
