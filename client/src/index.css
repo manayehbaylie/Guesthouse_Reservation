@@ -1,1 +1,145 @@
+
 @import "tailwindcss";
+
+@theme {
+  /* =========================================================
+     GUESTHOUSE PLATFORM BRAND COLORS
+     ========================================================= */
+
+  /* Yellow / Gold */
+  --color-amber-50: #fff8e1;
+  --color-amber-100: #ffecb3;
+  --color-amber-200: #ffe082;
+  --color-amber-300: #ffd54f;
+  --color-amber-400: #ffca28;
+  --color-amber-500: #ffc107;
+  --color-amber-600: #ffb300;
+  --color-amber-700: #ffa000;
+  --color-amber-800: #ff8f00;
+  --color-amber-900: #ff6f00;
+
+  /* Blue / Navy */
+  --color-stone-50: #ffffff;
+  --color-stone-100: #f5f8fa;
+  --color-stone-200: #e5edf2;
+  --color-stone-300: #cbd8e0;
+  --color-stone-400: #94a8b5;
+  --color-stone-500: #647b8a;
+  --color-stone-600: #486273;
+  --color-stone-700: #2f4e62;
+  --color-stone-800: #173c55;
+  --color-stone-900: #0b2f4a;
+  --color-stone-950: #043658;
+}
+
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #043658;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+/* =========================================================
+   FORM ELEMENTS
+   ========================================================= */
+
+button,
+a,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* =========================================================
+   TEXT SELECTION
+   ========================================================= */
+
+::selection {
+  background: #ffc107;
+  color: #043658;
+}
+
+/* =========================================================
+   HOME PAGE SECTION SCROLL OFFSET
+   Prevents sticky navbar from covering sections.
+   ========================================================= */
+
+section[id] {
+  scroll-margin-top: 90px;
+}
+
+/* =========================================================
+   GLOBAL LINK TRANSITION
+   ========================================================= */
+
+a {
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* =========================================================
+   BUTTON TRANSITION
+   ========================================================= */
+
+button {
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* =========================================================
+   IMAGE DEFAULT
+   ========================================================= */
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* =========================================================
+   CUSTOM SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f8fa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a8b5;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #043658;
+}
+

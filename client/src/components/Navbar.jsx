@@ -1,216 +1,201 @@
+
 import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  Building2,
-  Calendar,
-  Home,
-  Search,
-  LogOut,
   Menu,
   X,
+  Building2,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const normalizedRole = String(user?.role || "GUEST").toUpperCase();
+  const role = String(user?.role || "GUEST").toUpperCase();
 
   const isDashboardUser =
-    normalizedRole === "ADMIN" ||
-    normalizedRole === "OWNER" ||
-    normalizedRole === "RECEPTIONIST";
+    role === "OWNER" ||
+    role === "RECEPTIONIST" ||
+    role === "ADMIN";
 
-  const isGuest = normalizedRole === "GUEST";
-
-  const isActive = (path) => {
-    if (path === "/") {
-      return location.pathname === "/";
-    }
-
-    return location.pathname.startsWith(path);
+  const closeMenu = () => {
+    setMobileMenuOpen(false);
   };
 
-  const handleLogout = () => {
-    logout();
-    setMobileMenuOpen(false);
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+
+    closeMenu();
     navigate("/login");
   };
 
-  const closeMobileMenu = () => {
-    setMobileMenuOpen(false);
-  };
+  const navLinkClass = (active = false) =>
+    `relative rounded-lg px-3 py-2 text-sm font-semibold transition ${
+      active
+        ? "bg-stone-50 text-[#043658]"
+        : "text-stone-600 hover:bg-stone-50 hover:text-[#043658]"
+    }`;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-stone-800 bg-stone-950 text-white shadow-lg">
+    <header className="sticky top-0 z-50 w-full border-b border-stone-200 bg-white shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
+        <div className="flex h-20 items-center justify-between">
 
-          {/* =====================================================
-              LEFT SIDE / BRAND
-              ===================================================== */}
-          <div className="flex min-w-0 items-center gap-3">
+          {/* LEFT SIDE */}
+          <div className="flex items-center gap-4">
 
-            {/* 
-              IMPORTANT:
-              This button only controls the dashboard-specific
-              sidebar passed from the dashboard layout.
-
-              It does NOT render the shared PortalSidebar.
-            */}
-            {onToggleSidebar && isDashboardUser && (
+            {/* SIDEBAR BUTTON */}
+            {isDashboardUser && onToggleSidebar && (
               <button
                 type="button"
                 onClick={onToggleSidebar}
-                className="rounded-lg bg-stone-800 p-2 text-amber-400 transition hover:bg-stone-700"
-                title="Toggle dashboard sidebar"
-                aria-label="Toggle dashboard sidebar"
+                aria-label="Open dashboard sidebar"
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#043658] text-white transition hover:bg-[#064b78]"
               >
                 <Menu className="h-5 w-5" />
               </button>
             )}
 
+            {/* LOGO */}
             <Link
-              to={isDashboardUser ? location.pathname : "/"}
+              to="/"
+              onClick={closeMenu}
               className="flex items-center gap-3"
-              onClick={closeMobileMenu}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 shadow-md">
-                <Building2 className="h-5 w-5" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107]">
+                <Building2 className="h-6 w-6" />
               </div>
 
               <div className="hidden sm:block">
-                <span className="block text-base font-black tracking-tight">
+                <div className="text-base font-black text-[#043658]">
                   Guesthouse Platform
-                </span>
+                </div>
 
-                <span className="block text-[10px] font-semibold uppercase tracking-widest text-amber-400">
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FFC107]">
                   Ethiopia
-                </span>
+                </div>
               </div>
             </Link>
+
+            {/* DESKTOP NAVIGATION */}
+            {!isDashboardUser && (
+              <nav className="ml-2 hidden items-center gap-1 md:flex">
+
+                {/* HOME */}
+                <Link
+                  to="/"
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/"
+                  )}
+                >
+                  Home
+                </Link>
+
+                {/* EXPLORE */}
+                <Link
+                  to="/explore"
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/explore"
+                  )}
+                >
+                  Explore
+                </Link>
+
+                {/* ABOUT US */}
+                <Link
+                  to="/about"
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/about"
+                  )}
+                >
+                  About Us
+                </Link>
+
+                {/* CONTACT */}
+                <Link
+                  to="/contact"
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/contact"
+                  )}
+                >
+                  Contact
+                </Link>
+              </nav>
+            )}
           </div>
 
-          {/* =====================================================
-              DESKTOP NAVIGATION
-
-              Only normal guest/public navigation appears here.
-
-              NO:
-              - SWITCH PORTAL MODE
-              - GUEST SERVICES sidebar
-              - Admin portal switch
-              - Owner portal switch
-              - Receptionist portal switch
-              ===================================================== */}
-          {!isDashboardUser && (
-            <nav className="hidden items-center gap-1 md:flex">
-
-              {/* HOME */}
-              <Link
-                to="/"
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  isActive("/")
-                    ? "bg-amber-500 text-stone-950"
-                    : "text-stone-300 hover:bg-stone-800 hover:text-white"
-                }`}
-              >
-                <Home className="h-4 w-4" />
-                Home
-              </Link>
-
-              {/* SEARCH */}
-              {/* <Link
-                to="/search"
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-black transition ${
-                  isActive("/search")
-                    ? "bg-amber-500 text-stone-950 shadow-md"
-                    : "bg-stone-800 text-amber-400 hover:bg-stone-700"
-                }`}
-              >
-                <Search className="h-4 w-4" />
-                Search Guesthouses
-              </Link> */}
-
-              {/* MY RESERVATIONS */}
-              {user && isGuest && (
-                <Link
-                  to="/reservations"
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                    isActive("/reservations")
-                      ? "bg-amber-500/10 text-amber-400"
-                      : "text-stone-300 hover:bg-stone-800 hover:text-white"
-                  }`}
-                >
-                  <Calendar className="h-4 w-4" />
-                  My Bookings
-                </Link>
-              )}
-            </nav>
-          )}
-
-          {/* =====================================================
-              DESKTOP USER / AUTH
-              ===================================================== */}
+          {/* DESKTOP RIGHT SIDE */}
           <div className="hidden items-center gap-3 md:flex">
-
-            {user ? (
+            {!user ? (
               <>
-                <div className="border-l border-stone-800 pl-3 text-right">
-                  <p className="text-sm font-bold text-stone-100">
-                    {user.fullName || user.name || "User"}
+                <Link
+                  to="/login"
+                  onClick={closeMenu}
+                  className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[#043658] transition hover:bg-stone-50"
+                >
+                  Login
+                </Link>
+
+                <Link
+                  to="/register"
+                  onClick={closeMenu}
+                  className="rounded-lg bg-[#043658] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#064b78]"
+                >
+                  Register
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-[#043658]">
+                    {user.fullName ||
+                      user.name ||
+                      "User"}
                   </p>
 
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-400">
-                    {normalizedRole}
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#FFC107]">
+                    {role}
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-lg p-2 text-stone-400 transition hover:bg-stone-800 hover:text-white"
-                  title="Log out"
-                  aria-label="Log out"
+                  aria-label="Logout"
+                  title="Logout"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 transition hover:bg-red-50 hover:text-red-600"
                 >
                   <LogOut className="h-5 w-5" />
                 </button>
               </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-stone-300 transition hover:bg-stone-800 hover:text-white"
-                >
-                  Log In
-                </Link>
-
-                <Link
-                  to="/register"
-                  className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-black text-stone-950 transition hover:bg-amber-400"
-                >
-                  Register
-                </Link>
-              </>
             )}
           </div>
 
-          {/* =====================================================
-              MOBILE BUTTON
-              ===================================================== */}
+          {/* MOBILE MENU BUTTON */}
           <button
             type="button"
-            onClick={() => setMobileMenuOpen((value) => !value)}
-            className="rounded-lg p-2 text-stone-300 transition hover:bg-stone-800 hover:text-white md:hidden"
+            onClick={() =>
+              setMobileMenuOpen((open) => !open)
+            }
             aria-label={
               mobileMenuOpen
-                ? "Close navigation menu"
-                : "Open navigation menu"
+                ? "Close menu"
+                : "Open menu"
             }
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-[#043658] transition hover:bg-stone-50 md:hidden"
           >
             {mobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -221,147 +206,107 @@ export function Navbar({ onToggleSidebar }) {
         </div>
       </div>
 
-      {/* =====================================================
-          MOBILE MENU
-
-          NO PORTAL SIDEBAR HERE.
-          Dashboard-specific sidebars remain outside Navbar.
-          ===================================================== */}
+      {/* MOBILE NAVIGATION */}
       {mobileMenuOpen && (
-        <div className="border-t border-stone-800 bg-stone-950 px-4 py-4 md:hidden">
-          <nav className="space-y-2">
+        <div className="border-t border-stone-200 bg-white shadow-lg md:hidden">
+          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
 
-            {/* =================================================
-                GUEST / PUBLIC NAVIGATION
-                ================================================= */}
             {!isDashboardUser && (
-              <>
+              <nav className="flex flex-col gap-1">
+
+                {/* HOME */}
                 <Link
                   to="/"
-                  onClick={closeMobileMenu}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold ${
-                    isActive("/")
-                      ? "bg-amber-500 text-stone-950"
-                      : "text-stone-300 hover:bg-stone-800"
-                  }`}
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/"
+                  )}
                 >
-                  <Home className="h-5 w-5" />
                   Home
                 </Link>
 
+                {/* EXPLORE */}
                 <Link
-                  to="/search"
-                  onClick={closeMobileMenu}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-black ${
-                    isActive("/search")
-                      ? "bg-amber-500 text-stone-950"
-                      : "bg-stone-800 text-amber-400 hover:bg-stone-700"
-                  }`}
+                  to="/explore"
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/explore"
+                  )}
                 >
-                  <Search className="h-5 w-5" />
-                  Search Guesthouses
+                  Explore
                 </Link>
 
-                {user && isGuest && (
-                  <Link
-                    to="/reservations"
-                    onClick={closeMobileMenu}
-                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold ${
-                      isActive("/reservations")
-                        ? "bg-amber-500/10 text-amber-400"
-                        : "text-stone-300 hover:bg-stone-800"
-                    }`}
-                  >
-                    <Calendar className="h-5 w-5" />
-                    My Bookings
-                  </Link>
+                {/* ABOUT US */}
+                <Link
+                  to="/about"
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/about"
+                  )}
+                >
+                  About Us
+                </Link>
+
+                {/* CONTACT */}
+                <Link
+                  to="/contact"
+                  onClick={closeMenu}
+                  className={navLinkClass(
+                    location.pathname === "/contact"
+                  )}
+                >
+                  Contact
+                </Link>
+
+                {/* MOBILE AUTH */}
+                {!user && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 border-t border-stone-200 pt-4">
+                    <Link
+                      to="/login"
+                      onClick={closeMenu}
+                      className="rounded-lg border border-[#043658] px-4 py-3 text-center text-sm font-semibold text-[#043658]"
+                    >
+                      Login
+                    </Link>
+
+                    <Link
+                      to="/register"
+                      onClick={closeMenu}
+                      className="rounded-lg bg-[#043658] px-4 py-3 text-center text-sm font-bold text-white"
+                    >
+                      Register
+                    </Link>
+                  </div>
                 )}
-              </>
+              </nav>
             )}
 
-            {/* =================================================
-                DASHBOARD USERS
-
-                We intentionally do NOT render:
-                - PortalSidebar
-                - Switch Portal Mode
-                - Guest Services
-                - Admin Console
-                - Owner Dashboard
-                - Receptionist Dashboard
-
-                Their own dashboard sidebar handles navigation.
-                ================================================= */}
+            {/* DASHBOARD USER MOBILE AREA */}
             {isDashboardUser && (
-              <div className="rounded-lg border border-stone-800 bg-stone-900 p-4">
-                <p className="text-sm font-bold text-white">
-                  {user?.fullName || user?.name || "User"}
-                </p>
-
-                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-400">
-                  {normalizedRole}
-                </p>
-
-                <p className="mt-2 text-xs text-stone-500">
-                  Use your dashboard sidebar for navigation.
-                </p>
-              </div>
-            )}
-
-            {/* =================================================
-                NOT LOGGED IN
-                ================================================= */}
-            {!user && (
-              <div className="grid grid-cols-2 gap-2 border-t border-stone-800 pt-3">
-                <Link
-                  to="/login"
-                  onClick={closeMobileMenu}
-                  className="rounded-lg border border-stone-700 px-4 py-3 text-center text-sm font-semibold text-stone-300"
-                >
-                  Log In
-                </Link>
-
-                <Link
-                  to="/register"
-                  onClick={closeMobileMenu}
-                  className="rounded-lg bg-amber-500 px-4 py-3 text-center text-sm font-black text-stone-950"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
-
-            {/* =================================================
-                USER INFORMATION + LOGOUT
-                ================================================= */}
-            {user && (
-              <div className="mt-3 border-t border-stone-800 pt-3">
-
-                <div className="mb-3 rounded-lg bg-stone-900 p-3">
-                  <p className="text-sm font-bold text-white">
-                    {user.fullName || user.name || "User"}
+              <div className="space-y-3">
+                <div className="rounded-xl bg-[#043658] p-4 text-white">
+                  <p className="text-sm font-bold">
+                    {user?.fullName ||
+                      user?.name ||
+                      "User"}
                   </p>
 
-                  <p className="mt-1 text-xs text-amber-400">
-                    {user.email || ""}
-                  </p>
-
-                  <p className="mt-1 text-[10px] font-bold uppercase text-stone-500">
-                    {normalizedRole}
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wider text-[#FFC107]">
+                    {role}
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-stone-700 px-4 py-3 text-sm font-semibold text-red-400 hover:bg-stone-800"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
                 >
                   <LogOut className="h-4 w-4" />
-                  Log Out
+                  Logout
                 </button>
               </div>
             )}
-          </nav>
+          </div>
         </div>
       )}
     </header>
@@ -369,3 +314,4 @@ export function Navbar({ onToggleSidebar }) {
 }
 
 export default Navbar;
+

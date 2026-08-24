@@ -1,89 +1,166 @@
 
-import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import { Navbar } from './components/Navbar.jsx';
-import { Sidebar } from './components/Sidebar.jsx';
-import { ArchitectureModal } from './components/ArchitectureModal.jsx';
-import { ProtectedRoute } from './components/ProtectedRoute.jsx';
+// Components
+import Navbar from "./components/Navbar.jsx";
+import { Sidebar } from "./components/Sidebar.jsx";
+import { ArchitectureModal } from "./components/ArchitectureModal.jsx";
+import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 
-import { Login } from './pages/Auth/Login.jsx';
-import { Register } from './pages/Auth/Register.jsx';
+// Authentication pages
+import { Login } from "./pages/Auth/Login.jsx";
+import { Register } from "./pages/Auth/Register.jsx";
 
-import { Home } from './pages/Guest/Home.jsx';
-import { GuesthouseSearch } from './pages/Guest/Search.jsx';
-import { GuesthouseDetail } from './pages/Guest/GuesthouseDetail.jsx';
-import { Booking } from './pages/Guest/Booking.jsx';
-import { GuestBookings } from './pages/Guest/Reservations.jsx';
+// Guest pages
+import { Home } from "./pages/Guest/Home.jsx";
+import { Explore } from "./pages/Guest/Explore.jsx";
+import { AboutUs } from "./pages/Guest/AboutUs.jsx";
+import { Contact } from "./pages/Guest/Contact.jsx";
+import { GuesthouseSearch } from "./pages/Guest/Search.jsx";
+import { GuesthouseDetail } from "./pages/Guest/GuesthouseDetail.jsx";
+import { Booking } from "./pages/Guest/Booking.jsx";
+import { GuestBookings } from "./pages/Guest/Reservations.jsx";
 
-import { OwnerDashboard } from './pages/Owner/Dashboard.jsx';
-import { GuesthouseManage } from './pages/Owner/GuesthouseManage.jsx';
-import { RoomManage } from './pages/Owner/RoomManage.jsx';
-import { StaffManage } from './pages/Owner/StaffManage.jsx';
-import { RevenueReports } from './pages/Owner/RevenueReports.jsx';
+// Owner pages
+import { OwnerDashboard } from "./pages/Owner/Dashboard.jsx";
+import { GuesthouseManage } from "./pages/Owner/GuesthouseManage.jsx";
+import { RoomManage } from "./pages/Owner/RoomManage.jsx";
+import { StaffManage } from "./pages/Owner/StaffManage.jsx";
+import { RevenueReports } from "./pages/Owner/RevenueReports.jsx";
 
-import { ReceptionistDashboard } from './pages/Receptionist/Dashboard.jsx';
-import { AdminDashboard } from './pages/Admin/Dashboard.jsx';
+// Receptionist
+import { ReceptionistDashboard } from "./pages/Receptionist/Dashboard.jsx";
+
+// Admin
+import { AdminDashboard } from "./pages/Admin/Dashboard.jsx";
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [archModalOpen, setArchModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-white text-stone-900 flex flex-col font-sans">
 
-      {/* =====================================================
+      {/* =========================================================
           NAVBAR
-      ====================================================== */}
+      ========================================================= */}
       <Navbar
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        onOpenArchModal={() => setArchModalOpen(true)}
       />
 
-      {/* =====================================================
+      {/* =========================================================
           MAIN LAYOUT
-      ====================================================== */}
+      ========================================================= */}
       <div className="flex-1 flex w-full">
 
+        {/* DASHBOARD SIDEBAR */}
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onOpenArchModal={() => setArchModalOpen(true)}
         />
 
-        <main className="flex-1 min-w-0 pb-12">
+        {/* =======================================================
+            MAIN CONTENT
+        ======================================================= */}
+        <main className="flex-1 min-w-0">
 
           <Routes>
 
-            {/* =================================================
-                PUBLIC / GUEST PAGES
-            ================================================= */}
-
+            {/* ===================================================
+                HOME
+            =================================================== */}
             <Route
               path="/"
               element={<Home />}
             />
 
+            {/* ===================================================
+                PUBLIC PAGES
+            =================================================== */}
+            <Route
+              path="/explore"
+              element={<Explore />}
+            />
+
+            <Route
+              path="/about"
+              element={<AboutUs />}
+            />
+
+            <Route
+              path="/contact"
+              element={<Contact />}
+            />
+
+            {/* ===================================================
+                SEARCH
+            =================================================== */}
             <Route
               path="/search"
               element={<GuesthouseSearch />}
             />
 
+            {/* ===================================================
+                GUESTHOUSE DETAILS
+                Example:
+                /guesthouse/12
+                /guesthouses/12
+            =================================================== */}
             <Route
               path="/guesthouse/:id"
               element={<GuesthouseDetail />}
             />
 
             <Route
-              path="/booking"
-              element={<Booking />}
+              path="/guesthouses/:id"
+              element={<GuesthouseDetail />}
             />
 
+            {/* ===================================================
+                BOOKING
 
-            {/* =================================================
+                The guesthouse and room IDs are included in the URL
+                so the Booking page knows exactly what was selected.
+
+                Example:
+                /booking/12/45
+
+                12 = guesthouse ID
+                45 = room ID
+            =================================================== */}
+            <Route
+              path="/booking/:guesthouseId/:roomId"
+              element={
+                <ProtectedRoute
+                  allowedRoles={["GUEST"]}
+                >
+                  <Booking />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ===================================================
+                FALLBACK BOOKING ROUTE
+
+                Keeps compatibility if another part of the
+                application still navigates to /booking.
+            =================================================== */}
+            <Route
+              path="/booking"
+              element={
+                <ProtectedRoute
+                  allowedRoles={["GUEST"]}
+                >
+                  <Booking />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ===================================================
                 AUTHENTICATION
-            ================================================= */}
-
+            =================================================== */}
             <Route
               path="/login"
               element={<Login />}
@@ -94,20 +171,18 @@ export default function App() {
               element={<Register />}
             />
 
-
-            {/* =================================================
+            {/* ===================================================
                 GUEST RESERVATIONS
-            ================================================= */}
-
+            =================================================== */}
             <Route
               path="/reservations"
               element={
                 <ProtectedRoute
                   allowedRoles={[
-                    'GUEST',
-                    'OWNER',
-                    'RECEPTIONIST',
-                    'ADMIN',
+                    "GUEST",
+                    "OWNER",
+                    "RECEPTIONIST",
+                    "ADMIN",
                   ]}
                 >
                   <GuestBookings />
@@ -115,148 +190,133 @@ export default function App() {
               }
             />
 
-
-            {/* =================================================
-                OWNER
-            ================================================= */}
-
+            {/* ===================================================
+                OWNER DASHBOARD
+            =================================================== */}
             <Route
               path="/owner"
               element={
-                <ProtectedRoute
-                  allowedRoles={['OWNER']}
-                >
+                <ProtectedRoute allowedRoles={["OWNER"]}>
                   <OwnerDashboard />
                 </ProtectedRoute>
               }
             />
 
+            {/* OWNER - GUESTHOUSE MANAGEMENT */}
             <Route
               path="/owner/guesthouse"
               element={
-                <ProtectedRoute
-                  allowedRoles={['OWNER']}
-                >
+                <ProtectedRoute allowedRoles={["OWNER"]}>
                   <GuesthouseManage />
                 </ProtectedRoute>
               }
             />
 
+            {/* OWNER - ROOM MANAGEMENT */}
             <Route
               path="/owner/rooms"
               element={
-                <ProtectedRoute
-                  allowedRoles={['OWNER']}
-                >
+                <ProtectedRoute allowedRoles={["OWNER"]}>
                   <RoomManage />
                 </ProtectedRoute>
               }
             />
 
+            {/* OWNER - STAFF MANAGEMENT */}
             <Route
               path="/owner/staff"
               element={
-                <ProtectedRoute
-                  allowedRoles={['OWNER']}
-                >
+                <ProtectedRoute allowedRoles={["OWNER"]}>
                   <StaffManage />
                 </ProtectedRoute>
               }
             />
 
+            {/* OWNER - REVENUE REPORTS */}
             <Route
               path="/owner/revenue"
               element={
-                <ProtectedRoute
-                  allowedRoles={['OWNER']}
-                >
+                <ProtectedRoute allowedRoles={["OWNER"]}>
                   <RevenueReports />
                 </ProtectedRoute>
               }
             />
 
-
-            {/* =================================================
+            {/* ===================================================
                 RECEPTIONIST
-            ================================================= */}
-
+            =================================================== */}
             <Route
               path="/receptionist"
               element={
                 <ProtectedRoute
-                  allowedRoles={['RECEPTIONIST']}
+                  allowedRoles={["RECEPTIONIST"]}
                 >
                   <ReceptionistDashboard />
                 </ProtectedRoute>
               }
             />
 
-
-            {/* =================================================
+            {/* ===================================================
                 ADMIN
-            ================================================= */}
-
+            =================================================== */}
             <Route
               path="/admin"
               element={
-                <ProtectedRoute
-                  allowedRoles={['ADMIN']}
-                >
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <AdminDashboard />
                 </ProtectedRoute>
               }
             />
 
-
-            {/* =================================================
+            {/* ===================================================
                 FALLBACK
-            ================================================= */}
-
+            =================================================== */}
             <Route
               path="*"
               element={
                 <Navigate
-                  to="/search"
+                  to="/"
                   replace
                 />
               }
             />
 
           </Routes>
-
         </main>
       </div>
 
-
-      {/* =====================================================
+      {/* =========================================================
           FOOTER
-      ====================================================== */}
+      ========================================================= */}
+      <footer className="border-t border-stone-200 bg-[#043658] py-8 text-white">
 
-      <footer className="bg-stone-950 border-t border-stone-800 py-6 text-center text-xs text-stone-400">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
 
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold">
+              © 2026 Guesthouse Reservation Platform.
+            </p>
 
-          <p>
-            © 2026 Guesthouse Reservation Platform.
-            All Rights Reserved.
-          </p>
+            <p className="mt-1 text-xs text-white/60">
+              Discover and reserve verified guesthouses across
+              Ethiopia.
+            </p>
+          </div>
 
           <button
+            type="button"
             onClick={() => setArchModalOpen(true)}
-            className="text-amber-400 hover:underline font-semibold"
+            className="text-sm font-semibold text-[#FFC107] transition hover:text-white hover:underline"
           >
             View Full-Stack API & Architecture Specs
           </button>
 
         </div>
-
       </footer>
 
-
-      {/* =====================================================
+      {/* =========================================================
           ARCHITECTURE MODAL
-      ====================================================== */}
-
+      ========================================================= */}
       <ArchitectureModal
         isOpen={archModalOpen}
         onClose={() => setArchModalOpen(false)}
