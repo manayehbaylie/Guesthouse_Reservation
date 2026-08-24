@@ -41,7 +41,43 @@ export function ReceptionistDashboard() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [receiptReservation, setReceiptReservation] = useState(null);
 
+const handleDeleteReservation = async (reservation) => {
+  const confirmed = window.confirm(
+    `Are you sure you want to permanently delete reservation #res_${reservation.id}?`
+  );
 
+  if (!confirmed) {
+    return;
+  }
+
+  setActionLoadingId(reservation.id);
+
+  try {
+    await ApiService.deleteReceptionistReservation(
+      reservation.id
+    );
+
+    setAllReservations((currentReservations) =>
+      currentReservations.filter(
+        (item) => item.id !== reservation.id
+      )
+    );
+
+    alert("Reservation deleted successfully.");
+  } catch (error) {
+    console.error(
+      "Failed to delete reservation:",
+      error
+    );
+
+    setError(
+      error?.message ||
+      "Failed to delete reservation."
+    );
+  } finally {
+    setActionLoadingId(null);
+  }
+};
 
   const loadData = async () => {
     setLoading(true);
@@ -219,7 +255,7 @@ export function ReceptionistDashboard() {
 
         {/* Navigation Menu */}
         <nav className="flex-1 p-4 space-y-2">
-          <button
+          {/* <button
             onClick={() => { setActiveTab('arrivals'); setSearchTerm(''); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
               activeTab === 'arrivals' 
@@ -232,9 +268,9 @@ export function ReceptionistDashboard() {
               <div className="font-bold">Today's Arrivals</div>
               <div className={`text-xs ${activeTab === 'arrivals' ? 'text-emerald-100' : 'text-stone-500'}`}>{dashboardStats?.arrivals || 0} guests</div>
             </div>
-          </button>
+          </button> */}
 
-          <button
+          {/* <button
             onClick={() => { setActiveTab('departures'); setSearchTerm(''); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
               activeTab === 'departures' 
@@ -247,7 +283,7 @@ export function ReceptionistDashboard() {
               <div className="font-bold">Today's Departures</div>
               <div className={`text-xs ${activeTab === 'departures' ? 'text-amber-100' : 'text-stone-500'}`}>{dashboardStats?.departures || 0} check-outs</div>
             </div>
-          </button>
+          </button> */}
 
           <button
             onClick={() => { setActiveTab('all'); setSearchTerm(''); }}
@@ -364,7 +400,7 @@ export function ReceptionistDashboard() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <button
+          {/* <button
             onClick={() => { setActiveTab('arrivals'); setSearchTerm(''); }}
             className="text-left bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-2xl border-2 border-blue-200 shadow-lg shadow-blue-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
           >
@@ -376,9 +412,9 @@ export function ReceptionistDashboard() {
             <div className="p-3 bg-blue-500 text-white rounded-xl shadow-lg">
               <UserCheck className="w-6 h-6" />
             </div>
-          </button>
+          </button> */}
 
-          <button
+          {/* <button
             onClick={() => { setActiveTab('departures'); setSearchTerm(''); }}
             className="text-left bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-2xl border-2 border-amber-200 shadow-lg shadow-amber-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
           >
@@ -390,7 +426,7 @@ export function ReceptionistDashboard() {
             <div className="p-3 bg-amber-500 text-white rounded-xl shadow-lg">
               <UserX className="w-6 h-6" />
             </div>
-          </button>
+          </button> */}
 
           <button
             onClick={() => { setActiveTab('inhouse'); setSearchTerm(''); }}
@@ -648,6 +684,19 @@ export function ReceptionistDashboard() {
                           >
                             Receipt
                           </button>
+    {["checked_out", "cancelled"].includes(
+  String(r.status || "").trim().toLowerCase()
+) && (
+  <button
+    type="button"
+    onClick={() => handleDeleteReservation(r)}
+    disabled={actionLoadingId === r.id}
+    className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs rounded-lg font-bold transition-all"
+  >
+    {actionLoadingId === r.id ? "Deleting..." : "Delete"}
+  </button>
+)}
+                                          
                         </div>
                       </td>
                     </tr>

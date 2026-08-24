@@ -692,9 +692,7 @@ function mapPaymentFromBackend(
   };
 }
 
-function mapPaymentMethodToBackend(
-  method
-) {
+function mapPaymentMethodToBackend(method) {
   const normalized =
     String(
       method || 'TELEBIRR'
@@ -708,6 +706,10 @@ function mapPaymentMethodToBackend(
     return 'BANK_TRANSFER';
   }
 
+  if (normalized === 'CHAPA') {
+    return 'CHAPA';
+  }
+
   return 'TELEBIRR';
 }
 
@@ -718,26 +720,28 @@ function mapPaymentMethodToBackend(
 function formatEthiopianPhone(phone) {
   if (!phone) return '';
 
-  const cleaned =
-    String(phone)
-      .replace(/\s+/g, '');
+  let cleaned = String(phone)
+    .replace(/\s+/g, '')
+    .replace(/-/g, '');
 
-  if (
-    cleaned.startsWith('+251')
-  ) {
+  // +251912345678
+  if (/^\+2519\d{8}$/.test(cleaned)) {
     return cleaned;
   }
 
-  if (
-    cleaned.startsWith('09')
-  ) {
-    return cleaned;
+  // 251912345678
+  if (/^2519\d{8}$/.test(cleaned)) {
+    return `+${cleaned}`;
   }
 
-  if (
-    cleaned.startsWith('9')
-  ) {
-    return `0${cleaned}`;
+  // 0912345678
+  if (/^09\d{8}$/.test(cleaned)) {
+    return `+251${cleaned.slice(1)}`;
+  }
+
+  // 912345678
+  if (/^9\d{8}$/.test(cleaned)) {
+    return `+251${cleaned}`;
   }
 
   return cleaned;
@@ -1458,26 +1462,22 @@ export const ApiService = {
         nightsCount || 0
       );
 
-    const initiatePayload = {
-      reservationId:
-        reservation.id,
+  const backendPaymentMethod =
+  mapPaymentMethodToBackend(paymentMethod);
 
-      method:
-        mapPaymentMethodToBackend(
-          paymentMethod
-        ) === 'BANK_TRANSFER'
-          ? 'CBE_BIRR'
-          : 'TELEBIRR',
+const initiatePayload = {
+  reservationId: reservation.id,
 
-      phone:
-        formatEthiopianPhone(
-          phone
-        ),
+  method: backendPaymentMethod,
 
-      accountNumber:
-        accountNumber ||
-        undefined,
-    };
+  phone: formatEthiopianPhone(phone),
+
+  bankName:
+    bankName || undefined,
+
+  accountNumber:
+    accountNumber || undefined,
+};
 
     const paymentResponse =
       await api.post(
@@ -1801,6 +1801,22 @@ export const ApiService = {
     );
   },
 
+  async deleteReceptionistReservation(
+    reservationId
+  ) {
+    if (!reservationId) {
+      throw new Error(
+        'Reservation ID is required.'
+      );
+    }
+
+    const response =
+      await api.delete(
+        `/receptionist/reservations/${reservationId}`
+      );
+
+    return unwrap(response);
+  },
   // ----------------------------------------------------------
   // OWNER
   // ----------------------------------------------------------

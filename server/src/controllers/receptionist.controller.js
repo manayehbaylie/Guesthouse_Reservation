@@ -3,7 +3,8 @@ import {
   confirmReservation, 
   checkInGuest, 
   checkOutGuest, 
-  cancelReservation, 
+  cancelReservation,
+    deleteReservation, 
   getTodayArrivals,
   getTodayDepartures,
   getDashboardStats,
@@ -258,6 +259,29 @@ export const todayDepartures = async (
       res,
       departures,
       "Today's departures fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+// ===================================
+// Delete Reservation
+// ===================================
+export const deleteReceptionReservation = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const reservation = await deleteReservation(
+      req.user.id,
+      req.params.id
+    );
+
+    successResponse(
+      res,
+      reservation,
+      "Reservation deleted successfully"
     );
   } catch (error) {
     next(error);

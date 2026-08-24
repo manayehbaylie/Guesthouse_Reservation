@@ -5,11 +5,14 @@ import {
   getAll,
   getById,
   updateStatus,
+    checkout,
+
 } from "../controllers/reservation.controller.js";
 
 import {
   authenticate,
 } from "../middleware/auth.middleware.js";
+import { authorize } from "../middleware/role.middleware.js";
 
 const router =
   express.Router();
@@ -100,5 +103,10 @@ router.patch(
   updateStatus
 );
 
-
+router.patch(
+  "/:id/checkout",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  checkout
+);
 export default router;

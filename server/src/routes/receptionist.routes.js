@@ -5,7 +5,7 @@ import {
   confirm,
   checkIn,
   checkOut,
-  cancel,
+  cancel,  deleteReceptionReservation,
   todayArrivals,
   todayDepartures,
   dashboardStats,
@@ -465,6 +465,23 @@ router.get(
   authenticate,
   authorize("RECEPTIONIST"),
   todayDepartures
+);
+/**
+ * @swagger
+ * /api/receptionist/reservations/{id}:
+ *   delete:
+ *     summary: Delete a reservation
+ *     description: Permanently delete a cancelled or checked-out reservation.
+ *     tags:
+ *       - Receptionist
+ *     security:
+ *       - bearerAuth: []
+ */
+router.delete(
+  "/reservations/:id",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  deleteReceptionReservation
 );
 
 export default router;

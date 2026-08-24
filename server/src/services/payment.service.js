@@ -1,5 +1,76 @@
 import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
+import axios from "axios";
+const CHAPA_SECRET_KEY =
+  process.env.CHAPA_SECRET_KEY;
+  const initializeChapaPayment = async ({
+  amount,
+  email,
+  fullName,
+  phone,
+  txRef,
+  callbackUrl,
+  returnUrl,
+}) => {
+  const nameParts =
+    String(fullName || "")
+      .trim()
+      .split(/\s+/);
+
+  const firstName =
+    nameParts.shift() || "Guest";
+
+  const lastName =
+    nameParts.join(" ") || "Guest";
+
+  const response = await axios.post(
+    "https://api.chapa.co/v1/transaction/initialize",
+    {
+      amount: String(amount),
+      currency: "ETB",
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      phone_number:
+        phone || undefined,
+
+      tx_ref: txRef,
+
+      callback_url:
+        callbackUrl,
+
+      return_url:
+        returnUrl,
+
+      customization: {
+        title: "Guesthouse Reservation",
+        description:
+          "Payment for guesthouse reservation",
+      },
+    },
+    {
+      headers: {
+        Authorization:
+          `Bearer ${CHAPA_SECRET_KEY}`,
+
+        "Content-Type":
+          "application/json",
+      },
+    }
+  );
+
+  if (
+    response.data?.status !==
+    "success"
+  ) {
+    throw new Error(
+      response.data?.message ||
+      "Unable to initialize Chapa payment."
+    );
+  }
+
+  return response.data;
+};
 
 const ETHIOPIAN_BANKS = [
   "CBE",
@@ -11,12 +82,30 @@ const ETHIOPIAN_BANKS = [
 ];
 
 const normalizeEthiopianPhone = (value) => {
-  return String(value || "").replace(/\s+/g, "");
+  let phone = String(value || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/-/g, '');
+
+  if (/^2519\d{8}$/.test(phone)) {
+    return `+${phone}`;
+  }
+
+  if (/^09\d{8}$/.test(phone)) {
+    return `+251${phone.slice(1)}`;
+  }
+
+  if (/^9\d{8}$/.test(phone)) {
+    return `+251${phone}`;
+  }
+
+  return phone;
 };
 
 const isValidEthiopianPhone = (value) => {
-  return /^(09\d{8}|\+2519\d{8})$/.test(value);
+  return /^\+2519\d{8}$/.test(value);
 };
+
 
 /* ==========================================================
    CREATE PAYMENT
@@ -86,11 +175,11 @@ export const createPayment = async (data) => {
   const paymentMethod =
     String(data.paymentMethod || "").toUpperCase();
 
-  if (
-    !["TELEBIRR", "BANK_TRANSFER"].includes(paymentMethod)
-  ) {
-    throw new Error("Invalid payment method.");
-  }
+ if (
+  !["TELEBIRR", "BANK_TRANSFER", "CHAPA"].includes(paymentMethod)
+) {
+  throw new Error("Invalid payment method.");
+}
 
   let mobileNumber = null;
   let bankName = null;
@@ -198,11 +287,11 @@ export const createPayment = async (data) => {
 /* ==========================================================
    INITIATE PAYMENT / CONFIRM RESERVATION
 ========================================================== */
-
 export const initiatePayment = async ({
   reservationId,
   method,
   phone,
+  bankName,
   accountNumber,
   mobileNumber: mobileNumberAlt,
 }) => {
@@ -268,146 +357,225 @@ export const initiatePayment = async ({
       "This room is no longer available."
     );
   }
+const rawMethod = String(method || "").toUpperCase();
 
-  const rawMethod = String(method || "").toUpperCase();
+if (
+  ![
+    "TELEBIRR",
+    "BANK_TRANSFER",
+    "CHAPA",
+  ].includes(rawMethod)
+) {
+  throw new Error("Invalid payment method.");
+}
 
-  const paymentMethod =
-    rawMethod === "TELEBIRR"
-      ? "TELEBIRR"
-      : "CBE_BIRR";
+const paymentMethod =
+  rawMethod === "BANK_TRANSFER"
+    ? "CBE_BIRR"
+    : rawMethod;
 
-  if (paymentMethod === "TELEBIRR") {
-    const mobile = normalizeEthiopianPhone(
-      phone || mobileNumberAlt
-    );
-
-    if (!isValidEthiopianPhone(mobile)) {
-      throw new Error(
-        "Enter a valid Ethiopian mobile number."
-      );
-    }
-  } else {
-    const acc = String(accountNumber || "").trim();
-
-    if (!/^[0-9]{6,20}$/.test(acc)) {
-      throw new Error(
-        "Account number must contain 6 to 20 digits."
-      );
-    }
-  }
-
-  const startDate = new Date(reservation.checkIn);
-  const endDate = new Date(reservation.checkOut);
-
-  const nights = Math.max(
-    1,
-    Math.round(
-      (endDate.getTime() - startDate.getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
+ if (paymentMethod === "TELEBIRR") {
+  const mobile = normalizeEthiopianPhone(
+    phone || mobileNumberAlt
   );
 
-  const roomPrice = Number(
-    reservation.room.price ??
-      reservation.room.pricePerNight ??
-      0
-  );
-
-  const amount = roomPrice * nights;
-
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (!isValidEthiopianPhone(mobile)) {
     throw new Error(
-      "Payment amount must be greater than zero."
+      "Enter a valid Ethiopian mobile number."
+    );
+  }
+}
+
+if (paymentMethod === "CBE_BIRR") {
+  const selectedBank =
+    String(bankName || "").trim();
+
+  if (!ETHIOPIAN_BANKS.includes(selectedBank)) {
+    throw new Error(
+      "Please select a supported Ethiopian bank."
     );
   }
 
-  /*
-   * IMPORTANT:
-   *
-   * Payment + reservation confirmation + room occupation
-   * happen inside ONE transaction.
-   */
-  const result = await prisma.$transaction(
-    async (tx) => {
+  const acc =
+    String(accountNumber || "").trim();
 
-      // Re-check the room inside the transaction.
-      const currentRoom = await tx.room.findUnique({
-        where: {
-          id: reservation.roomId,
-        },
-      });
+  if (!/^[0-9]{6,20}$/.test(acc)) {
+    throw new Error(
+      "Account number must contain 6 to 20 digits."
+    );
+  }
+}
+const startDate = new Date(reservation.checkIn);
+const endDate = new Date(reservation.checkOut);
 
-      if (!currentRoom) {
-        throw new Error("Room not found.");
-      }
+const nights = Math.max(
+  1,
+  Math.round(
+    (endDate.getTime() - startDate.getTime()) /
+      (1000 * 60 * 60 * 24)
+  )
+);
 
-      if (!currentRoom.available) {
-        throw new Error(
-          "This room has already been booked."
-        );
-      }
+const roomPrice = Number(
+  reservation.room.price ??
+    reservation.room.pricePerNight ??
+    0
+);
 
-      // Create PAID payment.
-      const payment = await tx.payment.create({
-        data: {
-          reservationId: resId,
-          amount,
-          method: paymentMethod,
-          status: "PAID",
-        },
-      });
+const amount = roomPrice * nights;
 
-      // Confirm reservation.
-      const confirmedReservation =
-        await tx.reservation.update({
-          where: {
-            id: resId,
-          },
-          data: {
-            status: "CONFIRMED",
-          },
-        });
-
-      // IMPORTANT:
-      // Make the room occupied/unavailable.
-      const occupiedRoom = await tx.room.update({
-        where: {
-          id: reservation.roomId,
-        },
-        data: {
-          available: false,
-        },
-      });
-
-      return {
-        payment,
-        confirmedReservation,
-        occupiedRoom,
-      };
-    }
+if (!Number.isFinite(amount) || amount <= 0) {
+  throw new Error(
+    "Payment amount must be greater than zero."
   );
+}
 
-  await createNotification({
-    title: "Payment Successful",
-    message:
-      "Your payment was verified successfully and your reservation has been confirmed.",
-    userId: reservation.guestId,
+/* ==========================================================
+   CHAPA PAYMENT
+========================================================== */
+
+if (rawMethod === "CHAPA") {
+  const txRef = `GH-${resId}-${Date.now()}`;
+
+  const payment = await prisma.payment.create({
+    data: {
+      reservationId: resId,
+      amount,
+      method: "CHAPA",
+      status: "PENDING",
+    },
   });
 
-  const referenceNumber =
-    "GH-" +
-    String(result.payment.id).padStart(8, "0");
+  try {
+    const chapaResult = await initializeChapaPayment({
+      amount,
+
+      email: reservation.guest.email,
+
+      fullName: reservation.guest.fullName,
+
+      // CHAPA does not use Telebirr phone validation
+      phone: undefined,
+
+      txRef,
+
+      callbackUrl:
+        `${process.env.BACKEND_URL}/payments/chapa/callback`,
+
+      returnUrl:
+        `${process.env.FRONTEND_URL}/payment/chapa/return`,
+    });
+
+    return {
+      status: "PENDING",
+      method: "CHAPA",
+      reservationId: resId,
+      paymentId: payment.id,
+      txRef,
+      checkoutUrl:
+        chapaResult.data.checkout_url,
+    };
+
+  } catch (error) {
+
+    await prisma.payment.update({
+      where: {
+        id: payment.id,
+      },
+      data: {
+        status: "FAILED",
+      },
+    });
+
+    throw error;
+  }
+}
+/* ==========================================================
+   TELEBIRR / BANK PAYMENT
+========================================================== */
+
+const result = await prisma.$transaction(async (tx) => {
+
+  // 1. Re-check room inside transaction
+  const currentRoom = await tx.room.findUnique({
+    where: {
+      id: reservation.roomId,
+    },
+  });
+
+  if (!currentRoom) {
+    throw new Error("Room not found.");
+  }
+
+  // 2. Room must still be available
+  if (currentRoom.available === false) {
+    throw new Error(
+      "This room is already booked."
+    );
+  }
+
+  // 3. Create PAID payment
+  const payment = await tx.payment.create({
+    data: {
+      reservationId: resId,
+      amount,
+      method: paymentMethod,
+      status: "PAID",
+    },
+  });
+
+  // 4. Confirm reservation
+  const confirmedReservation =
+    await tx.reservation.update({
+      where: {
+        id: resId,
+      },
+      data: {
+        status: "CONFIRMED",
+      },
+    });
+
+  // 5. Make room unavailable
+  const occupiedRoom =
+    await tx.room.update({
+      where: {
+        id: reservation.roomId,
+      },
+      data: {
+        available: false,
+      },
+    });
 
   return {
-    ...result.payment,
-    referenceNumber,
-    method: paymentMethod,
-    status: "PAID",
-    reservation: result.confirmedReservation,
-    room: result.occupiedRoom,
+    payment,
+    confirmedReservation,
+    occupiedRoom,
   };
-};
+});
 
+// 6. Notify guest
+await createNotification({
+  title: "Payment Successful",
+  message:
+    "Your payment was verified successfully and your reservation has been confirmed.",
+  userId: reservation.guestId,
+});
+
+// 7. Generate reference number
+const referenceNumber =
+  "GH-" +
+  String(result.payment.id).padStart(8, "0");
+
+// 8. Return result
+return {
+  ...result.payment,
+  referenceNumber,
+  method: paymentMethod,
+  status: "PAID",
+  reservation: result.confirmedReservation,
+  room: result.occupiedRoom,
+};
+};
 /* ==========================================================
    PAYMENT HISTORY
 ========================================================== */
@@ -683,6 +851,7 @@ export const getOwnerPaymentReport =
               ownerId: Number(ownerId),
             },
           },
+
         },
       },
       include: {

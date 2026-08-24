@@ -5,6 +5,7 @@ import {
   getAll,
   getById,
   update,
+ updateAvailability,
   remove,
 } from "../controllers/room.controller.js";
 
@@ -222,6 +223,12 @@ router.post(
   authenticate,
   authorize("OWNER"),
   create
+);
+router.patch(
+  "/:id/availability",
+  authenticate,
+  authorize("OWNER", "RECEPTIONIST"),
+  updateAvailability
 );
 
 export default router;

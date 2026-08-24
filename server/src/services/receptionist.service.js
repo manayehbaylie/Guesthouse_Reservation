@@ -620,3 +620,99 @@ export const updateRoomAvailability = async (receptionistId, roomId, maintenance
     },
   });
 };
+
+// ===================================
+// Delete Reservation
+// ===================================
+export const deleteReservation = async (receptionistId, id) => {
+  const guesthouse = await getReceptionistGuesthouse(receptionistId);
+
+  const reservationId = Number(id);
+
+  if (!Number.isInteger(reservationId)) {
+    throw new Error("Invalid reservation ID");
+  }
+
+  const reservation = await prisma.reservation.findFirst({
+    where: {
+      id: reservationId,
+      room: {
+        guesthouseId: guesthouse.id,
+      },
+    },
+    include: {
+      room: true,
+      guest: {
+        select: {
+          id: true,
+          fullName: true,
+        },
+      },
+    },
+  });
+
+  if (!reservation) {
+    throw new Error("Reservation not found");
+  }
+
+  // Never delete an active in-house reservation.
+  if (reservation.status === "CHECKED_IN") {
+    throw new Error(
+      "Cannot delete a checked-in reservation. Check out the guest first."
+    );
+  }
+
+  // Prevent deleting a reservation that could still be actively processed.
+  if (reservation.status === "CONFIRMED") {
+    throw new Error(
+      "Cannot delete a confirmed reservation. Cancel the reservation first."
+    );
+  }
+
+  // Only terminal reservations can be permanently deleted.
+  if (
+    reservation.status !== "CANCELLED" &&
+    reservation.status !== "CHECKED_OUT"
+  ) {
+    throw new Error(
+      "Only cancelled or checked-out reservations can be permanently deleted."
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    /*
+     * Payment has:
+     *
+     * reservationId @unique
+     * reservation Reservation @relation(..., onDelete: Cascade)
+     *
+     * Reviews also cascade from Reservation.
+     *
+     * Activity should also cascade if your Activity model has:
+     *
+     * reservation Reservation?
+     *   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+     */
+
+    await tx.reservation.delete({
+      where: {
+        id: reservationId,
+      },
+    });
+
+    // IMPORTANT:
+    // A CHECKED_OUT reservation already made its room available.
+    // A CANCELLED reservation should also already have its room available.
+    //
+    // We intentionally do NOT blindly set room.available=true here
+    // because room state may have been changed to CLEANING or MAINTENANCE.
+  });
+
+  return {
+    id: reservationId,
+    deleted: true,
+    guestName: reservation.guest.fullName,
+    roomNumber: reservation.room.roomNumber,
+    status: reservation.status,
+  };
+};

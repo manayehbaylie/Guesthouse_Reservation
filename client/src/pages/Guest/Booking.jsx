@@ -235,7 +235,9 @@ export function Booking() {
         return "Please enter your bank account number.";
       }
     }
-
+if (paymentMethod === "CHAPA") {
+  return null;
+}
     return null;
   }
 
@@ -838,8 +840,7 @@ export function Booking() {
               2. Select Payment Method
             </h2>
 
-            <div className="grid sm:grid-cols-2 gap-4 mt-5">
-
+            <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 mt-5">
               {/* TELEBIRR */}
 
               <button

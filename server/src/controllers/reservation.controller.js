@@ -5,6 +5,8 @@ import {
   getAllReservations,
   getReservationById,
   updateReservationStatus,
+    checkoutReservation,
+
 } from "../services/reservation.service.js";
 
 import { successResponse } from "../utils/response.js";
@@ -159,3 +161,20 @@ export const updateStatus =
       next(error);
     }
   };
+  export const checkout = async (req, res, next) => {
+  try {
+
+    const reservation = await checkoutReservation(
+      req.params.id
+    );
+
+    successResponse(
+      res,
+      reservation,
+      "Guest checked out successfully"
+    );
+
+  } catch (error) {
+    next(error);
+  }
+};

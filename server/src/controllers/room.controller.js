@@ -93,3 +93,28 @@ export const remove = async (req, res, next) => {
     next(error);
   }
 };
+export const updateAvailability = async (req, res, next) => {
+  try {
+    const { available } = req.body;
+
+    if (typeof available !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "available must be true or false.",
+      });
+    }
+
+    const room = await updateRoom(
+      req.params.id,
+      { available }
+    );
+
+    successResponse(
+      res,
+      room,
+      "Room availability updated successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};

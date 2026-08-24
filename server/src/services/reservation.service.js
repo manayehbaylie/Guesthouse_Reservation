@@ -1,142 +1,81 @@
 import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
-
 // ============================================================
 // CREATE RESERVATION
 // ============================================================
+export const createReservation = async (data, guestId) => {
+  return await prisma.$transaction(async (tx) => {
 
-export const createReservation = async (
-  data,
-  guestId
-) => {
-  // ----------------------------------------------------------
-  // 1. Validate guest
-  // ----------------------------------------------------------
+    // 1. Validate guest
+    if (!guestId) {
+      throw new Error("Authentication required.");
+    }
 
-  if (!guestId) {
-    throw new Error(
-      "Authentication required."
-    );
-  }
+    // 2. Validate room ID
+    const roomId = Number(data.roomId);
 
-  // ----------------------------------------------------------
-  // 2. Validate room ID
-  // ----------------------------------------------------------
+    if (!roomId || Number.isNaN(roomId)) {
+      throw new Error("Invalid room ID.");
+    }
 
-  const roomId =
-    Number(data.roomId);
+    // 3. Validate dates
+    const checkIn = new Date(data.checkIn);
+    const checkOut = new Date(data.checkOut);
 
-  if (
-    !roomId ||
-    Number.isNaN(roomId)
-  ) {
-    throw new Error(
-      "Invalid room ID."
-    );
-  }
+    if (
+      Number.isNaN(checkIn.getTime()) ||
+      Number.isNaN(checkOut.getTime())
+    ) {
+      throw new Error(
+        "Invalid check-in or check-out date."
+      );
+    }
 
-  // ----------------------------------------------------------
-  // 3. Validate dates
-  // ----------------------------------------------------------
+    if (checkOut <= checkIn) {
+      throw new Error(
+        "Check-out date must be after check-in date."
+      );
+    }
 
-  const checkIn =
-    new Date(data.checkIn);
-
-  const checkOut =
-    new Date(data.checkOut);
-
-  if (
-    Number.isNaN(
-      checkIn.getTime()
-    ) ||
-    Number.isNaN(
-      checkOut.getTime()
-    )
-  ) {
-    throw new Error(
-      "Invalid check-in or check-out date."
-    );
-  }
-
-  if (checkOut <= checkIn) {
-    throw new Error(
-      "Check-out date must be after check-in date."
-    );
-  }
-
-  // ----------------------------------------------------------
-  // 4. Check room exists
-  // ----------------------------------------------------------
-
-  const room =
-    await prisma.room.findUnique({
+    // 4. Get room
+    const room = await tx.room.findUnique({
       where: {
         id: roomId,
       },
     });
 
-  if (!room) {
-    throw new Error(
-      "Room not found."
-    );
-  }
+    if (!room) {
+      throw new Error("Room not found.");
+    }
 
-  // ----------------------------------------------------------
-  // 5. Check room availability
-  // ----------------------------------------------------------
+    // 5. Room availability
+    // If false, this room cannot be booked at all.
+    if (room.available === false) {
+      throw new Error(
+        "This room is currently unavailable."
+      );
+    }
 
-  if (room.available === false) {
-    throw new Error(
-      "This room is currently unavailable."
-    );
-  }
+    // ========================================================
+    // IMPORTANT:
+    // Do NOT check overlapping reservations here.
+    //
+    // Your system uses room.available as the main availability
+    // control:
+    //
+    // available = true  -> room can be booked
+    // available = false -> room cannot be booked
+    // ========================================================
 
-  // ----------------------------------------------------------
-  // 6. Check reservation overlap
-  // ----------------------------------------------------------
-
-  const existingReservation =
-    await prisma.reservation.findFirst({
-      where: {
-        roomId,
-
-        status: {
-          in: [
-            "PENDING",
-            "CONFIRMED",
-            "CHECKED_IN",
-          ],
-        },
-
-        checkIn: {
-          lt: checkOut,
-        },
-
-        checkOut: {
-          gt: checkIn,
-        },
-      },
-    });
-
-  if (existingReservation) {
-    throw new Error(
-      "Room is not available for the selected dates."
-    );
-  }
-
-  // ----------------------------------------------------------
-  // 7. Create PENDING reservation
-  // ----------------------------------------------------------
-
-  const reservation =
-    await prisma.reservation.create({
+    // 6. Create reservation
+    const reservation = await tx.reservation.create({
       data: {
         checkIn,
         checkOut,
 
         status: "PENDING",
 
-        guestId,
+        guestId: Number(guestId),
 
         roomId,
       },
@@ -146,27 +85,25 @@ export const createReservation = async (
       },
     });
 
-  // ----------------------------------------------------------
-  // 8. Notify guest
-  // ----------------------------------------------------------
+    // 7. Notification
+    try {
+      await createNotification({
+        title: "Reservation Created",
 
-  try {
-    await createNotification({
-      title: "Reservation Created",
+        message:
+          "Your reservation has been created. Please complete payment to confirm your reservation.",
 
-      message:
-        "Your reservation has been created. Please complete payment to confirm your reservation.",
+        userId: Number(guestId),
+      });
+    } catch (notificationError) {
+      console.error(
+        "Notification error:",
+        notificationError
+      );
+    }
 
-      userId: guestId,
-    });
-  } catch (notificationError) {
-    console.error(
-      "Notification error:",
-      notificationError
-    );
-  }
-
-  return reservation;
+    return reservation;
+  });
 };
 
 
@@ -510,3 +447,49 @@ export const updateReservationStatus =
 
     return updatedReservation;
   };
+export const checkoutReservation = async (reservationId) => {
+  return await prisma.$transaction(async (tx) => {
+
+    // 1. Get reservation
+    const reservation = await tx.reservation.findUnique({
+      where: {
+        id: Number(reservationId),
+      },
+    });
+
+    if (!reservation) {
+      throw new Error("Reservation not found");
+    }
+
+    // 2. Check reservation status
+    if (reservation.status === "CHECKED_OUT") {
+      throw new Error("Guest has already checked out");
+    }
+
+    if (reservation.status === "CANCELLED") {
+      throw new Error("Cancelled reservation cannot be checked out");
+    }
+
+    // 3. Change reservation status
+    const updatedReservation = await tx.reservation.update({
+      where: {
+        id: Number(reservationId),
+      },
+      data: {
+        status: "CHECKED_OUT",
+      },
+    });
+
+    // 4. Make room available automatically
+    await tx.room.update({
+      where: {
+        id: reservation.roomId,
+      },
+      data: {
+        available: true,
+      },
+    });
+
+    return updatedReservation;
+  });
+};

@@ -58,16 +58,86 @@ export const getRoomById = async (id) => {
   });
 };
 export const updateRoom = async (id, data) => {
+
+  const roomId = Number(id);
+
+  if (!roomId || Number.isNaN(roomId)) {
+    throw new Error("Invalid room ID.");
+  }
+
+  // ========================================================
+  // 1. Get room
+  // ========================================================
+
+  const room = await prisma.room.findUnique({
+    where: {
+      id: roomId,
+    },
+  });
+
+  if (!room) {
+    throw new Error("Room not found.");
+  }
+
+  // ========================================================
+  // 2. If receptionist wants to make room AVAILABLE
+  // ========================================================
+
+  if (data.available === true) {
+
+    // Check active reservation
+    const activeReservation =
+      await prisma.reservation.findFirst({
+        where: {
+          roomId,
+
+          status: {
+            in: [
+              "PENDING",
+              "CONFIRMED",
+              "CHECKED_IN",
+            ],
+          },
+        },
+      });
+
+    // Room has active reservation
+    if (activeReservation) {
+      throw new Error(
+        "This room cannot be made AVAILABLE because it has an active reservation."
+      );
+    }
+  }
+
+  // ========================================================
+  // 3. Update room
+  // ========================================================
+
   return await prisma.room.update({
     where: {
-      id: Number(id),
+      id: roomId,
     },
+
     data: {
-      ...(data.roomNumber !== undefined && { roomNumber: data.roomNumber }),
-      ...(data.roomType !== undefined && { roomType: data.roomType }),
-      ...(data.price !== undefined && { price: data.price }),
-      ...(data.capacity !== undefined && { capacity: data.capacity }),
-      ...(data.available !== undefined && { available: data.available }),
+      ...(data.roomNumber !== undefined && {
+        roomNumber: data.roomNumber,
+      }),
+
+      ...(data.roomType !== undefined && {
+        roomType: data.roomType,
+      }),
+
+      ...(data.price !== undefined && {
+        price: data.price,
+      }),
+
+      ...(data.capacity !== undefined && {
+        capacity: data.capacity,
+      }),
+
+      ...(data.available !== undefined && {
+        available: data.available,
+      }),
     },
   });
 };
