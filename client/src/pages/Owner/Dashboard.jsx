@@ -811,35 +811,6 @@ export function OwnerDashboard() {
               </span>
             </button>
           </nav>
-
-          {/* Quick Action Buttons in Sidebar */}
-          <div className="pt-2 border-t border-stone-800/80 space-y-2">
-            <button
-              onClick={handleOpenAddRoomModal}
-              className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 border border-stone-700/80 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
-              <span>Add Room to Inventory</span>
-            </button>
-
-            <button
-              onClick={() => setShowAddStaffModal(true)}
-              className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 border border-stone-700/80 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors"
-            >
-              <UserPlus className="w-3.5 h-3.5 text-blue-400" />
-              <span>Assign Receptionist</span>
-            </button>
-
-            <Link
-              to={`/guesthouse/${guesthouse.id}`}
-              target="_blank"
-              className="w-full py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>View Public Guest Listing</span>
-            </Link>
-          </div>
-
           {/* Owner Profile Chip in Sidebar */}
           <div className="pt-2 border-t border-stone-800/80 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-sm">

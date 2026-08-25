@@ -894,54 +894,53 @@ export const ApiService = {
   // ==========================================================
 
   async updateProfile(data) {
-    if (!data) {
-      throw new Error(
-        'Profile data is required.'
-      );
+  if (!data) {
+    throw new Error('Profile data is required.');
+  }
+
+  const currentUser = getCurrentUser();
+
+  const role = String(
+    currentUser?.role || ''
+  ).toUpperCase();
+
+  let endpoint = '/admin/profile';
+
+  if (role === 'RECEPTIONIST') {
+    endpoint = '/receptionist/profile';
+  }
+
+  const response = await api.put(
+    endpoint,
+    {
+      fullName: data.name ?? '',
+      email: data.email ?? '',
+      phone: data.phone ?? '',
+      ...(data.password?.trim()
+        ? {
+            password: data.password.trim(),
+          }
+        : {}),
     }
+  );
 
-    const response = await api.put(
-      '/admin/profile',
-      {
-        fullName:
-          data.name ?? '',
+  const updatedUser = mapUserFromBackend(
+    unwrap(response)
+  );
 
-        email:
-          data.email ?? '',
-
-        phone:
-          data.phone ?? '',
-
-        ...(data.password?.trim()
-          ? {
-              password:
-                data.password.trim(),
-            }
-          : {}),
-      }
+  if (!updatedUser) {
+    throw new Error(
+      'Profile update returned no user data.'
     );
+  }
 
-    const updatedUser =
-      mapUserFromBackend(
-        unwrap(response)
-      );
+  setCurrentUser({
+    ...(currentUser || {}),
+    ...updatedUser,
+  });
 
-    if (!updatedUser) {
-      throw new Error(
-        'Profile update returned no user data.'
-      );
-    }
-
-    const currentUser =
-      getCurrentUser();
-
-    setCurrentUser({
-      ...(currentUser || {}),
-      ...updatedUser,
-    });
-
-    return updatedUser;
-  },
+  return updatedUser;
+},
 
 
   async loginUser(

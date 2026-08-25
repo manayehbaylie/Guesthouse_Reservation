@@ -13,6 +13,8 @@ import {
   inHouseGuests,
   searchReservationsController,
   updateRoomAvailabilityController,
+    updateReceptionistProfile,
+
 } from "../controllers/receptionist.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -483,5 +485,13 @@ router.delete(
   authorize("RECEPTIONIST"),
   deleteReceptionReservation
 );
-
+/**
+ * Update receptionist profile
+ */
+router.put(
+  "/profile",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  updateReceptionistProfile
+);
 export default router;

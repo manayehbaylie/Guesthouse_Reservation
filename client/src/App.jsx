@@ -12,7 +12,8 @@ import { NotificationToastContainer } from "./components/common/NotificationToas
 // Authentication pages
 import { Login } from "./pages/Auth/Login.jsx";
 import { Register } from "./pages/Auth/Register.jsx";
-
+// Profile
+import { Profile } from "./pages/Profile/Profile.jsx";
 // Guest pages
 import { Home } from "./pages/Guest/Home.jsx";
 import { Explore } from "./pages/Guest/Explore.jsx";
@@ -171,7 +172,24 @@ export default function App() {
               path="/register"
               element={<Register />}
             />
-
+{/* ===================================================
+    PROFILE
+=================================================== */}
+<Route
+  path="/profile"
+  element={
+    <ProtectedRoute
+      allowedRoles={[
+        "GUEST",
+        "OWNER",
+        "RECEPTIONIST",
+        "ADMIN",
+      ]}
+    >
+      <Profile />
+    </ProtectedRoute>
+  }
+/>
             {/* ===================================================
                 GUEST RESERVATIONS
             =================================================== */}

@@ -16,7 +16,8 @@ import {
 
 import { successResponse }
 from "../utils/response.js";
-
+import bcrypt from "bcryptjs";
+import prisma from "../config/prisma.js";
 // ===================================
 // Reception Reservation List
 // ===================================
@@ -287,3 +288,72 @@ export const deleteReceptionReservation = async (
     next(error);
   }
 };
+export async function updateReceptionistProfile(req, res) {
+  try {
+    console.log("PROFILE UPDATE REQUEST");
+    console.log("User:", req.user);
+    console.log("Body:", req.body);
+
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in authentication token",
+      });
+    }
+
+    const {
+      fullName,
+      email,
+      phone,
+      password,
+    } = req.body;
+
+    const data = {
+      fullName,
+      email,
+      phone,
+    };
+
+    if (password?.trim()) {
+      data.password = await bcrypt.hash(
+        password.trim(),
+        10
+      );
+    }
+
+    console.log("Updating user:", userId);
+    console.log("Update data:", {
+      ...data,
+      password: password ? "***" : undefined,
+    });
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data,
+    });
+
+    console.log("Updated user:", updatedUser);
+
+    return res.status(200).json({
+      success: true,
+      data: updatedUser,
+    });
+
+  } catch (error) {
+    console.error(
+      "UPDATE RECEPTIONIST PROFILE ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error?.message ||
+        "Failed to update receptionist profile",
+    });
+  }
+}

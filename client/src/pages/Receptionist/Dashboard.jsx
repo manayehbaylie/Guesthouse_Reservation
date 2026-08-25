@@ -7,6 +7,10 @@ import {
   UserX,
   BedDouble,
   Search,
+  UserCircle,
+  Settings,
+  LogOut,
+  ChevronDown,
   CheckCircle,
   Clock,
   RefreshCw,
@@ -25,7 +29,7 @@ import {
 } from 'lucide-react';
 
 export function ReceptionistDashboard() {
-  const { user } = useAuth();
+  const { user , logout} = useAuth();
   const navigate = useNavigate();
   const [guesthouse, setGuesthouse] = useState(null);
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -40,6 +44,21 @@ export function ReceptionistDashboard() {
   const [error, setError] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [receiptReservation, setReceiptReservation] = useState(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+const handleLogout = async () => {
+  try {
+    setProfileMenuOpen(false);
+
+    if (typeof logout === 'function') {
+      await logout();
+    }
+
+    navigate('/login');
+  } catch (error) {
+    console.error('Logout failed:', error);
+    setError(error?.message || 'Logout failed');
+  }
+};
 
 const handleDeleteReservation = async (reservation) => {
   const confirmed = window.confirm(
@@ -468,36 +487,7 @@ const handleDeleteReservation = async (reservation) => {
 
         {/* Navigation Menu */}
         <nav className="flex-1 p-4 space-y-2">
-          {/* <button
-            onClick={() => { setActiveTab('arrivals'); setSearchTerm(''); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
-              activeTab === 'arrivals' 
-                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 border-2 border-emerald-400' 
-                : 'text-stone-600 bg-white border-2 border-stone-200 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
-            }`}
-          >
-            <UserCheck className={`w-5 h-5 ${activeTab === 'arrivals' ? 'text-white' : 'text-emerald-500'}`} />
-            <div className="flex-1 text-left">
-              <div className="font-bold">Today's Arrivals</div>
-              <div className={`text-xs ${activeTab === 'arrivals' ? 'text-emerald-100' : 'text-stone-500'}`}>{dashboardStats?.arrivals || 0} guests</div>
-            </div>
-          </button> */}
-
-          {/* <button
-            onClick={() => { setActiveTab('departures'); setSearchTerm(''); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
-              activeTab === 'departures' 
-                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/30 border-2 border-amber-400' 
-                : 'text-stone-600 bg-white border-2 border-stone-200 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
-            }`}
-          >
-            <UserX className={`w-5 h-5 ${activeTab === 'departures' ? 'text-white' : 'text-amber-500'}`} />
-            <div className="flex-1 text-left">
-              <div className="font-bold">Today's Departures</div>
-              <div className={`text-xs ${activeTab === 'departures' ? 'text-amber-100' : 'text-stone-500'}`}>{dashboardStats?.departures || 0} check-outs</div>
-            </div>
-          </button> */}
-
+      
           <button
             onClick={() => { setActiveTab('all'); setSearchTerm(''); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
@@ -602,44 +592,74 @@ const handleDeleteReservation = async (reservation) => {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={loadData}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-blue-400"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-            </button>
+        
+            <div className="relative">
+  <button
+    type="button"
+    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+    className="flex items-center gap-2 px-3 py-2 bg-white border border-stone-300 rounded-xl hover:bg-stone-50"
+  >
+    <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center text-white text-xs font-bold">
+      {user?.name?.charAt(0) || user?.fullName?.charAt(0) || 'R'}
+    </div>
+
+    <span className="text-sm font-semibold text-stone-700">
+      {user?.name || user?.fullName || 'Receptionist'}
+    </span>
+
+    <span className="text-stone-400">▼</span>
+  </button>
+
+  {profileMenuOpen && (
+    <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-stone-200 rounded-xl shadow-xl z-50">
+      
+      <div className="p-4 border-b border-stone-200">
+        <div className="font-semibold text-stone-900">
+          {user?.name || user?.fullName || 'Receptionist'}
+        </div>
+
+        <div className="text-xs text-stone-500 mt-1">
+          {user?.email || 'No email'}
+        </div>
+
+        <div className="text-xs font-bold text-blue-600 mt-2">
+          RECEPTIONIST
+        </div>
+      </div>
+
+      <div className="p-2">
+        
+        <button
+          type="button"
+          onClick={() => {
+            setProfileMenuOpen(false);
+            navigate('/profile');
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-stone-700 hover:bg-stone-100"
+        >
+          ⚙️
+          <span>Update Profile</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-50"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
+
+      </div>
+    </div>
+  )}
+</div>
           </div>
         </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* <button
-            onClick={() => { setActiveTab('arrivals'); setSearchTerm(''); }}
-            className="text-left bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-2xl border-2 border-blue-200 shadow-lg shadow-blue-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
-          >
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-600 block">Today's Arrivals</span>
-              <span className="text-2xl font-mono font-extrabold text-blue-900">{dashboardStats?.arrivals || 0}</span>
-              <span className="text-xs text-blue-700 block mt-1">Guest to check in</span>
-            </div>
-            <div className="p-3 bg-blue-500 text-white rounded-xl shadow-lg">
-              <UserCheck className="w-6 h-6" />
-            </div>
-          </button> */}
-
-          {/* <button
-            onClick={() => { setActiveTab('departures'); setSearchTerm(''); }}
-            className="text-left bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-2xl border-2 border-amber-200 shadow-lg shadow-amber-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
-          >
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-600 block">Today's Departures</span>
-              <span className="text-2xl font-mono font-extrabold text-amber-900">{dashboardStats?.departures || 0}</span>
-              <span className="text-xs text-amber-700 block mt-1">Check-outs expected</span>
-            </div>
-            <div className="p-3 bg-amber-500 text-white rounded-xl shadow-lg">
-              <UserX className="w-6 h-6" />
-            </div>
-          </button> */}
+         
 
           <button
             onClick={() => { setActiveTab('inhouse'); setSearchTerm(''); }}
@@ -871,47 +891,55 @@ const handleDeleteReservation = async (reservation) => {
                         </span>
                       </td>
                       <td className="p-3.5 font-mono">ETB {r.totalPrice.toLocaleString()}</td>
-                        <td className="p-3.5">                       
-                         <div className="flex gap-2">
-                          {r.status === 'confirmed' && (
-                            <button
-                              onClick={() => handleCheckIn(r.id)}
-                              disabled={actionLoadingId === r.id}
-                              className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-60 text-white text-xs rounded-lg shadow-lg shadow-emerald-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-emerald-400 font-bold"
-                            >
-                              Check In
-                            </button>
-                          )}
-                          {r.status === 'checked_in' && (
-                            <button
-                              onClick={() => handleCheckOut(r.id)}
-                              disabled={actionLoadingId === r.id}
-                              className="px-3 py-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-60 text-white text-xs rounded-lg shadow-lg shadow-amber-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-amber-400 font-bold"
-                            >
-                              Check Out
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setReceiptReservation(r)}
-                            className="px-3 py-1 bg-stone-200 text-stone-700 text-xs rounded hover:bg-stone-300 font-bold"
-                          >
-                            Receipt
-                          </button>
-    {["checked_out", "cancelled"].includes(
-  String(r.status || "").trim().toLowerCase()
-) && (
-  <button
-    type="button"
-    onClick={() => handleDeleteReservation(r)}
-    disabled={actionLoadingId === r.id}
-    className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs rounded-lg font-bold transition-all"
-  >
-    {actionLoadingId === r.id ? "Deleting..." : "Delete"}
-  </button>
-)}
-                                          
-                        </div>
-                      </td>
+                     <td className="p-3.5">
+  <div className="flex gap-2">
+
+    {/* CHECK IN */}
+    {String(r.status || '').toUpperCase() === 'CONFIRMED' && (
+      <button
+        onClick={() => handleCheckIn(r.id)}
+        disabled={actionLoadingId === r.id}
+        className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-60 text-white text-xs rounded-lg shadow-lg shadow-emerald-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-emerald-400 font-bold"
+      >
+        {actionLoadingId === r.id ? 'Checking In...' : 'Check In'}
+      </button>
+    )}
+
+    {/* CHECK OUT */}
+    {String(r.status || '').toUpperCase() === 'CHECKED_IN' && (
+      <button
+        onClick={() => handleCheckOut(r.id)}
+        disabled={actionLoadingId === r.id}
+        className="px-3 py-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-60 text-white text-xs rounded-lg shadow-lg shadow-amber-500/30 transition-all duration-200 transform hover:scale-105 border-2 border-amber-400 font-bold"
+      >
+        {actionLoadingId === r.id ? 'Checking Out...' : 'Check Out'}
+      </button>
+    )}
+
+    {/* RECEIPT */}
+    <button
+      onClick={() => setReceiptReservation(r)}
+      className="px-3 py-1 bg-stone-200 text-stone-700 text-xs rounded hover:bg-stone-300 font-bold"
+    >
+      Receipt
+    </button>
+
+    {/* DELETE */}
+    {['CHECKED_OUT', 'CANCELLED'].includes(
+      String(r.status || '').trim().toUpperCase()
+    ) && (
+      <button
+        type="button"
+        onClick={() => handleDeleteReservation(r)}
+        disabled={actionLoadingId === r.id}
+        className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs rounded-lg font-bold transition-all"
+      >
+        {actionLoadingId === r.id ? 'Deleting...' : 'Delete'}
+      </button>
+    )}
+
+  </div>
+</td>
                     </tr>
                   ))}
                 </tbody>
