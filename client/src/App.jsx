@@ -7,6 +7,7 @@ import Navbar from "./components/Navbar.jsx";
 import { Sidebar } from "./components/Sidebar.jsx";
 import { ArchitectureModal } from "./components/ArchitectureModal.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
+import { NotificationToastContainer } from "./components/common/NotificationToastContainer.jsx";
 
 // Authentication pages
 import { Login } from "./pages/Auth/Login.jsx";
@@ -321,6 +322,11 @@ export default function App() {
         isOpen={archModalOpen}
         onClose={() => setArchModalOpen(false)}
       />
+
+      {/* =========================================================
+          LIVE REAL-TIME NOTIFICATION TOAST ALERTS
+      ========================================================= */}
+      <NotificationToastContainer />
 
     </div>
   );

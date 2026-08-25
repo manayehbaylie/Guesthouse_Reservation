@@ -6,8 +6,10 @@ import {
   X,
   Building2,
   LogOut,
+  CalendarCheck,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { NotificationBell } from "./common/NotificationBell.jsx";
 
 export function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
@@ -112,6 +114,19 @@ export function Navbar({ onToggleSidebar }) {
                   Explore
                 </Link>
 
+                {/* MY BOOKINGS (For logged-in guests) */}
+                {user && role === "GUEST" && (
+                  <Link
+                    to="/reservations"
+                    onClick={closeMenu}
+                    className={navLinkClass(
+                      location.pathname === "/reservations"
+                    )}
+                  >
+                    My Bookings
+                  </Link>
+                )}
+
                 {/* ABOUT US */}
                 <Link
                   to="/about"
@@ -159,6 +174,9 @@ export function Navbar({ onToggleSidebar }) {
               </>
             ) : (
               <>
+                {/* NOTIFICATION ALERT BELL (TOP NAVBAR) */}
+                <NotificationBell />
+
                 <div className="text-right">
                   <p className="text-sm font-bold text-[#043658]">
                     {user.fullName ||
@@ -184,25 +202,31 @@ export function Navbar({ onToggleSidebar }) {
             )}
           </div>
 
-          {/* MOBILE MENU BUTTON */}
-          <button
-            type="button"
-            onClick={() =>
-              setMobileMenuOpen((open) => !open)
-            }
-            aria-label={
-              mobileMenuOpen
-                ? "Close menu"
-                : "Open menu"
-            }
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-[#043658] transition hover:bg-stone-50 md:hidden"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
+          {/* MOBILE RIGHT SIDE (NOTIFICATION BELL + HAMBURGER) */}
+          <div className="flex items-center gap-2 md:hidden">
+            {user && (
+              <NotificationBell />
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setMobileMenuOpen((open) => !open)
+              }
+              aria-label={
+                mobileMenuOpen
+                  ? "Close menu"
+                  : "Open menu"
+              }
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-[#043658] transition hover:bg-stone-50"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

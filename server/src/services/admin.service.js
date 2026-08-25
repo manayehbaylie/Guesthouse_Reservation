@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import { hashPassword } from "../utils/hash.js";
+import { createNotification } from "./notification.service.js";
 
 /*
 ==================================================
@@ -21,14 +22,27 @@ export const approveGuesthouse = async (id) => {
     throw new Error("Guesthouse is already approved");
   }
 
-  return await prisma.guesthouse.update({
+  const updatedGuesthouse = await prisma.guesthouse.update({
     where: {
       id: Number(id),
     },
     data: {
       status: "APPROVED",
+      rejectionReason: null,
     },
   });
+
+  try {
+    await createNotification({
+      title: "Guesthouse Approved",
+      message: `Congratulations! Your property "${guesthouse.name}" has been approved by the platform administrator and is now live for guest bookings.`,
+      userId: guesthouse.ownerId,
+    });
+  } catch (error) {
+    console.error("Failed to notify owner of guesthouse approval:", error);
+  }
+
+  return updatedGuesthouse;
 };
 
 /*
@@ -47,7 +61,7 @@ export const rejectGuesthouse = async (id, reason) => {
     throw new Error("Guesthouse not found");
   }
 
-  return await prisma.guesthouse.update({
+  const updatedGuesthouse = await prisma.guesthouse.update({
     where: {
       id: Number(id),
     },
@@ -56,6 +70,18 @@ export const rejectGuesthouse = async (id, reason) => {
       rejectionReason: reason,
     },
   });
+
+  try {
+    await createNotification({
+      title: "Guesthouse Review Notice",
+      message: `Your property "${guesthouse.name}" was not approved. Reason: ${reason || "Does not meet platform verification criteria."}`,
+      userId: guesthouse.ownerId,
+    });
+  } catch (error) {
+    console.error("Failed to notify owner of guesthouse rejection:", error);
+  }
+
+  return updatedGuesthouse;
 };
 
 /*

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ApiService } from '../../services/api';
+import { NotificationBell } from './NotificationBell.jsx';
 import {
   Building2,
   Search,
@@ -174,6 +175,9 @@ export const Header = ({
             >
               <Server className="w-4 h-4" />
             </button>
+
+            {/* Notification Alert Bell */}
+            <NotificationBell variant="dark" />
 
             {/* Account & Role Button */}
             <button

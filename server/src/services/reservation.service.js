@@ -133,12 +133,57 @@ export const createReservation = async (data, guestId) => {
   });
 
   try {
+    const guestName = reservation.guest?.fullName || "A guest";
+    const roomInfo = reservation.room?.roomNumber ? `Room ${reservation.room.roomNumber}` : "a room";
+    const ghName = reservation.room?.guesthouse?.name || "the guesthouse";
+
+    // 1. Notify Guest
     await createNotification({
       title: "Reservation Created",
       message:
-        "Your reservation has been created. Please complete payment to confirm your reservation.",
+        `Your reservation for ${roomInfo} at ${ghName} has been created. Please complete payment to confirm.`,
       userId: Number(guestId),
     });
+
+    // 2. Notify Property Owner
+    const roomRecord = await prisma.room.findUnique({
+      where: { id: roomId },
+      select: {
+        roomNumber: true,
+        roomType: true,
+        guesthouse: {
+          select: {
+            id: true,
+            name: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (roomRecord?.guesthouse?.ownerId) {
+      await createNotification({
+        title: "New Reservation Received",
+        message: `${guestName} booked ${roomRecord.roomType} (${roomInfo}) at ${roomRecord.guesthouse.name}. Awaiting payment confirmation.`,
+        userId: roomRecord.guesthouse.ownerId,
+      });
+
+      // 3. Notify Assigned Receptionists
+      const staffAssignments = await prisma.staffAssignment.findMany({
+        where: { guesthouseId: roomRecord.guesthouse.id },
+        select: { staffId: true },
+      });
+
+      for (const assignment of staffAssignments) {
+        if (assignment.staffId) {
+          await createNotification({
+            title: "New Reservation Received",
+            message: `${guestName} reserved ${roomInfo} at ${roomRecord.guesthouse.name}.`,
+            userId: assignment.staffId,
+          });
+        }
+      }
+    }
   } catch (error) {
     console.error(
       "Reservation notification error:",

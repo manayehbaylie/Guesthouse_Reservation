@@ -24,8 +24,12 @@ export const getAllGuesthouses = async () => {
           id: true,
           fullName: true,
           email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
         },
       },
+      rooms: true,
     },
   });
 };
@@ -48,8 +52,12 @@ export const getGuesthouseById = async (id) => {
           id: true,
           fullName: true,
           email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
         },
       },
+      rooms: true,
     },
   });
 };
@@ -94,8 +102,11 @@ export const getPendingGuesthouses = async () => {
           fullName: true,
           email: true,
           phone: true,
+          role: true,
+          createdAt: true,
         },
       },
+      rooms: true,
     },
   });
 };

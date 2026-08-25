@@ -1035,16 +1035,51 @@ export const initiatePayment =
     // ==========================================================
 
     try {
+      const guestName = reservation.guest?.fullName || "Guest";
+      const ghName = reservation.room?.guesthouse?.name || "the guesthouse";
+      const roomNum = reservation.room?.roomNumber ? `Room ${reservation.room.roomNumber}` : "";
+      const amt = result.payment.amount || 0;
+
+      // 1. Notify Guest
       await createNotification({
-        title:
-          "Payment Successful",
-
-        message:
-          "Your payment was verified successfully and your reservation has been confirmed.",
-
-        userId:
-          reservation.guestId,
+        title: "Payment Successful",
+        message: `Your payment of ${amt} ETB was verified successfully. Reservation #${resId} at ${ghName} is confirmed!`,
+        userId: reservation.guestId,
       });
+
+      // 2. Notify Owner
+      const roomRecord = await prisma.room.findUnique({
+        where: { id: reservation.roomId },
+        select: {
+          guesthouse: {
+            select: { id: true, name: true, ownerId: true },
+          },
+        },
+      });
+
+      if (roomRecord?.guesthouse?.ownerId) {
+        await createNotification({
+          title: "Payment Received",
+          message: `Received ${amt} ETB for confirmed Reservation #${resId} (${guestName}, ${roomNum}) at ${roomRecord.guesthouse.name}.`,
+          userId: roomRecord.guesthouse.ownerId,
+        });
+
+        // 3. Notify Receptionists
+        const staffAssignments = await prisma.staffAssignment.findMany({
+          where: { guesthouseId: roomRecord.guesthouse.id },
+          select: { staffId: true },
+        });
+
+        for (const assignment of staffAssignments) {
+          if (assignment.staffId) {
+            await createNotification({
+              title: "Booking Confirmed & Paid",
+              message: `Reservation #${resId} for ${guestName} (${roomNum}) at ${roomRecord.guesthouse.name} is confirmed and paid (${amt} ETB).`,
+              userId: assignment.staffId,
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error(
         "Payment notification error:",

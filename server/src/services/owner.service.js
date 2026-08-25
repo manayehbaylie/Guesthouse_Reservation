@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import prisma from "../config/prisma.js";
+import { createNotification } from "./notification.service.js";
 
 /*
 ==================================================
@@ -122,6 +123,16 @@ export const createReceptionist = async (
     },
   });
 
+  try {
+    await createNotification({
+      title: "Staff Assignment",
+      message: `You have been assigned as a Receptionist for "${guesthouse.name}". You can now manage front desk operations.`,
+      userId: receptionist.id,
+    });
+  } catch (error) {
+    console.error("Failed to notify receptionist of assignment:", error);
+  }
+
   return receptionist;
 };
 
@@ -211,12 +222,24 @@ export const assignReceptionistToGuesthouse = async (
     throw new Error("Receptionist already assigned to this guesthouse");
   }
 
-  return await prisma.staffAssignment.create({
+  const assignment = await prisma.staffAssignment.create({
     data: {
       guesthouseId: guesthouse.id,
       staffId: staffId,
     },
   });
+
+  try {
+    await createNotification({
+      title: "Staff Assignment",
+      message: `You have been assigned as a Receptionist for "${guesthouse.name}".`,
+      userId: staffId,
+    });
+  } catch (error) {
+    console.error("Failed to notify receptionist of assignment:", error);
+  }
+
+  return assignment;
 };
 
 /*

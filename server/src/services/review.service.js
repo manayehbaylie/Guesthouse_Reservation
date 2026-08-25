@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { createNotification } from "./notification.service.js";
 
 // ============================================================
 // CREATE REVIEW
@@ -122,7 +123,7 @@ export const createReview = async (guestId, data) => {
   // CREATE REVIEW
   // ----------------------------------------------------------
 
-  return await prisma.review.create({
+  const newReview = await prisma.review.create({
     data: {
       guestId,
 
@@ -152,6 +153,7 @@ export const createReview = async (guestId, data) => {
         select: {
           id: true,
           name: true,
+          ownerId: true,
         },
       },
 
@@ -165,6 +167,22 @@ export const createReview = async (guestId, data) => {
       },
     },
   });
+
+  try {
+    if (newReview.guesthouse?.ownerId) {
+      const guestName = newReview.guest?.fullName || "A guest";
+      const snippet = String(comment).trim().slice(0, 70);
+      await createNotification({
+        title: "New Review Received",
+        message: `${guestName} left a ${parsedRating}★ review for "${newReview.guesthouse.name}": "${snippet}${comment.length > 70 ? '...' : ''}"`,
+        userId: newReview.guesthouse.ownerId,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to notify owner of new review:", error);
+  }
+
+  return newReview;
 };
 
 // ============================================================
@@ -303,7 +321,7 @@ export const respondToReview = async (
   // UPDATE REVIEW
   // ----------------------------------------------------------
 
-  return await prisma.review.update({
+  const updatedReview = await prisma.review.update({
     where: {
       id: parsedReviewId,
     },
@@ -339,6 +357,22 @@ export const respondToReview = async (
       },
     },
   });
+
+  try {
+    if (updatedReview.guest?.id) {
+      const ghName = updatedReview.guesthouse?.name || "Guesthouse";
+      const snippet = String(response).trim().slice(0, 70);
+      await createNotification({
+        title: "Owner Responded to Your Review",
+        message: `${ghName} responded: "${snippet}${response.length > 70 ? '...' : ''}"`,
+        userId: updatedReview.guest.id,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to notify guest of review response:", error);
+  }
+
+  return updatedReview;
 };
 
 // ============================================================

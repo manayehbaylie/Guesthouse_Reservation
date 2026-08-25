@@ -2556,7 +2556,149 @@ const initiatePayload = {
       unwrap(response)
     );
   },
+
+  // ==========================================================
+  // NOTIFICATIONS API
+  // ==========================================================
+
+  async getNotifications() {
+    try {
+      const response = await api.get('/notifications');
+      const rawList = unwrap(response) || [];
+      return rawList.map(mapNotificationFromBackend).filter(Boolean);
+    } catch (error) {
+      console.warn('Failed to fetch notifications:', error.message);
+      return [];
+    }
+  },
+
+  async getUnreadNotifications() {
+    try {
+      const response = await api.get('/notifications/unread');
+      const rawList = unwrap(response) || [];
+      return rawList.map(mapNotificationFromBackend).filter(Boolean);
+    } catch (error) {
+      console.warn('Failed to fetch unread notifications:', error.message);
+      return [];
+    }
+  },
+
+  async getUnreadNotificationCount() {
+    try {
+      const response = await api.get('/notifications/count');
+      const data = unwrap(response);
+      if (typeof data?.count === 'number') {
+        return data.count;
+      }
+      const unreadList = await this.getUnreadNotifications();
+      return unreadList.length;
+    } catch (error) {
+      console.warn('Failed to fetch unread notification count:', error.message);
+      return 0;
+    }
+  },
+
+  async markNotificationAsRead(id) {
+    if (!id) return null;
+    try {
+      const response = await api.patch(`/notifications/${id}/read`);
+      return mapNotificationFromBackend(unwrap(response));
+    } catch (error) {
+      console.error(`Failed to mark notification ${id} as read:`, error);
+      throw error;
+    }
+  },
+
+  async markAllNotificationsAsRead() {
+    try {
+      const response = await api.patch('/notifications/read-all');
+      return unwrap(response);
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+      throw error;
+    }
+  },
+
+  async deleteNotification(id) {
+    if (!id) return null;
+    try {
+      const response = await api.delete(`/notifications/${id}`);
+      return unwrap(response);
+    } catch (error) {
+      console.error(`Failed to delete notification ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async deleteAllNotifications() {
+    try {
+      const response = await api.delete('/notifications');
+      return unwrap(response);
+    } catch (error) {
+      console.error('Failed to clear all notifications:', error);
+      throw error;
+    }
+  },
 };
+
+// ============================================================
+// NOTIFICATION MAPPING HELPER
+// ============================================================
+
+function mapNotificationFromBackend(notification) {
+  if (!notification) return null;
+
+  const title = String(notification.title || '').trim();
+  const message = String(notification.message || '').trim();
+
+  let category = 'system';
+  const lowerTitle = title.toLowerCase();
+  const lowerMsg = message.toLowerCase();
+
+  if (
+    lowerTitle.includes('payment') ||
+    lowerTitle.includes('chapa') ||
+    lowerTitle.includes('telebirr') ||
+    lowerMsg.includes('payment') ||
+    lowerMsg.includes('paid')
+  ) {
+    category = 'payment';
+  } else if (
+    lowerTitle.includes('reservation') ||
+    lowerTitle.includes('booking') ||
+    lowerTitle.includes('check-in') ||
+    lowerTitle.includes('check-out') ||
+    lowerTitle.includes('checked in') ||
+    lowerTitle.includes('checked out') ||
+    lowerMsg.includes('reservation') ||
+    lowerMsg.includes('booking')
+  ) {
+    category = 'reservation';
+  } else if (
+    lowerTitle.includes('review') ||
+    lowerMsg.includes('review') ||
+    lowerMsg.includes('rating')
+  ) {
+    category = 'review';
+  } else if (
+    lowerTitle.includes('guesthouse') ||
+    lowerTitle.includes('staff') ||
+    lowerTitle.includes('property') ||
+    lowerMsg.includes('guesthouse')
+  ) {
+    category = 'guesthouse';
+  }
+
+  return {
+    id: notification.id,
+    title: notification.title || 'Notification',
+    message: notification.message || '',
+    isRead: Boolean(notification.isRead),
+    category,
+    createdAt: notification.createdAt || new Date().toISOString(),
+    updatedAt: notification.updatedAt || new Date().toISOString(),
+  };
+}
 
 // ============================================================
 // DEFAULT EXPORT

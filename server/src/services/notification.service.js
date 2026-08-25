@@ -3,13 +3,13 @@ import prisma from "../config/prisma.js";
 // ========================================
 // Get User Notifications
 // ========================================
-
 export const getNotifications = async (userId) => {
+  if (!userId) return [];
+
   return await prisma.notification.findMany({
     where: {
-      userId,
+      userId: Number(userId),
     },
-
     orderBy: {
       createdAt: "desc",
     },
@@ -19,20 +19,29 @@ export const getNotifications = async (userId) => {
 // ========================================
 // Create Notification
 // ========================================
-
 export const createNotification = async ({
   title,
   message,
   userId,
 }) => {
-  return await prisma.notification.create({
-    data: {
-      title,
-      message,
-      userId,
-    },
-  });
+  if (!userId || !title || !message) {
+    return null;
+  }
+
+  try {
+    return await prisma.notification.create({
+      data: {
+        title: String(title).trim(),
+        message: String(message).trim(),
+        userId: Number(userId),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to create notification in DB:", error.message || error);
+    return null;
+  }
 };
+
 // ========================================
 // Mark Notification As Read
 // ========================================
@@ -40,60 +49,82 @@ export const markNotificationAsRead = async (
   id,
   userId
 ) => {
+  const notificationId = Number(id);
+  const uid = Number(userId);
 
-  const notification =
-    await prisma.notification.findFirst({
-
-      where: {
-        id: Number(id),
-        userId,
-      },
-
-    });
+  const notification = await prisma.notification.findFirst({
+    where: {
+      id: notificationId,
+      userId: uid,
+    },
+  });
 
   if (!notification) {
     throw new Error("Notification not found");
   }
 
   return await prisma.notification.update({
-
     where: {
-      id: Number(id),
+      id: notificationId,
     },
-
     data: {
       isRead: true,
     },
-
   });
-
 };
+
+// ========================================
+// Mark All Notifications As Read
+// ========================================
+export const markAllNotificationsAsRead = async (userId) => {
+  const uid = Number(userId);
+
+  return await prisma.notification.updateMany({
+    where: {
+      userId: uid,
+      isRead: false,
+    },
+    data: {
+      isRead: true,
+    },
+  });
+};
+
 // ========================================
 // Get Unread Notifications
 // ========================================
 export const getUnreadNotifications = async (
   userId
 ) => {
+  const uid = Number(userId);
 
   return await prisma.notification.findMany({
-
     where: {
-
-      userId,
-
+      userId: uid,
       isRead: false,
-
     },
-
     orderBy: {
-
       createdAt: "desc",
-
     },
+  });
+};
 
+// ========================================
+// Get Unread Notification Count
+// ========================================
+export const getUnreadNotificationCount = async (userId) => {
+  const uid = Number(userId);
+
+  const count = await prisma.notification.count({
+    where: {
+      userId: uid,
+      isRead: false,
+    },
   });
 
+  return { count };
 };
+
 // ========================================
 // Delete Notification
 // ========================================
@@ -101,31 +132,44 @@ export const deleteNotification = async (
   id,
   userId
 ) => {
+  const notificationId = Number(id);
+  const uid = Number(userId);
 
-  const notification =
-    await prisma.notification.findFirst({
-
-      where: {
-        id: Number(id),
-        userId,
-      },
-
-    });
+  const notification = await prisma.notification.findFirst({
+    where: {
+      id: notificationId,
+      userId: uid,
+    },
+  });
 
   if (!notification) {
     throw new Error("Notification not found");
   }
 
   await prisma.notification.delete({
-
     where: {
-      id: Number(id),
+      id: notificationId,
     },
-
   });
 
   return {
     message: "Notification deleted successfully",
   };
+};
 
+// ========================================
+// Delete All Notifications (Clear All)
+// ========================================
+export const deleteAllNotifications = async (userId) => {
+  const uid = Number(userId);
+
+  await prisma.notification.deleteMany({
+    where: {
+      userId: uid,
+    },
+  });
+
+  return {
+    message: "All notifications cleared successfully",
+  };
 };
