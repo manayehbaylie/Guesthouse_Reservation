@@ -1,5 +1,9 @@
 import prisma from "../config/prisma.js";
 
+/* ============================================================
+   CREATE ROOM
+============================================================ */
+
 export const createRoom = async (data, guesthouseId) => {
   return await prisma.room.create({
     data: {
@@ -7,56 +11,244 @@ export const createRoom = async (data, guesthouseId) => {
       roomType: data.roomType,
       price: data.price,
       capacity: data.capacity,
+
+      // This is MANUAL room status.
+      // It is NOT used for date-based booking availability.
       available: data.available ?? true,
+
       guesthouseId: Number(guesthouseId),
     },
   });
 };
+
+
+/* ============================================================
+   GET ALL ROOMS
+============================================================ */
+
 export const getAllRooms = async (guesthouseId = null) => {
-  if (guesthouseId) {
-    return await prisma.room.findMany({
-      where: {
+
+  const where = guesthouseId
+    ? {
         guesthouseId: Number(guesthouseId),
+      }
+    : {};
+
+  return await prisma.room.findMany({
+    where,
+
+    include: {
+      guesthouse: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+        },
       },
-      include: {
-        guesthouse: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-          },
+    },
+
+    orderBy: {
+      id: "asc",
+    },
+  });
+};
+
+
+/* ============================================================
+   GET ROOM BY ID
+============================================================ */
+
+export const getRoomById = async (id) => {
+
+  const roomId = Number(id);
+
+  if (!roomId || Number.isNaN(roomId)) {
+    throw new Error("Invalid room ID.");
+  }
+
+  return await prisma.room.findUnique({
+    where: {
+      id: roomId,
+    },
+
+    include: {
+      guesthouse: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+        },
+      },
+
+      reservations: {
+        select: {
+          id: true,
+          checkIn: true,
+          checkOut: true,
+          status: true,
+        },
+
+        orderBy: {
+          checkIn: "asc",
+        },
+      },
+    },
+  });
+};
+
+
+/* ============================================================
+   CHECK ROOM AVAILABILITY FOR SELECTED DATES
+============================================================ */
+
+export const checkRoomAvailability = async (
+  roomId,
+  checkIn,
+  checkOut
+) => {
+
+  const id = Number(roomId);
+
+  if (!id || Number.isNaN(id)) {
+    throw new Error("Invalid room ID.");
+  }
+
+  const startDate = new Date(checkIn);
+  const endDate = new Date(checkOut);
+
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
+    throw new Error(
+      "Invalid check-in or check-out date."
+    );
+  }
+
+  if (endDate <= startDate) {
+    throw new Error(
+      "Check-out date must be after check-in date."
+    );
+  }
+
+
+  /* ----------------------------------------------------------
+     Get room
+  ---------------------------------------------------------- */
+
+  const room = await prisma.room.findUnique({
+    where: {
+      id,
+    },
+
+    select: {
+      id: true,
+      roomNumber: true,
+      available: true,
+      maintenanceStatus: true,
+    },
+  });
+
+  if (!room) {
+    throw new Error("Room not found.");
+  }
+
+
+  /* ----------------------------------------------------------
+     MANUAL ROOM STATUS
+     
+     Receptionist can make a room unavailable for:
+     - maintenance
+     - cleaning
+     - other reasons
+
+     This is different from reservation dates.
+  ---------------------------------------------------------- */
+
+  if (
+    room.available === false ||
+    room.maintenanceStatus !== "AVAILABLE"
+  ) {
+    return {
+      available: false,
+      reason: "ROOM_UNAVAILABLE",
+    };
+  }
+
+
+  /* ----------------------------------------------------------
+     CHECK DATE OVERLAP
+     
+     Example:
+
+     Reservation:
+     Aug 24 -> Aug 25
+
+     Search:
+     Aug 26 -> Aug 27
+
+     NO OVERLAP
+     => available
+
+     Search:
+     Aug 24 -> Aug 25
+
+     OVERLAP
+     => unavailable
+  ---------------------------------------------------------- */
+
+  const overlappingReservation =
+    await prisma.reservation.findFirst({
+
+      where: {
+
+        roomId: id,
+
+        status: {
+          in: [
+            "PENDING",
+            "CONFIRMED",
+            "CHECKED_IN",
+          ],
+        },
+
+        checkIn: {
+          lt: endDate,
+        },
+
+        checkOut: {
+          gt: startDate,
         },
       },
     });
+
+
+  if (overlappingReservation) {
+
+    return {
+      available: false,
+      reason: "DATE_ALREADY_BOOKED",
+      reservationId:
+        overlappingReservation.id,
+    };
   }
-  return await prisma.room.findMany({
-    include: {
-      guesthouse: {
-        select: {
-          id: true,
-          name: true,
-          city: true,
-        },
-      },
-    },
-  });
+
+
+  /* ----------------------------------------------------------
+     NO OVERLAP
+  ---------------------------------------------------------- */
+
+  return {
+    available: true,
+    reason: "AVAILABLE",
+  };
 };
-export const getRoomById = async (id) => {
-  return await prisma.room.findUnique({
-    where: {
-      id: Number(id),
-    },
-    include: {
-      guesthouse: {
-        select: {
-          id: true,
-          name: true,
-          city: true,
-        },
-      },
-    },
-  });
-};
+
+
+/* ============================================================
+   UPDATE ROOM
+============================================================ */
+
 export const updateRoom = async (id, data) => {
 
   const roomId = Number(id);
@@ -65,9 +257,10 @@ export const updateRoom = async (id, data) => {
     throw new Error("Invalid room ID.");
   }
 
-  // ========================================================
-  // 1. Get room
-  // ========================================================
+
+  /* ----------------------------------------------------------
+     Get room
+  ---------------------------------------------------------- */
 
   const room = await prisma.room.findUnique({
     where: {
@@ -79,46 +272,34 @@ export const updateRoom = async (id, data) => {
     throw new Error("Room not found.");
   }
 
-  // ========================================================
-  // 2. If receptionist wants to make room AVAILABLE
-  // ========================================================
 
-  if (data.available === true) {
+  /* ----------------------------------------------------------
+     RECEPTIONIST MANUAL STATUS
+     
+     IMPORTANT:
 
-    // Check active reservation
-    const activeReservation =
-      await prisma.reservation.findFirst({
-        where: {
-          roomId,
+     Do NOT check reservation dates here.
 
-          status: {
-            in: [
-              "PENDING",
-              "CONFIRMED",
-              "CHECKED_IN",
-            ],
-          },
-        },
-      });
+     Receptionist should be able to change:
+     
+     available = false
 
-    // Room has active reservation
-    if (activeReservation) {
-      throw new Error(
-        "This room cannot be made AVAILABLE because it has an active reservation."
-      );
-    }
-  }
+     for maintenance / cleaning etc.
 
-  // ========================================================
-  // 3. Update room
-  // ========================================================
+     And later:
+     
+     available = true
+  ---------------------------------------------------------- */
+
 
   return await prisma.room.update({
+
     where: {
       id: roomId,
     },
 
     data: {
+
       ...(data.roomNumber !== undefined && {
         roomNumber: data.roomNumber,
       }),
@@ -128,23 +309,41 @@ export const updateRoom = async (id, data) => {
       }),
 
       ...(data.price !== undefined && {
-        price: data.price,
+        price: Number(data.price),
       }),
 
       ...(data.capacity !== undefined && {
-        capacity: data.capacity,
+        capacity: Number(data.capacity),
       }),
 
       ...(data.available !== undefined && {
-        available: data.available,
+        available: Boolean(data.available),
+      }),
+
+      ...(data.maintenanceStatus !== undefined && {
+        maintenanceStatus:
+          data.maintenanceStatus,
       }),
     },
   });
 };
+
+
+/* ============================================================
+   DELETE ROOM
+============================================================ */
+
 export const deleteRoom = async (id) => {
+
+  const roomId = Number(id);
+
+  if (!roomId || Number.isNaN(roomId)) {
+    throw new Error("Invalid room ID.");
+  }
+
   return await prisma.room.delete({
     where: {
-      id: Number(id),
+      id: roomId,
     },
   });
 };

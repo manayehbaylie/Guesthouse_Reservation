@@ -79,6 +79,180 @@ const handleDeleteReservation = async (reservation) => {
   }
 };
 
+  /**
+   * Extract a guesthouse/property object from the different shapes that
+   * existing receptionist endpoints may return.
+   *
+   * Priority:
+   * 1. Dedicated receptionist guesthouse endpoint, if present.
+   * 2. Dashboard stats/property returned by the backend.
+   * 3. Authenticated user's assigned guesthouse fields.
+   * 4. Guesthouse id returned with receptionist-scoped rooms/reservations.
+   *
+   * We deliberately DO NOT fall back to getGuesthouses()[0].
+   */
+  const resolveAssignedGuesthouse = async ({
+    stats,
+    user: currentUser,
+    arrivals: arrivalList,
+    departures: departureList,
+    inHouseGuests: inHouseList,
+    reservations: reservationList,
+    rooms: roomList,
+  }) => {
+    const candidates = [];
+
+    // Use a dedicated backend method when the project has one.
+    if (typeof ApiService.getReceptionistGuesthouse === 'function') {
+      try {
+        const dedicated = await ApiService.getReceptionistGuesthouse();
+        if (dedicated) candidates.push(dedicated);
+      } catch (e) {
+        console.warn('Dedicated receptionist guesthouse lookup failed:', e);
+      }
+    }
+
+    // Common dashboard response shapes.
+    candidates.push(
+      stats?.guesthouse,
+      stats?.property,
+      stats?.assignedGuesthouse,
+      stats?.assignedProperty,
+      stats?.data?.guesthouse,
+      stats?.data?.property,
+      stats?.data?.assignedGuesthouse,
+      stats?.data?.assignedProperty
+    );
+
+    // Common AuthContext user shapes.
+    candidates.push(
+      currentUser?.guesthouse,
+      currentUser?.property,
+      currentUser?.assignedGuesthouse,
+      currentUser?.assignedProperty
+    );
+
+    const userGuesthouseId =
+      currentUser?.guesthouseId ??
+      currentUser?.propertyId ??
+      currentUser?.assignedGuesthouseId ??
+      currentUser?.assignedPropertyId;
+
+    if (userGuesthouseId) {
+      candidates.push({
+        id: userGuesthouseId,
+        name:
+          currentUser?.guesthouseName ??
+          currentUser?.propertyName ??
+          currentUser?.assignedGuesthouseName ??
+          currentUser?.assignedPropertyName,
+        city: currentUser?.guesthouseCity ?? currentUser?.propertyCity,
+        address:
+          currentUser?.guesthouseAddress ??
+          currentUser?.propertyAddress,
+      });
+    }
+
+    // If the receptionist APIs are correctly scoped by the backend, their
+    // records may contain guesthouseId/propertyId.
+    const records = [
+      ...(Array.isArray(arrivalList) ? arrivalList : []),
+      ...(Array.isArray(departureList) ? departureList : []),
+      ...(Array.isArray(inHouseList) ? inHouseList : []),
+      ...(Array.isArray(reservationList) ? reservationList : []),
+      ...(Array.isArray(roomList) ? roomList : []),
+    ];
+
+    const recordWithProperty = records.find((record) => {
+      const id =
+        record?.guesthouseId ??
+        record?.propertyId ??
+        record?.guesthouse?.id ??
+        record?.property?.id ??
+        record?.room?.guesthouseId ??
+        record?.room?.guesthouse?.id;
+
+      return id !== undefined && id !== null && String(id).trim() !== '';
+    });
+
+    if (recordWithProperty) {
+      const id =
+        recordWithProperty.guesthouseId ??
+        recordWithProperty.propertyId ??
+        recordWithProperty.guesthouse?.id ??
+        recordWithProperty.property?.id ??
+        recordWithProperty.room?.guesthouseId ??
+        recordWithProperty.room?.guesthouse?.id;
+
+      candidates.push({
+        id,
+        name:
+          recordWithProperty.guesthouse?.name ??
+          recordWithProperty.property?.name ??
+          recordWithProperty.guesthouseName ??
+          recordWithProperty.propertyName,
+        city:
+          recordWithProperty.guesthouse?.city ??
+          recordWithProperty.property?.city ??
+          recordWithProperty.city,
+        address:
+          recordWithProperty.guesthouse?.address ??
+          recordWithProperty.property?.address ??
+          recordWithProperty.address,
+      });
+    }
+
+    const valid = candidates.find((candidate) => {
+      const id =
+        candidate?.id ??
+        candidate?.guesthouseId ??
+        candidate?.propertyId;
+
+      return id !== undefined && id !== null && String(id).trim() !== '';
+    });
+
+    if (!valid) return null;
+
+    return {
+      ...valid,
+      id: valid.id ?? valid.guesthouseId ?? valid.propertyId,
+      name:
+        valid.name ??
+        valid.guesthouseName ??
+        valid.propertyName ??
+        'Assigned Guesthouse',
+    };
+  };
+
+  /**
+   * Defensive frontend guard.
+   * The backend MUST already scope receptionist data by assignment.
+   * This additionally removes records carrying a different property id.
+   */
+  const filterByGuesthouse = (items, assignedId) => {
+    if (!Array.isArray(items) || !assignedId) return items || [];
+
+    const normalizedAssignedId = String(assignedId);
+
+    return items.filter((item) => {
+      const itemId =
+        item?.guesthouseId ??
+        item?.propertyId ??
+        item?.guesthouse?.id ??
+        item?.property?.id ??
+        item?.room?.guesthouseId ??
+        item?.room?.guesthouse?.id;
+
+      // If this particular API object does not expose a property id,
+      // keep it because the backend endpoint is expected to be scoped.
+      if (itemId === undefined || itemId === null || itemId === '') {
+        return true;
+      }
+
+      return String(itemId) === normalizedAssignedId;
+    });
+  };
+
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -107,14 +281,45 @@ const handleDeleteReservation = async (reservation) => {
       const roomList = await ApiService.getReceptionistRooms();
       setRooms(roomList);
 
-      // Get guesthouse info
-      try {
-        const guesthouses = await ApiService.getGuesthouses();
-        if (guesthouses.length > 0) {
-          setGuesthouse(guesthouses[0]);
-        }
-      } catch (e) {
-        console.error('Error fetching guesthouse:', e);
+      // IMPORTANT:
+      // Never use ApiService.getGuesthouses()[0] here.
+      // That returns the first guesthouse in the whole system and can show
+      // another property's name (for example Hawassa) to the current staff.
+      //
+      // The receptionist must always use the guesthouse assigned to the
+      // currently authenticated user.
+      const assignedGuesthouse = await resolveAssignedGuesthouse({
+        stats,
+        user,
+        arrivals: arr,
+        departures: dep,
+        inHouseGuests: inHouse,
+        reservations: resList,
+        rooms: roomList,
+      });
+
+      if (!assignedGuesthouse) {
+        throw new Error(
+          'No guesthouse is assigned to this receptionist. Please ask the owner/admin to assign this account to a guesthouse.'
+        );
+      }
+
+      setGuesthouse(assignedGuesthouse);
+
+      // Keep the dashboard data locked to the assigned property whenever
+      // the API response contains a guesthouse/property id.
+      const assignedId = String(
+        assignedGuesthouse.id ??
+        assignedGuesthouse.guesthouseId ??
+        ''
+      );
+
+      if (assignedId) {
+        setArrivals(filterByGuesthouse(arr, assignedId));
+        setDepartures(filterByGuesthouse(dep, assignedId));
+        setInHouseGuests(filterByGuesthouse(inHouse, assignedId));
+        setAllReservations(filterByGuesthouse(resList, assignedId));
+        setRooms(filterByGuesthouse(roomList, assignedId));
       }
     } catch (err) {
       console.error('Error loading dashboard data:', err);
@@ -135,7 +340,15 @@ const handleDeleteReservation = async (reservation) => {
     }
     try {
       const results = await ApiService.searchReceptionistReservations(searchTerm);
-      setAllReservations(results);
+      const assignedId = String(
+        guesthouse?.id ??
+        guesthouse?.guesthouseId ??
+        guesthouse?.propertyId ??
+        ''
+      );
+      setAllReservations(
+        assignedId ? filterByGuesthouse(results, assignedId) : results
+      );
       setActiveTab('all');
     } catch (err) {
       console.error('Search error:', err);
