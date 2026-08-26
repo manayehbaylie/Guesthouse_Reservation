@@ -138,6 +138,7 @@ export function OwnerDashboard() {
   const [propImage, setPropImage] = useState('');
   const [propAmenities, setPropAmenities] = useState([]);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Review Response State
   const [respondingToReviewId, setRespondingToReviewId] = useState(null);
