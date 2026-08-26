@@ -8,6 +8,8 @@ import {
 } from "../services/owner.service.js";
 
 import { successResponse } from "../utils/response.js";
+import bcrypt from "bcryptjs";
+import prisma from "../config/prisma.js";
 
 /*
 ==================================================
@@ -170,3 +172,64 @@ export const removeReceptionist = async (
     next(error);
   }
 };
+/*
+==================================================
+UPDATE OWNER PROFILE
+==================================================
+*/
+export async function updateOwnerProfile(req, res) {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in authentication token",
+      });
+    }
+
+    const {
+      fullName,
+      email,
+      phone,
+      password,
+    } = req.body;
+
+    const data = {
+      fullName,
+      email,
+      phone,
+    };
+
+    if (password?.trim()) {
+      data.password = await bcrypt.hash(
+        password.trim(),
+        10
+      );
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error(
+      "UPDATE OWNER PROFILE ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error?.message ||
+        "Failed to update owner profile",
+    });
+  }
+}

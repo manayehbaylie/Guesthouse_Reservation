@@ -7,6 +7,8 @@ import {
   getStaff,
   assignStaff,
   removeReceptionist,
+    updateOwnerProfile,
+
 } from "../controllers/owner.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -147,6 +149,12 @@ router.get(
   authenticate,
   authorize("OWNER"),
   getStaff
+);
+router.put(
+  "/profile",
+  authenticate,
+  authorize("OWNER"),
+  updateOwnerProfile
 );
 
 export default router;

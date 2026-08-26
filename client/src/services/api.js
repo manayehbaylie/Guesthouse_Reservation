@@ -906,10 +906,11 @@ export const ApiService = {
 
   let endpoint = '/admin/profile';
 
-  if (role === 'RECEPTIONIST') {
-    endpoint = '/receptionist/profile';
-  }
-
+if (role === 'OWNER') {
+  endpoint = '/owner/profile';
+} else if (role === 'RECEPTIONIST') {
+  endpoint = '/receptionist/profile';
+}
   const response = await api.put(
     endpoint,
     {
