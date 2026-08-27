@@ -7,8 +7,8 @@ import {
   getStaff,
   assignStaff,
   removeReceptionist,
-    updateOwnerProfile,
-
+  updateOwnerProfile,
+  getPayments,
 } from "../controllers/owner.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -155,6 +155,12 @@ router.put(
   authenticate,
   authorize("OWNER"),
   updateOwnerProfile
+);
+router.get(
+  "/payments",
+  authenticate,
+  authorize("OWNER"),
+  getPayments
 );
 
 export default router;

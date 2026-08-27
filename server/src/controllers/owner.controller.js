@@ -6,6 +6,9 @@ import {
   assignReceptionistToGuesthouse,
   removeReceptionistFromGuesthouse,
 } from "../services/owner.service.js";
+import {
+  getOwnerPaymentReport,
+} from "../services/payment.service.js";
 
 import { successResponse } from "../utils/response.js";
 import bcrypt from "bcryptjs";
@@ -233,3 +236,28 @@ export async function updateOwnerProfile(req, res) {
     });
   }
 }
+/*
+==================================================
+GET OWNER PAYMENT REPORT
+==================================================
+*/
+export const getPayments = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const payments =
+      await getOwnerPaymentReport(
+        req.user.id
+      );
+
+    return successResponse(
+      res,
+      payments,
+      "Owner payments fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
