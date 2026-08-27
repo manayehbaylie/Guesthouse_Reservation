@@ -15,6 +15,10 @@ export const createRoom = async (data, guesthouseId) => {
       // This is MANUAL room status.
       // It is NOT used for date-based booking availability.
       available: data.available ?? true,
+maintenanceStatus:
+  data.available === false
+    ? "UNAVAILABLE"
+    : "AVAILABLE",
 
       guesthouseId: Number(guesthouseId),
     },
@@ -250,17 +254,11 @@ export const checkRoomAvailability = async (
 ============================================================ */
 
 export const updateRoom = async (id, data) => {
-
   const roomId = Number(id);
 
   if (!roomId || Number.isNaN(roomId)) {
     throw new Error("Invalid room ID.");
   }
-
-
-  /* ----------------------------------------------------------
-     Get room
-  ---------------------------------------------------------- */
 
   const room = await prisma.room.findUnique({
     where: {
@@ -272,59 +270,39 @@ export const updateRoom = async (id, data) => {
     throw new Error("Room not found.");
   }
 
+  const updateData = {};
 
-  /* ----------------------------------------------------------
-     RECEPTIONIST MANUAL STATUS
-     
-     IMPORTANT:
+  if (data.roomNumber !== undefined) {
+    updateData.roomNumber = data.roomNumber;
+  }
 
-     Do NOT check reservation dates here.
+  if (data.roomType !== undefined) {
+    updateData.roomType = data.roomType;
+  }
 
-     Receptionist should be able to change:
-     
-     available = false
+  if (data.price !== undefined) {
+    updateData.price = Number(data.price);
+  }
 
-     for maintenance / cleaning etc.
+  if (data.capacity !== undefined) {
+    updateData.capacity = Number(data.capacity);
+  }
 
-     And later:
-     
-     available = true
-  ---------------------------------------------------------- */
+  // ONLY TWO ROOM STATES
+  if (data.available !== undefined) {
+    updateData.available = Boolean(data.available);
 
+    updateData.maintenanceStatus =
+      data.available === true
+        ? "AVAILABLE"
+        : "UNAVAILABLE";
+  }
 
   return await prisma.room.update({
-
     where: {
       id: roomId,
     },
-
-    data: {
-
-      ...(data.roomNumber !== undefined && {
-        roomNumber: data.roomNumber,
-      }),
-
-      ...(data.roomType !== undefined && {
-        roomType: data.roomType,
-      }),
-
-      ...(data.price !== undefined && {
-        price: Number(data.price),
-      }),
-
-      ...(data.capacity !== undefined && {
-        capacity: Number(data.capacity),
-      }),
-
-      ...(data.available !== undefined && {
-        available: Boolean(data.available),
-      }),
-
-      ...(data.maintenanceStatus !== undefined && {
-        maintenanceStatus:
-          data.maintenanceStatus,
-      }),
-    },
+    data: updateData,
   });
 };
 
