@@ -232,6 +232,138 @@ export function OwnerDashboard() {
         } catch {
           setPayments([]);
         }
+{/* ==========================================================
+    RECENT GUEST RESERVATIONS
+    ========================================================== */}
+<div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+  <div className="p-6 border-b border-stone-200">
+    <div className="flex items-center justify-between">
+      <div>
+        <h3 className="text-base font-black text-stone-900">
+          Recent Guest Reservations
+        </h3>
+
+        <p className="text-xs text-stone-500 mt-1">
+          Latest reservations recorded for your guesthouse
+        </p>
+      </div>
+
+      <div className="px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black">
+        {reservations.length} Reservations
+      </div>
+    </div>
+  </div>
+
+  {reservations.length === 0 ? (
+    <div className="p-10 text-center">
+      <Calendar className="w-8 h-8 mx-auto text-stone-300 mb-3" />
+
+      <p className="text-sm font-bold text-stone-600">
+        No guest reservations yet
+      </p>
+
+      <p className="text-xs text-stone-400 mt-1">
+        New reservations will appear here automatically.
+      </p>
+    </div>
+  ) : (
+    <div className="divide-y divide-stone-100">
+      {reservations.map((reservation) => (
+        <div
+          key={reservation.id}
+          className="p-5 hover:bg-stone-50 transition-colors"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
+            {/* Guest */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-black text-sm">
+                  {(reservation.guestName || 'G').charAt(0).toUpperCase()}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-stone-900 truncate">
+                    {reservation.guestName || 'Guest'}
+                  </p>
+
+                  <p className="text-[11px] text-stone-500 truncate">
+                    {reservation.guestPhone || 'No phone number'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Room */}
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-black text-stone-400">
+                Room
+              </p>
+
+              <p className="text-xs font-black text-stone-800 mt-1">
+                {reservation.roomNumber
+                  ? `Room ${reservation.roomNumber}`
+                  : 'Room not specified'}
+              </p>
+
+              <p className="text-[10px] text-stone-500 mt-0.5">
+                {reservation.roomType || 'Room'}
+              </p>
+            </div>
+
+            {/* Stay */}
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-black text-stone-400">
+                Stay
+              </p>
+
+              <div className="flex items-center gap-2 mt-1">
+                <Calendar className="w-3.5 h-3.5 text-amber-500" />
+
+                <p className="text-xs font-bold text-stone-800">
+                  {reservation.checkInDate || '—'}
+                  {' → '}
+                  {reservation.checkOutDate || '—'}
+                </p>
+              </div>
+
+              <p className="text-[10px] text-stone-500 mt-0.5">
+                {reservation.nightsCount || 0} night
+                {Number(reservation.nightsCount || 0) === 1 ? '' : 's'}
+              </p>
+            </div>
+
+            {/* Amount */}
+            <div className="lg:text-right">
+              <p className="text-[10px] uppercase tracking-wider font-black text-stone-400">
+                Total
+              </p>
+
+              <p className="text-sm font-black text-stone-900 mt-1">
+                {Number(
+                  reservation.totalPrice || 0
+                ).toLocaleString()} ETB
+              </p>
+
+              <span
+                className={`inline-flex mt-1 px-2 py-1 rounded-full text-[9px] font-black uppercase ${
+                  String(reservation.status || '').toLowerCase() === 'confirmed'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : String(reservation.status || '').toLowerCase() === 'cancelled'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}
+              >
+                {reservation.status || 'pending'}
+              </span>
+            </div>
+
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
         // 5. Fetch Recent Reservations
         try {
@@ -1086,7 +1218,7 @@ export function OwnerDashboard() {
               </div>
 
               {/* Bottom Section: Recent Reservations Table */}
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
+              {/* <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-stone-900">Recent Guest Reservations</h3>
@@ -1144,7 +1276,7 @@ export function OwnerDashboard() {
                     </table>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -1421,51 +1553,208 @@ export function OwnerDashboard() {
               <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs font-medium">
-                    <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider font-bold">
-                      <tr>
-                        <th className="px-6 py-4">Reference No.</th>
-                        <th className="px-6 py-4">Guest</th>
-                        <th className="px-6 py-4">Gateway</th>
-                        <th className="px-6 py-4">Amount</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Timestamp</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 text-stone-800">
-                      {filteredPayments.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-stone-400">
-                            No payment transactions matching your filter.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredPayments.map((p) => (
-                          <tr key={p.id} className="hover:bg-stone-50/60 transition-colors">
-                            <td className="px-6 py-4 font-mono font-bold text-stone-900">{p.referenceNumber}</td>
-                            <td className="px-6 py-4 font-bold">{p.guestName || 'Guest'}</td>
-                            <td className="px-6 py-4">
-                              <span className="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 font-bold uppercase text-[10px]">
-                                {p.method}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 font-black text-emerald-700 text-sm">
-                              {p.amount.toLocaleString()} ETB
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
-                                {p.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-stone-500">
-                              {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Recent'}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
+                    {/* ==========================================================
+    RECENT GUEST RESERVATIONS
+    ========================================================== */}
+<div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+  {/* HEADER */}
+  <div className="p-6 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h3 className="text-base font-black text-stone-900">
+        Recent Guest Reservations
+      </h3>
+
+      <p className="text-xs text-stone-500 mt-1">
+        Latest reservations for your guesthouse
+      </p>
+    </div>
+
+    <div className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-xs font-black">
+      {reservations.length} Reservations
+    </div>
+  </div>
+
+  {/* RESERVATION LIST */}
+  {reservations.length === 0 ? (
+    <div className="p-12 text-center">
+      <Calendar className="w-10 h-10 mx-auto text-stone-300 mb-3" />
+
+      <p className="text-sm font-bold text-stone-500">
+        No guest reservations found.
+      </p>
+
+      <p className="text-xs text-stone-400 mt-1">
+        Reservations created for this guesthouse will appear here.
+      </p>
+    </div>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="border-b border-stone-200 bg-stone-50">
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+              Guest
+            </th>
+
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+              Room
+            </th>
+
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+              Check-in
+            </th>
+
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+              Check-out
+            </th>
+
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+              Nights
+            </th>
+
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+              Total
+            </th>
+
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+  Payment Method
+</th>
+
+            <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-stone-500">
+              Status
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {reservations.map((reservation) => (
+            <tr
+              key={reservation.id}
+              className="border-b border-stone-100 last:border-b-0 hover:bg-stone-50 transition-colors"
+            >
+              {/* GUEST */}
+              <td className="px-5 py-4">
+                <div className="font-black text-sm text-stone-900">
+                  {reservation.guestName || 'Guest'}
+                </div>
+
+                {reservation.guestPhone && (
+                  <div className="text-[10px] text-stone-400 mt-0.5">
+                    {reservation.guestPhone}
+                  </div>
+                )}
+              </td>
+
+              {/* ROOM */}
+              <td className="px-5 py-4">
+                <div className="text-sm font-bold text-stone-800">
+                  {reservation.roomNumber
+                    ? `Room ${reservation.roomNumber}`
+                    : '—'}
+                </div>
+
+                <div className="text-[10px] text-stone-400">
+                  {reservation.roomType || 'Room'}
+                </div>
+              </td>
+
+              {/* CHECK IN */}
+              <td className="px-5 py-4">
+                <div className="text-xs font-bold text-stone-700">
+                  {reservation.checkInDate || '—'}
+                </div>
+              </td>
+
+              {/* CHECK OUT */}
+              <td className="px-5 py-4">
+                <div className="text-xs font-bold text-stone-700">
+                  {reservation.checkOutDate || '—'}
+                </div>
+              </td>
+
+              {/* NIGHTS */}
+              <td className="px-5 py-4">
+                <span className="text-xs font-black text-stone-700">
+                  {reservation.nightsCount || 0}
+                </span>
+              </td>
+
+              {/* TOTAL */}
+              <td className="px-5 py-4">
+                <span className="text-sm font-black text-stone-900">
+                  {Number(
+                    reservation.totalPrice || 0
+                  ).toLocaleString()} ETB
+                </span>
+              </td>
+
+          
+{/* PAYMENT METHOD */}
+<td className="px-5 py-4">
+  {(() => {
+    const method = String(
+      reservation.paymentMethod || ''
+    ).toLowerCase();
+
+    const label =
+      method === 'telebirr'
+        ? 'Telebirr'
+        : method === 'chapa'
+        ? 'Chapa'
+        : method === 'bank_transfer'
+        ? 'Bank Transfer'
+        : method === 'cbe_birr'
+        ? 'CBE Birr'
+        : 'Not Paid';
+
+    return (
+      <span
+        className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black ${
+          method === 'telebirr'
+            ? 'bg-blue-100 text-blue-700'
+            : method === 'chapa'
+            ? 'bg-purple-100 text-purple-700'
+            : method === 'bank_transfer' ||
+              method === 'cbe_birr'
+            ? 'bg-emerald-100 text-emerald-700'
+            : 'bg-stone-100 text-stone-600'
+        }`}
+      >
+        {label}
+      </span>
+    );
+  })()}
+</td>
+
+              {/* RESERVATION STATUS */}
+              <td className="px-5 py-4">
+                <span
+                  className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                    String(
+                      reservation.status || ''
+                    ).toLowerCase() === 'confirmed'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : String(
+                          reservation.status || ''
+                        ).toLowerCase() === 'cancelled'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
+                  {reservation.status || 'pending'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
                   </table>
                 </div>
               </div>
+              
             </div>
           )}
 

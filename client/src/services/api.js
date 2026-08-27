@@ -428,12 +428,50 @@ function mapGuesthouseFromBackend(
 // ROOM MAPPING
 // ============================================================
 
+function normalizeRoomStatus(room) {
+  if (!room) return 'available';
+
+  const rawStatus =
+    room.availabilityStatus ??
+    room.maintenanceStatus ??
+    room.status ??
+    null;
+
+  if (rawStatus) {
+    const status = String(rawStatus).toLowerCase().trim();
+
+    const statusMap = {
+      available: 'available',
+      unavailable: 'unavailable',
+      cleaning: 'cleaning',
+      maintenance: 'maintenance',
+      occupied: 'occupied',
+      reserved: 'reserved',
+      booking: 'reserved',
+      booked: 'reserved',
+    };
+
+    if (statusMap[status]) {
+      return statusMap[status];
+    }
+  }
+
+  // Backward compatibility with old boolean database field
+  if (room.available === false) {
+    return 'unavailable';
+  }
+
+  return 'available';
+}
+
 function mapRoomFromBackend(room) {
   if (!room) return null;
 
+  const availabilityStatus =
+    normalizeRoomStatus(room);
+
   return {
-    id:
-      room.id,
+    id: room.id,
 
     guesthouseId:
       room.guesthouseId,
@@ -446,7 +484,7 @@ function mapRoomFromBackend(room) {
       room.roomType,
 
     capacity:
-      room.capacity,
+      Number(room.capacity ?? 0),
 
     pricePerNight:
       Number(
@@ -455,16 +493,19 @@ function mapRoomFromBackend(room) {
         0
       ),
 
-    availabilityStatus:
-      room.availabilityStatus ??
-      (
-        room.available === false
-          ? 'occupied'
-          : 'available'
-      ),
+    availabilityStatus,
+
+    // Keep these for compatibility with existing components
+    available:
+      availabilityStatus === 'available',
+
+    maintenanceStatus:
+      availabilityStatus,
+
+    status:
+      availabilityStatus,
   };
 }
-
 // ============================================================
 // RESERVATION MAPPING
 // ============================================================
@@ -586,20 +627,23 @@ function mapReservationFromBackend(
         0
       ),
 
-    paymentStatus:
-      reservation.paymentStatus ||
-      (
-        reservation.payment?.status ===
-        'PAID'
-          ? 'paid'
-          : 'pending'
-      ),
+  paymentMethod:
+  reservation.paymentMethod ||
+  reservation.payment_method ||
+  reservation.payment?.method ||
+  reservation.payment?.paymentMethod ||
+  null,
 
-    status:
-      mapReservationStatus(
-        reservation.status
-      ),
+paymentStatus:
+  reservation.paymentStatus ||
+  reservation.payment_status ||
+  reservation.payment?.status ||
+  'pending',
 
+status:
+  mapReservationStatus(
+    reservation.status
+  ),
     createdAt:
       reservation.createdAt,
   };
@@ -1295,22 +1339,58 @@ if (role === 'OWNER') {
   },
 
   async updateRoomAvailability(
-    roomId,
-    status
-  ) {
-    const response =
-      await api.put(
-        `/rooms/${roomId}`,
-        {
-          available:
-            status === 'available',
-        }
-      );
+  roomId,
+  status
+) {
+  if (!roomId) {
+    throw new Error('Room ID is required.');
+  }
 
-    return mapRoomFromBackend(
-      unwrap(response)
+  const normalizedStatus =
+    String(status || '')
+      .toLowerCase()
+      .trim();
+
+  const allowedStatuses = [
+    'available',
+    'unavailable',
+    'cleaning',
+    'maintenance',
+  ];
+
+  if (
+    !allowedStatuses.includes(
+      normalizedStatus
+    )
+  ) {
+    throw new Error(
+      `Invalid room status: ${status}`
     );
-  },
+  }
+
+  const response =
+    await api.put(
+      `/rooms/${roomId}`,
+      {
+        // NEW canonical status
+        availabilityStatus:
+          normalizedStatus,
+
+        // Backward compatibility
+        available:
+          normalizedStatus ===
+          'available',
+
+        // For existing receptionist/backend logic
+        maintenanceStatus:
+          normalizedStatus,
+      }
+    );
+
+  return mapRoomFromBackend(
+    unwrap(response)
+  );
+},
 
   async updateRoom(
     roomId,
@@ -1358,24 +1438,50 @@ if (role === 'OWNER') {
           roomData.capacity
         );
     }
+if (
+  roomData.available !== undefined
+) {
+  payload.available =
+    Boolean(
+      roomData.available
+    );
+}
 
-    if (
-      roomData.available !== undefined
-    ) {
-      payload.available =
-        Boolean(
-          roomData.available
-        );
-    }
+if (
+  roomData.availabilityStatus !==
+  undefined
+) {
+  const status =
+    String(
+      roomData.availabilityStatus
+    )
+      .toLowerCase()
+      .trim();
 
-    if (
-      roomData.availabilityStatus !==
-      undefined
-    ) {
-      payload.available =
-        roomData.availabilityStatus ===
-        'available';
-    }
+  const allowedStatuses = [
+    'available',
+    'unavailable',
+    'cleaning',
+    'maintenance',
+  ];
+
+  if (
+    !allowedStatuses.includes(status)
+  ) {
+    throw new Error(
+      `Invalid room status: ${status}`
+    );
+  }
+
+  payload.availabilityStatus =
+    status;
+
+  payload.maintenanceStatus =
+    status;
+
+  payload.available =
+    status === 'available';
+}
 
     const response =
       await api.put(
@@ -1734,20 +1840,56 @@ const initiatePayload = {
     );
   },
 
-  async updateReceptionistRoomAvailability(
-    roomId,
-    maintenanceStatus
-  ) {
-    const response =
-      await api.patch(
-        `/receptionist/rooms/${roomId}/availability`,
-        {
-          maintenanceStatus,
-        }
-      );
+ async updateReceptionistRoomAvailability(
+  roomId,
+  status
+) {
+  if (!roomId) {
+    throw new Error('Room ID is required.');
+  }
 
-    return unwrap(response);
-  },
+  const normalizedStatus =
+    String(status || '')
+      .toLowerCase()
+      .trim();
+
+  const allowedStatuses = [
+    'available',
+    'unavailable',
+    'cleaning',
+    'maintenance',
+  ];
+
+  if (
+    !allowedStatuses.includes(
+      normalizedStatus
+    )
+  ) {
+    throw new Error(
+      `Invalid room status: ${status}`
+    );
+  }
+
+  const response =
+    await api.patch(
+      `/receptionist/rooms/${roomId}/availability`,
+      {
+        availabilityStatus:
+          normalizedStatus,
+
+        maintenanceStatus:
+          normalizedStatus,
+
+        available:
+          normalizedStatus ===
+          'available',
+      }
+    );
+
+  return mapRoomFromBackend(
+    unwrap(response)
+  );
+},
 
   async performCheckIn(
     reservationId
@@ -2032,19 +2174,71 @@ const initiatePayload = {
     return unwrap(response) || [];
   },
 
-  async getOwnerDashboardRecentReservations() {
-    const response =
-      await api.get(
-        '/dashboard/owner/recent-reservations'
+ async getOwnerDashboardRecentReservations() {
+  // Get recent reservations
+  const reservationResponse = await api.get(
+    '/dashboard/owner/recent-reservations'
+  );
+
+  const reservationList =
+    unwrap(reservationResponse) || [];
+
+  // Get recent payments
+  const paymentResponse = await api.get(
+    '/dashboard/owner/recent-payments'
+  );
+
+  const paymentList =
+    unwrap(paymentResponse) || [];
+
+  // Convert backend payments to frontend format
+  const payments = paymentList.map(
+    mapPaymentFromBackend
+  );
+
+  // Attach matching payment information
+  const reservations = reservationList.map(
+    (reservation) => {
+      const payment = payments.find(
+        (p) =>
+          String(p.reservationId) ===
+          String(reservation.id)
       );
 
-    const list =
-      unwrap(response) || [];
+      return mapReservationFromBackend({
+        ...reservation,
 
-    return list.map(
-      mapReservationFromBackend
-    );
-  },
+        payment: payment
+          ? {
+              id: payment.id,
+              reservationId:
+                payment.reservationId,
+              amount: payment.amount,
+              method: payment.method,
+              status: payment.status,
+              referenceNumber:
+                payment.referenceNumber,
+              createdAt: payment.createdAt,
+            }
+          : reservation.payment,
+
+        paymentMethod:
+          payment?.method ||
+          reservation.paymentMethod ||
+          reservation.payment_method ||
+          null,
+
+        paymentStatus:
+          payment?.status ||
+          reservation.paymentStatus ||
+          reservation.payment_status ||
+          'pending',
+      });
+    }
+  );
+
+  return reservations;
+},
 
   async getOwnerDashboardRecentPayments() {
     const response =

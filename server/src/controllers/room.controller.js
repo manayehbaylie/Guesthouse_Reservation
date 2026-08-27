@@ -106,7 +106,12 @@ export const updateAvailability = async (req, res, next) => {
 
     const room = await updateRoom(
       req.params.id,
-      { available }
+      {
+        available,
+        maintenanceStatus: available
+          ? "AVAILABLE"
+          : "UNAVAILABLE",
+      }
     );
 
     successResponse(
