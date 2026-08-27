@@ -1,15 +1,15 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
   LogIn,
   Mail,
   Lock,
-  Sparkles,
   Building2,
   Eye,
   EyeOff,
+  ArrowRight,
+  Phone,
 } from 'lucide-react';
 
 export function Login() {
@@ -18,15 +18,49 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loginMethod, setLoginMethod] = useState('email');
 
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Keep the page the guest originally came from.
-  // If there is no previous page, use the homepage.
-  const from =
-    location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || '/';
+  const reservationData = location.state?.reservationData || null;
+  const bookingData = location.state?.bookingData || null;
+  const pendingReservation = location.state?.pendingReservation || false;
+
+  const [hasPendingReservation, setHasPendingReservation] = useState(false);
+
+  useEffect(() => {
+    const pendingData = sessionStorage.getItem('pendingReservation');
+    if (pendingData) {
+      try {
+        const parsed = JSON.parse(pendingData);
+        setHasPendingReservation(true);
+      } catch (e) {
+        console.error('Failed to parse pending reservation:', e);
+      }
+    }
+  }, []);
+
+  const isComingFromBooking = () => {
+    if (reservationData || bookingData || pendingReservation) {
+      return true;
+    }
+    if (hasPendingReservation) {
+      return true;
+    }
+    const fromState = location.state?.from;
+    if (fromState) {
+      if (typeof fromState === 'string') {
+        return fromState.includes('/booking');
+      }
+      if (typeof fromState === 'object' && fromState.pathname) {
+        return fromState.pathname.includes('/booking');
+      }
+    }
+    return false;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,10 +70,76 @@ export function Login() {
     try {
       const user = await login(email, password);
 
-      // ------------------------------------------------------
-      // ROLE-BASED REDIRECTION
-      // ------------------------------------------------------
+      const pendingData = sessionStorage.getItem('pendingReservation');
+      
+      if (pendingData) {
+        try {
+          const reservationData = JSON.parse(pendingData);
+          sessionStorage.removeItem('pendingReservation');
+          
+          navigate(
+            `/booking?guesthouseId=${reservationData.guesthouseId}&roomId=${reservationData.roomId}`,
+            {
+              replace: true,
+              state: {
+                bookingData: reservationData,
+                fromLogin: true,
+                user: user,
+              }
+            }
+          );
+          return;
+        } catch (e) {
+          console.error('Failed to process pending reservation:', e);
+        }
+      }
 
+      if (reservationData || bookingData) {
+        const data = reservationData || bookingData;
+        navigate(
+          `/booking?guesthouseId=${data.guesthouseId || data.guesthouse?.id}&roomId=${data.roomId || data.room?.id}`,
+          {
+            replace: true,
+            state: {
+              bookingData: data,
+              fromLogin: true,
+              user: user,
+            }
+          }
+        );
+        return;
+      }
+
+      const cameFromBooking = isComingFromBooking();
+
+      if (cameFromBooking) {
+        const retryPending = sessionStorage.getItem('pendingReservation');
+        if (retryPending) {
+          try {
+            const data = JSON.parse(retryPending);
+            sessionStorage.removeItem('pendingReservation');
+            
+            navigate(
+              `/booking?guesthouseId=${data.guesthouseId}&roomId=${data.roomId}`,
+              {
+                replace: true,
+                state: {
+                  bookingData: data,
+                  fromLogin: true,
+                  user: user,
+                }
+              }
+            );
+            return;
+          } catch (e) {
+            console.error('Failed to retry pending reservation:', e);
+          }
+        }
+        navigate('/guest/search', { replace: true });
+        return;
+      }
+
+      // ✅ FIXED: Role-based redirection
       if (user.role === 'ADMIN') {
         navigate('/admin', { replace: true });
 
@@ -50,38 +150,11 @@ export function Login() {
         navigate('/receptionist', { replace: true });
 
       } else if (user.role === 'GUEST') {
-        /*
-         * IMPORTANT:
-         *
-         * If the guest came from "View & Book", the protected
-         * page should be stored in location.state.from.
-         *
-         * Otherwise, after a normal guest login, send the guest
-         * to the Guest Search Dashboard instead of the homepage.
-         */
-
-        const cameFromProtectedPage =
-          location.state?.from?.pathname;
-
-        if (cameFromProtectedPage) {
-          navigate(
-            cameFromProtectedPage +
-              (location.state?.from?.search || ''),
-            {
-              replace: true,
-              state: location.state?.from?.state,
-            }
-          );
-        } else {
-          navigate('/guest/search', {
-            replace: true,
-          });
-        }
+        // ✅ CHANGED: Redirect to guest dashboard
+        navigate('/guest/dashboard', { replace: true });
 
       } else {
-        navigate(from, {
-          replace: true,
-        });
+        navigate(from, { replace: true });
       }
 
     } catch (err) {
@@ -94,173 +167,163 @@ export function Login() {
     }
   };
 
-  const sampleAccounts = [
-    {
-      name: 'Admin',
-      email: 'admin@gmail.com',
-      password: 'password123',
-      role: 'ADMIN',
-    },
-    {
-      name: 'Owner',
-      email: 'manayeh@gmail.com',
-      password: 'password123',
-      role: 'OWNER',
-    },
-    {
-      name: 'Receptionist',
-      email: 'marta@gmail.com',
-      password: 'password123',
-      role: 'RECEPTIONIST',
-    },
-    {
-      name: 'Guest',
-      email: 'senayt@gmail.com',
-      password: 'password123',
-      role: 'GUEST',
-    },
-  ];
-
-  const autofillAccount = (acc) => {
-    setEmail(acc.email);
-    setPassword(acc.password);
-  };
+  const isFromBooking = isComingFromBooking();
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-stone-50">
-      <div className="max-w-md w-full space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
 
-        {/* HEADER */}
-        <div className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md mb-3">
-            <Building2 className="w-6 h-6" />
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
+            <Building2 className="w-7 h-7" />
           </div>
+          <div>
+            <span className="text-2xl font-black text-stone-900">Guesthouse</span>
+            <span className="text-2xl font-black text-stone-900"> Platform</span>
+          </div>
+        </div>
 
-          <h2 className="text-2xl font-bold text-stone-900 tracking-tight">
-            Sign in to your account
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h2 className="text-3xl font-black text-stone-900">
+            {isFromBooking ? 'Login to Complete Booking' : 'Welcome Back'}
           </h2>
-
-          <p className="mt-1 text-xs text-stone-500">
-            Access Guesthouse Reservation Platform features
+          <p className="mt-2 text-stone-500">
+            {isFromBooking 
+              ? 'Please log in to confirm your reservation'
+              : 'Sign in to your account to continue'}
           </p>
         </div>
 
-        {/* ERROR */}
+        {/* Error */}
         {error && (
-          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
             {error}
           </div>
         )}
 
-        {/* LOGIN FORM */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-4"
-        >
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* EMAIL */}
+          {/* Login Method Toggle */}
+          <div className="flex gap-2 p-1 bg-stone-100 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setLoginMethod('email')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition ${
+                loginMethod === 'email'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              <Mail className="w-4 h-4 inline mr-2" />
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMethod('phone')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition ${
+                loginMethod === 'phone'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              <Phone className="w-4 h-4 inline mr-2" />
+              Phone
+            </button>
+          </div>
+
+          {/* Email/Phone Input */}
           <div>
-            <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
-              Email Address
+            <label className="block text-sm font-bold text-stone-700 mb-2">
+              {loginMethod === 'email' ? 'Email Address' : 'Phone Number'}
             </label>
-
             <div className="relative">
-              <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-
+              {loginMethod === 'email' ? (
+                <Mail className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              ) : (
+                <Phone className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              )}
               <input
-                type="email"
+                type={loginMethod === 'email' ? 'email' : 'tel'}
                 required
                 value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
-                placeholder="guest@example.com"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={loginMethod === 'email' ? 'guest@example.com' : '+251 9XXXXXXXX'}
+                className="w-full pl-12 pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
               />
             </div>
           </div>
 
-          {/* PASSWORD */}
+          {/* Password */}
           <div>
-            <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
+            <label className="block text-sm font-bold text-stone-700 mb-2">
               Password
             </label>
-
             <div className="relative">
-              <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-
+              <Lock className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
-                type={
-                  showPassword
-                    ? 'text'
-                    : 'password'
-                }
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
-                onChange={(e) =>
-                  setPassword(e.target.value)
-                }
-                placeholder="Password123"
-                className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full pl-12 pr-12 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
               />
-
               <button
                 type="button"
-                onClick={() =>
-                  setShowPassword(
-                    (previous) => !previous
-                  )
-                }
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors"
-                aria-label={
-                  showPassword
-                    ? 'Hide password'
-                    : 'Show password'
-                }
-                title={
-                  showPassword
-                    ? 'Hide password'
-                    : 'Show password'
-                }
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition"
               >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
+            </div>
+            <div className="mt-2 text-right">
+              <Link to="/forgot-password" className="text-sm font-semibold text-amber-600 hover:text-amber-700 hover:underline">
+                Forgot Password?
+              </Link>
             </div>
           </div>
 
-          {/* SIGN IN BUTTON */}
+          {/* Sign In Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors shadow-xs flex items-center justify-center gap-2"
+            className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-lg rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <LogIn className="w-4 h-4" />
-
-            <span>
-              {loading
-                ? 'Authenticating...'
-                : 'Sign In'}
-            </span>
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
+                <span>Authenticating...</span>
+              </>
+            ) : (
+              <>
+                <span>{isFromBooking ? 'Login & Continue Booking' : 'Sign In'}</span>
+                {isFromBooking && <ArrowRight className="w-5 h-5" />}
+              </>
+            )}
           </button>
         </form>
-        {/* REGISTER LINK */}
-        <p className="text-center text-xs text-stone-500">
-          Don't have an account?{' '}
 
-          <Link
-            to="/register"
-            className="font-semibold text-amber-600 hover:underline"
-          >
-            Register as Guest or Owner
+        {/* Register Link */}
+        <p className="mt-6 text-center text-stone-500">
+          Don't have an account?{' '}
+          <Link to="/register" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
+            Create Account
           </Link>
         </p>
+
+        {/* Footer */}
+        <div className="mt-8 pt-6 border-t border-stone-200 text-center">
+          <p className="text-sm text-stone-400">
+            © 2026 Guesthouse Platform. All rights reserved.
+          </p>
+        </div>
 
       </div>
     </div>
   );
 }
 
+export default Login;

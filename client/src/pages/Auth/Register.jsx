@@ -1,8 +1,6 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-
 import {
   UserPlus,
   Mail,
@@ -18,6 +16,9 @@ import {
   Image as ImageIcon,
   ShieldCheck,
   X,
+  Eye,
+  EyeOff,
+  ArrowRight,
 } from 'lucide-react';
 
 export function Register() {
@@ -36,26 +37,24 @@ export function Register() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('+251 9');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // ============================================================
   // OWNER IDENTIFICATION
-  // Date of Birth removed
   // ============================================================
 
   const [address, setAddress] = useState('');
-
   const [idType, setIdType] = useState('National ID');
   const [idNumber, setIdNumber] = useState('');
-
   const [idFront, setIdFront] = useState(null);
   const [idBack, setIdBack] = useState(null);
 
   // ============================================================
   // GUESTHOUSE INFORMATION
-  // Guesthouse Type removed
   // ============================================================
 
   const [guesthouseName, setGuesthouseName] = useState('');
@@ -70,9 +69,6 @@ export function Register() {
 
   // ============================================================
   // BUSINESS INFORMATION
-  // Ownership Type removed
-  // Proof of Ownership removed
-  // Authorization Letter removed
   // ============================================================
 
   const [businessLicenseNumber, setBusinessLicenseNumber] = useState('');
@@ -105,19 +101,15 @@ export function Register() {
     if (!password) {
       return 'Password is required.';
     }
-
     if (password.length < 6) {
       return 'Password must be at least 6 characters.';
     }
-
     if (!confirmPassword) {
       return 'Please confirm your password.';
     }
-
     if (password !== confirmPassword) {
       return 'Passwords do not match.';
     }
-
     return null;
   };
 
@@ -128,19 +120,14 @@ export function Register() {
   const resetForm = () => {
     setName('');
     setEmail('');
-    setPhone('+251 9');
-
+    setPhone('');
     setPassword('');
     setConfirmPassword('');
-
     setAddress('');
-
     setIdType('National ID');
     setIdNumber('');
-
     setIdFront(null);
     setIdBack(null);
-
     setGuesthouseName('');
     setGuesthouseAddress('');
     setCity('');
@@ -150,14 +137,10 @@ export function Register() {
     setGuesthouseEmail('');
     setNumberOfRooms('');
     setDescription('');
-
     setBusinessLicenseNumber('');
     setBusinessLicense(null);
-
     setGuesthousePhotos([]);
-
     setAgreedToTerms(false);
-
     setError('');
   };
 
@@ -176,11 +159,9 @@ export function Register() {
 
   const handleGuestSubmit = async (e) => {
     e.preventDefault();
-
     setError('');
 
     const passwordError = validatePassword();
-
     if (passwordError) {
       setError(passwordError);
       return;
@@ -190,12 +171,10 @@ export function Register() {
       setError('Full name is required.');
       return;
     }
-
     if (!email.trim()) {
       setError('Email address is required.');
       return;
     }
-
     if (!phone.trim()) {
       setError('Phone number is required.');
       return;
@@ -214,17 +193,19 @@ export function Register() {
 
       console.log('Guest registration successful:', newUser);
 
-      if (
-        newUser?.role === 'Owner' ||
-        newUser?.role === 'OWNER'
-      ) {
+      if (newUser?.role === 'Owner' || newUser?.role === 'OWNER') {
         navigate('/owner');
       } else {
-        navigate('/');
+        // ✅ CHANGED: Navigate to dashboard instead of home
+        navigate('/guest/dashboard', {
+          replace: true,
+          state: {
+            message: 'Registration successful! Welcome to your dashboard.',
+          },
+        });
       }
     } catch (err) {
       console.error('Guest registration error:', err);
-
       setError(
         err?.message ||
           err?.response?.data?.message ||
@@ -241,123 +222,87 @@ export function Register() {
 
   const handleOwnerSubmit = async (e) => {
     e.preventDefault();
-
     setError('');
 
-    // PASSWORD
     const passwordError = validatePassword();
-
     if (passwordError) {
       setError(passwordError);
       return;
     }
 
-    // TERMS
     if (!agreedToTerms) {
-      setError(
-        'You must agree to the verification terms before submitting.'
-      );
+      setError('You must agree to the verification terms before submitting.');
       return;
     }
 
-    // ID DOCUMENTS
     if (!idFront) {
-      setError(
-        'Please upload the front side of your identification document.'
-      );
+      setError('Please upload the front side of your identification document.');
       return;
     }
-
     if (!idBack) {
-      setError(
-        'Please upload the back side of your identification document.'
-      );
+      setError('Please upload the back side of your identification document.');
       return;
     }
-
-    // BUSINESS LICENSE
     if (!businessLicense) {
-      setError(
-        'Please upload your business registration/license document.'
-      );
+      setError('Please upload your business registration/license document.');
       return;
     }
-
-    // GUESTHOUSE PHOTOS
     if (!guesthousePhotos.length) {
       setError('Please upload at least one guesthouse photo.');
       return;
     }
-
-    // BASIC OWNER VALIDATION
-
     if (!name.trim()) {
       setError('Full name is required.');
       return;
     }
-
     if (!email.trim()) {
       setError('Email address is required.');
       return;
     }
-
     if (!phone.trim()) {
       setError('Phone number is required.');
       return;
     }
-
     if (!address.trim()) {
       setError('Residential address is required.');
       return;
     }
-
     if (!idNumber.trim()) {
       setError('ID number is required.');
       return;
     }
-
-    // GUESTHOUSE VALIDATION
-
     if (!guesthouseName.trim()) {
       setError('Guesthouse name is required.');
       return;
     }
-
     if (!guesthouseAddress.trim()) {
       setError('Guesthouse address is required.');
       return;
     }
-
     if (!city.trim()) {
       setError('City is required.');
       return;
     }
-
     if (!subCity.trim()) {
       setError('Sub-city is required.');
       return;
     }
-
     if (!woreda.trim()) {
       setError('Woreda is required.');
       return;
     }
-
     if (!guesthousePhone.trim()) {
       setError('Guesthouse phone number is required.');
       return;
     }
-
     if (!numberOfRooms || Number(numberOfRooms) < 1) {
       setError('Number of rooms must be at least 1.');
       return;
     }
-
     if (!description.trim()) {
       setError('Guesthouse description is required.');
       return;
     }
-
     if (!businessLicenseNumber.trim()) {
       setError('Business/license number is required.');
       return;
@@ -368,23 +313,15 @@ export function Register() {
     try {
       const ownerApplication = {
         role: 'Owner',
-
-        // ACCOUNT INFORMATION
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
         password,
-
-        // PERSONAL INFORMATION
         address: address.trim(),
-
-        // IDENTIFICATION
         idType,
         idNumber: idNumber.trim(),
         idFront,
         idBack,
-
-        // GUESTHOUSE
         guesthouseName: guesthouseName.trim(),
         guesthouseAddress: guesthouseAddress.trim(),
         city: city.trim(),
@@ -394,44 +331,26 @@ export function Register() {
         guesthouseEmail: guesthouseEmail.trim(),
         numberOfRooms: Number(numberOfRooms),
         description: description.trim(),
-
-        // BUSINESS
         businessLicenseNumber: businessLicenseNumber.trim(),
         businessLicense,
-
-        // PROPERTY PHOTOS
         guesthousePhotos,
-
-        // AGREEMENT
         agreedToTerms: true,
       };
 
-      console.log(
-        'Submitting owner application:',
-        ownerApplication
-      );
+      console.log('Submitting owner application:', ownerApplication);
 
       const result = await register(ownerApplication);
-
-      console.log(
-        'Owner registration result:',
-        result
-      );
+      console.log('Owner registration result:', result);
 
       navigate('/login', {
         state: {
-          message:
-            'Your owner registration has been submitted successfully. Please wait for administrator verification.',
+          message: 'Your owner registration has been submitted successfully. Please wait for administrator verification.',
         },
       });
 
       resetForm();
     } catch (err) {
-      console.error(
-        'Owner registration error:',
-        err
-      );
-
+      console.error('Owner registration error:', err);
       setError(
         err?.message ||
           err?.response?.data?.message ||
@@ -448,54 +367,47 @@ export function Register() {
 
   if (!registrationType) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-stone-50">
-        <div className="max-w-2xl w-full space-y-6">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
+        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
 
-          <div className="text-center">
-            <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-md mb-3">
-              <UserPlus className="w-6 h-6" />
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
+              <Building2 className="w-7 h-7" />
             </div>
-
-            <h2 className="text-2xl font-bold text-stone-900 tracking-tight">
-              Create an Account
-            </h2>
-
-            <p className="mt-1 text-sm text-stone-500">
-              Choose how you want to register
-            </p>
+            <div>
+              <span className="text-2xl font-black text-stone-900">Guesthouse</span>
+              <span className="text-2xl font-black text-stone-900"> Platform</span>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-5">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h2 className="text-3xl font-black text-stone-900">Create an Account</h2>
+            <p className="mt-2 text-stone-500">Join Ethiopia's premier guesthouse platform</p>
+          </div>
 
-            {/* GUEST OPTION */}
-
+          {/* Registration Options */}
+          <div className="space-y-4">
             <button
               type="button"
               onClick={() => {
                 setRegistrationType('guest');
                 setError('');
               }}
-              className="text-left bg-white p-6 rounded-2xl border-2 border-stone-200 hover:border-amber-500 hover:shadow-md transition-all"
+              className="w-full p-6 rounded-2xl border-2 border-stone-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-left group"
             >
-              <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center mb-4">
-                <User className="w-6 h-6 text-stone-700" />
-              </div>
-
-              <h3 className="text-lg font-bold text-stone-900">
-                Register as Guest
-              </h3>
-
-              <p className="text-sm text-stone-500 mt-2">
-                Create an account to search for guesthouses,
-                make reservations, and pay online.
-              </p>
-
-              <div className="mt-5 text-sm font-semibold text-amber-600">
-                Continue as Guest →
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center group-hover:bg-amber-100 transition">
+                  <User className="w-6 h-6 text-stone-700 group-hover:text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-stone-900">Register as Guest</h3>
+                  <p className="text-sm text-stone-500">Book stays and manage reservations</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-1 transition" />
               </div>
             </button>
-
-            {/* OWNER OPTION */}
 
             <button
               type="button"
@@ -503,37 +415,35 @@ export function Register() {
                 setRegistrationType('owner');
                 setError('');
               }}
-              className="text-left bg-white p-6 rounded-2xl border-2 border-stone-200 hover:border-amber-500 hover:shadow-md transition-all"
+              className="w-full p-6 rounded-2xl border-2 border-stone-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-left group"
             >
-              <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-4">
-                <Building2 className="w-6 h-6 text-amber-600" />
-              </div>
-
-              <h3 className="text-lg font-bold text-stone-900">
-                Register as Owner
-              </h3>
-
-              <p className="text-sm text-stone-500 mt-2">
-                Submit your guesthouse information for
-                administrator verification and approval.
-              </p>
-
-              <div className="mt-5 text-sm font-semibold text-amber-600">
-                Continue as Owner →
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center group-hover:bg-amber-100 transition">
+                  <Building2 className="w-6 h-6 text-stone-700 group-hover:text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-stone-900">Register as Owner</h3>
+                  <p className="text-sm text-stone-500">List and manage your guesthouse</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-1 transition" />
               </div>
             </button>
-
           </div>
 
-          <p className="text-center text-xs text-stone-500">
-            Already registered?{' '}
-            <Link
-              to="/login"
-              className="font-semibold text-amber-600 hover:underline"
-            >
-              Sign In Here
+          {/* Login Link */}
+          <p className="mt-8 text-center text-stone-500">
+            Already have an account?{' '}
+            <Link to="/login" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
+              Sign In
             </Link>
           </p>
+
+          {/* Footer */}
+          <div className="mt-8 pt-6 border-t border-stone-200 text-center">
+            <p className="text-sm text-stone-400">
+              © 2026 Guesthouse Platform. All rights reserved.
+            </p>
+          </div>
 
         </div>
       </div>
@@ -556,120 +466,158 @@ export function Register() {
 
   if (registrationType === 'guest') {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-stone-50">
-        <div className="max-w-md w-full space-y-6">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
+
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
+              <Building2 className="w-7 h-7" />
+            </div>
+            <div>
+              <span className="text-2xl font-black text-stone-900">Guesthouse</span>
+              <span className="text-2xl font-black text-stone-900"> Platform</span>
+            </div>
+          </div>
 
           <button
             type="button"
             onClick={handleBackToOptions}
-            className="flex items-center gap-2 text-sm text-stone-600 hover:text-stone-900"
+            className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 mb-6"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to registration options
+            Back to options
           </button>
 
-          <div className="text-center">
-
-            <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-md mb-3">
-              <UserPlus className="w-6 h-6" />
-            </div>
-
-            <h2 className="text-2xl font-bold text-stone-900">
-              Register as Guest
-            </h2>
-
-            <p className="mt-1 text-xs text-stone-500">
-              Create your guest account
-            </p>
-
+          <div className="mb-6 text-center">
+            <h2 className="text-3xl font-black text-stone-900">Register as Guest</h2>
+            <p className="mt-2 text-stone-500">Create your guest account to start booking</p>
           </div>
 
           {errorMessage}
 
-          <form
-            onSubmit={handleGuestSubmit}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-4"
-          >
+          <form onSubmit={handleGuestSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-2">Full Name</label>
+              <div className="relative">
+                <User className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Abebe Bikila"
+                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
+                />
+              </div>
+            </div>
 
-            <InputField
-              label="Full Name"
-              value={name}
-              onChange={setName}
-              placeholder="Abebe Bikila"
-              required
-              icon={<User className="w-4 h-4" />}
-            />
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="guest@example.com"
+                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
+                />
+              </div>
+            </div>
 
-            <InputField
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={setEmail}
-              placeholder="abebe@example.com"
-              required
-              icon={<Mail className="w-4 h-4" />}
-            />
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-2">Phone Number</label>
+              <div className="relative">
+                <Phone className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+251 9XXXXXXXX"
+                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
+                />
+              </div>
+            </div>
 
-            <InputField
-              label="Phone Number"
-              value={phone}
-              onChange={setPhone}
-              placeholder="+251 91 123 4567"
-              required
-              icon={<Phone className="w-4 h-4" />}
-            />
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-2">Password</label>
+              <div className="relative">
+                <Lock className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="w-full pl-12 pr-12 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
 
-            <InputField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={setPassword}
-              placeholder="Enter at least 6 characters"
-              required
-              icon={<Lock className="w-4 h-4" />}
-            />
-
-            <InputField
-              label="Confirm Password"
-              type="password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              placeholder="Re-enter your password"
-              required
-              icon={<Lock className="w-4 h-4" />}
-            />
-
-            <div className="rounded-xl bg-stone-50 border border-stone-200 p-3">
-              <p className="text-xs text-stone-500">
-                Password must contain at least 6 characters.
-              </p>
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-2">Confirm Password</label>
+              <div className="relative">
+                <Lock className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your password"
+                  className="w-full pl-12 pr-12 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-stone-950 font-bold text-sm rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
+              className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-lg rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <CheckCircle2 className="w-4 h-4" />
-
-              <span>
-                {loading
-                  ? 'Creating Account...'
-                  : 'Register as Guest'}
-              </span>
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
+                  <span>Creating Account...</span>
+                </>
+              ) : (
+                <>
+                  <span>Register as Guest</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
             </button>
-
           </form>
 
-          <p className="text-center text-xs text-stone-500">
-            Already registered?{' '}
-            <Link
-              to="/login"
-              className="font-semibold text-amber-600 hover:underline"
-            >
-              Sign In Here
+          <p className="mt-6 text-center text-stone-500">
+            Already have an account?{' '}
+            <Link to="/login" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
+              Sign In
             </Link>
           </p>
+
+          {/* Footer */}
+          <div className="mt-8 pt-6 border-t border-stone-200 text-center">
+            <p className="text-sm text-stone-400">
+              © 2026 Guesthouse Platform. All rights reserved.
+            </p>
+          </div>
 
         </div>
       </div>
@@ -681,494 +629,374 @@ export function Register() {
   // ============================================================
 
   return (
-    <div className="min-h-screen px-4 py-10 bg-stone-50">
-      <div className="max-w-4xl mx-auto space-y-6">
-
-        <button
-          type="button"
-          onClick={handleBackToOptions}
-          className="flex items-center gap-2 text-sm text-stone-600 hover:text-stone-900"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to registration options
-        </button>
-
-        <div className="text-center">
-
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-md mb-3">
-            <Building2 className="w-6 h-6" />
-          </div>
-
-          <h2 className="text-2xl font-bold text-stone-900 tracking-tight">
-            Owner Registration
-          </h2>
-
-          <p className="mt-1 text-sm text-stone-500">
-            Submit your guesthouse information for administrator verification
-          </p>
-
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            type="button"
+            onClick={handleBackToOptions}
+            className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to options
+          </button>
         </div>
 
-        {errorMessage}
-
-        <form
-          onSubmit={handleOwnerSubmit}
-          className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden"
-        >
-
-          {/* ==================================================
-              PERSONAL INFORMATION
-          ================================================== */}
-
-          <section className="p-6 border-b border-stone-200">
-
-            <SectionHeader
-              icon={<User className="w-5 h-5" />}
-              title="Personal Information"
-              description="Information about the property owner"
-            />
-
-            <div className="grid md:grid-cols-2 gap-4">
-
-              <InputField
-                label="Full Name"
-                value={name}
-                onChange={setName}
-                placeholder="Abebe Bikila"
-                required
-                icon={<User className="w-4 h-4" />}
-              />
-
-              <InputField
-                label="Email Address"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="abebe@example.com"
-                required
-                icon={<Mail className="w-4 h-4" />}
-              />
-
-              <InputField
-                label="Phone Number"
-                value={phone}
-                onChange={setPhone}
-                placeholder="+251 91 123 4567"
-                required
-                icon={<Phone className="w-4 h-4" />}
-              />
-
-              <InputField
-                label="Password"
-                type="password"
-                value={password}
-                onChange={setPassword}
-                placeholder="At least 6 characters"
-                required
-                icon={<Lock className="w-4 h-4" />}
-              />
-
-              <InputField
-                label="Confirm Password"
-                type="password"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder="Re-enter password"
-                required
-                icon={<Lock className="w-4 h-4" />}
-              />
-
-              {/* DATE OF BIRTH REMOVED */}
-
-              <div className="md:col-span-2">
-
-                <InputField
-                  label="Residential Address"
-                  value={address}
-                  onChange={setAddress}
-                  placeholder="Bole, Addis Ababa"
-                  required
-                  icon={<MapPin className="w-4 h-4" />}
-                />
-
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+          <div className="p-8 lg:p-10">
+            {/* Logo */}
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
+                <Building2 className="w-7 h-7" />
               </div>
-
-            </div>
-
-          </section>
-
-          {/* ==================================================
-              IDENTIFICATION
-          ================================================== */}
-
-          <section className="p-6 border-b border-stone-200">
-
-            <SectionHeader
-              icon={<CreditCard className="w-5 h-5" />}
-              title="Identification"
-              description="Used by administrators to verify your identity"
-            />
-
-            <div className="grid md:grid-cols-2 gap-4">
-
               <div>
-
-                <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
-                  ID Type
-                </label>
-
-                <select
-                  value={idType}
-                  onChange={(e) =>
-                    setIdType(e.target.value)
-                  }
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                >
-                  <option value="National ID">
-                    National ID
-                  </option>
-
-                  <option value="Passport">
-                    Passport
-                  </option>
-
-                  <option value="Driver's License">
-                    Driver's License
-                  </option>
-                </select>
-
+                <span className="text-2xl font-black text-stone-900">Guesthouse</span>
+                <span className="text-2xl font-black text-stone-900"> Platform</span>
               </div>
-
-              <InputField
-                label="ID Number"
-                value={idNumber}
-                onChange={setIdNumber}
-                placeholder="Enter your ID number"
-                required
-              />
-
-              <FileField
-                label="ID Front"
-                file={idFront}
-                onChange={setIdFront}
-                required
-              />
-
-              <FileField
-                label="ID Back"
-                file={idBack}
-                onChange={setIdBack}
-                required
-              />
-
             </div>
 
-          </section>
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-black text-stone-900">Owner Registration</h2>
+              <p className="mt-2 text-stone-500">
+                Submit your guesthouse information for administrator verification
+              </p>
+            </div>
 
-          {/* ==================================================
-              GUESTHOUSE INFORMATION
-          ================================================== */}
+            {errorMessage}
 
-          <section className="p-6 border-b border-stone-200">
-
-            <SectionHeader
-              icon={<Building2 className="w-5 h-5" />}
-              title="Guesthouse Information"
-              description="Details about the property you want to register"
-            />
-
-            <div className="grid md:grid-cols-2 gap-4">
-
-              <InputField
-                label="Guesthouse Name"
-                value={guesthouseName}
-                onChange={setGuesthouseName}
-                placeholder="Bole Comfort Guesthouse"
-                required
-                icon={<Building2 className="w-4 h-4" />}
-              />
-
-              {/* GUESTHOUSE TYPE REMOVED */}
-
-              <InputField
-                label="Guesthouse Address"
-                value={guesthouseAddress}
-                onChange={setGuesthouseAddress}
-                placeholder="Bole, Addis Ababa"
-                required
-                icon={<MapPin className="w-4 h-4" />}
-              />
-
-              <InputField
-                label="City"
-                value={city}
-                onChange={setCity}
-                placeholder="Addis Ababa"
-                required
-              />
-
-              <InputField
-                label="Sub-City"
-                value={subCity}
-                onChange={setSubCity}
-                placeholder="Bole"
-                required
-              />
-
-              <InputField
-                label="Woreda"
-                value={woreda}
-                onChange={setWoreda}
-                placeholder="Woreda number"
-                required
-              />
-
-              <InputField
-                label="Guesthouse Phone"
-                value={guesthousePhone}
-                onChange={setGuesthousePhone}
-                placeholder="+251 91 123 4567"
-                required
-                icon={<Phone className="w-4 h-4" />}
-              />
-
-              <InputField
-                label="Guesthouse Email"
-                type="email"
-                value={guesthouseEmail}
-                onChange={setGuesthouseEmail}
-                placeholder="info@guesthouse.com"
-              />
-
-              <InputField
-                label="Number of Rooms"
-                type="number"
-                min="1"
-                value={numberOfRooms}
-                onChange={setNumberOfRooms}
-                placeholder="10"
-                required
-              />
-
-              <div className="md:col-span-2">
-
-                <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
-                  Guesthouse Description
-                </label>
-
-                <textarea
-                  required
-                  value={description}
-                  onChange={(e) =>
-                    setDescription(e.target.value)
-                  }
-                  rows={4}
-                  placeholder="Describe your guesthouse, location, services and facilities..."
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none"
+            <form onSubmit={handleOwnerSubmit} className="space-y-8">
+              {/* Personal Information */}
+              <section>
+                <SectionHeader
+                  icon={<User className="w-5 h-5" />}
+                  title="Personal Information"
+                  description="Information about the property owner"
                 />
 
-              </div>
-
-            </div>
-
-          </section>
-
-          {/* ==================================================
-              BUSINESS VERIFICATION
-          ================================================== */}
-
-          <section className="p-6 border-b border-stone-200">
-
-            <SectionHeader
-              icon={<FileText className="w-5 h-5" />}
-              title="Business Verification"
-              description="Documents required for administrator approval"
-            />
-
-            <div className="grid md:grid-cols-2 gap-4">
-
-              <InputField
-                label="Business / License Number"
-                value={businessLicenseNumber}
-                onChange={setBusinessLicenseNumber}
-                placeholder="Business registration number"
-                required
-              />
-
-              <FileField
-                label="Business Registration / License"
-                file={businessLicense}
-                onChange={setBusinessLicense}
-                required
-              />
-
-            </div>
-
-          </section>
-
-          {/* ==================================================
-              GUESTHOUSE PHOTOS
-          ================================================== */}
-
-          <section className="p-6 border-b border-stone-200">
-
-            <SectionHeader
-              icon={<ImageIcon className="w-5 h-5" />}
-              title="Guesthouse Photos"
-              description="Upload photos of your property for verification"
-            />
-
-            <label className="block">
-
-              <div className="border-2 border-dashed border-stone-300 hover:border-amber-400 rounded-xl p-6 text-center cursor-pointer transition-colors">
-
-                <ImageIcon className="w-8 h-8 mx-auto text-stone-400 mb-2" />
-
-                <p className="text-sm font-semibold text-stone-700">
-                  Upload Guesthouse Photos
-                </p>
-
-                <p className="text-xs text-stone-500 mt-1">
-                  Exterior, rooms, reception, bathroom,
-                  facilities, etc.
-                </p>
-
-                {guesthousePhotos.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {guesthousePhotos.map((photo, index) => (
-                      <div
-                        key={`${photo.name}-${index}`}
-                        className="relative group"
-                      >
-
-                        <img
-                          src={URL.createObjectURL(photo)}
-                          alt={`Guesthouse ${index + 1}`}
-                          className="w-full h-28 object-cover rounded-lg border border-stone-200"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-
-                            setGuesthousePhotos((previous) =>
-                              previous.filter(
-                                (_, photoIndex) =>
-                                  photoIndex !== index
-                              )
-                            );
-                          }}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Remove photo"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-
-                      </div>
-                    ))}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <InputField
+                    label="Full Name"
+                    value={name}
+                    onChange={setName}
+                    placeholder="Abebe Bikila"
+                    required
+                    icon={<User className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Email Address"
+                    type="email"
+                    value={email}
+                    onChange={setEmail}
+                    placeholder="abebe@example.com"
+                    required
+                    icon={<Mail className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Phone Number"
+                    value={phone}
+                    onChange={setPhone}
+                    placeholder="+251 91 123 4567"
+                    required
+                    icon={<Phone className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={setPassword}
+                    placeholder="At least 6 characters"
+                    required
+                    icon={<Lock className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Confirm Password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    placeholder="Re-enter password"
+                    required
+                    icon={<Lock className="w-4 h-4" />}
+                  />
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Residential Address"
+                      value={address}
+                      onChange={setAddress}
+                      placeholder="Bole, Addis Ababa"
+                      required
+                      icon={<MapPin className="w-4 h-4" />}
+                    />
                   </div>
-                )}
+                </div>
+              </section>
 
-              </div>
+              {/* Identification */}
+              <section>
+                <SectionHeader
+                  icon={<CreditCard className="w-5 h-5" />}
+                  title="Identification"
+                  description="Used by administrators to verify your identity"
+                />
 
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) =>
-                  setGuesthousePhotos(
-                    Array.from(e.target.files || [])
-                  )
-                }
-                className="hidden"
-              />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">ID Type</label>
+                    <select
+                      value={idType}
+                      onChange={(e) => setIdType(e.target.value)}
+                      className="w-full px-4 py-4 rounded-xl border border-stone-300 text-base bg-white focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
+                    >
+                      <option value="National ID">National ID</option>
+                      <option value="Passport">Passport</option>
+                      <option value="Driver's License">Driver's License</option>
+                    </select>
+                  </div>
+                  <InputField
+                    label="ID Number"
+                    value={idNumber}
+                    onChange={setIdNumber}
+                    placeholder="Enter your ID number"
+                    required
+                  />
+                  <FileField
+                    label="ID Front"
+                    file={idFront}
+                    onChange={setIdFront}
+                    required
+                  />
+                  <FileField
+                    label="ID Back"
+                    file={idBack}
+                    onChange={setIdBack}
+                    required
+                  />
+                </div>
+              </section>
 
-            </label>
+              {/* Guesthouse Information */}
+              <section>
+                <SectionHeader
+                  icon={<Building2 className="w-5 h-5" />}
+                  title="Guesthouse Information"
+                  description="Details about the property you want to register"
+                />
 
-          </section>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <InputField
+                    label="Guesthouse Name"
+                    value={guesthouseName}
+                    onChange={setGuesthouseName}
+                    placeholder="Bole Comfort Guesthouse"
+                    required
+                    icon={<Building2 className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Guesthouse Address"
+                    value={guesthouseAddress}
+                    onChange={setGuesthouseAddress}
+                    placeholder="Bole, Addis Ababa"
+                    required
+                    icon={<MapPin className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="City"
+                    value={city}
+                    onChange={setCity}
+                    placeholder="Addis Ababa"
+                    required
+                  />
+                  <InputField
+                    label="Sub-City"
+                    value={subCity}
+                    onChange={setSubCity}
+                    placeholder="Bole"
+                    required
+                  />
+                  <InputField
+                    label="Woreda"
+                    value={woreda}
+                    onChange={setWoreda}
+                    placeholder="Woreda number"
+                    required
+                  />
+                  <InputField
+                    label="Guesthouse Phone"
+                    value={guesthousePhone}
+                    onChange={setGuesthousePhone}
+                    placeholder="+251 91 123 4567"
+                    required
+                    icon={<Phone className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Guesthouse Email"
+                    type="email"
+                    value={guesthouseEmail}
+                    onChange={setGuesthouseEmail}
+                    placeholder="info@guesthouse.com"
+                  />
+                  <InputField
+                    label="Number of Rooms"
+                    type="number"
+                    min="1"
+                    value={numberOfRooms}
+                    onChange={setNumberOfRooms}
+                    placeholder="10"
+                    required
+                  />
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-stone-700 mb-2">Guesthouse Description</label>
+                    <textarea
+                      required
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                      placeholder="Describe your guesthouse, location, services and facilities..."
+                      className="w-full px-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition resize-none"
+                    />
+                  </div>
+                </div>
+              </section>
 
-          {/* ==================================================
-              AGREEMENT
-          ================================================== */}
+              {/* Business Verification */}
+              <section>
+                <SectionHeader
+                  icon={<FileText className="w-5 h-5" />}
+                  title="Business Verification"
+                  description="Documents required for administrator approval"
+                />
 
-          <section className="p-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <InputField
+                    label="Business / License Number"
+                    value={businessLicenseNumber}
+                    onChange={setBusinessLicenseNumber}
+                    placeholder="Business registration number"
+                    required
+                  />
+                  <FileField
+                    label="Business Registration / License"
+                    file={businessLicense}
+                    onChange={setBusinessLicense}
+                    required
+                  />
+                </div>
+              </section>
 
-            <div className="rounded-xl bg-stone-50 border border-stone-200 p-4">
+              {/* Guesthouse Photos */}
+              <section>
+                <SectionHeader
+                  icon={<ImageIcon className="w-5 h-5" />}
+                  title="Guesthouse Photos"
+                  description="Upload photos of your property for verification"
+                />
 
-              <div className="flex gap-3">
+                <label className="block">
+                  <div className="border-2 border-dashed border-stone-300 hover:border-amber-400 rounded-xl p-8 text-center cursor-pointer transition-colors">
+                    <ImageIcon className="w-12 h-12 mx-auto text-stone-400 mb-3" />
+                    <p className="text-base font-bold text-stone-700">Upload Guesthouse Photos</p>
+                    <p className="text-sm text-stone-500 mt-1">
+                      Exterior, rooms, reception, bathroom, facilities, etc.
+                    </p>
 
-                <ShieldCheck className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    {guesthousePhotos.length > 0 && (
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {guesthousePhotos.map((photo, index) => (
+                          <div key={`${photo.name}-${index}`} className="relative group">
+                            <img
+                              src={URL.createObjectURL(photo)}
+                              alt={`Guesthouse ${index + 1}`}
+                              className="w-full h-28 object-cover rounded-lg border border-stone-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setGuesthousePhotos((previous) =>
+                                  previous.filter((_, photoIndex) => photoIndex !== index)
+                                );
+                              }}
+                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Remove photo"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => setGuesthousePhotos(Array.from(e.target.files || []))}
+                    className="hidden"
+                  />
+                </label>
+              </section>
 
-                <div>
+              {/* Agreement */}
+              <section>
+                <div className="rounded-xl bg-stone-50 border border-stone-200 p-6">
+                  <div className="flex gap-3">
+                    <ShieldCheck className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-base font-bold text-stone-900">Verification Agreement</h3>
+                      <p className="text-sm text-stone-500 mt-1">
+                        Your application will be reviewed by an administrator before your owner account is approved.
+                      </p>
+                    </div>
+                  </div>
 
-                  <h3 className="text-sm font-bold text-stone-900">
-                    Verification Agreement
-                  </h3>
-
-                  <p className="text-xs text-stone-500 mt-1">
-                    Your application will be reviewed by an
-                    administrator before your owner account is approved.
-                  </p>
-
+                  <label className="flex items-start gap-3 mt-4 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="mt-1 w-5 h-5 accent-amber-500"
+                    />
+                    <span className="text-sm text-stone-600">
+                      I confirm that the information and documents I provide are accurate, that I am authorized
+                      to register this guesthouse, and that I agree to the platform's verification process and terms.
+                    </span>
+                  </label>
                 </div>
 
-              </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-6 py-4 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-bold text-lg rounded-xl transition flex items-center justify-center gap-3"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
+                      <span>Submitting Application...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>Submit Owner Application</span>
+                    </>
+                  )}
+                </button>
 
-              <label className="flex items-start gap-3 mt-4 cursor-pointer">
+                <p className="text-center text-sm text-stone-500 mt-4">
+                  Already registered?{' '}
+                  <Link to="/login" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
+                    Sign In Here
+                  </Link>
+                </p>
+              </section>
+            </form>
 
-                <input
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) =>
-                    setAgreedToTerms(e.target.checked)
-                  }
-                  className="mt-1 accent-amber-500"
-                />
-
-                <span className="text-xs text-stone-600">
-                  I confirm that the information and documents
-                  I provide are accurate, that I am authorized
-                  to register this guesthouse, and that I agree
-                  to the platform's verification process and terms.
-                </span>
-
-              </label>
-
+            {/* Footer */}
+            <div className="mt-8 pt-6 border-t border-stone-200 text-center">
+              <p className="text-sm text-stone-400">
+                © 2026 Guesthouse Platform. All rights reserved.
+              </p>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-5 py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-stone-950 font-bold text-sm rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-
-              <span>
-                {loading
-                  ? 'Submitting Application...'
-                  : 'Submit Owner Application'}
-              </span>
-
-            </button>
-
-            <p className="text-center text-xs text-stone-500 mt-4">
-
-              Already registered?{' '}
-
-              <Link
-                to="/login"
-                className="font-semibold text-amber-600 hover:underline"
-              >
-                Sign In Here
-              </Link>
-
-            </p>
-
-          </section>
-
-        </form>
-
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1178,30 +1006,16 @@ export function Register() {
 // SECTION HEADER
 // ============================================================
 
-function SectionHeader({
-  icon,
-  title,
-  description,
-}) {
+function SectionHeader({ icon, title, description }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-
-      <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+      <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
         {icon}
       </div>
-
       <div>
-
-        <h3 className="font-bold text-stone-900">
-          {title}
-        </h3>
-
-        <p className="text-xs text-stone-500">
-          {description}
-        </p>
-
+        <h3 className="text-lg font-bold text-stone-900">{title}</h3>
+        <p className="text-sm text-stone-500">{description}</p>
       </div>
-
     </div>
   );
 }
@@ -1222,41 +1036,22 @@ function InputField({
 }) {
   return (
     <div>
-
-      <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
+      <label className="block text-sm font-bold text-stone-700 mb-2">
         {label}
-
-        {required && (
-          <span className="text-red-500 ml-1">
-            *
-          </span>
-        )}
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-
       <div className="relative">
-
-        {icon && (
-          <span className="absolute left-3 top-3 text-stone-400">
-            {icon}
-          </span>
-        )}
-
+        {icon && <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">{icon}</span>}
         <input
           type={type}
           required={required}
           min={min}
           value={value}
-          onChange={(e) =>
-            onChange(e.target.value)
-          }
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full ${
-            icon ? 'pl-9' : 'px-3'
-          } pr-3 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none`}
+          className={`w-full ${icon ? 'pl-12' : 'px-4'} pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition`}
         />
-
       </div>
-
     </div>
   );
 }
@@ -1265,56 +1060,28 @@ function InputField({
 // FILE INPUT
 // ============================================================
 
-function FileField({
-  label,
-  file,
-  onChange,
-  required = false,
-}) {
+function FileField({ label, file, onChange, required = false }) {
   return (
     <div>
-
-      <label className="block text-xs font-semibold uppercase text-stone-700 mb-1">
-
+      <label className="block text-sm font-bold text-stone-700 mb-2">
         {label}
-
-        {required && (
-          <span className="text-red-500 ml-1">
-            *
-          </span>
-        )}
-
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-
-      <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border border-stone-300 hover:border-amber-400 cursor-pointer transition-colors">
-
-        <FileText className="w-4 h-4 text-stone-400 flex-shrink-0" />
-
-        <span className="text-xs text-stone-500 truncate">
-
-          {file
-            ? file.name
-            : 'Choose document...'}
-
+      <label className="flex items-center gap-3 w-full px-4 py-4 rounded-xl border border-stone-300 hover:border-amber-400 cursor-pointer transition-colors">
+        <FileText className="w-5 h-5 text-stone-400 flex-shrink-0" />
+        <span className="text-sm text-stone-500 truncate">
+          {file ? file.name : 'Choose document...'}
         </span>
-
         <input
           type="file"
           required={required && !file}
-          onChange={(e) =>
-            onChange(
-              e.target.files?.[0] || null
-            )
-          }
+          onChange={(e) => onChange(e.target.files?.[0] || null)}
           className="hidden"
           accept=".pdf,.jpg,.jpeg,.png"
         />
-
       </label>
-
     </div>
   );
 }
 
 export default Register;
-

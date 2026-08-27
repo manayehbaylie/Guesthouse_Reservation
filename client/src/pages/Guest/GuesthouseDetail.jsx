@@ -29,18 +29,6 @@ export function GuesthouseDetail() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // ==========================================================
-  // BOOKING / AVAILABILITY FORM STATE
-  // ==========================================================
-
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-
-  const [checkInDate, setCheckInDate] = useState('');
-  const [checkOutDate, setCheckOutDate] = useState('');
-  const [guestCount, setGuestCount] = useState(1);
-  const [bookingMessage, setBookingMessage] = useState('');
-
-  // ==========================================================
   // REVIEW STATE
   // ==========================================================
 
@@ -62,10 +50,6 @@ export function GuesthouseDetail() {
       try {
         setLoading(true);
 
-        // ------------------------------------------------------
-        // 1. Load guesthouse
-        // ------------------------------------------------------
-
         const gh = await ApiService.getGuesthouseById(id);
 
         if (
@@ -79,16 +63,8 @@ export function GuesthouseDetail() {
 
         setGuesthouse(gh);
 
-        // ------------------------------------------------------
-        // 2. Load all rooms
-        // ------------------------------------------------------
-
         const roomList =
           await ApiService.getRoomsForGuesthouse(gh.id);
-
-        // ------------------------------------------------------
-        // 3. Load reservations
-        // ------------------------------------------------------
 
         let reservationList = [];
 
@@ -102,7 +78,6 @@ export function GuesthouseDetail() {
             'Could not load reservations:',
             reservationError
           );
-
           reservationList = [];
         }
 
@@ -261,7 +236,7 @@ export function GuesthouseDetail() {
   };
 
   // ==========================================================
-  // SELECT ROOM / OPEN BOOKING FORM
+  // SELECT ROOM / OPEN BOOKING FORM - FIXED!
   // ==========================================================
 
   const handleBookRoom = (room) => {
@@ -271,152 +246,20 @@ export function GuesthouseDetail() {
       return;
     }
 
-    setSelectedRoom(room);
-    setBookingMessage('');
-
-    setCheckInDate('');
-    setCheckOutDate('');
-    setGuestCount(1);
-
-    setShowBookingForm(true);
-
-    // Scroll to the form after it appears
-    window.setTimeout(() => {
-      document
-        .getElementById('availability-form')
-        ?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-    }, 100);
-  };
-
-  // ==========================================================
-  // CLOSE BOOKING FORM
-  // ==========================================================
-
-  const handleCloseBookingForm = () => {
-    setShowBookingForm(false);
-    setSelectedRoom(null);
-    setBookingMessage('');
-
-    setCheckInDate('');
-    setCheckOutDate('');
-    setGuestCount(1);
-  };
-
-  // ==========================================================
-  // CONTINUE TO AVAILABILITY / LOGIN
-  // ==========================================================
-
-  const handleCheckAvailability = (event) => {
-    event.preventDefault();
-
-    setBookingMessage('');
-
-    // --------------------------------------------------------
-    // Validate dates
-    // --------------------------------------------------------
-
-    if (!checkInDate || !checkOutDate) {
-      setBookingMessage(
-        'Please select both check-in and check-out dates.'
-      );
-      return;
-    }
-
-    if (checkOutDate <= checkInDate) {
-      setBookingMessage(
-        'Check-out date must be after check-in date.'
-      );
-      return;
-    }
-
-    // --------------------------------------------------------
-    // Validate room
-    // --------------------------------------------------------
-
-    if (!selectedRoom) {
-      setBookingMessage(
-        'Please select a room first.'
-      );
-      return;
-    }
-
-    // --------------------------------------------------------
-    // Validate guest count
-    // --------------------------------------------------------
-
-    const numberOfGuests =
-      Number(guestCount);
-
-    if (
-      !numberOfGuests ||
-      numberOfGuests < 1
-    ) {
-      setBookingMessage(
-        'Please enter a valid number of guests.'
-      );
-      return;
-    }
-
-    if (
-      selectedRoom.capacity &&
-      numberOfGuests >
-        Number(selectedRoom.capacity)
-    ) {
-      setBookingMessage(
-        `This room can accommodate a maximum of ${selectedRoom.capacity} guests.`
-      );
-      return;
-    }
-
-    // --------------------------------------------------------
-    // Prepare booking information
-    // --------------------------------------------------------
-
-    const bookingData = {
-      guesthouseId: guesthouse.id,
-      roomId: selectedRoom.id,
-
-      guesthouse: guesthouse,
-      room: selectedRoom,
-
-      checkInDate: checkInDate,
-      checkOutDate: checkOutDate,
-
-      guestCount: numberOfGuests,
-    };
-
-    // --------------------------------------------------------
-    // Check login
-    // --------------------------------------------------------
-
-    const currentUser =
-      ApiService.getCurrentUser();
-
-    if (!currentUser?.id) {
-      navigate('/login', {
-        state: {
-          from: `/booking?guesthouseId=${guesthouse.id}&roomId=${selectedRoom.id}`,
-
-          bookingData: bookingData,
-        },
-      });
-
-      return;
-    }
-
-    // --------------------------------------------------------
-    // Already logged in
-    // Continue to booking page
-    // --------------------------------------------------------
-
+    // THIS IS THE CORRECT FLOW:
+    // Navigate DIRECTLY to booking page, NOT to login!
+    console.log('Navigating to booking page with room:', room.id);
+    
     navigate(
-      `/booking?guesthouseId=${guesthouse.id}&roomId=${selectedRoom.id}`,
+      `/booking?guesthouseId=${guesthouse.id}&roomId=${room.id}`,
       {
         state: {
-          bookingData: bookingData,
+          bookingData: {
+            guesthouseId: guesthouse.id,
+            roomId: room.id,
+            guesthouse: guesthouse,
+            room: room,
+          }
         },
       }
     );
@@ -461,8 +304,6 @@ export function GuesthouseDetail() {
         return;
       }
 
-      // Find a completed reservation
-      // for this guesthouse.
       const guestReservation =
         reservations.find((reservation) => {
           const status =
@@ -576,7 +417,7 @@ export function GuesthouseDetail() {
                   aria-label={`${starNumber} star`}
                 >
                   <Star
-                    className={`w-7 h-7 ${
+                    className={`w-8 h-8 ${
                       starNumber <=
                       (hoverRating ||
                         selectedRating)
@@ -591,7 +432,7 @@ export function GuesthouseDetail() {
             return (
               <Star
                 key={starNumber}
-                className={`w-4 h-4 ${
+                className={`w-5 h-5 ${
                   active
                     ? 'fill-amber-400 text-amber-400'
                     : 'text-stone-300'
@@ -623,7 +464,7 @@ export function GuesthouseDetail() {
   if (!guesthouse) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <h2 className="text-xl font-bold">
+        <h2 className="text-2xl font-bold">
           Verified guesthouse not found
         </h2>
 
@@ -631,7 +472,7 @@ export function GuesthouseDetail() {
           onClick={() =>
             navigate('/search')
           }
-          className="mt-4 px-4 py-2 bg-amber-500 rounded-xl text-xs font-bold"
+          className="mt-6 px-6 py-4 bg-amber-500 rounded-xl text-base font-bold"
         >
           Back to Search
         </button>
@@ -663,9 +504,9 @@ export function GuesthouseDetail() {
 
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900"
+        className="flex items-center gap-2 text-base font-bold text-stone-600 hover:text-stone-900"
       >
-        <ChevronLeft className="w-4 h-4" />
+        <ChevronLeft className="w-5 h-5" />
         Back to listings
       </button>
 
@@ -674,31 +515,28 @@ export function GuesthouseDetail() {
       {/* ==================================================== */}
 
       <div className="relative">
-        <div className="flex items-center gap-2">
-          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex gap-1">
-            <ShieldCheck className="w-3 h-3" />
+        <div className="flex items-center gap-3">
+          <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-sm font-bold flex gap-1.5">
+            <ShieldCheck className="w-4 h-4" />
             Verified
           </span>
 
-          <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
-            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-
+          <span className="text-base text-amber-600 font-bold flex items-center gap-1.5">
+            <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
             {Number(
               guesthouse.rating || 0
             ).toFixed(1)}
           </span>
         </div>
 
-        <h1 className="text-3xl font-black mt-2">
+        <h1 className="text-4xl font-black mt-3">
           {guesthouse.name}
         </h1>
 
-        <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
-          <MapPin className="w-3.5 h-3.5" />
-
+        <p className="text-base text-stone-500 flex items-center gap-2 mt-2">
+          <MapPin className="w-5 h-5" />
           {guesthouse.address ||
             guesthouse.location}
-
           {guesthouse.city
             ? `, ${guesthouse.city}`
             : ''}
@@ -717,13 +555,11 @@ export function GuesthouseDetail() {
                 (previous) => !previous
               )
             }
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-stone-200 shadow-sm hover:border-amber-400 hover:bg-amber-50 transition-colors text-xs font-bold"
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-stone-200 shadow-sm hover:border-amber-400 hover:bg-amber-50 transition-colors text-sm font-bold"
           >
-            <MessageSquare className="w-4 h-4 text-amber-500" />
-
+            <MessageSquare className="w-5 h-5 text-amber-500" />
             Reviews
-
-            <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[10px]">
+            <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-xs">
               {reviews.length}
             </span>
           </button>
@@ -733,17 +569,16 @@ export function GuesthouseDetail() {
           {/* ================================================= */}
 
           {showReviews && (
-            <div className="absolute right-0 top-12 z-50 w-[350px] sm:w-[430px] max-h-[75vh] overflow-y-auto bg-white rounded-2xl border border-stone-200 shadow-2xl">
+            <div className="absolute right-0 top-14 z-50 w-[400px] sm:w-[480px] max-h-[80vh] overflow-y-auto bg-white rounded-2xl border border-stone-200 shadow-2xl">
 
               {/* REVIEW PANEL HEADER */}
 
-              <div className="sticky top-0 z-10 bg-white border-b p-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 bg-white border-b p-5 flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-sm">
+                  <h3 className="text-lg font-bold">
                     Guest Reviews
                   </h3>
-
-                  <p className="text-[10px] text-stone-500 mt-1">
+                  <p className="text-sm text-stone-500 mt-1">
                     Reviews for {guesthouse.name}
                   </p>
                 </div>
@@ -753,9 +588,9 @@ export function GuesthouseDetail() {
                   onClick={() =>
                     setShowReviews(false)
                   }
-                  className="p-1.5 rounded-lg hover:bg-stone-100"
+                  className="p-2 rounded-lg hover:bg-stone-100"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
@@ -763,9 +598,9 @@ export function GuesthouseDetail() {
               {/* WRITE REVIEW */}
               {/* ================================================= */}
 
-              <div className="p-4 border-b bg-stone-50">
+              <div className="p-5 border-b bg-stone-50">
 
-                <h4 className="text-sm font-bold mb-3">
+                <h4 className="text-base font-bold mb-4">
                   Write a Review
                 </h4>
 
@@ -773,11 +608,11 @@ export function GuesthouseDetail() {
                   onSubmit={
                     handleSubmitReview
                   }
-                  className="space-y-3"
+                  className="space-y-4"
                 >
 
                   <div>
-                    <p className="text-[10px] text-stone-500 mb-1.5">
+                    <p className="text-sm text-stone-500 mb-2">
                       Select your rating
                     </p>
 
@@ -807,7 +642,7 @@ export function GuesthouseDetail() {
                             aria-label={`${starNumber} star`}
                           >
                             <Star
-                              className={`w-7 h-7 ${
+                              className={`w-8 h-8 ${
                                 starNumber <=
                                 (hoverRating ||
                                   selectedRating)
@@ -821,7 +656,7 @@ export function GuesthouseDetail() {
 
                     </div>
 
-                    <p className="text-[10px] text-stone-500 mt-1">
+                    <p className="text-sm text-stone-500 mt-1">
                       {selectedRating === 0
                         ? 'No rating selected'
                         : `${selectedRating} out of 5 stars`}
@@ -839,14 +674,14 @@ export function GuesthouseDetail() {
                     }
                     placeholder="Write your review..."
                     rows={3}
-                    className="w-full resize-none rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+                    className="w-full resize-none rounded-xl border border-stone-200 bg-white px-4 py-3 text-base outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
                   />
 
                   {/* MESSAGE */}
 
                   {reviewMessage && (
                     <p
-                      className={`text-[10px] font-medium ${
+                      className={`text-sm font-medium ${
                         reviewMessage
                           .toLowerCase()
                           .includes('success')
@@ -865,7 +700,7 @@ export function GuesthouseDetail() {
                     disabled={
                       submittingReview
                     }
-                    className="w-full px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-300 disabled:cursor-not-allowed text-stone-950 font-bold text-xs transition-colors"
+                    className="w-full px-5 py-4 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-300 disabled:cursor-not-allowed text-stone-950 font-bold text-base transition-colors"
                   >
                     {submittingReview
                       ? 'Submitting...'
@@ -878,24 +713,24 @@ export function GuesthouseDetail() {
               {/* EXISTING REVIEWS */}
               {/* ================================================= */}
 
-              <div className="p-4 space-y-4">
+              <div className="p-5 space-y-5">
 
                 {reviewsLoading ? (
                   <div className="py-8 text-center">
-                    <p className="text-xs text-stone-500">
+                    <p className="text-base text-stone-500">
                       Loading reviews...
                     </p>
                   </div>
                 ) : reviews.length === 0 ? (
                   <div className="py-8 text-center">
 
-                    <MessageSquare className="w-8 h-8 mx-auto text-stone-300" />
+                    <MessageSquare className="w-10 h-10 mx-auto text-stone-300" />
 
-                    <p className="text-xs font-semibold text-stone-500 mt-2">
+                    <p className="text-base font-semibold text-stone-500 mt-2">
                       No reviews yet
                     </p>
 
-                    <p className="text-[10px] text-stone-400 mt-1">
+                    <p className="text-sm text-stone-400 mt-1">
                       Be the first guest to review this guesthouse.
                     </p>
 
@@ -905,20 +740,20 @@ export function GuesthouseDetail() {
                     (review) => (
                       <div
                         key={review.id}
-                        className="border-b border-stone-100 pb-4 last:border-b-0 last:pb-0"
+                        className="border-b border-stone-100 pb-5 last:border-b-0 last:pb-0"
                       >
 
                         <div className="flex items-start justify-between gap-3">
 
                           <div>
 
-                            <p className="text-xs font-bold">
+                            <p className="text-base font-bold">
                               {review.guest?.fullName ||
                                 review.guestName ||
                                 'Guest'}
                             </p>
 
-                            <p className="text-[10px] text-stone-400 mt-0.5">
+                            <p className="text-sm text-stone-400 mt-0.5">
                               {review.createdAt
                                 ? new Date(
                                     review.createdAt
@@ -936,7 +771,7 @@ export function GuesthouseDetail() {
                                   key={
                                     starNumber
                                   }
-                                  className={`w-3.5 h-3.5 ${
+                                  className={`w-4 h-4 ${
                                     starNumber <=
                                     Number(
                                       review.rating ||
@@ -953,20 +788,20 @@ export function GuesthouseDetail() {
 
                         </div>
 
-                        <p className="text-xs text-stone-600 leading-relaxed mt-2">
+                        <p className="text-base text-stone-600 leading-relaxed mt-2">
                           {review.comment}
                         </p>
 
                         {/* OWNER RESPONSE */}
 
                         {review.ownerResponse && (
-                          <div className="mt-3 ml-3 p-3 rounded-xl bg-stone-50 border-l-2 border-amber-400">
+                          <div className="mt-3 ml-3 p-4 rounded-xl bg-stone-50 border-l-2 border-amber-400">
 
-                            <p className="text-[10px] font-bold text-stone-700">
+                            <p className="text-sm font-bold text-stone-700">
                               Owner response
                             </p>
 
-                            <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
+                            <p className="text-sm text-stone-500 mt-1 leading-relaxed">
                               {review.ownerResponse}
                             </p>
 
@@ -990,7 +825,7 @@ export function GuesthouseDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        <div className="lg:col-span-2 h-80 sm:h-96 rounded-3xl overflow-hidden bg-stone-100">
+        <div className="lg:col-span-2 h-96 sm:h-112 rounded-3xl overflow-hidden bg-stone-100">
 
           <img
             src={images[activeImageIndex]}
@@ -1000,7 +835,7 @@ export function GuesthouseDetail() {
 
         </div>
 
-        <div className="grid grid-cols-2 gap-3 h-80 sm:h-96">
+        <div className="grid grid-cols-2 gap-3 h-96 sm:h-112">
 
           {images
             .slice(0, 4)
@@ -1040,13 +875,13 @@ export function GuesthouseDetail() {
           {/* ABOUT */}
           {/* ================================================= */}
 
-          <div className="bg-white p-6 rounded-3xl border space-y-3">
+          <div className="bg-white p-8 rounded-3xl border space-y-4">
 
-            <h3 className="text-lg font-bold">
+            <h3 className="text-2xl font-bold">
               About this Guesthouse
             </h3>
 
-            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+            <p className="text-base text-stone-600 leading-relaxed">
               {guesthouse.description ||
                 'No description is available for this guesthouse.'}
             </p>
@@ -1057,9 +892,9 @@ export function GuesthouseDetail() {
           {/* AMENITIES */}
           {/* ================================================= */}
 
-          <div className="bg-white p-6 rounded-3xl border space-y-3">
+          <div className="bg-white p-8 rounded-3xl border space-y-4">
 
-            <h3 className="text-lg font-bold">
+            <h3 className="text-2xl font-bold">
               Amenities & Services
             </h3>
 
@@ -1070,10 +905,9 @@ export function GuesthouseDetail() {
                   (amenity) => (
                     <div
                       key={amenity}
-                      className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 text-xs font-semibold"
+                      className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 text-sm font-semibold"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       {amenity}
                     </div>
                   )
@@ -1081,7 +915,7 @@ export function GuesthouseDetail() {
 
               </div>
             ) : (
-              <p className="text-xs text-stone-500">
+              <p className="text-base text-stone-500">
                 No amenities have been listed.
               </p>
             )}
@@ -1092,17 +926,17 @@ export function GuesthouseDetail() {
           {/* ROOMS */}
           {/* ================================================= */}
 
-          <div className="space-y-4">
+          <div className="space-y-5">
 
             <div className="flex items-center justify-between">
 
               <div>
 
-                <h2 className="text-xl font-bold">
+                <h2 className="text-2xl font-bold">
                   Rooms
                 </h2>
 
-                <p className="text-xs text-stone-500 mt-1">
+                <p className="text-base text-stone-500 mt-1">
                   Room availability is updated from the reservation system.
                 </p>
 
@@ -1112,13 +946,13 @@ export function GuesthouseDetail() {
 
             {rooms.length === 0 ? (
 
-              <p className="text-xs text-stone-500 bg-white p-6 rounded-2xl border">
+              <p className="text-base text-stone-500 bg-white p-6 rounded-2xl border">
                 No rooms have been registered for this guesthouse.
               </p>
 
             ) : (
 
-              <div className="space-y-4">
+              <div className="space-y-5">
 
                 {rooms.map((room) => {
 
@@ -1138,7 +972,7 @@ export function GuesthouseDetail() {
 
                     <div
                       key={room.id}
-                      className={`bg-white p-5 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                      className={`bg-white p-6 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
                         !isAvailable
                           ? 'bg-stone-50'
                           : ''
@@ -1151,55 +985,56 @@ export function GuesthouseDetail() {
 
                         <div className="flex items-center gap-3 flex-wrap">
 
-                          <b>
-                            Room {room.roomNumber}{' '}
+                          <span className="text-xl font-bold">
+                            Room {room.roomNumber}
+                          </span>
+
+                          <span className="text-base font-semibold text-stone-600">
                             ({room.type})
-                          </b>
+                          </span>
 
                           {isAvailable && (
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                            <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-sm font-bold">
                               Available
                             </span>
                           )}
 
                           {isUnavailable && (
-                            <span className="px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                            <span className="px-3 py-1.5 rounded-full bg-red-100 text-red-700 text-sm font-bold">
                               Unavailable
                             </span>
                           )}
 
                           {isOccupied && (
-                            <span className="px-2.5 py-1 rounded-full bg-stone-200 text-stone-700 text-[10px] font-bold">
+                            <span className="px-3 py-1.5 rounded-full bg-stone-200 text-stone-700 text-sm font-bold">
                               Occupied
                             </span>
                           )}
 
                         </div>
 
-                        <div className="flex items-center gap-4 text-xs text-stone-500 mt-2">
+                        <div className="flex items-center gap-5 text-sm text-stone-500 mt-2">
 
-                          <span>
-                            <Users className="inline w-3.5 h-3.5" />
-                            {' '}
+                          <span className="flex items-center gap-1.5">
+                            <Users className="w-4 h-4" />
                             Max {room.capacity}
                           </span>
 
-                          <span>
-                            <Bed className="inline w-3.5 h-3.5" />
-                            {' '}
+                          <span className="flex items-center gap-1.5">
+                            <Bed className="w-4 h-4" />
                             {room.type}
                           </span>
 
                         </div>
 
                         {isUnavailable && (
-                          <p className="text-[10px] text-red-600 mt-2 font-medium">
+                          <p className="text-sm text-red-600 mt-2 font-medium">
                             This room has already been booked and cannot be selected.
                           </p>
                         )}
 
                         {isOccupied && (
-                          <p className="text-[10px] text-stone-600 mt-2 font-medium">
+                          <p className="text-sm text-stone-600 mt-2 font-medium">
                             This room is currently occupied by a guest.
                           </p>
                         )}
@@ -1208,20 +1043,17 @@ export function GuesthouseDetail() {
 
                       {/* PRICE + ACTION */}
 
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center justify-between gap-6">
 
                         <div>
 
-                          <b className="text-base">
-
+                          <span className="text-xl font-bold">
                             {Number(
                               room.pricePerNight || 0
-                            ).toLocaleString()}{' '}
-                            ETB
+                            ).toLocaleString()} ETB
+                          </span>
 
-                          </b>
-
-                          <div className="text-[10px] text-stone-400">
+                          <div className="text-sm text-stone-400">
                             per night
                           </div>
 
@@ -1234,7 +1066,7 @@ export function GuesthouseDetail() {
                             onClick={() =>
                               handleBookRoom(room)
                             }
-                            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-colors"
+                            className="px-6 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-base transition-colors"
                           >
                             Select & Book
                           </button>
@@ -1246,7 +1078,7 @@ export function GuesthouseDetail() {
                           <button
                             type="button"
                             disabled
-                            className="px-4 py-2.5 rounded-xl bg-stone-200 text-stone-500 font-bold text-xs cursor-not-allowed"
+                            className="px-6 py-3.5 rounded-xl bg-stone-200 text-stone-500 font-bold text-base cursor-not-allowed"
                           >
                             Unavailable
                           </button>
@@ -1258,7 +1090,7 @@ export function GuesthouseDetail() {
                           <button
                             type="button"
                             disabled
-                            className="px-4 py-2.5 rounded-xl bg-stone-300 text-stone-600 font-bold text-xs cursor-not-allowed"
+                            className="px-6 py-3.5 rounded-xl bg-stone-300 text-stone-600 font-bold text-base cursor-not-allowed"
                           >
                             Occupied
                           </button>
@@ -1278,247 +1110,6 @@ export function GuesthouseDetail() {
 
           </div>
 
-          {/* ================================================= */}
-          {/* BOOKING / AVAILABILITY FORM */}
-          {/* ================================================= */}
-
-          {showBookingForm &&
-            selectedRoom && (
-
-              <div
-                id="availability-form"
-                className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm"
-              >
-
-                {/* FORM HEADER */}
-
-                <div className="flex items-start justify-between gap-4">
-
-                  <div>
-
-                    <p className="text-[10px] uppercase tracking-wider font-black text-amber-500">
-                      RESERVATION
-                    </p>
-
-                    <h3 className="text-xl font-black text-stone-900 mt-1">
-                      Check Your Stay
-                    </h3>
-
-                    <p className="text-xs text-stone-500 mt-1">
-                      Select your dates and number of guests before continuing.
-                    </p>
-
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={
-                      handleCloseBookingForm
-                    }
-                    className="p-2 rounded-xl hover:bg-stone-100 transition"
-                    aria-label="Close booking form"
-                  >
-                    <X className="w-4 h-4 text-stone-500" />
-                  </button>
-
-                </div>
-
-                {/* SELECTED ROOM */}
-
-                <div className="mt-6 rounded-2xl bg-stone-50 border border-stone-100 p-4">
-
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-
-                    <div>
-
-                      <p className="text-[10px] text-stone-500 uppercase tracking-wide">
-                        Selected Room
-                      </p>
-
-                      <h4 className="font-black text-stone-900 mt-1">
-                        Room {selectedRoom.roomNumber}
-                      </h4>
-
-                      <p className="text-xs text-stone-500 mt-1">
-                        {selectedRoom.type} · Maximum{' '}
-                        {selectedRoom.capacity} guests
-                      </p>
-
-                    </div>
-
-                    <div className="text-left sm:text-right">
-
-                      <p className="text-lg font-black text-[#043658]">
-
-                        {Number(
-                          selectedRoom.pricePerNight || 0
-                        ).toLocaleString()}{' '}
-                        ETB
-
-                      </p>
-
-                      <p className="text-[10px] text-stone-400">
-                        per night
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                {/* FORM */}
-
-                <form
-                  onSubmit={
-                    handleCheckAvailability
-                  }
-                  className="mt-6 space-y-5"
-                >
-
-                  {/* DATES */}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                    {/* CHECK-IN */}
-
-                    <div>
-
-                      <label className="block text-xs font-bold text-stone-700 mb-2">
-                        Check-in
-                      </label>
-
-                      <input
-                        type="date"
-                        value={checkInDate}
-                        min={
-                          new Date()
-                            .toISOString()
-                            .split('T')[0]
-                        }
-                        onChange={(event) =>
-                          setCheckInDate(
-                            event.target.value
-                          )
-                        }
-                        required
-                        className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-                      />
-
-                    </div>
-
-                    {/* CHECK-OUT */}
-
-                    <div>
-
-                      <label className="block text-xs font-bold text-stone-700 mb-2">
-                        Check-out
-                      </label>
-
-                      <input
-                        type="date"
-                        value={checkOutDate}
-                        min={
-                          checkInDate ||
-                          new Date()
-                            .toISOString()
-                            .split('T')[0]
-                        }
-                        onChange={(event) =>
-                          setCheckOutDate(
-                            event.target.value
-                          )
-                        }
-                        required
-                        className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-                      />
-
-                    </div>
-
-                  </div>
-
-                  {/* NUMBER OF GUESTS */}
-
-                  <div>
-
-                    <label className="block text-xs font-bold text-stone-700 mb-2">
-                      Number of Guests
-                    </label>
-
-                    <div className="relative">
-
-                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-
-                      <input
-                        type="number"
-                        min="1"
-                        max={
-                          selectedRoom.capacity || 10
-                        }
-                        value={guestCount}
-                        onChange={(event) => {
-
-                          const value =
-                            Number(
-                              event.target.value
-                            ) || 1;
-
-                          setGuestCount(
-                            Math.min(
-                              value,
-                              selectedRoom.capacity ||
-                                10
-                            )
-                          );
-
-                        }}
-                        required
-                        className="w-full rounded-xl border border-stone-200 bg-white pl-11 pr-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-                      />
-
-                    </div>
-
-                    <p className="text-[10px] text-stone-400 mt-1">
-                      Maximum{' '}
-                      {selectedRoom.capacity}{' '}
-                      guests for this room.
-                    </p>
-
-                  </div>
-
-                  {/* MESSAGE */}
-
-                  {bookingMessage && (
-
-                    <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3">
-
-                      <p className="text-xs font-medium text-red-600">
-                        {bookingMessage}
-                      </p>
-
-                    </div>
-
-                  )}
-
-                  {/* CONTINUE BUTTON */}
-
-                  <button
-                    type="submit"
-                    className="w-full rounded-xl bg-[#043658] hover:bg-[#064b78] text-white px-5 py-3.5 text-sm font-black transition"
-                  >
-                    Continue to Availability
-                  </button>
-
-                  <p className="text-center text-[10px] text-stone-400">
-                    You will be asked to log in before continuing with your reservation.
-                  </p>
-
-                </form>
-
-              </div>
-
-            )}
-
         </div>
 
         {/* ================================================== */}
@@ -1527,27 +1118,27 @@ export function GuesthouseDetail() {
 
         <aside>
 
-          <div className="bg-stone-900 text-stone-100 p-6 rounded-3xl space-y-4">
+          <div className="bg-stone-900 text-stone-100 p-8 rounded-3xl space-y-5">
 
-            <h3 className="font-bold flex gap-2">
+            <h3 className="text-xl font-bold flex gap-3">
 
-              <ShieldCheck className="w-5 h-5 text-amber-400" />
+              <ShieldCheck className="w-6 h-6 text-amber-400" />
 
               Verified Guarantee
 
             </h3>
 
-            <p className="text-xs text-stone-300">
+            <p className="text-base text-stone-300">
               Only administrator-approved properties appear in guest search. Room availability is checked before booking.
             </p>
 
             {/* LEGEND */}
 
-            <div className="pt-3 border-t border-stone-800 space-y-2">
+            <div className="pt-4 border-t border-stone-800 space-y-3">
 
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-3 text-base">
 
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span className="w-3 h-3 rounded-full bg-emerald-400" />
 
                 <span className="text-stone-300">
                   Available
@@ -1555,9 +1146,9 @@ export function GuesthouseDetail() {
 
               </div>
 
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-3 text-base">
 
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                <span className="w-3 h-3 rounded-full bg-red-400" />
 
                 <span className="text-stone-300">
                   Unavailable / Booked
@@ -1565,9 +1156,9 @@ export function GuesthouseDetail() {
 
               </div>
 
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-3 text-base">
 
-                <span className="w-2.5 h-2.5 rounded-full bg-stone-400" />
+                <span className="w-3 h-3 rounded-full bg-stone-400" />
 
                 <span className="text-stone-300">
                   Occupied
@@ -1579,20 +1170,20 @@ export function GuesthouseDetail() {
 
             {/* CONTACT */}
 
-            <div className="pt-3 border-t border-stone-800 space-y-2 text-xs text-stone-400">
+            <div className="pt-4 border-t border-stone-800 space-y-3 text-base text-stone-400">
 
-              <div>
+              <div className="flex items-center gap-3">
 
-                <Phone className="inline w-4 h-4 text-amber-400 mr-2" />
+                <Phone className="w-5 h-5 text-amber-400" />
 
                 {guesthouse.phone ||
                   '+251 91 100 2233'}
 
               </div>
 
-              <div>
+              <div className="flex items-center gap-3">
 
-                <Mail className="inline w-4 h-4 text-amber-400 mr-2" />
+                <Mail className="w-5 h-5 text-amber-400" />
 
                 {guesthouse.email ||
                   'support@guesthouse.et'}

@@ -111,7 +111,6 @@ model Reservation {
   roomId  Int
 
   guest User @relation("GuestReservations", fields: [guestId], references: [id], onDelete: Restrict)
-
   room Room @relation(fields: [roomId], references: [id], onDelete: Restrict)
 
   payment Payment?
@@ -145,6 +144,8 @@ model Payment {
 
   reservationId Int @unique
 
+  accountNumber String?
+
   reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
@@ -159,10 +160,11 @@ enum PaymentStatus {
   FAILED
 }
 
+// ✅ UPDATED: Changed CBE_BIRR to BANK_TRANSFER
 enum PaymentMethod {
   TELEBIRR
-    CARD
-  CBE_BIRR
+  CARD
+  BANK_TRANSFER
   CHAPA
 }
 
@@ -170,7 +172,6 @@ model Notification {
   id Int @id @default(autoincrement())
 
   title String
-
   message String
 
   isRead Boolean @default(false)
@@ -180,7 +181,6 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
-
   updatedAt DateTime @updatedAt
 
   @@index([userId])

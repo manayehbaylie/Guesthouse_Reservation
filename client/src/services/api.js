@@ -425,7 +425,7 @@ function mapGuesthouseFromBackend(
 }
 
 // ============================================================
-// ROOM MAPPING
+// ROOM MAPPING - UPDATED with maxGuests
 // ============================================================
 
 function mapRoomFromBackend(room) {
@@ -446,7 +446,12 @@ function mapRoomFromBackend(room) {
       room.roomType,
 
     capacity:
-      room.capacity,
+      room.capacity || 4,
+
+    maxGuests:
+      room.maxGuests ||
+      room.capacity ||
+      4,
 
     pricePerNight:
       Number(
@@ -466,7 +471,7 @@ function mapRoomFromBackend(room) {
 }
 
 // ============================================================
-// RESERVATION MAPPING
+// RESERVATION MAPPING - UPDATED with numberOfGuests
 // ============================================================
 
 function mapReservationStatus(
@@ -551,6 +556,11 @@ function mapReservationFromBackend(
       guest.phone ||
       '',
 
+    numberOfGuests:
+      reservation.numberOfGuests ||
+      reservation.guestCount ||
+      1,
+
     checkInDate:
       checkIn
         ? String(checkIn).slice(0, 10)
@@ -568,9 +578,6 @@ function mapReservationFromBackend(
         checkOut
       ),
 
-    // Prefer an actual recorded payment amount (what the guest was really charged).
-    // Fall back to room rate x nights (not just a single night) so multi-night
-    // stays without a payment record yet still show an accurate total.
     totalPrice:
       Number(
         reservation.totalPrice ??
@@ -639,7 +646,7 @@ function calculateNights(
 }
 
 // ============================================================
-// PAYMENT MAPPING
+// PAYMENT MAPPING - UPDATED with BANK_TRANSFER
 // ============================================================
 
 function mapPaymentFromBackend(
@@ -692,16 +699,19 @@ function mapPaymentFromBackend(
   };
 }
 
+// ✅ UPDATED: Changed CBE_BIRR to BANK_TRANSFER
 function mapPaymentMethodToBackend(method) {
   const normalized =
     String(
       method || 'TELEBIRR'
     ).toUpperCase();
 
+  // Map BANK_TRANSFER to BANK_TRANSFER
   if (
-    normalized === 'CBE_BIRR' ||
+    normalized === 'BANK_TRANSFER' ||
     normalized === 'BANK' ||
-    normalized === 'BANK_TRANSFER'
+    normalized === 'CBE_BIRR' ||
+    normalized === 'CBE'
   ) {
     return 'BANK_TRANSFER';
   }
@@ -765,7 +775,7 @@ function toIsoDateTime(
 }
 
 // ============================================================
-// AUTH / CURRENT USER
+// AUTH / CURRENT USER - UPDATED
 // ============================================================
 
 function getCurrentUser() {
@@ -800,6 +810,11 @@ function setCurrentUser(
       TOKEN_KEY
     );
 
+    // Dispatch event for auth state change
+    window.dispatchEvent(new CustomEvent('auth-state-change', {
+      detail: { user: null, isLoggedIn: false }
+    }));
+
     return;
   }
 
@@ -814,6 +829,11 @@ function setCurrentUser(
       token
     );
   }
+
+  // Dispatch event for auth state change
+  window.dispatchEvent(new CustomEvent('auth-state-change', {
+    detail: { user, isLoggedIn: true }
+  }));
 }
 
 function logoutUser() {
@@ -824,6 +844,11 @@ function logoutUser() {
   localStorage.removeItem(
     TOKEN_KEY
   );
+
+  // Dispatch event for auth state change
+  window.dispatchEvent(new CustomEvent('auth-state-change', {
+    detail: { user: null, isLoggedIn: false }
+  }));
 }
 
 // ============================================================
@@ -865,7 +890,7 @@ export const ApiService = {
 
 
   // ----------------------------------------------------------
-  // AUTH
+  // AUTH - UPDATED
   // ----------------------------------------------------------
 
   getCurrentUser() {
@@ -888,179 +913,355 @@ export const ApiService = {
     logoutUser();
   },
 
-  
-   // ==========================================================
-  // UPDATE CURRENT ADMIN/USER PROFILE
+
   // ==========================================================
-
-  async updateProfile(data) {
-  if (!data) {
-    throw new Error('Profile data is required.');
-  }
-
-  const currentUser = getCurrentUser();
-
-  const role = String(
-    currentUser?.role || ''
-  ).toUpperCase();
-
-  let endpoint = '/admin/profile';
-
-  if (role === 'RECEPTIONIST') {
-    endpoint = '/receptionist/profile';
-  }
-
-  const response = await api.put(
-    endpoint,
-    {
-      fullName: data.name ?? '',
-      email: data.email ?? '',
-      phone: data.phone ?? '',
-      ...(data.password?.trim()
-        ? {
-            password: data.password.trim(),
-          }
-        : {}),
-    }
-  );
-
-  const updatedUser = mapUserFromBackend(
-    unwrap(response)
-  );
-
-  if (!updatedUser) {
-    throw new Error(
-      'Profile update returned no user data.'
-    );
-  }
-
-  setCurrentUser({
-    ...(currentUser || {}),
-    ...updatedUser,
-  });
-
-  return updatedUser;
-},
-
+  // LOGIN - UPDATED with better error handling
+  // ==========================================================
 
   async loginUser(
     email,
     password
   ) {
-    const response =
-      await api.post(
-        '/auth/login',
-        {
-          email,
-          password,
-        }
+    if (!email || !password) {
+      throw new Error('Email and password are required');
+    }
+
+    try {
+      const response =
+        await api.post(
+          '/auth/login',
+          {
+            email,
+            password,
+          }
+        );
+
+      const payload =
+        unwrap(response) || {};
+
+      if (!payload.user) {
+        throw new Error('Invalid login response - no user data');
+      }
+
+      const user =
+        mapUserFromBackend(
+          payload.user
+        );
+
+      if (!user) {
+        throw new Error('Failed to map user data');
+      }
+
+      // Store user and token
+      setCurrentUser(
+        user,
+        payload.token
       );
 
-    const payload =
-      unwrap(response) || {};
+      return user;
 
-    const user =
-      mapUserFromBackend(
-        payload.user
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      // Clear any existing user data on login failure
+      logoutUser();
+      
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Login failed. Please check your credentials.'
       );
-
-    setCurrentUser(
-      user,
-      payload.token
-    );
-
-    return user;
+    }
   },
+
+
+  // ==========================================================
+  // REGISTER - UPDATED with better error handling
+  // ==========================================================
 
   async registerUser(
     payload
   ) {
-    const role =
-      mapRoleToBackend(
-        payload.role || 'Guest'
-      );
-
-    const body = {
-      fullName:
-        payload.name,
-
-      email:
-        payload.email,
-
-      phone:
-        payload.phone,
-
-      password:
-        payload.password ||
-        'password123',
-
-      role,
-    };
-
-    if (role === 'OWNER') {
-      body.guesthouseName =
-        payload.guesthouseName;
-
-      body.guesthouseAddress =
-        payload.guesthouseAddress;
-
-      body.city =
-        payload.city;
-
-      body.guesthouseDescription =
-        payload.description;
-
-      body.guesthouseImage =
-        payload.guesthousePhotos?.[0] ||
-        null;
+    if (!payload) {
+      throw new Error('Registration data is required');
     }
 
-    const response =
-      await api.post(
-        '/auth/register',
-        body
-      );
+    try {
+      const role =
+        mapRoleToBackend(
+          payload.role || 'Guest'
+        );
 
-    const result =
-      unwrap(response) || {};
+      const body = {
+        fullName:
+          payload.name,
 
-    if (
-      result.requiresApproval ||
-      !result.token
-    ) {
-      return {
-        ...mapUserFromBackend(
-          result.user
-        ),
+        email:
+          payload.email,
 
-        requiresApproval:
-          Boolean(
-            result.requiresApproval
+        phone:
+          payload.phone,
+
+        password:
+          payload.password ||
+          'password123',
+
+        role,
+      };
+
+      if (role === 'OWNER') {
+        body.guesthouseName =
+          payload.guesthouseName;
+
+        body.guesthouseAddress =
+          payload.guesthouseAddress;
+
+        body.city =
+          payload.city;
+
+        body.guesthouseDescription =
+          payload.description;
+
+        body.guesthouseImage =
+          payload.guesthousePhotos?.[0] ||
+          null;
+      }
+
+      const response =
+        await api.post(
+          '/auth/register',
+          body
+        );
+
+      const result =
+        unwrap(response) || {};
+
+      // Check if registration requires approval (Owner)
+      if (
+        result.requiresApproval ||
+        !result.token
+      ) {
+        return {
+          ...mapUserFromBackend(
+            result.user
           ),
 
-        message:
-          result.message,
+          requiresApproval:
+            Boolean(
+              result.requiresApproval
+            ),
 
-        guesthouse:
-          result.guesthouse,
-      };
+          message:
+            result.message,
+
+          guesthouse:
+            result.guesthouse,
+        };
+      }
+
+      // Guest registration - auto login
+      const user =
+        mapUserFromBackend({
+          ...result.user,
+
+          guesthouseId:
+            payload.guesthouseId,
+        });
+
+      if (user) {
+        setCurrentUser(
+          user,
+          result.token
+        );
+      }
+
+      return user;
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Registration failed. Please try again.'
+      );
+    }
+  },
+
+
+  // ==========================================================
+  // UPDATE CURRENT ADMIN/USER PROFILE
+  // ==========================================================
+
+  async updateProfile(data) {
+    if (!data) {
+      throw new Error('Profile data is required.');
     }
 
-    const user =
-      mapUserFromBackend({
-        ...result.user,
+    const currentUser = getCurrentUser();
 
-        guesthouseId:
-          payload.guesthouseId,
-      });
+    const role = String(
+      currentUser?.role || ''
+    ).toUpperCase();
 
-    setCurrentUser(
-      user,
-      result.token
+    let endpoint = '/admin/profile';
+
+    if (role === 'RECEPTIONIST') {
+      endpoint = '/receptionist/profile';
+    }
+
+    const response = await api.put(
+      endpoint,
+      {
+        fullName: data.name ?? '',
+        email: data.email ?? '',
+        phone: data.phone ?? '',
+        ...(data.password?.trim()
+          ? {
+              password: data.password.trim(),
+            }
+          : {}),
+      }
     );
 
-    return user;
+    const updatedUser = mapUserFromBackend(
+      unwrap(response)
+    );
+
+    if (!updatedUser) {
+      throw new Error(
+        'Profile update returned no user data.'
+      );
+    }
+
+    setCurrentUser({
+      ...(currentUser || {}),
+      ...updatedUser,
+    });
+
+    return updatedUser;
   },
+
+
+  // ==========================================================
+  // CHECK AUTH STATUS - NEW
+  // ==========================================================
+
+  async checkAuthStatus() {
+    try {
+      const response = await api.get('/auth/status');
+      const data = unwrap(response);
+      const user = data?.user ? mapUserFromBackend(data.user) : null;
+      
+      if (user) {
+        setCurrentUser(user);
+        return user;
+      }
+      
+      return null;
+    } catch (error) {
+      // If token is invalid, clear user data
+      if (error?.response?.status === 401) {
+        logoutUser();
+      }
+      return null;
+    }
+  },
+
+
+  // ==========================================================
+  // REFRESH TOKEN - NEW
+  // ==========================================================
+
+  async refreshToken() {
+    try {
+      const response = await api.post('/auth/refresh-token');
+      const data = unwrap(response);
+      
+      if (data?.token) {
+        localStorage.setItem(TOKEN_KEY, data.token);
+        return data.token;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      logoutUser();
+      return null;
+    }
+  },
+
+
+  // ==========================================================
+  // FORGOT PASSWORD - NEW
+  // ==========================================================
+
+  async forgotPassword(email) {
+    if (!email) {
+      throw new Error('Email is required');
+    }
+
+    try {
+      const response = await api.post('/auth/forgot-password', { email });
+      return unwrap(response);
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to send password reset email.'
+      );
+    }
+  },
+
+
+  // ==========================================================
+  // RESET PASSWORD - NEW
+  // ==========================================================
+
+  async resetPassword(token, newPassword) {
+    if (!token || !newPassword) {
+      throw new Error('Token and new password are required');
+    }
+
+    try {
+      const response = await api.post('/auth/reset-password', {
+        token,
+        newPassword,
+      });
+      return unwrap(response);
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to reset password.'
+      );
+    }
+  },
+
+
+  // ==========================================================
+  // VERIFY EMAIL - NEW
+  // ==========================================================
+
+  async verifyEmail(token) {
+    if (!token) {
+      throw new Error('Verification token is required');
+    }
+
+    try {
+      const response = await api.post('/auth/verify-email', { token });
+      return unwrap(response);
+    } catch (error) {
+      console.error('Email verification error:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to verify email.'
+      );
+    }
+  },
+
 
   // ----------------------------------------------------------
   // USERS
@@ -1279,7 +1480,14 @@ export const ApiService = {
 
           capacity:
             Number(
-              roomData.capacity
+              roomData.capacity || 4
+            ),
+
+          maxGuests:
+            Number(
+              roomData.maxGuests ||
+              roomData.capacity ||
+              4
             ),
 
           available:
@@ -1359,6 +1567,15 @@ export const ApiService = {
     }
 
     if (
+      roomData.maxGuests !== undefined
+    ) {
+      payload.maxGuests =
+        Number(
+          roomData.maxGuests
+        );
+    }
+
+    if (
       roomData.available !== undefined
     ) {
       payload.available =
@@ -1399,7 +1616,7 @@ export const ApiService = {
   },
 
   // ----------------------------------------------------------
-  // RESERVATIONS
+  // RESERVATIONS - UPDATED with numberOfGuests
   // ----------------------------------------------------------
 
   async createBookingAndPay({
@@ -1408,6 +1625,7 @@ export const ApiService = {
     checkInDate,
     checkOutDate,
     nightsCount,
+    numberOfGuests = 1,
     paymentMethod,
     phone,
     bankName,
@@ -1429,6 +1647,9 @@ export const ApiService = {
             toIsoDateTime(
               checkOutDate
             ),
+
+          numberOfGuests:
+            Number(numberOfGuests || 1),
         }
       );
 
@@ -1524,6 +1745,9 @@ const initiatePayload = {
 
           nightsCount,
 
+          numberOfGuests:
+            numberOfGuests || 1,
+
           totalPrice,
 
           paymentStatus:
@@ -1588,8 +1812,6 @@ const initiatePayload = {
   // ----------------------------------------------------------
 
   async getReceptionistDashboardStats() {
-    // Hits the real server-computed stats endpoint (server/src/services/receptionist.service.js:getDashboardStats)
-    // which returns { arrivals, departures, inHouse, availableRooms, totalRooms } straight from the database.
     const response =
       await api.get(
         '/receptionist/dashboard'
@@ -2014,9 +2236,9 @@ const initiatePayload = {
             data.breakdown?.chapa ?? 0
           ),
 
-        cbe_birr:
+        bank_transfer:
           Number(
-            data.breakdown?.cbe_birr ?? 0
+            data.breakdown?.bank_transfer ?? 0
           ),
       },
     };
@@ -2133,14 +2355,13 @@ const initiatePayload = {
           0
         );
 
-    const cbe_birr =
-      data.breakdown?.cbe_birr ??
+    const bank_transfer =
+      data.breakdown?.bank_transfer ??
       payments
         .filter(
           (p) =>
-            p.method === 'cbe_birr' ||
-            p.method ===
-              'bank_transfer'
+            p.method === 'bank_transfer' ||
+            p.method === 'cbe_birr'
         )
         .reduce(
           (sum, p) =>
@@ -2155,7 +2376,7 @@ const initiatePayload = {
           (
             telebirr +
             chapa +
-            cbe_birr
+            bank_transfer
           )
         ),
 
@@ -2165,7 +2386,7 @@ const initiatePayload = {
       paymentMethodBreakdown: {
         telebirr,
         chapa,
-        cbe_birr,
+        bank_transfer,
         card: chapa,
       },
 

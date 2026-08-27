@@ -1,6 +1,5 @@
-
 import React, { useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 // Components
 import Navbar from "./components/Navbar.jsx";
@@ -12,8 +11,10 @@ import { NotificationToastContainer } from "./components/common/NotificationToas
 // Authentication pages
 import { Login } from "./pages/Auth/Login.jsx";
 import { Register } from "./pages/Auth/Register.jsx";
+
 // Profile
 import { Profile } from "./pages/Profile/Profile.jsx";
+
 // Guest pages
 import { Home } from "./pages/Guest/Home.jsx";
 import { Explore } from "./pages/Guest/Explore.jsx";
@@ -23,6 +24,7 @@ import { GuesthouseSearch } from "./pages/Guest/Search.jsx";
 import { GuesthouseDetail } from "./pages/Guest/GuesthouseDetail.jsx";
 import { Booking } from "./pages/Guest/Booking.jsx";
 import { GuestBookings } from "./pages/Guest/Reservations.jsx";
+import { GuestDashboard } from "./pages/Guest/Dashboard.jsx";
 
 // Owner pages
 import { OwnerDashboard } from "./pages/Owner/Dashboard.jsx";
@@ -40,16 +42,22 @@ import { AdminDashboard } from "./pages/Admin/Dashboard.jsx";
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [archModalOpen, setArchModalOpen] = useState(false);
+  const location = useLocation();
+
+  // Check if current route is the dashboard
+  const isDashboard = location.pathname === '/guest/dashboard';
 
   return (
     <div className="min-h-screen bg-white text-stone-900 flex flex-col font-sans">
 
       {/* =========================================================
-          NAVBAR
+          NAVBAR - HIDE ON DASHBOARD
       ========================================================= */}
-      <Navbar
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-      />
+      {!isDashboard && (
+        <Navbar
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        />
+      )}
 
       {/* =========================================================
           MAIN LAYOUT
@@ -106,9 +114,6 @@ export default function App() {
 
             {/* ===================================================
                 GUESTHOUSE DETAILS
-                Example:
-                /guesthouse/12
-                /guesthouses/12
             =================================================== */}
             <Route
               path="/guesthouse/:id"
@@ -121,43 +126,16 @@ export default function App() {
             />
 
             {/* ===================================================
-                BOOKING
-
-                The guesthouse and room IDs are included in the URL
-                so the Booking page knows exactly what was selected.
-
-                Example:
-                /booking/12/45
-
-                12 = guesthouse ID
-                45 = room ID
+                BOOKING - PUBLIC
             =================================================== */}
             <Route
               path="/booking/:guesthouseId/:roomId"
-              element={
-                <ProtectedRoute
-                  allowedRoles={["GUEST"]}
-                >
-                  <Booking />
-                </ProtectedRoute>
-              }
+              element={<Booking />}
             />
 
-            {/* ===================================================
-                FALLBACK BOOKING ROUTE
-
-                Keeps compatibility if another part of the
-                application still navigates to /booking.
-            =================================================== */}
             <Route
               path="/booking"
-              element={
-                <ProtectedRoute
-                  allowedRoles={["GUEST"]}
-                >
-                  <Booking />
-                </ProtectedRoute>
-              }
+              element={<Booking />}
             />
 
             {/* ===================================================
@@ -172,24 +150,38 @@ export default function App() {
               path="/register"
               element={<Register />}
             />
-{/* ===================================================
-    PROFILE
-=================================================== */}
-<Route
-  path="/profile"
-  element={
-    <ProtectedRoute
-      allowedRoles={[
-        "GUEST",
-        "OWNER",
-        "RECEPTIONIST",
-        "ADMIN",
-      ]}
-    >
-      <Profile />
-    </ProtectedRoute>
-  }
-/>
+
+            {/* ===================================================
+                GUEST DASHBOARD
+            =================================================== */}
+            <Route
+              path="/guest/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST"]}>
+                  <GuestDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ===================================================
+                PROFILE
+            =================================================== */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "GUEST",
+                    "OWNER",
+                    "RECEPTIONIST",
+                    "ADMIN",
+                  ]}
+                >
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+
             {/* ===================================================
                 GUEST RESERVATIONS
             =================================================== */}
@@ -221,7 +213,6 @@ export default function App() {
               }
             />
 
-            {/* OWNER - GUESTHOUSE MANAGEMENT */}
             <Route
               path="/owner/guesthouse"
               element={
@@ -231,7 +222,6 @@ export default function App() {
               }
             />
 
-            {/* OWNER - ROOM MANAGEMENT */}
             <Route
               path="/owner/rooms"
               element={
@@ -241,7 +231,6 @@ export default function App() {
               }
             />
 
-            {/* OWNER - STAFF MANAGEMENT */}
             <Route
               path="/owner/staff"
               element={
@@ -251,7 +240,6 @@ export default function App() {
               }
             />
 
-            {/* OWNER - REVENUE REPORTS */}
             <Route
               path="/owner/revenue"
               element={
@@ -305,33 +293,35 @@ export default function App() {
       </div>
 
       {/* =========================================================
-          FOOTER
+          FOOTER - HIDE ON DASHBOARD
       ========================================================= */}
-      <footer className="border-t border-stone-200 bg-[#043658] py-8 text-white">
+      {!isDashboard && (
+        <footer className="border-t border-stone-200 bg-[#043658] py-8 text-white">
 
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
 
-          <div>
-            <p className="text-sm font-semibold">
-              © 2026 Guesthouse Reservation Platform.
-            </p>
+            <div>
+              <p className="text-sm font-semibold">
+                © 2026 Guesthouse Platform.
+              </p>
 
-            <p className="mt-1 text-xs text-white/60">
-              Discover and reserve verified guesthouses across
-              Ethiopia.
-            </p>
+              <p className="mt-1 text-xs text-white/60">
+                Discover and reserve verified guesthouses across
+                Ethiopia.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setArchModalOpen(true)}
+              className="text-sm font-semibold text-[#FFC107] transition hover:text-white hover:underline"
+            >
+              View Full-Stack API & Architecture Specs
+            </button>
+
           </div>
-
-          <button
-            type="button"
-            onClick={() => setArchModalOpen(true)}
-            className="text-sm font-semibold text-[#FFC107] transition hover:text-white hover:underline"
-          >
-            View Full-Stack API & Architecture Specs
-          </button>
-
-        </div>
-      </footer>
+        </footer>
+      )}
 
       {/* =========================================================
           ARCHITECTURE MODAL
@@ -349,4 +339,3 @@ export default function App() {
     </div>
   );
 }
-

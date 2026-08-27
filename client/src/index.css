@@ -1,4 +1,3 @@
-
 @import "tailwindcss";
 
 @theme {
@@ -48,7 +47,7 @@ body,
 
 body {
   margin: 0;
-  background: #ffffff;
+  background: #f5f8fa;
   color: #043658;
   font-family:
     Inter,
@@ -82,7 +81,6 @@ textarea {
 
 /* =========================================================
    HOME PAGE SECTION SCROLL OFFSET
-   Prevents sticky navbar from covering sections.
    ========================================================= */
 
 section[id] {
@@ -143,3 +141,465 @@ img {
   background: #043658;
 }
 
+/* =========================================================
+   SIDEBAR STYLES - NAVY BACKGROUND
+   ========================================================= */
+
+/* Sidebar Container */
+.sidebar {
+  background-color: #043658;
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Sidebar Brand/Logo */
+.sidebar-brand {
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-brand .brand-name {
+  color: #ffffff;
+}
+
+.sidebar-brand .brand-highlight {
+  color: #ffc107;
+}
+
+/* Sidebar User Profile */
+.sidebar-user {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-user .user-name {
+  color: #ffffff;
+}
+
+.sidebar-user .user-role {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sidebar-user .user-avatar {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+/* Sidebar Navigation Links */
+.sidebar-nav {
+  background-color: #043658;
+}
+
+.sidebar-link {
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+  border-radius: 0.75rem;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.sidebar-link.active {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  font-weight: 700;
+}
+
+.sidebar-link .icon {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sidebar-link.active .icon {
+  color: #ffc107;
+}
+
+.sidebar-link:hover .icon {
+  color: #ffffff;
+}
+
+/* Sidebar Logout Button */
+.sidebar-logout {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-logout button {
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+}
+
+.sidebar-logout button:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* =========================================================
+   BUTTON STYLES
+   ========================================================= */
+
+.btn-primary {
+  background-color: #ffc107;
+  color: #043658;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #ffb300;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background-color: #043658;
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #0b2f4a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(4, 54, 88, 0.3);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #043658;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid #e5edf2;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  border-color: #ffc107;
+  background-color: #fff8e1;
+}
+
+/* =========================================================
+   CARD STYLES
+   ========================================================= */
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5edf2;
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* =========================================================
+   INPUT STYLES
+   ========================================================= */
+
+.input-field {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5edf2;
+  background: #ffffff;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: #ffc107;
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.15);
+}
+
+.input-field::placeholder {
+  color: #94a8b5;
+}
+
+.input-field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   LABEL STYLES
+   ========================================================= */
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #043658;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* =========================================================
+   BADGE STYLES
+   ========================================================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.badge-success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-info {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-danger {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-neutral {
+  background-color: #f5f8fa;
+  color: #647b8a;
+}
+
+/* =========================================================
+   STAT CARD
+   ========================================================= */
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #e5edf2;
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+}
+
+.stat-card .stat-value {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #043658;
+}
+
+.stat-card .stat-label {
+  font-size: 0.875rem;
+  color: #647b8a;
+}
+
+.stat-card .stat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================================
+   TABLE STYLES
+   ========================================================= */
+
+.table-container {
+  overflow-x: auto;
+  background: #ffffff;
+  border-radius: 1.5rem;
+  border: 1px solid #e5edf2;
+}
+
+.table-container table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.table-container thead {
+  background-color: #f5f8fa;
+}
+
+.table-container th {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #647b8a;
+}
+
+.table-container td {
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid #e5edf2;
+  color: #043658;
+}
+
+.table-container tbody tr:hover {
+  background-color: #f5f8fa;
+}
+
+/* =========================================================
+   DASHBOARD SIDEBAR - NAVY THEME
+   ========================================================= */
+
+.dashboard-sidebar {
+  background-color: #043658;
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-sidebar .sidebar-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-sidebar .sidebar-header .logo-text {
+  color: #ffffff;
+}
+
+.dashboard-sidebar .sidebar-header .logo-highlight {
+  color: #ffc107;
+}
+
+.dashboard-sidebar .user-profile {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-sidebar .user-profile .user-name {
+  color: #ffffff;
+}
+
+.dashboard-sidebar .user-profile .user-role {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dashboard-sidebar .user-profile .avatar {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+.dashboard-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+}
+
+.dashboard-sidebar .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.dashboard-sidebar .nav-link.active {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+
+.dashboard-sidebar .nav-link .icon {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dashboard-sidebar .nav-link.active .icon {
+  color: #ffc107;
+}
+
+.dashboard-sidebar .sidebar-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-sidebar .logout-btn {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dashboard-sidebar .logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* =========================================================
+   RESPONSIVE UTILITIES
+   ========================================================= */
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem;
+  }
+  
+  .stat-card .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .table-container {
+    border-radius: 1rem;
+  }
+  
+  .table-container th,
+  .table-container td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* =========================================================
+   LOADING SPINNER
+   ========================================================= */
+
+.spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 4px solid #e5edf2;
+  border-top-color: #ffc107;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

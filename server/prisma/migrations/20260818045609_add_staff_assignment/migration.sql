@@ -5,8 +5,7 @@
   - You are about to alter the column `price` on the `Room` table. The data in that column could be lost. The data in that column will be cast from `Decimal(10,2)` to `DoublePrecision`.
 
 */
--- CreateEnum
-CREATE TYPE "RoomMaintenanceStatus" AS ENUM ('AVAILABLE', 'UNAVAILABLE', 'CLEANING', 'MAINTENANCE');
+
 
 -- AlterEnum
 ALTER TYPE "PaymentMethod" ADD VALUE 'CARD';
@@ -15,7 +14,7 @@ ALTER TYPE "PaymentMethod" ADD VALUE 'CARD';
 ALTER TABLE "Payment" ALTER COLUMN "amount" SET DATA TYPE DOUBLE PRECISION;
 
 -- AlterTable
-ALTER TABLE "Room" ADD COLUMN     "maintenanceStatus" "RoomMaintenanceStatus" NOT NULL DEFAULT 'AVAILABLE',
+ALTER TABLE "Room"
 ALTER COLUMN "price" SET DATA TYPE DOUBLE PRECISION;
 
 -- CreateTable
