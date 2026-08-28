@@ -12,18 +12,14 @@ export const createRoom = async (data, guesthouseId) => {
       price: data.price,
       capacity: data.capacity,
 
-      // This is MANUAL room status.
-      // It is NOT used for date-based booking availability.
+      // ONLY TWO ROOM STATES
       available: data.available ?? true,
-maintenanceStatus:
-  data.available === false
-    ? "UNAVAILABLE"
-    : "AVAILABLE",
 
       guesthouseId: Number(guesthouseId),
     },
   });
 };
+
 
 
 /* ============================================================
@@ -243,6 +239,7 @@ export const checkRoomAvailability = async (
     reason: "AVAILABLE",
   };
 };
+
 
 
 /* ============================================================
