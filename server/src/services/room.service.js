@@ -149,7 +149,6 @@ export const checkRoomAvailability = async (
       id: true,
       roomNumber: true,
       available: true,
-      maintenanceStatus: true,
     },
   });
 
@@ -169,15 +168,12 @@ export const checkRoomAvailability = async (
      This is different from reservation dates.
   ---------------------------------------------------------- */
 
-  if (
-    room.available === false ||
-    room.maintenanceStatus !== "AVAILABLE"
-  ) {
-    return {
-      available: false,
-      reason: "ROOM_UNAVAILABLE",
-    };
-  }
+  if (room.available === false) {
+  return {
+    available: false,
+    reason: "ROOM_UNAVAILABLE",
+  };
+}
 
 
   /* ----------------------------------------------------------
@@ -291,11 +287,6 @@ export const updateRoom = async (id, data) => {
   // ONLY TWO ROOM STATES
   if (data.available !== undefined) {
     updateData.available = Boolean(data.available);
-
-    updateData.maintenanceStatus =
-      data.available === true
-        ? "AVAILABLE"
-        : "UNAVAILABLE";
   }
 
   return await prisma.room.update({
@@ -305,8 +296,6 @@ export const updateRoom = async (id, data) => {
     data: updateData,
   });
 };
-
-
 /* ============================================================
    DELETE ROOM
 ============================================================ */

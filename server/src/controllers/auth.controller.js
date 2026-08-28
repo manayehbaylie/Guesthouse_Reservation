@@ -10,7 +10,8 @@ import { successResponse } from "../utils/response.js";
  */
 export const register = async (req, res, next) => {
   try {
-    const result = await registerUser(req.body);
+    const data = registerSchema.parse(req.body);
+    const result = await registerUser(data);
 
     return successResponse(
       res,

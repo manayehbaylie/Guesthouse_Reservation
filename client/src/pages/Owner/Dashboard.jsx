@@ -465,13 +465,9 @@ export function OwnerDashboard() {
   const handleDeleteRoom = async (room) => {
     if (!confirm(`Are you sure you want to delete Room ${room.roomNumber}? This cannot be undone.`)) {
       return;
-    }
-    try {
       await ApiService.deleteRoom(room.id);
       showToast(`Room ${room.roomNumber} deleted from inventory`);
       loadOwnerDashboard(true);
-    } catch (err) {
-      showToast(err.message || 'Failed to delete room', 'error');
     }
   };
 
@@ -926,6 +922,17 @@ export function OwnerDashboard() {
             </button>
 
             <button
+              onClick={() => navigate('/owner/guesthouse')}
+              className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all text-stone-300 hover:bg-stone-900 hover:text-white"
+            >
+              <div className="flex items-center gap-3">
+                <Building2 className="w-4 h-4" />
+                <span>Guesthouse Registration</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+
+            <button
               onClick={() => handleTabChange('edit_property')}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'edit_property'
@@ -988,6 +995,7 @@ export function OwnerDashboard() {
                 {activeTab === 'rooms' && 'Room Inventory & Rate Manager'}
                 {activeTab === 'staff' && 'Front-Desk Receptionist Console'}
                 {activeTab === 'revenue' && 'Verified Revenue & Payment Audit'}
+                {activeTab === 'guesthouse_registration' && 'Guesthouse Registration & Verification'}
                 {activeTab === 'edit_property' && 'Edit Guesthouse Profile Details'}
                 {activeTab === 'reviews' && 'Guest Reviews & Direct Replies'}
               </h1>
@@ -1098,6 +1106,28 @@ export function OwnerDashboard() {
                   </div>
                 </div>
               ) : null}
+
+              {(guesthouse.status === 'rejected' || guesthouse.status === 'REJECTED') && (
+                <div className="bg-red-50 border border-red-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-red-900 text-xs">
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-bold block">Guesthouse Rejected</strong>
+                      <p className="mt-1">
+                        {guesthouse.rejectionReason || 'The administrator requested corrections before approval.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/owner/guesthouse')}
+                    className="shrink-0 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Review and Resubmit
+                  </button>
+                </div>
+              )}
 
               {/* 4 Primary KPI Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1552,7 +1582,7 @@ export function OwnerDashboard() {
               {/* Transactions Ledger Table */}
               <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-medium">
+                  <div className="w-full text-left text-xs font-medium">
                     {/* ==========================================================
     RECENT GUEST RESERVATIONS
     ========================================================== */}
@@ -1751,7 +1781,7 @@ export function OwnerDashboard() {
     </div>
   )}
 </div>
-                  </table>
+                  </div>
                 </div>
               </div>
               

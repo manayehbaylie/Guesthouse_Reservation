@@ -95,30 +95,35 @@ export const remove = async (req, res, next) => {
 };
 export const updateAvailability = async (req, res, next) => {
   try {
-    const { available } = req.body;
+    const roomId = req.params.id;
 
-    if (typeof available !== "boolean") {
-      return res.status(400).json({
+    const room = await getRoomById(roomId);
+
+    if (!room) {
+      return res.status(404).json({
         success: false,
-        message: "available must be true or false.",
+        message: "Room not found",
       });
     }
 
-    const room = await updateRoom(
-      req.params.id,
+    // Toggle current status
+    const newAvailable = !room.available;
+
+    const updatedRoom = await updateRoom(
+      roomId,
       {
-        available,
-        maintenanceStatus: available
-          ? "AVAILABLE"
-          : "UNAVAILABLE",
+        available: newAvailable,
       }
     );
 
     successResponse(
       res,
-      room,
-      "Room availability updated successfully"
+      updatedRoom,
+      `Room is now ${
+        newAvailable ? "available" : "unavailable"
+      }`
     );
+
   } catch (error) {
     next(error);
   }

@@ -1,10 +1,16 @@
 import multer from "multer";
 import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+const middlewareDirectory = path.dirname(fileURLToPath(import.meta.url));
+const uploadDirectory = path.resolve(middlewareDirectory, "../../uploads/guesthouses");
+fs.mkdirSync(uploadDirectory, { recursive: true });
 
 // Storage Configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/guesthouses");
+    cb(null, uploadDirectory);
   },
 
   filename: (req, file, cb) => {
@@ -17,7 +23,7 @@ const storage = multer.diskStorage({
 
 // File Filter
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpg|jpeg|png/;
+  const allowedTypes = /jpg|jpeg|png|pdf/;
 
   const isValid = allowedTypes.test(
     path.extname(file.originalname).toLowerCase()
@@ -26,7 +32,7 @@ const fileFilter = (req, file, cb) => {
   if (isValid) {
     cb(null, true);
   } else {
-    cb(new Error("Only JPG, JPEG and PNG images are allowed"));
+    cb(new Error("Only JPG, JPEG, PNG and PDF files are allowed"));
   }
 };
 

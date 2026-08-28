@@ -1708,6 +1708,14 @@ function PendingSection({
   onApprove,
   onReject,
 }) {
+  const [expandedId, setExpandedId] = useState(null);
+
+  const fileUrl = (value) => {
+    if (!value) return '';
+    if (/^https?:\/\//i.test(value)) return value;
+    return `http://localhost:5000${value.startsWith('/') ? value : `/${value}`}`;
+  };
+
   return (
     <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
 
@@ -1739,7 +1747,7 @@ function PendingSection({
 
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
 
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
 
                       <div className="flex items-center gap-3">
 
@@ -1778,6 +1786,76 @@ function PendingSection({
                       <div className="text-xs text-stone-400 mt-3">
                         ID: {gh.id}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(expandedId === gh.id ? null : gh.id)}
+                        className="mt-4 text-xs font-black text-purple-700 hover:text-purple-900"
+                      >
+                        {expandedId === gh.id ? 'Hide full application' : 'View full application'}
+                      </button>
+
+                      {expandedId === gh.id && (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl bg-stone-50 border border-stone-200 p-4 text-xs text-stone-700">
+                          <div className="space-y-2">
+                            <h4 className="font-black text-stone-900">Owner information</h4>
+                            <p><strong>Name:</strong> {gh.owner?.name || 'Not provided'}</p>
+                            <p><strong>Email:</strong> {gh.owner?.email || 'Not provided'}</p>
+                            <p><strong>Phone:</strong> {gh.owner?.phone || 'Not provided'}</p>
+                            <p><strong>Owner ID:</strong> {gh.owner?.id || gh.ownerId || 'Not provided'}</p>
+                            <p><strong>Account role:</strong> {gh.owner?.role || 'OWNER'}</p>
+                            <p><strong>Residential address:</strong> {gh.owner?.residentialAddress || 'Not provided'}</p>
+                            <p><strong>Identification:</strong> {gh.owner?.idType || 'Not provided'}{gh.owner?.idNumber ? ` - ${gh.owner.idNumber}` : ''}</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="font-black text-stone-900">Guesthouse information</h4>
+                            <p><strong>Address:</strong> {gh.address || 'Not provided'}</p>
+                            <p><strong>Sub-city:</strong> {gh.subCity || 'Not provided'}</p>
+                            <p><strong>Woreda:</strong> {gh.woreda || 'Not provided'}</p>
+                            <p><strong>Phone:</strong> {gh.phone || 'Not provided'}</p>
+                            <p><strong>Email:</strong> {gh.email || 'Not provided'}</p>
+                            <p><strong>Number of rooms:</strong> {gh.numberOfRooms || gh.rooms?.length || 'Not provided'}</p>
+                            <p><strong>License number:</strong> {gh.licenseNumber || 'Not provided'}</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="font-black text-stone-900">License document</h4>
+                            {gh.licenseDocument ? (
+                              <a href={fileUrl(gh.licenseDocument)} target="_blank" rel="noreferrer" className="text-purple-700 font-bold hover:underline">
+                                Open submitted license document
+                              </a>
+                            ) : (
+                              <p className="text-stone-500">No license document submitted</p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2 md:col-span-2">
+                            <h4 className="font-black text-stone-900">Rooms</h4>
+                            {gh.rooms?.length ? (
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                  <thead><tr className="border-b border-stone-200"><th className="py-2 pr-3">Room</th><th className="py-2 pr-3">Type</th><th className="py-2 pr-3">Capacity</th><th className="py-2">Price</th></tr></thead>
+                                  <tbody>{gh.rooms.map((room) => <tr key={room.id} className="border-b border-stone-100"><td className="py-2 pr-3">{room.roomNumber}</td><td className="py-2 pr-3">{room.type}</td><td className="py-2 pr-3">{room.capacity}</td><td className="py-2">{room.pricePerNight?.toLocaleString()} ETB</td></tr>)}</tbody>
+                                </table>
+                              </div>
+                            ) : <p className="text-stone-500">No rooms submitted</p>}
+                          </div>
+
+                          <div className="space-y-2 md:col-span-2">
+                            <h4 className="font-black text-stone-900">Guesthouse photos</h4>
+                            {gh.photos?.length || gh.images?.length ? (
+                              <div className="flex flex-wrap gap-3">
+                                {(gh.photos?.length ? gh.photos : gh.images).map((photo, index) => (
+                                  <a key={`${photo}-${index}`} href={fileUrl(photo)} target="_blank" rel="noreferrer">
+                                    <img src={fileUrl(photo)} alt={`Guesthouse photo ${index + 1}`} className="w-24 h-20 object-cover rounded-lg border border-stone-200" />
+                                  </a>
+                                ))}
+                              </div>
+                            ) : <p className="text-stone-500">No photos submitted</p>}
+                          </div>
+                        </div>
+                      )}
 
                     </div>
 

@@ -51,6 +51,12 @@ export const approveGuesthouse = async (id) => {
 ==================================================
 */
 export const rejectGuesthouse = async (id, reason) => {
+  const rejectionReason = String(reason || "").trim();
+
+  if (!rejectionReason) {
+    throw new Error("A rejection reason is required");
+  }
+
   const guesthouse = await prisma.guesthouse.findUnique({
     where: {
       id: Number(id),
@@ -67,14 +73,14 @@ export const rejectGuesthouse = async (id, reason) => {
     },
     data: {
       status: "REJECTED",
-      rejectionReason: reason,
+      rejectionReason,
     },
   });
 
   try {
     await createNotification({
       title: "Guesthouse Review Notice",
-      message: `Your property "${guesthouse.name}" was not approved. Reason: ${reason || "Does not meet platform verification criteria."}`,
+      message: `Your property "${guesthouse.name}" was not approved. Reason: ${rejectionReason}`,
       userId: guesthouse.ownerId,
     });
   } catch (error) {

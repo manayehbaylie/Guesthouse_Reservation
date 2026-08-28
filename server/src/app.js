@@ -18,8 +18,13 @@ import swaggerSpec from "./docs/swagger.js";
 import ownerRoutes from "./routes/owner.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import guestRoutes from "./routes/guest.routes.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Read JSON requests
 app.use(express.json());
