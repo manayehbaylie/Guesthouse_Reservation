@@ -94,7 +94,9 @@ export const deleteGuesthouse = async (id) => {
 export const getPendingGuesthouses = async () => {
   return await prisma.guesthouse.findMany({
     where: {
-      status: "PENDING",
+      status: {
+        in: ["DRAFT", "PENDING"],
+      },
     },
     orderBy: {
       createdAt: "desc",

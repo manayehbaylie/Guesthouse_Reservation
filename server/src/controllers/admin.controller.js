@@ -4,6 +4,7 @@ import {
   deleteGuesthouse,
   deleteUser,
   getAllUsers,
+  getAllGuesthousesForAdmin,
   updateUserRole,
   updateAdminProfile,
   getPlatformReport,
@@ -63,6 +64,20 @@ export const deleteUserController = async (req, res, next) => {
   try {
     const user = await deleteUser(req.params.id);
     return successResponse(res, user, "User deleted successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGuesthouses = async (req, res, next) => {
+  try {
+    const guesthouses = await getAllGuesthousesForAdmin();
+
+    return successResponse(
+      res,
+      guesthouses,
+      "Guesthouses fetched successfully"
+    );
   } catch (error) {
     next(error);
   }

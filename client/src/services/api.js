@@ -1876,29 +1876,102 @@ const initiatePayload = {
         '/receptionist/dashboard'
       );
 
-    const stats = unwrap(response) || {};
+    const stats =
+      unwrap(response) || {};
 
     return {
-      arrivals: stats.arrivals ?? 0,
-      departures: stats.departures ?? 0,
-      inHouse: stats.inHouse ?? 0,
-      availableRooms: stats.availableRooms ?? 0,
-      totalRooms: stats.totalRooms ?? 0,
+      arrivals:
+        Number(stats.arrivals ?? 0),
+
+      departures:
+        Number(stats.departures ?? 0),
+
+      inHouse:
+        Number(stats.inHouse ?? 0),
+
+      availableRooms:
+        Number(
+          stats.availableRooms ?? 0
+        ),
+
+      totalRooms:
+        Number(
+          stats.totalRooms ?? 0
+        ),
+
+      guesthouse:
+        stats.guesthouse ??
+        stats.property ??
+        stats.assignedGuesthouse ??
+        stats.assignedProperty ??
+        null,
     };
   },
 
-  async searchReceptionistReservations(term) {
-    const response =
-      await api.get(
-        `/receptionist/reservations/search?term=${encodeURIComponent(term ?? '')}`
+  // ----------------------------------------------------------
+  // RECEPTIONIST GUESTHOUSE
+  // ----------------------------------------------------------
+
+  async getReceptionistGuesthouse() {
+    try {
+      const response =
+        await api.get(
+          '/receptionist/guesthouse'
+        );
+
+      const data =
+        unwrap(response);
+
+      if (!data) {
+        return null;
+      }
+
+      return mapGuesthouseFromBackend(
+        data
+      );
+    } catch (error) {
+      /*
+       * Some backend versions do not have
+       * /receptionist/guesthouse.
+       *
+       * Do not break the dashboard if it
+       * does not exist.
+       */
+
+      console.warn(
+        'Receptionist guesthouse endpoint unavailable:',
+        error
       );
 
-    return (
-      unwrap(response) || []
-    ).map(
+      return null;
+    }
+  },
+
+  // ----------------------------------------------------------
+  // RECEPTIONIST SEARCH
+  // ----------------------------------------------------------
+
+  async searchReceptionistReservations(
+    term
+  ) {
+    const response =
+      await api.get(
+        `/receptionist/reservations/search?term=${encodeURIComponent(
+          term ?? ''
+        )}`
+      );
+
+    const list =
+      unwrap(response) || [];
+
+    return list.map(
       mapReservationFromBackend
     );
   },
+
+  // ----------------------------------------------------------
+  // TODAY ARRIVALS
+  // ----------------------------------------------------------
 
   async getReceptionistArrivals(
     guesthouseId
@@ -1930,6 +2003,10 @@ const initiatePayload = {
     );
   },
 
+  // ----------------------------------------------------------
+  // TODAY DEPARTURES
+  // ----------------------------------------------------------
+
   async getReceptionistDepartures(
     guesthouseId
   ) {
@@ -1960,18 +2037,43 @@ const initiatePayload = {
     );
   },
 
-  async getReceptionistInHouse() {
+  // ----------------------------------------------------------
+  // IN-HOUSE GUESTS
+  // ----------------------------------------------------------
+
+  async getReceptionistInHouse(
+    guesthouseId
+  ) {
     const response =
       await api.get(
         '/receptionist/in-house'
       );
 
-    return (
-      unwrap(response) || []
-    ).map(
-      mapReservationFromBackend
+    const list =
+      (
+        unwrap(response) || []
+      ).map(
+        mapReservationFromBackend
+      );
+
+    if (!guesthouseId) {
+      return list;
+    }
+
+    return list.filter(
+      (reservation) =>
+        String(
+          reservation.guesthouseId
+        ) ===
+        String(
+          guesthouseId
+        )
     );
   },
+
+  // ----------------------------------------------------------
+  // ALL RESERVATIONS
+  // ----------------------------------------------------------
 
   async getReceptionistReservations(
     guesthouseId
@@ -2003,84 +2105,149 @@ const initiatePayload = {
     );
   },
 
-  async getReceptionistRooms() {
+  // ----------------------------------------------------------
+  // RECEPTIONIST ROOMS
+  // ----------------------------------------------------------
+
+  async getReceptionistRooms(
+    guesthouseId
+  ) {
     const response =
       await api.get(
         '/receptionist/rooms'
       );
 
-    return (
-      unwrap(response) || []
+    const list =
+      unwrap(response) || [];
+
+    /*
+     * Map room data into the exact frontend
+     * structure expected by ReceptionistDashboard.
+     */
+
+    const mapped =
+      list.map(
+        mapRoomFromBackend
+      );
+
+    if (!guesthouseId) {
+      return mapped;
+    }
+
+    return mapped.filter(
+      (room) =>
+        String(
+          room.guesthouseId
+        ) ===
+        String(
+          guesthouseId
+        )
     );
   },
 
- async updateReceptionistRoomAvailability(
-  roomId,
-  status
-) {
-  if (!roomId) {
-    throw new Error('Room ID is required.');
-  }
+  // ----------------------------------------------------------
+  // ROOM AVAILABILITY
+  // ----------------------------------------------------------
 
-  const normalizedStatus =
-    String(status || '')
-      .toLowerCase()
-      .trim();
-
-  const allowedStatuses = [
-    'available',
-    'unavailable',
-    'cleaning',
-    'maintenance',
-  ];
-
-  if (
-    !allowedStatuses.includes(
-      normalizedStatus
-    )
+  async updateReceptionistRoomAvailability(
+    roomId,
+    status
   ) {
-    throw new Error(
-      `Invalid room status: ${status}`
-    );
-  }
+    if (!roomId) {
+      throw new Error(
+        'Room ID is required.'
+      );
+    }
 
-  const response =
-    await api.patch(
-      `/receptionist/rooms/${roomId}/availability`,
-      {
-        availabilityStatus:
-          normalizedStatus,
+    /*
+     * IMPORTANT:
+     *
+     * Prisma RoomMaintenanceStatus is an enum.
+     *
+     * Convert all frontend values:
+     *
+     * available
+     * AVAILABLE
+     * cleaning
+     * CLEANING
+     * maintenance
+     * MAINTENANCE
+     *
+     * into the exact uppercase enum values.
+     */
 
-        maintenanceStatus:
-          normalizedStatus,
+    const normalizedStatus =
+      String(
+        status || ''
+      )
+        .trim()
+        .toUpperCase();
 
-        available:
-          normalizedStatus ===
-          'available',
-      }
-    );
+    const allowedStatuses = [
+      'AVAILABLE',
+      'UNAVAILABLE',
+      'CLEANING',
+      'MAINTENANCE',
+    ];
 
-  return mapRoomFromBackend(
-    unwrap(response)
-  );
-},
+    if (
+      !allowedStatuses.includes(
+        normalizedStatus
+      )
+    ) {
+      throw new Error(
+        `Invalid room status: ${status}. Allowed values are AVAILABLE, UNAVAILABLE, CLEANING, and MAINTENANCE.`
+      );
+    }
 
-  async performCheckIn(
-    reservationId
-  ) {
+    /*
+     * Send the ENUM value in uppercase.
+     *
+     * This fixes:
+     *
+     * maintenance
+     *
+     * Prisma error
+     *
+     * because Prisma expects:
+     *
+     * MAINTENANCE
+     */
+
     const response =
       await api.patch(
-        `/receptionist/reservations/${reservationId}/check-in`
+        `/receptionist/rooms/${roomId}/availability`,
+        {
+          availabilityStatus:
+            normalizedStatus,
+
+          maintenanceStatus:
+            normalizedStatus,
+
+          available:
+            normalizedStatus ===
+            'AVAILABLE',
+        }
       );
 
-    return mapReservationFromBackend(
+    return mapRoomFromBackend(
       unwrap(response)
     );
   },
+
+  // ----------------------------------------------------------
+  // CHECK IN
+  // ----------------------------------------------------------
 
   async checkInGuest(
     reservationId
   ) {
+    if (!reservationId) {
+      throw new Error(
+        'Reservation ID is required.'
+      );
+    }
+
     const response =
       await api.patch(
         `/receptionist/reservations/${reservationId}/check-in`
@@ -2091,22 +2258,19 @@ const initiatePayload = {
     );
   },
 
-  async performCheckOut(
-    reservationId
-  ) {
-    const response =
-      await api.patch(
-        `/receptionist/reservations/${reservationId}/check-out`
-      );
-
-    return mapReservationFromBackend(
-      unwrap(response)
-    );
-  },
+  // ----------------------------------------------------------
+  // CHECK OUT
+  // ----------------------------------------------------------
 
   async checkOutGuest(
     reservationId
   ) {
+    if (!reservationId) {
+      throw new Error(
+        'Reservation ID is required.'
+      );
+    }
+
     const response =
       await api.patch(
         `/receptionist/reservations/${reservationId}/check-out`
@@ -2116,6 +2280,10 @@ const initiatePayload = {
       unwrap(response)
     );
   },
+
+  // ----------------------------------------------------------
+  // DELETE RESERVATION
+  // ----------------------------------------------------------
 
   async deleteReceptionistReservation(
     reservationId
@@ -2829,6 +2997,15 @@ const initiatePayload = {
           0
         ),
     };
+  },
+
+  async getAdminGuesthouses() {
+    const response = await api.get('/admin/guesthouses');
+    const guesthouses = unwrap(response) || [];
+
+    return guesthouses
+      .map((guesthouse) => mapGuesthouseFromBackend(guesthouse))
+      .filter(Boolean);
   },
 
   async getAdminPendingGuesthouses() {

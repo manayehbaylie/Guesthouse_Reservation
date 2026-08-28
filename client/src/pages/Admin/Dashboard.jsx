@@ -127,7 +127,7 @@ export function AdminDashboard() {
       ] = await Promise.all([
         ApiService.getAdminPlatformStats(),
         ApiService.getAdminPendingGuesthouses(),
-        ApiService.getGuesthouses(),
+        ApiService.getAdminGuesthouses(),
         ApiService.getAllUsers(),
       ]);
 
@@ -1643,10 +1643,9 @@ function GuesthouseSection({
 
                     <div className="flex justify-end gap-2">
 
-                      {String(
-                        gh.status || ''
-                      ).toLowerCase() ===
-                        'pending' && (
+                      {['pending', 'draft'].includes(
+                        String(gh.status || '').toLowerCase()
+                      ) && (
                           <button
                             type="button"
                             onClick={() =>
