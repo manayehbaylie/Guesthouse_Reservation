@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { DashboardLayout } from "../../components/DashboardLayout.jsx";
 import {
   AlertCircle,
   ArrowLeft,
@@ -53,12 +54,39 @@ export function Booking() {
   const [error, setError] = useState("");
   const [resultData, setResultData] = useState(null);
 
-  // Check if user just came back from login
   const cameFromLogin = location.state?.fromLogin || false;
+  const showConfirmation = location.state?.showConfirmation || false;
 
-  /* ---------------------------------------------------------
-     LOAD GUESTHOUSE + ROOM
-  --------------------------------------------------------- */
+  // ✅ If coming from login with showConfirmation, set step to success
+  useEffect(() => {
+    if (cameFromLogin && showConfirmation && resultData) {
+      setStep("success");
+    }
+  }, [cameFromLogin, showConfirmation, resultData]);
+
+  // ✅ If coming from login with booking data but no result yet, process booking
+  useEffect(() => {
+    if (cameFromLogin && location.state?.bookingData && !resultData && !loading) {
+      const savedData = location.state.bookingData;
+      
+      // Restore the booking data
+      setGuesthouse(savedData.guesthouse || null);
+      setRoom(savedData.room || null);
+      setCheckInDate(savedData.checkInDate || "");
+      setCheckOutDate(savedData.checkOutDate || "");
+      setNumberOfGuests(savedData.numberOfGuests || 1);
+      setPaymentMethod(savedData.paymentMethod || "TELEBIRR");
+      setTelebirrPhone(savedData.telebirrPhone || "");
+      setSelectedBank(savedData.selectedBank || "");
+      setAccountNumber(savedData.accountNumber || "");
+      
+      if (savedData.room?.maxGuests) {
+        setMaxGuests(savedData.room.maxGuests);
+      } else if (savedData.room?.capacity) {
+        setMaxGuests(savedData.room.capacity);
+      }
+    }
+  }, [cameFromLogin, location.state, resultData, loading]);
 
   useEffect(() => {
     let mounted = true;
@@ -68,7 +96,6 @@ export function Booking() {
       setError("");
 
       try {
-        // If coming from login, restore saved data
         if (cameFromLogin && location.state?.bookingData) {
           const savedData = location.state.bookingData;
           
@@ -131,14 +158,6 @@ export function Booking() {
           setMaxGuests(selectedRoom.capacity);
         }
 
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-
-        setCheckInDate(toDateInput(today));
-        setCheckOutDate(toDateInput(tomorrow));
-        
-        // Set user phone if available
         if (user?.phone) {
           setTelebirrPhone(user.phone);
         }
@@ -165,19 +184,11 @@ export function Booking() {
     };
   }, [guesthouseId, roomIdFromUrl, cameFromLogin, location.state]);
 
-  /* ---------------------------------------------------------
-     KEEP TELEBIRR PHONE IN SYNC WITH USER
-  --------------------------------------------------------- */
-
   useEffect(() => {
     if (user?.phone && !telebirrPhone) {
       setTelebirrPhone(user.phone);
     }
   }, [user?.phone]);
-
-  /* ---------------------------------------------------------
-     NUMBER OF NIGHTS
-  --------------------------------------------------------- */
 
   const nightsCount = useMemo(() => {
     if (!checkInDate || !checkOutDate) {
@@ -201,10 +212,6 @@ export function Booking() {
     return Math.max(0, Math.round(difference));
   }, [checkInDate, checkOutDate]);
 
-  /* ---------------------------------------------------------
-     PRICE
-  --------------------------------------------------------- */
-
   const pricePerNight = Number(
     room?.pricePerNight ??
       room?.price ??
@@ -214,19 +221,11 @@ export function Booking() {
 
   const totalPrice = pricePerNight * nightsCount;
 
-  /* ---------------------------------------------------------
-     DATE HELPERS
-  --------------------------------------------------------- */
-
   const todayString = toDateInput(new Date());
 
   const minimumCheckOutDate = checkInDate
     ? getNextDate(checkInDate)
     : todayString;
-
-  /* ---------------------------------------------------------
-     VALIDATE PAYMENT - UPDATED with BANK_TRANSFER
-  --------------------------------------------------------- */
 
   function validatePayment() {
     if (!checkInDate || !checkOutDate) {
@@ -280,16 +279,11 @@ export function Booking() {
     return null;
   }
 
-  /* ---------------------------------------------------------
-     HANDLE PAYMENT & CONFIRMATION - UPDATED with BANK_TRANSFER
-  --------------------------------------------------------- */
-
   const handlePaymentAndConfirmation = async (event) => {
     event.preventDefault();
 
     setError("");
 
-    // First validate the form
     const validationError = validatePayment();
 
     if (validationError) {
@@ -297,7 +291,6 @@ export function Booking() {
       return;
     }
 
-    // Save all reservation data
     const reservationData = {
       guesthouse: guesthouse,
       room: room,
@@ -315,12 +308,9 @@ export function Booking() {
       pricePerNight: pricePerNight,
     };
 
-    // Check if user is logged in
     if (!user) {
-      // Save data to session storage for persistence
       sessionStorage.setItem('pendingReservation', JSON.stringify(reservationData));
       
-      // Navigate to login with state
       navigate("/login", {
         state: {
           from: `/booking?guesthouseId=${guesthouse?.id}&roomId=${room?.id}`,
@@ -331,7 +321,6 @@ export function Booking() {
       return;
     }
 
-    // If user IS logged in, proceed with booking
     try {
       setStep("processing");
 
@@ -396,7 +385,6 @@ export function Booking() {
         })
       );
 
-      // Clear any pending reservation data
       sessionStorage.removeItem('pendingReservation');
 
       setStep("success");
@@ -417,10 +405,6 @@ export function Booking() {
     }
   };
 
-  /* ---------------------------------------------------------
-     LOADING
-  --------------------------------------------------------- */
-
   if (loading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
@@ -433,10 +417,6 @@ export function Booking() {
       </div>
     );
   }
-
-  /* ---------------------------------------------------------
-     BOOKING ERROR
-  --------------------------------------------------------- */
 
   if (!guesthouse || !room) {
     return (
@@ -462,10 +442,6 @@ export function Booking() {
     );
   }
 
-  /* ---------------------------------------------------------
-     PROCESSING
-  --------------------------------------------------------- */
-
   if (step === "processing") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20">
@@ -487,10 +463,9 @@ export function Booking() {
     );
   }
 
-  /* ---------------------------------------------------------
-     SUCCESS
-  --------------------------------------------------------- */
-
+  // ============================================================
+  // SUCCESS - INSIDE DASHBOARD LAYOUT
+  // ============================================================
   if (step === "success" && resultData) {
     const reservation =
       resultData.reservation || {};
@@ -504,146 +479,100 @@ export function Booking() {
     );
 
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
-        <div className="bg-white border border-emerald-200 rounded-3xl shadow-xl overflow-hidden">
+      <DashboardLayout>
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white border border-emerald-200 rounded-3xl shadow-xl overflow-hidden">
 
-          <div className="bg-emerald-50 px-6 py-10 text-center">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-12 h-12" />
-            </div>
-            <h1 className="mt-4 text-3xl font-black text-stone-900">
-              Booking Confirmed!
-            </h1>
-            <p className="mt-2 text-base text-stone-600">
-              Your room has been reserved successfully.
-            </p>
-          </div>
-
-          <div className="p-8 space-y-6">
-            <div className="flex items-center gap-4">
-              <Building2 className="w-6 h-6 text-amber-600" />
-              <div>
-                <p className="text-sm text-stone-500">
-                  Guesthouse
-                </p>
-                <p className="text-xl font-bold text-stone-900">
-                  {reservation.guesthouseName ||
-                    guesthouse.name}
-                </p>
+            <div className="bg-emerald-50 px-6 py-10 text-center">
+              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-12 h-12" />
               </div>
+              <h1 className="mt-4 text-3xl font-black text-stone-900">
+                Booking Confirmed!
+              </h1>
+              <p className="mt-2 text-base text-stone-600">
+                Your room has been reserved successfully.
+              </p>
             </div>
 
-            {(reservation.id ||
-              reservation.reservationId) && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                <p className="text-sm text-amber-700">
-                  Reservation ID
-                </p>
-                <p className="mt-1 font-mono font-black text-stone-900 text-lg">
-                  {reservation.id ||
-                    reservation.reservationId}
-                </p>
+            <div className="p-8 space-y-6">
+              {(reservation.id || reservation.reservationId) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                  <p className="text-sm text-amber-700 font-semibold">Reservation ID</p>
+                  <p className="mt-1 font-mono font-black text-stone-900 text-lg">
+                    {reservation.id || reservation.reservationId}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4">
+                <Building2 className="w-6 h-6 text-amber-600" />
+                <div>
+                  <p className="text-sm text-stone-500">Guesthouse</p>
+                  <p className="text-xl font-bold text-stone-900">
+                    {reservation.guesthouseName || guesthouse.name}
+                  </p>
+                </div>
               </div>
-            )}
 
-            <div className="grid sm:grid-cols-2 gap-4 bg-stone-50 rounded-2xl p-6">
-              <InfoItem
-                label="Room"
-                value={`Room ${reservation.roomNumber || room.roomNumber || "-"}`}
-              />
-              <InfoItem
-                label="Room Type"
-                value={reservation.roomType || room.type || room.roomType}
-              />
-              <InfoItem
-                label="Guests"
-                value={String(reservation.numberOfGuests || numberOfGuests)}
-              />
-              <InfoItem
-                label="Check-in"
-                value={reservation.checkInDate || checkInDate}
-              />
-              <InfoItem
-                label="Check-out"
-                value={reservation.checkOutDate || checkOutDate}
-              />
-              <InfoItem
-                label="Nights"
-                value={String(reservation.nightsCount ?? nightsCount)}
-              />
-              <InfoItem
-                label="Payment"
-                value={
-                  paymentMethod === "TELEBIRR"
-                    ? "Telebirr"
-                    : paymentMethod === "BANK_TRANSFER"
-                    ? `${selectedBank || reservation.bankName || "Bank Transfer"} — Bank Transfer`
-                    : paymentMethod === "CHAPA"
-                    ? "Chapa"
-                    : "Card"
-                }
-              />
-            </div>
-
-            <div className="border-t border-stone-200 pt-6">
-              <div className="flex justify-between items-center">
-                <span className="text-xl font-bold text-stone-700">
-                  Total Paid
-                </span>
-                <span className="text-3xl font-black text-emerald-600">
-                  {Number(confirmedTotal || 0).toLocaleString()} ETB
-                </span>
+              <div className="grid sm:grid-cols-2 gap-4 bg-stone-50 rounded-2xl p-6">
+                <InfoItem label="Room" value={`Room ${reservation.roomNumber || room.roomNumber || "-"}`} />
+                <InfoItem label="Room Type" value={reservation.roomType || room.type || room.roomType} />
+                <InfoItem label="Guests" value={String(reservation.numberOfGuests || numberOfGuests)} />
+                <InfoItem label="Check-in" value={reservation.checkInDate || checkInDate} />
+                <InfoItem label="Check-out" value={reservation.checkOutDate || checkOutDate} />
+                <InfoItem label="Nights" value={String(reservation.nightsCount ?? nightsCount)} />
+                <InfoItem label="Payment" value={paymentMethod === "TELEBIRR" ? "Telebirr" : paymentMethod === "BANK_TRANSFER" ? "Bank Transfer" : paymentMethod === "CHAPA" ? "Chapa" : "Card"} />
               </div>
-            </div>
 
-            {(payment.referenceNumber ||
-              payment.reference ||
-              reservation.paymentReference ||
-              reservation.referenceNumber) && (
-              <div className="bg-stone-50 rounded-2xl p-4">
-                <p className="text-sm text-stone-500">
-                  Payment Reference
-                </p>
-                <p className="font-mono font-bold text-stone-900 mt-1 text-lg">
-                  {payment.referenceNumber ||
-                    payment.reference ||
-                    reservation.paymentReference ||
-                    reservation.referenceNumber}
-                </p>
+              <div className="border-t border-stone-200 pt-5">
+                <div className="flex justify-between items-center">
+                  <span className="text-xl font-bold text-stone-700">Total Paid</span>
+                  <span className="text-3xl font-black text-emerald-600">
+                    {Number(confirmedTotal || 0).toLocaleString()} ETB
+                  </span>
+                </div>
               </div>
-            )}
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex-1 py-4 rounded-xl bg-stone-900 text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-stone-800 transition"
-              >
-                <Printer className="w-5 h-5" />
-                Print Receipt
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/reservations")}
-                className="flex-1 py-4 rounded-xl bg-amber-500 text-stone-950 font-bold text-base hover:bg-amber-400 transition"
-              >
-                View My Reservations
-              </button>
+              {(payment.referenceNumber || payment.reference || reservation.paymentReference || reservation.referenceNumber) && (
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-sm text-stone-500">Payment Reference</p>
+                  <p className="font-mono font-bold text-stone-900 mt-1 text-lg">
+                    {payment.referenceNumber || payment.reference || reservation.paymentReference || reservation.referenceNumber}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex-1 py-4 rounded-xl bg-stone-900 text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-stone-800 transition"
+                >
+                  <Printer className="w-5 h-5" />
+                  Print Receipt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/reservations")}
+                  className="flex-1 py-4 rounded-xl bg-amber-500 text-stone-950 font-bold text-base hover:bg-amber-400 transition"
+                >
+                  View My Reservations
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
-  /* ---------------------------------------------------------
-     CHECKOUT - MAIN RESERVATION FORM
-  --------------------------------------------------------- */
-
+  // ============================================================
+  // CHECKOUT - MAIN RESERVATION FORM
+  // ============================================================
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
 
-      {/* BACK BUTTON */}
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -653,71 +582,47 @@ export function Booking() {
         Back
       </button>
 
-      {/* ERROR */}
       {error && (
         <div className="mb-6 p-5 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-3">
           <AlertCircle className="w-6 h-6 shrink-0" />
-          <span className="text-base font-medium">
-            {error}
-          </span>
+          <span className="text-base font-medium">{error}</span>
         </div>
       )}
 
-      <form
-        onSubmit={handlePaymentAndConfirmation}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-      >
+      <form onSubmit={handlePaymentAndConfirmation} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {/* LEFT COLUMN - Reservation Details */}
         <div className="lg:col-span-2 space-y-8">
 
-          {/* CHECK YOUR STAY - Combined Section */}
           <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-black text-stone-900 flex items-center gap-3">
                 <Calendar className="w-7 h-7 text-amber-500" />
                 Check Your Stay
               </h2>
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="text-2xl text-stone-400 hover:text-stone-600"
-              >
-                ✕
-              </button>
+              <button type="button" onClick={() => navigate(-1)} className="text-2xl text-stone-400 hover:text-stone-600">✕</button>
             </div>
 
             <p className="text-base text-stone-500 mb-6">
               Select your dates and number of guests before continuing.
             </p>
 
-            {/* SELECTED ROOM CARD */}
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm text-stone-500 font-bold">SELECTED ROOM</p>
-                  <h3 className="text-2xl font-black text-stone-900">
-                    Room {room.roomNumber}
-                  </h3>
-                  <p className="text-base text-stone-600">
-                    {room.type || room.roomType || "Room"} · Maximum {maxGuests} guests
-                  </p>
+                  <h3 className="text-2xl font-black text-stone-900">Room {room.roomNumber}</h3>
+                  <p className="text-base text-stone-600">{room.type || room.roomType || "Room"} · Maximum {maxGuests} guests</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-black text-amber-600">
-                    {pricePerNight.toLocaleString()} ETB
-                  </p>
+                  <p className="text-3xl font-black text-amber-600">{pricePerNight.toLocaleString()} ETB</p>
                   <p className="text-sm text-stone-500">per night</p>
                 </div>
               </div>
             </div>
 
-            {/* DATES */}
             <div className="grid sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                  Check-in
-                </label>
+                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Check-in</label>
                 <input
                   type="date"
                   required
@@ -734,9 +639,7 @@ export function Booking() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                  Check-out
-                </label>
+                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Check-out</label>
                 <input
                   type="date"
                   required
@@ -748,11 +651,8 @@ export function Booking() {
               </div>
             </div>
 
-            {/* NUMBER OF GUESTS */}
             <div className="mt-6">
-              <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                Number of Guests
-              </label>
+              <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Number of Guests</label>
               <div className="relative">
                 <select
                   value={numberOfGuests}
@@ -767,9 +667,7 @@ export function Booking() {
                 </select>
                 <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-stone-400 pointer-events-none" />
               </div>
-              <p className="text-sm text-stone-500 mt-2">
-                Maximum {maxGuests} guests for this room.
-              </p>
+              <p className="text-sm text-stone-500 mt-2">Maximum {maxGuests} guests for this room.</p>
             </div>
 
             {nightsCount > 0 && (
@@ -779,14 +677,10 @@ export function Booking() {
             )}
           </div>
 
-          {/* PAYMENT METHOD - UPDATED with BANK_TRANSFER */}
           <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-            <h2 className="text-2xl font-black text-stone-900">
-              Payment Method
-            </h2>
+            <h2 className="text-2xl font-black text-stone-900">Payment Method</h2>
 
             <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              {/* TELEBIRR */}
               <button
                 type="button"
                 onClick={() => setPaymentMethod("TELEBIRR")}
@@ -798,12 +692,9 @@ export function Booking() {
               >
                 <Smartphone className="w-10 h-10 text-blue-600 mb-3" />
                 <div className="text-lg font-black text-stone-900">Telebirr</div>
-                <p className="text-sm text-stone-500 mt-1">
-                  Pay using your Telebirr mobile account.
-                </p>
+                <p className="text-sm text-stone-500 mt-1">Pay using your Telebirr mobile account.</p>
               </button>
 
-              {/* CHAPA */}
               <button
                 type="button"
                 onClick={() => setPaymentMethod("CHAPA")}
@@ -815,12 +706,9 @@ export function Booking() {
               >
                 <CreditCard className="w-10 h-10 text-purple-600 mb-3" />
                 <div className="text-lg font-black text-stone-900">Chapa</div>
-                <p className="text-sm text-stone-500 mt-1">
-                  Pay using Chapa payment gateway.
-                </p>
+                <p className="text-sm text-stone-500 mt-1">Pay using Chapa payment gateway.</p>
               </button>
 
-              {/* BANK TRANSFER (was CBE BIRR) */}
               <button
                 type="button"
                 onClick={() => setPaymentMethod("BANK_TRANSFER")}
@@ -832,18 +720,13 @@ export function Booking() {
               >
                 <Landmark className="w-10 h-10 text-emerald-600 mb-3" />
                 <div className="text-lg font-black text-stone-900">Bank Transfer</div>
-                <p className="text-sm text-stone-500 mt-1">
-                  Transfer from any Ethiopian bank account.
-                </p>
+                <p className="text-sm text-stone-500 mt-1">Transfer from any Ethiopian bank account.</p>
               </button>
             </div>
 
-            {/* TELEBIRR DETAILS */}
             {paymentMethod === "TELEBIRR" && (
               <div className="mt-6">
-                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                  Mobile Number for Confirmation
-                </label>
+                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Mobile Number for Confirmation</label>
                 <input
                   type="tel"
                   required
@@ -852,28 +735,20 @@ export function Booking() {
                   placeholder="+251 9XXXXXXXX"
                   className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <p className="text-sm text-stone-500 mt-2">
-                  Enter the phone number connected to your Telebirr account.
-                </p>
+                <p className="text-sm text-stone-500 mt-2">Enter the phone number connected to your Telebirr account.</p>
               </div>
             )}
 
-            {/* CHAPA DETAILS */}
             {paymentMethod === "CHAPA" && (
               <div className="mt-6 p-5 bg-purple-50 border border-purple-200 rounded-xl">
-                <p className="text-base text-purple-800 font-medium">
-                  You will be redirected to Chapa to complete your payment securely.
-                </p>
+                <p className="text-base text-purple-800 font-medium">You will be redirected to Chapa to complete your payment securely.</p>
               </div>
             )}
 
-            {/* BANK TRANSFER DETAILS (was CBE BIRR) */}
             {paymentMethod === "BANK_TRANSFER" && (
               <div className="mt-6 space-y-5">
                 <div>
-                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                    Select Bank
-                  </label>
+                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Select Bank</label>
                   <select
                     required
                     value={selectedBank}
@@ -882,16 +757,12 @@ export function Booking() {
                   >
                     <option value="">Select your bank</option>
                     {ETHIOPIAN_BANKS.map((bank) => (
-                      <option key={bank} value={bank}>
-                        {bank}
-                      </option>
+                      <option key={bank} value={bank}>{bank}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                    Account Number
-                  </label>
+                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Account Number</label>
                   <input
                     type="text"
                     required
@@ -911,7 +782,6 @@ export function Booking() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN - Booking Summary */}
         <div>
           <div className="bg-stone-900 text-white rounded-3xl p-8 sticky top-24">
             <h2 className="text-2xl font-black">Booking Summary</h2>
@@ -941,14 +811,9 @@ export function Booking() {
               </div>
             </div>
 
-            {/* PAYMENT & CONFIRMATION BUTTON */}
             <button
               type="submit"
-              disabled={
-                nightsCount <= 0 ||
-                pricePerNight <= 0 ||
-                !room?.id
-              }
+              disabled={nightsCount <= 0 || pricePerNight <= 0 || !room?.id}
               className="w-full mt-8 py-5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-600 disabled:text-stone-400 text-stone-950 font-black text-lg transition"
             >
               Payment & Confirmation
@@ -956,9 +821,7 @@ export function Booking() {
 
             <div className="mt-6 flex items-start gap-3 text-sm text-stone-400">
               <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-400" />
-              <span>
-                Your room is checked for availability before the reservation is confirmed.
-              </span>
+              <span>Your room is checked for availability before the reservation is confirmed.</span>
             </div>
           </div>
         </div>
@@ -967,24 +830,14 @@ export function Booking() {
   );
 }
 
-/* ---------------------------------------------------------
-   INFO ITEM
---------------------------------------------------------- */
-
 function InfoItem({ label, value }) {
   return (
     <div>
       <p className="text-sm text-stone-500">{label}</p>
-      <p className="mt-1 text-lg font-bold text-stone-900">
-        {value || "-"}
-      </p>
+      <p className="mt-1 text-lg font-bold text-stone-900">{value || "-"}</p>
     </div>
   );
 }
-
-/* ---------------------------------------------------------
-   DATE INPUT
---------------------------------------------------------- */
 
 function toDateInput(date) {
   const year = date.getFullYear();
@@ -993,14 +846,8 @@ function toDateInput(date) {
   return `${year}-${month}-${day}`;
 }
 
-/* ---------------------------------------------------------
-   NEXT DATE
---------------------------------------------------------- */
-
 function getNextDate(dateString) {
-  if (!dateString) {
-    return toDateInput(new Date());
-  }
+  if (!dateString) return toDateInput(new Date());
   const date = new Date(`${dateString}T12:00:00`);
   date.setDate(date.getDate() + 1);
   return toDateInput(date);

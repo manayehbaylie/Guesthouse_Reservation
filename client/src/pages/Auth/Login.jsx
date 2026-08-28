@@ -70,6 +70,7 @@ export function Login() {
     try {
       const user = await login(email, password);
 
+      // ✅ Check for pending reservation FIRST
       const pendingData = sessionStorage.getItem('pendingReservation');
       
       if (pendingData) {
@@ -77,6 +78,7 @@ export function Login() {
           const reservationData = JSON.parse(pendingData);
           sessionStorage.removeItem('pendingReservation');
           
+          // ✅ Navigate to booking page with the data - this shows the confirmation
           navigate(
             `/booking?guesthouseId=${reservationData.guesthouseId}&roomId=${reservationData.roomId}`,
             {
@@ -85,6 +87,7 @@ export function Login() {
                 bookingData: reservationData,
                 fromLogin: true,
                 user: user,
+                showConfirmation: true,
               }
             }
           );
@@ -94,8 +97,10 @@ export function Login() {
         }
       }
 
+      // Check if coming from booking with state data
       if (reservationData || bookingData) {
         const data = reservationData || bookingData;
+        
         navigate(
           `/booking?guesthouseId=${data.guesthouseId || data.guesthouse?.id}&roomId=${data.roomId || data.room?.id}`,
           {
@@ -104,6 +109,7 @@ export function Login() {
               bookingData: data,
               fromLogin: true,
               user: user,
+              showConfirmation: true,
             }
           }
         );
@@ -127,6 +133,7 @@ export function Login() {
                   bookingData: data,
                   fromLogin: true,
                   user: user,
+                  showConfirmation: true,
                 }
               }
             );
@@ -139,7 +146,7 @@ export function Login() {
         return;
       }
 
-      // ✅ FIXED: Role-based redirection
+      // Role-based redirection for non-booking flows
       if (user.role === 'ADMIN') {
         navigate('/admin', { replace: true });
 
@@ -150,7 +157,7 @@ export function Login() {
         navigate('/receptionist', { replace: true });
 
       } else if (user.role === 'GUEST') {
-        // ✅ CHANGED: Redirect to guest dashboard
+        // Normal guest login - go to dashboard
         navigate('/guest/dashboard', { replace: true });
 
       } else {
@@ -173,7 +180,6 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
 
-        {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
             <Building2 className="w-7 h-7" />
@@ -184,7 +190,6 @@ export function Login() {
           </div>
         </div>
 
-        {/* Header */}
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-black text-stone-900">
             {isFromBooking ? 'Login to Complete Booking' : 'Welcome Back'}
@@ -196,17 +201,14 @@ export function Login() {
           </p>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
             {error}
           </div>
         )}
 
-        {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Login Method Toggle */}
           <div className="flex gap-2 p-1 bg-stone-100 rounded-xl">
             <button
               type="button"
@@ -234,7 +236,6 @@ export function Login() {
             </button>
           </div>
 
-          {/* Email/Phone Input */}
           <div>
             <label className="block text-sm font-bold text-stone-700 mb-2">
               {loginMethod === 'email' ? 'Email Address' : 'Phone Number'}
@@ -256,7 +257,6 @@ export function Login() {
             </div>
           </div>
 
-          {/* Password */}
           <div>
             <label className="block text-sm font-bold text-stone-700 mb-2">
               Password
@@ -286,7 +286,6 @@ export function Login() {
             </div>
           </div>
 
-          {/* Sign In Button */}
           <button
             type="submit"
             disabled={loading}
@@ -306,7 +305,6 @@ export function Login() {
           </button>
         </form>
 
-        {/* Register Link */}
         <p className="mt-6 text-center text-stone-500">
           Don't have an account?{' '}
           <Link to="/register" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
@@ -314,7 +312,6 @@ export function Login() {
           </Link>
         </p>
 
-        {/* Footer */}
         <div className="mt-8 pt-6 border-t border-stone-200 text-center">
           <p className="text-sm text-stone-400">
             © 2026 Guesthouse Platform. All rights reserved.

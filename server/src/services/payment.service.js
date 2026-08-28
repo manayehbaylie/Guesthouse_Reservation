@@ -424,10 +424,11 @@ export const createPayment = async (
     }
   }
 
+  // ✅ CHANGED: Map BANK_TRANSFER to BANK_TRANSFER (was CBE_BIRR)
   const method =
     paymentMethod ===
     "BANK_TRANSFER"
-      ? "CBE_BIRR"
+      ? "BANK_TRANSFER"
       : paymentMethod;
 
   const payment =
@@ -671,10 +672,11 @@ export const initiatePayment =
       );
     }
 
+    // ✅ CHANGED: Map BANK_TRANSFER to BANK_TRANSFER (was CBE_BIRR)
     const paymentMethod =
       rawMethod ===
       "BANK_TRANSFER"
-        ? "CBE_BIRR"
+        ? "BANK_TRANSFER"
         : rawMethod;
 
     // ==========================================================
@@ -708,7 +710,7 @@ export const initiatePayment =
 
     if (
       paymentMethod ===
-      "CBE_BIRR"
+      "BANK_TRANSFER"
     ) {
       const selectedBank =
         String(
@@ -865,7 +867,7 @@ export const initiatePayment =
     }
 
     // ==========================================================
-    // TELEBIRR / CBE BIRR
+    // TELEBIRR / BANK_TRANSFER (was CBE_BIRR)
     //
     // IMPORTANT:
     //

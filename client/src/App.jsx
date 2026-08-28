@@ -24,7 +24,9 @@ import { GuesthouseSearch } from "./pages/Guest/Search.jsx";
 import { GuesthouseDetail } from "./pages/Guest/GuesthouseDetail.jsx";
 import { Booking } from "./pages/Guest/Booking.jsx";
 import { GuestBookings } from "./pages/Guest/Reservations.jsx";
-import { GuestDashboard } from "./pages/Guest/Dashboard.jsx";
+import GuestDashboard from "./pages/Guest/Dashboard.jsx";
+import { BookingDetail } from "./pages/Guest/BookingDetail.jsx";
+import { WriteReview } from "./pages/Guest/WriteReview.jsx";
 
 // Owner pages
 import { OwnerDashboard } from "./pages/Owner/Dashboard.jsx";
@@ -44,116 +46,60 @@ export default function App() {
   const [archModalOpen, setArchModalOpen] = useState(false);
   const location = useLocation();
 
-  // Check if current route is the dashboard
-  const isDashboard = location.pathname === '/guest/dashboard';
+  // ✅ Hide main top bar for Guest Dashboard pages
+  const isDashboard = 
+    location.pathname === '/guest/dashboard' ||
+    location.pathname === '/guest/search' ||
+    location.pathname === '/reservations' ||
+    location.pathname.startsWith('/reviews/');
 
   return (
     <div className="min-h-screen bg-white text-stone-900 flex flex-col font-sans">
 
-      {/* =========================================================
-          NAVBAR - HIDE ON DASHBOARD
-      ========================================================= */}
       {!isDashboard && (
         <Navbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
       )}
 
-      {/* =========================================================
-          MAIN LAYOUT
-      ========================================================= */}
       <div className="flex-1 flex w-full">
 
-        {/* DASHBOARD SIDEBAR */}
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onOpenArchModal={() => setArchModalOpen(true)}
         />
 
-        {/* =======================================================
-            MAIN CONTENT
-        ======================================================= */}
         <main className="flex-1 min-w-0">
 
           <Routes>
 
-            {/* ===================================================
-                HOME
-            =================================================== */}
-            <Route
-              path="/"
-              element={<Home />}
-            />
+            <Route path="/" element={<Home />} />
 
-            {/* ===================================================
-                PUBLIC PAGES
-            =================================================== */}
-            <Route
-              path="/explore"
-              element={<Explore />}
-            />
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/contact" element={<Contact />} />
+
+            <Route path="/search" element={<GuesthouseSearch />} />
 
             <Route
-              path="/about"
-              element={<AboutUs />}
+              path="/guest/search"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST"]}>
+                  <GuesthouseSearch />
+                </ProtectedRoute>
+              }
             />
 
-            <Route
-              path="/contact"
-              element={<Contact />}
-            />
+            <Route path="/guesthouse/:id" element={<GuesthouseDetail />} />
+            <Route path="/guesthouses/:id" element={<GuesthouseDetail />} />
 
-            {/* ===================================================
-                SEARCH
-            =================================================== */}
-            <Route
-              path="/search"
-              element={<GuesthouseSearch />}
-            />
+            <Route path="/booking/:guesthouseId/:roomId" element={<Booking />} />
+            <Route path="/booking" element={<Booking />} />
 
-            {/* ===================================================
-                GUESTHOUSE DETAILS
-            =================================================== */}
-            <Route
-              path="/guesthouse/:id"
-              element={<GuesthouseDetail />}
-            />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-            <Route
-              path="/guesthouses/:id"
-              element={<GuesthouseDetail />}
-            />
-
-            {/* ===================================================
-                BOOKING - PUBLIC
-            =================================================== */}
-            <Route
-              path="/booking/:guesthouseId/:roomId"
-              element={<Booking />}
-            />
-
-            <Route
-              path="/booking"
-              element={<Booking />}
-            />
-
-            {/* ===================================================
-                AUTHENTICATION
-            =================================================== */}
-            <Route
-              path="/login"
-              element={<Login />}
-            />
-
-            <Route
-              path="/register"
-              element={<Register />}
-            />
-
-            {/* ===================================================
-                GUEST DASHBOARD
-            =================================================== */}
             <Route
               path="/guest/dashboard"
               element={
@@ -163,47 +109,42 @@ export default function App() {
               }
             />
 
-            {/* ===================================================
-                PROFILE
-            =================================================== */}
+            <Route
+              path="/reviews/:id"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST"]}>
+                  <WriteReview />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/profile"
               element={
-                <ProtectedRoute
-                  allowedRoles={[
-                    "GUEST",
-                    "OWNER",
-                    "RECEPTIONIST",
-                    "ADMIN",
-                  ]}
-                >
+                <ProtectedRoute allowedRoles={["GUEST", "OWNER", "RECEPTIONIST", "ADMIN"]}>
                   <Profile />
                 </ProtectedRoute>
               }
             />
 
-            {/* ===================================================
-                GUEST RESERVATIONS
-            =================================================== */}
             <Route
               path="/reservations"
               element={
-                <ProtectedRoute
-                  allowedRoles={[
-                    "GUEST",
-                    "OWNER",
-                    "RECEPTIONIST",
-                    "ADMIN",
-                  ]}
-                >
+                <ProtectedRoute allowedRoles={["GUEST", "OWNER", "RECEPTIONIST", "ADMIN"]}>
                   <GuestBookings />
                 </ProtectedRoute>
               }
             />
 
-            {/* ===================================================
-                OWNER DASHBOARD
-            =================================================== */}
+            <Route
+              path="/reservations/:id"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST", "OWNER", "RECEPTIONIST", "ADMIN"]}>
+                  <BookingDetail />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/owner"
               element={
@@ -249,23 +190,15 @@ export default function App() {
               }
             />
 
-            {/* ===================================================
-                RECEPTIONIST
-            =================================================== */}
             <Route
               path="/receptionist"
               element={
-                <ProtectedRoute
-                  allowedRoles={["RECEPTIONIST"]}
-                >
+                <ProtectedRoute allowedRoles={["RECEPTIONIST"]}>
                   <ReceptionistDashboard />
                 </ProtectedRoute>
               }
             />
 
-            {/* ===================================================
-                ADMIN
-            =================================================== */}
             <Route
               path="/admin"
               element={
@@ -275,42 +208,19 @@ export default function App() {
               }
             />
 
-            {/* ===================================================
-                FALLBACK
-            =================================================== */}
-            <Route
-              path="*"
-              element={
-                <Navigate
-                  to="/"
-                  replace
-                />
-              }
-            />
+            <Route path="*" element={<Navigate to="/" replace />} />
 
           </Routes>
         </main>
       </div>
 
-      {/* =========================================================
-          FOOTER - HIDE ON DASHBOARD
-      ========================================================= */}
       {!isDashboard && (
         <footer className="border-t border-stone-200 bg-[#043658] py-8 text-white">
-
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
-
             <div>
-              <p className="text-sm font-semibold">
-                © 2026 Guesthouse Platform.
-              </p>
-
-              <p className="mt-1 text-xs text-white/60">
-                Discover and reserve verified guesthouses across
-                Ethiopia.
-              </p>
+              <p className="text-sm font-semibold">© 2026 Guesthouse Platform.</p>
+              <p className="mt-1 text-xs text-white/60">Discover and reserve verified guesthouses across Ethiopia.</p>
             </div>
-
             <button
               type="button"
               onClick={() => setArchModalOpen(true)}
@@ -318,22 +228,11 @@ export default function App() {
             >
               View Full-Stack API & Architecture Specs
             </button>
-
           </div>
         </footer>
       )}
 
-      {/* =========================================================
-          ARCHITECTURE MODAL
-      ========================================================= */}
-      <ArchitectureModal
-        isOpen={archModalOpen}
-        onClose={() => setArchModalOpen(false)}
-      />
-
-      {/* =========================================================
-          LIVE REAL-TIME NOTIFICATION TOAST ALERTS
-      ========================================================= */}
+      <ArchitectureModal isOpen={archModalOpen} onClose={() => setArchModalOpen(false)} />
       <NotificationToastContainer />
 
     </div>

@@ -330,8 +330,6 @@ async function main() {
 
   // ============================================================
   // 17. GUESTHOUSE 1 - ADDIS ABABA
-  // OWNER: SOLOMON
-  // RECEPTIONIST: MARTA
   // ============================================================
 
   let guesthouse1 = await prisma.guesthouse.findFirst({
@@ -359,8 +357,6 @@ async function main() {
 
   // ============================================================
   // 18. GUESTHOUSE 2 - HAWASSA
-  // OWNER: SARA
-  // RECEPTIONIST: DAWIT
   // ============================================================
 
   let guesthouse2 = await prisma.guesthouse.findFirst({
@@ -388,8 +384,6 @@ async function main() {
 
   // ============================================================
   // 19. GUESTHOUSE 3 - BAHIR DAR
-  // OWNER: BEREKET
-  // RECEPTIONIST: SELAMAWIT
   // ============================================================
 
   let guesthouse3 = await prisma.guesthouse.findFirst({
@@ -417,8 +411,6 @@ async function main() {
 
   // ============================================================
   // 20. GUESTHOUSE 4 - BISHOFTU
-  // OWNER: MERON
-  // RECEPTIONIST: NAHOM
   // ============================================================
 
   let guesthouse4 = await prisma.guesthouse.findFirst({
@@ -446,8 +438,6 @@ async function main() {
 
   // ============================================================
   // 21. GUESTHOUSE 5 - LALIBELA
-  // OWNER: DANI
-  // RECEPTIONIST: EDEN
   // ============================================================
 
   let guesthouse5 = await prisma.guesthouse.findFirst({
@@ -941,7 +931,7 @@ async function main() {
       await prisma.payment.create({
         data: {
           amount: 3600,
-          method: "CBE_BIRR",
+          method: "BANK_TRANSFER", // ✅ Changed from CBE_BIRR
           status: "PAID",
           reservationId: reservation.id,
         },
@@ -1061,7 +1051,7 @@ async function main() {
       await prisma.payment.create({
         data: {
           amount: 2000,
-          method: "CBE_BIRR",
+          method: "BANK_TRANSFER", // ✅ Changed from CBE_BIRR
           status: "PAID",
           reservationId: reservation.id,
         },
@@ -1120,72 +1110,72 @@ async function main() {
 
   console.log("");
   console.log("ADMIN");
-  console.log("Email: admin@example.com");
-  console.log("Password: Password123");
+  console.log("Email: admin@gmail.com");
+  console.log("Password: password123");
 
   console.log("");
   console.log("OWNER 1");
-  console.log("Email: solomon@example.com");
-  console.log("Password: Password123");
+  console.log("Email: manayeh@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Lucy Heritage Guesthouse");
   console.log("City: Addis Ababa");
 
   console.log("");
   console.log("OWNER 2");
-  console.log("Email: sara@example.com");
-  console.log("Password: Password123");
+  console.log("Email: sosina@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Hawassa Lake View Guesthouse");
   console.log("City: Hawassa");
 
   console.log("");
   console.log("OWNER 3");
-  console.log("Email: bereket@example.com");
-  console.log("Password: Password123");
+  console.log("Email: abel@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Blue Nile Riverside Guesthouse");
   console.log("City: Bahir Dar");
 
   console.log("");
   console.log("OWNER 4");
-  console.log("Email: meron@example.com");
-  console.log("Password: Password123");
+  console.log("Email: abebe@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Bishoftu Lake View Guesthouse");
   console.log("City: Bishoftu");
 
   console.log("");
   console.log("OWNER 5");
-  console.log("Email: dani@example.com");
-  console.log("Password: Password123");
+  console.log("Email: dani@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Lalibela Heritage Guesthouse");
   console.log("City: Lalibela");
 
   console.log("");
   console.log("RECEPTIONIST 1");
-  console.log("Email: marta@example.com");
-  console.log("Password: Password123");
+  console.log("Email: marta@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Lucy Heritage Guesthouse");
 
   console.log("");
   console.log("RECEPTIONIST 2");
-  console.log("Email: dawit@example.com");
-  console.log("Password: Password123");
+  console.log("Email: dawit@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Hawassa Lake View Guesthouse");
 
   console.log("");
   console.log("RECEPTIONIST 3");
-  console.log("Email: selam@example.com");
-  console.log("Password: Password123");
+  console.log("Email: selam@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Blue Nile Riverside Guesthouse");
 
   console.log("");
   console.log("RECEPTIONIST 4");
-  console.log("Email: nahom@example.com");
-  console.log("Password: Password123");
+  console.log("Email: nahom@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Bishoftu Lake View Guesthouse");
 
   console.log("");
   console.log("RECEPTIONIST 5");
-  console.log("Email: eden@example.com");
-  console.log("Password: Password123");
+  console.log("Email: eden@gmail.com");
+  console.log("Password: password123");
   console.log("Guesthouse: Lalibela Heritage Guesthouse");
 
   console.log("");
