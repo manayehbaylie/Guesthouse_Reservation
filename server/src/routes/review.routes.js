@@ -6,6 +6,7 @@ import {
   getByGuest,
   getOwnerReviews,
   respond,
+  getReviewForReservation,
 } from "../controllers/review.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -13,41 +14,7 @@ import { authorize } from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
-/**
- * @swagger
- * /api/reviews:
- *   post:
- *     summary: Create a review
- *     tags:
- *       - Reviews
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - guesthouseId
- *               - reservationId
- *               - rating
- *               - comment
- *             properties:
- *               guesthouseId:
- *                 type: integer
- *               reservationId:
- *                 type: integer
- *               rating:
- *                 type: integer
- *                 minimum: 1
- *                 maximum: 5
- *               comment:
- *                 type: string
- *     responses:
- *       201:
- *         description: Review created successfully
- */
+// Create a review
 router.post(
   "/",
   authenticate,
@@ -55,41 +22,21 @@ router.post(
   create
 );
 
-/**
- * @swagger
- * /api/reviews/guesthouse/:guesthouseId:
- *   get:
- *     summary: Get reviews for a guesthouse
- *     tags:
- *       - Reviews
- *     parameters:
- *       - in: path
- *         name: guesthouseId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Reviews fetched successfully
- */
+// Get reviews for a guesthouse
 router.get(
   "/guesthouse/:guesthouseId",
   getByGuesthouse
 );
 
-/**
- * @swagger
- * /api/reviews/my-reviews:
- *   get:
- *     summary: Get guest's own reviews
- *     tags:
- *       - Reviews
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Guest reviews fetched successfully
- */
+// Get review by reservation ID
+router.get(
+  "/reservation/:reservationId",
+  authenticate,
+  authorize("GUEST"),
+  getReviewForReservation
+);
+
+// Get guest's own reviews
 router.get(
   "/my-reviews",
   authenticate,
@@ -97,19 +44,7 @@ router.get(
   getByGuest
 );
 
-/**
- * @swagger
- * /api/reviews/owner-reviews:
- *   get:
- *     summary: Get owner's guesthouse reviews
- *     tags:
- *       - Reviews
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Owner reviews fetched successfully
- */
+// Get owner's guesthouse reviews
 router.get(
   "/owner-reviews",
   authenticate,
@@ -117,36 +52,7 @@ router.get(
   getOwnerReviews
 );
 
-/**
- * @swagger
- * /api/reviews/:reviewId/respond:
- *   put:
- *     summary: Owner responds to a review
- *     tags:
- *       - Reviews
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: reviewId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - response
- *             properties:
- *               response:
- *                 type: string
- *     responses:
- *       200:
- *         description: Response added successfully
- */
+// Owner responds to a review
 router.put(
   "/:reviewId/respond",
   authenticate,

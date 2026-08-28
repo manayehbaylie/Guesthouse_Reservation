@@ -13,6 +13,7 @@ import {
   X,
   Building2,
   ChevronDown,
+  MessageSquare,
 } from 'lucide-react';
 
 export function DashboardLayout({ children }) {
@@ -27,17 +28,38 @@ export function DashboardLayout({ children }) {
 
   useEffect(() => {
     loadUpcomingBooking();
-  }, []);
+  }, [user?.id]);
 
   const loadUpcomingBooking = async () => {
     setLoading(true);
     try {
-      const reservations = await ApiService.getReservations({ guestId: user?.id });
+      if (!user?.id) {
+        setUpcomingBooking(null);
+        setLoading(false);
+        return;
+      }
+
+      const reservations = await ApiService.getReservations({ guestId: user.id });
+      
+      if (!reservations || reservations.length === 0) {
+        setUpcomingBooking(null);
+        setLoading(false);
+        return;
+      }
+      
       const now = new Date();
-      const upcoming = reservations.filter(
-        (booking) => new Date(booking.checkInDate) >= now
-      );
+      now.setHours(0, 0, 0, 0);
+      
+      const upcoming = reservations.filter((booking) => {
+        const checkIn = new Date(booking.checkInDate);
+        checkIn.setHours(0, 0, 0, 0);
+        return checkIn >= now && 
+               booking.status !== 'checked_out' && 
+               booking.status !== 'cancelled';
+      });
+      
       if (upcoming.length > 0) {
+        upcoming.sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate));
         setUpcomingBooking(upcoming[0]);
       } else {
         setUpcomingBooking(null);
@@ -72,15 +94,24 @@ export function DashboardLayout({ children }) {
       icon: <Search className="w-5 h-5" />, 
       label: 'Find Guesthouses' 
     },
+    { 
+      path: '/guest/reviews', 
+      icon: <MessageSquare className="w-5 h-5" />, 
+      label: 'Reviews' 
+    },
   ];
 
   return (
     <div className="min-h-screen bg-[#f5f8fa] flex">
+      {/* ============================================================
+          SIDEBAR
+      ============================================================ */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#043658] border-r border-white/10 transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 lg:static lg:flex lg:flex-col lg:h-screen lg:sticky top-0`}
       >
+        {/* Sidebar Header */}
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center justify-between">
             <Link to="/guest/dashboard" className="flex items-center gap-2">
@@ -101,7 +132,9 @@ export function DashboardLayout({ children }) {
           </div>
         </div>
 
-        {/* ✅ Guesthouse Name at Top of Sidebar */}
+        {/* ============================================================
+            CURRENT STAY - Shows guesthouse name when booking exists
+        ============================================================ */}
         {!loading && upcomingBooking && (
           <div className="mx-3 mt-2 px-4 py-3 bg-[#ffc107]/10 border border-[#ffc107]/20 rounded-xl">
             <p className="text-[10px] text-[#ffc107] font-bold uppercase tracking-wider">
@@ -116,6 +149,7 @@ export function DashboardLayout({ children }) {
           </div>
         )}
 
+        {/* User Profile Summary */}
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-[#ffc107]/20 flex items-center justify-center">
@@ -133,6 +167,7 @@ export function DashboardLayout({ children }) {
           </div>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <Link
@@ -153,6 +188,7 @@ export function DashboardLayout({ children }) {
           ))}
         </nav>
 
+        {/* Logout */}
         <div className="px-4 py-4 border-t border-white/10">
           <button
             onClick={handleLogout}
@@ -164,25 +200,38 @@ export function DashboardLayout({ children }) {
         </div>
       </aside>
 
+      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
+      {/* ============================================================
+          MAIN CONTENT
+      ============================================================ */}
       <main className="flex-1 min-w-0">
+        {/* Top Bar */}
         <header className="bg-white border-b border-[#e5edf2] sticky top-0 z-30">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-[#f5f8fa]">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-[#f5f8fa]"
+            >
               <Menu className="w-5 h-5 text-[#647b8a]" />
             </button>
 
             <div className="hidden md:block"></div>
 
             <div className="flex items-center gap-4 ml-auto">
+              {/* Notification */}
               <button className="relative p-2 rounded-lg hover:bg-[#f5f8fa] transition">
                 <Bell className="w-5 h-5 text-[#647b8a]" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               
+              {/* Profile Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
@@ -198,6 +247,7 @@ export function DashboardLayout({ children }) {
                   <ChevronDown className={`w-4 h-4 text-[#647b8a] transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
+                {/* Dropdown Menu */}
                 {profileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-[#e5edf2] shadow-lg py-2 z-50">
                     <div className="px-4 py-3 border-b border-[#e5edf2]">
@@ -208,23 +258,38 @@ export function DashboardLayout({ children }) {
                       </span>
                     </div>
 
-                    <Link to="/guest/dashboard" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
+                    <Link
+                      to="/guest/dashboard"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition"
+                    >
                       <LayoutDashboard className="w-4 h-4" />
                       Dashboard
                     </Link>
 
-                    <Link to="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
+                    <Link
+                      to="/profile"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition"
+                    >
                       <User className="w-4 h-4" />
                       My Profile
                     </Link>
 
-                    <Link to="/reservations" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
+                    <Link
+                      to="/reservations"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition"
+                    >
                       <Calendar className="w-4 h-4" />
                       My Bookings
                     </Link>
 
                     <div className="border-t border-[#e5edf2] mt-1">
-                      <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition">
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
+                      >
                         <LogOut className="w-4 h-4" />
                         Logout
                       </button>
@@ -236,10 +301,12 @@ export function DashboardLayout({ children }) {
           </div>
         </header>
 
+        {/* Page Content */}
         <div className="p-4 sm:p-6 lg:p-8">
           {children}
         </div>
 
+        {/* Footer */}
         <footer className="px-4 sm:px-6 lg:px-8 pb-6">
           <div className="pt-6 border-t border-[#e5edf2] text-center">
             <p className="text-sm text-[#94a8b5]">

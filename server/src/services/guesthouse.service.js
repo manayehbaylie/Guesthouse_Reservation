@@ -108,7 +108,7 @@ export const getPendingGuesthouses = async () => {
           phone: true,
           role: true,
           residentialAddress: true,
-          idType: true,
+         // idType: true,//
           idNumber: true,
           createdAt: true,
         },

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { ApiService } from '../../services/api.js';
 import {
   UserPlus,
   Mail,
@@ -94,6 +95,62 @@ export function Register() {
   const [loading, setLoading] = useState(false);
 
   // ============================================================
+  // AUTO-BOOKING FUNCTION
+  // ============================================================
+
+  const createAutoBooking = async (userId) => {
+    try {
+      console.log('Creating auto-booking for user:', userId);
+      
+      const guesthouses = await ApiService.getGuesthouses({ limit: 10 });
+      if (guesthouses.length === 0) {
+        console.log('No guesthouses found for auto-booking');
+        return null;
+      }
+      
+      const gh = guesthouses[0];
+      console.log('Using guesthouse:', gh.name);
+      
+      const rooms = await ApiService.getRoomsForGuesthouse(gh.id);
+      if (rooms.length === 0) {
+        console.log('No rooms found for auto-booking');
+        return null;
+      }
+      
+      const room = rooms[0];
+      console.log('Using room:', room.roomNumber);
+      
+      const today = new Date();
+      const checkIn = new Date(today);
+      checkIn.setDate(today.getDate() + 1);
+      const checkOut = new Date(checkIn);
+      checkOut.setDate(checkIn.getDate() + 2);
+      
+      const checkInStr = checkIn.toISOString().split('T')[0];
+      const checkOutStr = checkOut.toISOString().split('T')[0];
+
+      const bookingData = {
+        guesthouseId: gh.id,
+        roomId: room.id,
+        checkInDate: checkInStr,
+        checkOutDate: checkOutStr,
+        nightsCount: 1,
+        numberOfGuests: 1,
+        paymentMethod: 'TELEBIRR',
+        phone: '+251911111111',
+      };
+
+      const result = await ApiService.createBookingAndPay(bookingData);
+      console.log('✅ Auto-booking created successfully:', result);
+      return result;
+
+    } catch (error) {
+      console.error('❌ Failed to auto-create booking:', error);
+      return null;
+    }
+  };
+
+  // ============================================================
   // PASSWORD VALIDATION
   // ============================================================
 
@@ -154,7 +211,7 @@ export function Register() {
   };
 
   // ============================================================
-  // GUEST REGISTRATION
+  // GUEST REGISTRATION - ✅ Redirects to Login
   // ============================================================
 
   const handleGuestSubmit = async (e) => {
@@ -193,14 +250,19 @@ export function Register() {
 
       console.log('Guest registration successful:', newUser);
 
+      // Auto-create booking for new user
+      if (newUser?.id) {
+        await createAutoBooking(newUser.id);
+      }
+
       if (newUser?.role === 'Owner' || newUser?.role === 'OWNER') {
         navigate('/owner');
       } else {
-        // ✅ CHANGED: Navigate to dashboard instead of home
-        navigate('/guest/dashboard', {
+        // ✅ Redirect to login page instead of dashboard
+        navigate('/login', {
           replace: true,
           state: {
-            message: 'Registration successful! Welcome to your dashboard.',
+            message: 'Registration successful! Please login to continue.',
           },
         });
       }
@@ -230,6 +292,27 @@ export function Register() {
       return;
     }
 
+    if (!agreedToTerms) {
+      setError('You must agree to the verification terms before submitting.');
+      return;
+    }
+
+    if (!idFront) {
+      setError('Please upload the front side of your identification document.');
+      return;
+    }
+    if (!idBack) {
+      setError('Please upload the back side of your identification document.');
+      return;
+    }
+    if (!businessLicense) {
+      setError('Please upload your business registration/license document.');
+      return;
+    }
+    if (!guesthousePhotos.length) {
+      setError('Please upload at least one guesthouse photo.');
+      return;
+    }
     if (!name.trim()) {
       setError('Full name is required.');
       return;
@@ -250,10 +333,47 @@ export function Register() {
       setError('ID number is required.');
       return;
     }
+    if (!guesthouseName.trim()) {
+      setError('Guesthouse name is required.');
+      return;
+    }
+    if (!guesthouseAddress.trim()) {
+      setError('Guesthouse address is required.');
+      return;
+    }
+    if (!city.trim()) {
+      setError('City is required.');
+      return;
+    }
+    if (!subCity.trim()) {
+      setError('Sub-city is required.');
+      return;
+    }
+    if (!woreda.trim()) {
+      setError('Woreda is required.');
+      return;
+    }
+    if (!guesthousePhone.trim()) {
+      setError('Guesthouse phone number is required.');
+      return;
+    }
+    if (!numberOfRooms || Number(numberOfRooms) < 1) {
+      setError('Number of rooms must be at least 1.');
+      return;
+    }
+    if (!description.trim()) {
+      setError('Guesthouse description is required.');
+      return;
+    }
+    if (!businessLicenseNumber.trim()) {
+      setError('Business/license number is required.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const ownerAccount = {
+      const ownerApplication = {
         role: 'Owner',
         name: name.trim(),
         email: email.trim(),
@@ -262,14 +382,31 @@ export function Register() {
         address: address.trim(),
         idType,
         idNumber: idNumber.trim(),
+        idFront,
+        idBack,
+        guesthouseName: guesthouseName.trim(),
+        guesthouseAddress: guesthouseAddress.trim(),
+        city: city.trim(),
+        subCity: subCity.trim(),
+        woreda: woreda.trim(),
+        guesthousePhone: guesthousePhone.trim(),
+        guesthouseEmail: guesthouseEmail.trim(),
+        numberOfRooms: Number(numberOfRooms),
+        description: description.trim(),
+        businessLicenseNumber: businessLicenseNumber.trim(),
+        businessLicense,
+        guesthousePhotos,
+        agreedToTerms: true,
       };
 
-      await register(ownerAccount);
+      console.log('Submitting owner application:', ownerApplication);
 
-      navigate('/owner', {
-        replace: true,
+      const result = await register(ownerApplication);
+      console.log('Owner registration result:', result);
+
+      navigate('/login', {
         state: {
-          message: 'Owner account created successfully. You can now register your guesthouse.',
+          message: 'Your owner registration has been submitted successfully. Please wait for administrator verification.',
         },
       });
 
@@ -295,7 +432,6 @@ export function Register() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
         <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
 
-          {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
               <Building2 className="w-7 h-7" />
@@ -306,13 +442,11 @@ export function Register() {
             </div>
           </div>
 
-          {/* Header */}
           <div className="mb-8 text-center">
             <h2 className="text-3xl font-black text-stone-900">Create an Account</h2>
             <p className="mt-2 text-stone-500">Join Ethiopia's premier guesthouse platform</p>
           </div>
 
-          {/* Registration Options */}
           <div className="space-y-4">
             <button
               type="button"
@@ -355,7 +489,6 @@ export function Register() {
             </button>
           </div>
 
-          {/* Login Link */}
           <p className="mt-8 text-center text-stone-500">
             Already have an account?{' '}
             <Link to="/login" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
@@ -363,7 +496,6 @@ export function Register() {
             </Link>
           </p>
 
-          {/* Footer */}
           <div className="mt-8 pt-6 border-t border-stone-200 text-center">
             <p className="text-sm text-stone-400">
               © 2026 Guesthouse Platform. All rights reserved.
@@ -394,7 +526,6 @@ export function Register() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
 
-          {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
               <Building2 className="w-7 h-7" />
@@ -537,7 +668,6 @@ export function Register() {
             </Link>
           </p>
 
-          {/* Footer */}
           <div className="mt-8 pt-6 border-t border-stone-200 text-center">
             <p className="text-sm text-stone-400">
               © 2026 Guesthouse Platform. All rights reserved.
@@ -569,7 +699,6 @@ export function Register() {
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="p-8 lg:p-10">
-            {/* Logo */}
             <div className="flex items-center justify-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
                 <Building2 className="w-7 h-7" />
@@ -583,14 +712,13 @@ export function Register() {
             <div className="text-center mb-8">
               <h2 className="text-3xl font-black text-stone-900">Owner Registration</h2>
               <p className="mt-2 text-stone-500">
-                Create your owner account. You can register a guesthouse from your dashboard.
+                Submit your guesthouse information for administrator verification
               </p>
             </div>
 
             {errorMessage}
 
             <form onSubmit={handleOwnerSubmit} className="space-y-8">
-              {/* Personal Information */}
               <section>
                 <SectionHeader
                   icon={<User className="w-5 h-5" />}
@@ -655,7 +783,6 @@ export function Register() {
                 </div>
               </section>
 
-              {/* Identification */}
               <section>
                 <SectionHeader
                   icon={<CreditCard className="w-5 h-5" />}
@@ -683,18 +810,188 @@ export function Register() {
                     placeholder="Enter your ID number"
                     required
                   />
+                  <FileField
+                    label="ID Front"
+                    file={idFront}
+                    onChange={setIdFront}
+                    required
+                  />
+                  <FileField
+                    label="ID Back"
+                    file={idBack}
+                    onChange={setIdBack}
+                    required
+                  />
                 </div>
               </section>
 
-              {/* Account Agreement */}
+              <section>
+                <SectionHeader
+                  icon={<Building2 className="w-5 h-5" />}
+                  title="Guesthouse Information"
+                  description="Details about the property you want to register"
+                />
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <InputField
+                    label="Guesthouse Name"
+                    value={guesthouseName}
+                    onChange={setGuesthouseName}
+                    placeholder="Bole Comfort Guesthouse"
+                    required
+                    icon={<Building2 className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Guesthouse Address"
+                    value={guesthouseAddress}
+                    onChange={setGuesthouseAddress}
+                    placeholder="Bole, Addis Ababa"
+                    required
+                    icon={<MapPin className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="City"
+                    value={city}
+                    onChange={setCity}
+                    placeholder="Addis Ababa"
+                    required
+                  />
+                  <InputField
+                    label="Sub-City"
+                    value={subCity}
+                    onChange={setSubCity}
+                    placeholder="Bole"
+                    required
+                  />
+                  <InputField
+                    label="Woreda"
+                    value={woreda}
+                    onChange={setWoreda}
+                    placeholder="Woreda number"
+                    required
+                  />
+                  <InputField
+                    label="Guesthouse Phone"
+                    value={guesthousePhone}
+                    onChange={setGuesthousePhone}
+                    placeholder="+251 91 123 4567"
+                    required
+                    icon={<Phone className="w-4 h-4" />}
+                  />
+                  <InputField
+                    label="Guesthouse Email"
+                    type="email"
+                    value={guesthouseEmail}
+                    onChange={setGuesthouseEmail}
+                    placeholder="info@guesthouse.com"
+                  />
+                  <InputField
+                    label="Number of Rooms"
+                    type="number"
+                    min="1"
+                    value={numberOfRooms}
+                    onChange={setNumberOfRooms}
+                    placeholder="10"
+                    required
+                  />
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-stone-700 mb-2">Guesthouse Description</label>
+                    <textarea
+                      required
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                      placeholder="Describe your guesthouse, location, services and facilities..."
+                      className="w-full px-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition resize-none"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <SectionHeader
+                  icon={<FileText className="w-5 h-5" />}
+                  title="Business Verification"
+                  description="Documents required for administrator approval"
+                />
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <InputField
+                    label="Business / License Number"
+                    value={businessLicenseNumber}
+                    onChange={setBusinessLicenseNumber}
+                    placeholder="Business registration number"
+                    required
+                  />
+                  <FileField
+                    label="Business Registration / License"
+                    file={businessLicense}
+                    onChange={setBusinessLicense}
+                    required
+                  />
+                </div>
+              </section>
+
+              <section>
+                <SectionHeader
+                  icon={<ImageIcon className="w-5 h-5" />}
+                  title="Guesthouse Photos"
+                  description="Upload photos of your property for verification"
+                />
+
+                <label className="block">
+                  <div className="border-2 border-dashed border-stone-300 hover:border-amber-400 rounded-xl p-8 text-center cursor-pointer transition-colors">
+                    <ImageIcon className="w-12 h-12 mx-auto text-stone-400 mb-3" />
+                    <p className="text-base font-bold text-stone-700">Upload Guesthouse Photos</p>
+                    <p className="text-sm text-stone-500 mt-1">
+                      Exterior, rooms, reception, bathroom, facilities, etc.
+                    </p>
+
+                    {guesthousePhotos.length > 0 && (
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {guesthousePhotos.map((photo, index) => (
+                          <div key={`${photo.name}-${index}`} className="relative group">
+                            <img
+                              src={URL.createObjectURL(photo)}
+                              alt={`Guesthouse ${index + 1}`}
+                              className="w-full h-28 object-cover rounded-lg border border-stone-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setGuesthousePhotos((previous) =>
+                                  previous.filter((_, photoIndex) => photoIndex !== index)
+                                );
+                              }}
+                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Remove photo"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => setGuesthousePhotos(Array.from(e.target.files || []))}
+                    className="hidden"
+                  />
+                </label>
+              </section>
+
               <section>
                 <div className="rounded-xl bg-stone-50 border border-stone-200 p-6">
                   <div className="flex gap-3">
                     <ShieldCheck className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                        <h3 className="text-base font-bold text-stone-900">Owner Account Agreement</h3>
+                      <h3 className="text-base font-bold text-stone-900">Verification Agreement</h3>
                       <p className="text-sm text-stone-500 mt-1">
-                        Your owner account is created immediately. Guesthouse information is reviewed separately after submission from your dashboard.
+                        Your application will be reviewed by an administrator before your owner account is approved.
                       </p>
                     </div>
                   </div>
@@ -707,7 +1004,8 @@ export function Register() {
                       className="mt-1 w-5 h-5 accent-amber-500"
                     />
                     <span className="text-sm text-stone-600">
-                      I confirm that my personal information is accurate and that I agree to the platform's terms.
+                      I confirm that the information and documents I provide are accurate, that I am authorized
+                      to register this guesthouse, and that I agree to the platform's verification process and terms.
                     </span>
                   </label>
                 </div>
@@ -725,7 +1023,7 @@ export function Register() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Create Owner Account</span>
+                      <span>Submit Owner Application</span>
                     </>
                   )}
                 </button>
@@ -739,7 +1037,6 @@ export function Register() {
               </section>
             </form>
 
-            {/* Footer */}
             <div className="mt-8 pt-6 border-t border-stone-200 text-center">
               <p className="text-sm text-stone-400">
                 © 2026 Guesthouse Platform. All rights reserved.

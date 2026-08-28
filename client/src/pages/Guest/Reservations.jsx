@@ -190,7 +190,7 @@ export function GuestBookings() {
 
     if (!reviewComment.trim()) {
       setReviewError(
-        'Please write your Metsafiya before submitting.'
+        'Please write your review before submitting.'
       );
 
       return;
@@ -262,7 +262,7 @@ export function GuestBookings() {
       );
 
       setReviewSuccess(
-        'Your review has been submitted successfully. Thank you for your Metsafiya! ❤️'
+        'Your review has been submitted successfully. Thank you! ❤️'
       );
 
       setReviewRating(0);
@@ -457,7 +457,7 @@ export function GuestBookings() {
 
 
                 {/* ============================================
-                    ACTIONS
+                    ACTIONS - NO WRITE REVIEW BUTTON
                 ============================================ */}
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-stone-100">
@@ -491,47 +491,6 @@ export function GuestBookings() {
                     <span>View Details</span>
                     <ChevronRight className="w-4 h-4" />
                   </Link>
-
-
-                  {/* ========================================
-                      WRITE REVIEW
-                  ======================================== */}
-
-                  {res.status ===
-                    'checked_out' && (
-
-                    hasReviewed(res.id) ? (
-
-                      <div className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
-
-                        <CheckCircle className="w-4 h-4" />
-
-                        <span>
-                          Review Submitted
-                        </span>
-
-                      </div>
-
-                    ) : (
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openReviewModal(res)
-                        }
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors"
-                      >
-
-                        <Star className="w-4 h-4 fill-current" />
-
-                        <span>
-                          Write Review
-                        </span>
-
-                      </button>
-
-                    )
-                  )}
 
 
                   {/* ========================================
@@ -746,7 +705,7 @@ export function GuestBookings() {
                       </h2>
 
                       <p className="text-xs text-stone-500">
-                        Share your Metsafiya
+                        Share your experience
                       </p>
 
                     </div>
@@ -869,7 +828,7 @@ export function GuestBookings() {
                   htmlFor="guest-review"
                   className="block text-sm font-black text-stone-900 mb-2"
                 >
-                  Your Metsafiya
+                  Your Review
                 </label>
 
                 <textarea

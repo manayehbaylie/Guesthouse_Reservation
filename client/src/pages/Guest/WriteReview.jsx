@@ -10,8 +10,6 @@ import {
   Calendar,
   Building2,
   CheckCircle,
-  Clock,
-  XCircle,
 } from 'lucide-react';
 
 export function WriteReview() {
@@ -33,6 +31,7 @@ export function WriteReview() {
     loadCompletedBookings();
   }, []);
 
+  // ✅ FIXED: Load completed bookings and check for existing reviews
   const loadCompletedBookings = async () => {
     setLoading(true);
     try {
@@ -50,11 +49,12 @@ export function WriteReview() {
       for (const booking of completed) {
         try {
           const review = await ApiService.getReviewForReservation(booking.id);
-          if (review) {
+          if (review && review.id) {
             reviewed.push(String(booking.id));
           }
         } catch (e) {
-          // No review found
+          // No review found - this is fine
+          console.log('No review found for booking:', booking.id);
         }
       }
       setSubmittedReviews(reviewed);
@@ -66,6 +66,7 @@ export function WriteReview() {
     }
   };
 
+  // ✅ FIXED: Check if review was submitted
   const hasReviewed = (bookingId) => {
     return submittedReviews.includes(String(bookingId));
   };
@@ -107,15 +108,12 @@ export function WriteReview() {
       
       setSuccess('✅ Your review has been submitted successfully! Thank you for your feedback.');
       
-      // Mark as reviewed
       setSubmittedReviews([...submittedReviews, String(selectedBooking.id)]);
       
-      // Reset form
       setRating(0);
       setComment('');
       setSelectedBooking(null);
       
-      // Reload after 2 seconds
       setTimeout(() => {
         setSuccess('');
         loadCompletedBookings();
@@ -169,7 +167,7 @@ export function WriteReview() {
         <div>
           <h1 className="text-2xl font-black text-[#043658]">Write a Review</h1>
           <p className="text-sm text-[#647b8a]">
-            Share your experience and help other travelers make better decisions
+            Share your Metsafiya and help other travelers make better decisions
           </p>
         </div>
 
@@ -196,7 +194,7 @@ export function WriteReview() {
               You can only review guesthouses after completing your stay.
             </p>
             <Link
-              to="/search"
+              to="/guest/search"
               className="mt-4 inline-block px-6 py-2.5 bg-[#ffc107] hover:bg-[#ffb300] text-[#043658] font-bold rounded-xl text-sm transition"
             >
               Book a Stay
@@ -238,35 +236,32 @@ export function WriteReview() {
                   </p>
                 </div>
                 
-                <button
-                  onClick={() => {
-                    if (hasReviewed(booking.id)) return;
-                    setSelectedBooking(selectedBooking?.id === booking.id ? null : booking);
-                    setRating(0);
-                    setComment('');
-                    setError('');
-                  }}
-                  disabled={hasReviewed(booking.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
-                    hasReviewed(booking.id)
-                      ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
-                      : selectedBooking?.id === booking.id
-                      ? 'bg-stone-200 text-stone-700'
-                      : 'bg-[#ffc107] text-[#043658] hover:bg-[#ffb300]'
-                  }`}
-                >
-                  {hasReviewed(booking.id) ? 'Reviewed' : selectedBooking?.id === booking.id ? 'Cancel' : 'Write Review'}
-                </button>
+                {/* ✅ If NOT reviewed, show "Write Review" button */}
+                {!hasReviewed(booking.id) && (
+                  <button
+                    onClick={() => {
+                      setSelectedBooking(selectedBooking?.id === booking.id ? null : booking);
+                      setRating(0);
+                      setComment('');
+                      setError('');
+                    }}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
+                      selectedBooking?.id === booking.id
+                        ? 'bg-stone-200 text-stone-700'
+                        : 'bg-[#ffc107] text-[#043658] hover:bg-[#ffb300]'
+                    }`}
+                  >
+                    {selectedBooking?.id === booking.id ? 'Cancel' : 'Write Review'}
+                  </button>
+                )}
               </div>
 
-              {/* Review Form */}
+              {/* Review Form - Only shows if NOT reviewed and selected */}
               {selectedBooking?.id === booking.id && !hasReviewed(booking.id) && (
                 <div className="mt-4 pt-4 border-t border-[#e5edf2]">
                   <form onSubmit={handleSubmitReview} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-bold text-[#043658] mb-2">
-                        How was your stay at {booking.guesthouseName}?
-                      </label>
+                      <p className="text-sm font-bold text-[#043658] mb-2">How was your stay?</p>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
@@ -294,15 +289,18 @@ export function WriteReview() {
 
                     <div>
                       <label className="block text-sm font-bold text-[#043658] mb-2">
-                        Your Review
+                        Your Metsafiya
                       </label>
                       <textarea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         rows={4}
-                        placeholder="Share your experience at this guesthouse..."
+                        placeholder="Tell other guests about your experience..."
                         className="w-full px-4 py-3 rounded-xl border border-[#e5edf2] focus:ring-2 focus:ring-[#ffc107] focus:border-transparent outline-none text-sm"
                       />
+                      <div className="text-right text-xs text-[#647b8a] mt-1">
+                        {comment.length}/1000
+                      </div>
                     </div>
 
                     <div className="flex gap-3">

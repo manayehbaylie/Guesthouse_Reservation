@@ -46,11 +46,11 @@ export default function App() {
   const [archModalOpen, setArchModalOpen] = useState(false);
   const location = useLocation();
 
-  // ✅ Hide main top bar for Guest Dashboard pages
   const isDashboard = 
     location.pathname === '/guest/dashboard' ||
     location.pathname === '/guest/search' ||
     location.pathname === '/reservations' ||
+    location.pathname === '/guest/reviews' ||
     location.pathname.startsWith('/reviews/');
 
   return (
@@ -105,6 +105,16 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={["GUEST"]}>
                   <GuestDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ✅ Reviews Route */}
+            <Route
+              path="/guest/reviews"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST"]}>
+                  <WriteReview />
                 </ProtectedRoute>
               }
             />
