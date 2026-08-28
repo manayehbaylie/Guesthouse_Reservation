@@ -69,10 +69,20 @@ export const registerGuesthouse = async (ownerId, data) => {
       licenseDocument: typeof data.licenseDocument === "string"
         ? data.licenseDocument
         : null,
-      status: "DRAFT",
+      status: "PENDING",
       ownerId,
     },
   });
+
+  try {
+    await createNotification({
+      title: "Guesthouse Registered",
+      message: `Your property "${guesthouse.name}" has been submitted and is pending administrator approval.`,
+      userId: ownerId,
+    });
+  } catch (error) {
+    console.error("Failed to notify owner of guesthouse registration:", error);
+  }
 
   return guesthouse;
 };

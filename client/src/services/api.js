@@ -2999,6 +2999,15 @@ const initiatePayload = {
     };
   },
 
+  async getAdminGuesthouses() {
+    const response = await api.get('/admin/guesthouses');
+    const guesthouses = unwrap(response) || [];
+
+    return guesthouses
+      .map((guesthouse) => mapGuesthouseFromBackend(guesthouse))
+      .filter(Boolean);
+  },
+
   async getAdminPendingGuesthouses() {
     const response =
       await api.get(

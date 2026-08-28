@@ -92,6 +92,32 @@ export const rejectGuesthouse = async (id, reason) => {
 
 /*
 ==================================================
+1.6 GET ALL GUESTHOUSES (ADMIN)
+==================================================
+*/
+export const getAllGuesthousesForAdmin = async () => {
+  return await prisma.guesthouse.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+        },
+      },
+      rooms: true,
+    },
+  });
+};
+
+/*
+==================================================
 1.6 DELETE GUESTHOUSE
 ==================================================
 */

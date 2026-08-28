@@ -6,6 +6,7 @@ import {
   deleteGuesthouseController,
   deleteUserController,
   getUsers,
+  getGuesthouses,
   updateUserRoleController,
   updateAdminProfileController,
   getReports,
@@ -51,6 +52,13 @@ router.put(
   authenticate,
   authorize("ADMIN"),
   approve
+);
+
+router.get(
+  "/guesthouses",
+  authenticate,
+  authorize("ADMIN"),
+  getGuesthouses
 );
 
 /**
