@@ -33,9 +33,7 @@ export const registerUser = async (data) => {
   // Check email
   // ==========================
   const existingEmail = await prisma.user.findUnique({
-    where: {
-      email,
-    },
+    where: { email },
   });
 
   if (existingEmail) {
@@ -46,9 +44,7 @@ export const registerUser = async (data) => {
   // Check phone
   // ==========================
   const existingPhone = await prisma.user.findUnique({
-    where: {
-      phone,
-    },
+    where: { phone },
   });
 
   if (existingPhone) {
@@ -58,15 +54,12 @@ export const registerUser = async (data) => {
   // ==========================
   // Validate role
   // ==========================
-  const allowedRoles = [
-    "GUEST",
-    "OWNER",
-    "RECEPTIONIST",
-    "ADMIN",
-  ];
-
-  if (!allowedRoles.includes(role)) {
-    throw new Error("Invalid user role");
+  // Only GUEST and OWNER can self-register publicly.
+  // RECEPTIONIST and ADMIN accounts are created by administrators.
+  if (role !== "GUEST" && role !== "OWNER") {
+    throw new Error(
+      "Invalid registration role. Only GUEST and OWNER can register publicly."
+    );
   }
 
   // ==========================
@@ -101,93 +94,45 @@ export const registerUser = async (data) => {
   // OWNER REGISTRATION
   // ============================================================
   //
-  // Owner registration requires admin verification.
-  // The owner account is created but cannot log in normally
-  // until the admin approves the application.
+  // Owner registration creates a personal account ONLY.
+  // A JWT token is issued immediately — the owner can log in
+  // right away and access the Owner Dashboard.
   //
-  // The frontend should send:
+  // Guesthouse registration is a SEPARATE step done from
+  // the Owner Dashboard sidebar. Only the guesthouse submission
+  // goes through admin approval — not the owner account itself.
   //
-  // fullName
-  // email
-  // password
-  // phone
-  // role = OWNER
-  // guesthouseName
-  // guesthouseAddress
-  // city
-  // guesthouseDescription
-  // guesthouseImage
+  // Frontend sends: fullName, email, password, phone, role=OWNER
   //
   // ============================================================
 
   if (role === "OWNER") {
-    requireField(data.guesthouseName, "Guesthouse name");
-    requireField(data.guesthouseAddress, "Guesthouse address");
-    requireField(data.city, "City");
-    requireField(
-      data.guesthouseDescription,
-      "Guesthouse description"
-    );
+    requireField(data.residentialAddress, "Residential address");
+    requireField(data.idType, "ID type");
+    requireField(data.idNumber, "ID number");
 
-    const result = await prisma.$transaction(async (tx) => {
-      // Create owner account
-      const owner = await tx.user.create({
-        data: {
-          fullName: String(data.fullName).trim(),
-          email,
-          password: hashedPassword,
-          phone,
-          role: "OWNER",
-        },
-      });
-
-      // Create guesthouse with PENDING status.
-      // Admin must approve it before the owner can use
-      // the owner dashboard.
-      const guesthouse = await tx.guesthouse.create({
-        data: {
-          name: String(data.guesthouseName).trim(),
-          address: String(data.guesthouseAddress).trim(),
-          city: String(data.city).trim(),
-          description: String(data.guesthouseDescription).trim(),
-          image: data.guesthouseImage
-            ? String(data.guesthouseImage).trim()
-            : null,
-          status: "PENDING",
-          ownerId: owner.id,
-        },
-      });
-
-      return {
-        owner,
-        guesthouse,
-      };
+    const owner = await prisma.user.create({
+      data: {
+        fullName: String(data.fullName).trim(),
+        email,
+        password: hashedPassword,
+        phone,
+        role: "OWNER",
+        residentialAddress: String(data.residentialAddress).trim(),
+        idType: String(data.idType).trim(),
+        idNumber: String(data.idNumber).trim(),
+      },
     });
 
-    // IMPORTANT:
-    // Do NOT give an owner a login token yet.
-    // The admin has to approve the guesthouse/application first.
-    return {
-      user: removePassword(result.owner),
-      guesthouse: result.guesthouse,
-      token: null,
-      requiresApproval: true,
-      message:
-        "Owner registration submitted successfully. Your application is waiting for admin approval.",
-    };
-  }
+    const token = generateToken(owner);
 
-  // ============================================================
-  // RECEPTIONIST / ADMIN
-  // ============================================================
-  //
-  // These roles should normally be created by an administrator.
-  // They are not intended to be freely selected by normal users.
-  //
-  if (role === "RECEPTIONIST" || role === "ADMIN") {
-    throw new Error(
-      "This role cannot be selected during public registration."
-    );
+    return {
+      user: removePassword(owner),
+      token,
+      requiresApproval: false,
+      message:
+        "Owner account created successfully. You can now log in and register your guesthouse from your dashboard.",
+    };
   }
 
   throw new Error("Unsupported registration role");
@@ -215,43 +160,29 @@ export const loginUser = async (email, password) => {
   });
 
   if (!user) {
-    throw new Error("Invalid email or password");
+    const error = new Error("Invalid email or password");
+    error.statusCode = 401;
+    throw error;
   }
 
   // ==========================
   // Check password
   // ==========================
-  const isMatch = await comparePassword(
-    password,
-    user.password
-  );
+  const isMatch = await comparePassword(password, user.password);
 
   if (!isMatch) {
-    throw new Error("Invalid email or password");
+    const error = new Error("Invalid email or password");
+    error.statusCode = 401;
+    throw error;
   }
 
   // ============================================================
-  // OWNER APPROVAL CHECK
+  // NOTE ON OWNER LOGIN:
+  // Owners can always log in regardless of their guesthouse
+  // status (PENDING, APPROVED, REJECTED, or no guesthouse yet).
+  // The guesthouse status is displayed on the Owner Dashboard —
+  // it does NOT block access to the platform.
   // ============================================================
-  if (user.role === "OWNER") {
-    const ownerGuesthouse = user.guesthouses?.[0];
-
-    if (ownerGuesthouse) {
-      if (ownerGuesthouse.status === "PENDING") {
-        throw new Error(
-          "Your owner registration is still waiting for admin approval."
-        );
-      }
-
-      if (ownerGuesthouse.status === "REJECTED") {
-        const reason =
-          ownerGuesthouse.rejectionReason ||
-          "Your owner registration was rejected by the administrator.";
-
-        throw new Error(reason);
-      }
-    }
-  }
 
   // ==========================
   // Generate JWT

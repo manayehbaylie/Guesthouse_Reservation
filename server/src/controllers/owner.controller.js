@@ -1,6 +1,9 @@
 import {
   getMyGuesthouse,
   updateMyGuesthouse,
+  registerGuesthouse as registerGuesthouseService,
+  resubmitGuesthouse as resubmitGuesthouseService,
+  submitGuesthouseForReview as submitGuesthouseForReviewService,
   createReceptionist,
   getReceptionists,
   assignReceptionistToGuesthouse,
@@ -13,6 +16,20 @@ import {
 import { successResponse } from "../utils/response.js";
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
+
+const ownerGuesthousePayload = (req) => ({
+  ...req.body,
+  licenseDocument: req.files?.licenseDocument?.[0]
+    ? `/uploads/guesthouses/${req.files.licenseDocument[0].filename}`
+    : typeof req.body.licenseDocument === "string"
+      ? req.body.licenseDocument
+      : undefined,
+  photos: req.files?.photos?.length
+    ? req.files.photos.map((file) => `/uploads/guesthouses/${file.filename}`)
+    : Array.isArray(req.body.photos)
+      ? req.body.photos.filter((photo) => typeof photo === "string")
+      : undefined,
+});
 
 /*
 ==================================================
@@ -40,6 +57,64 @@ export const getGuesthouse = async (
 
 /*
 ==================================================
+REGISTER GUESTHOUSE (from Owner Dashboard)
+==================================================
+POST /owner/guesthouse
+Creates a new PENDING guesthouse for the logged-in owner.
+==================================================
+*/
+export const createGuesthouse = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const guesthouse = await registerGuesthouseService(
+      req.user.id,
+      ownerGuesthousePayload(req)
+    );
+
+    return res.status(201).json({
+      success: true,
+      data: guesthouse,
+      message: "Guesthouse registered successfully. Pending administrator approval.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+==================================================
+RESUBMIT REJECTED GUESTHOUSE
+==================================================
+PUT /owner/guesthouse/resubmit
+Owner edits rejected guesthouse and resubmits for review.
+==================================================
+*/
+export const resubmitGuesthouse = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const guesthouse = await resubmitGuesthouseService(
+      req.user.id,
+      ownerGuesthousePayload(req)
+    );
+
+    return successResponse(
+      res,
+      guesthouse,
+      "Guesthouse resubmitted for review successfully."
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+==================================================
 UPDATE MY GUESTHOUSE
 ==================================================
 */
@@ -52,7 +127,7 @@ export const updateGuesthouse = async (
     const guesthouse =
       await updateMyGuesthouse(
         req.user.id,
-        req.body
+        ownerGuesthousePayload(req)
       );
 
     return successResponse(
@@ -257,6 +332,19 @@ export const getPayments = async (
       payments,
       "Owner payments fetched successfully"
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const submitGuesthouseForReview = async (req, res, next) => {
+  try {
+    const guesthouse = await submitGuesthouseForReviewService(
+      req.user.id,
+      ownerGuesthousePayload(req)
+    );
+
+    return successResponse(res, guesthouse, "Guesthouse submitted for review successfully.");
   } catch (error) {
     next(error);
   }

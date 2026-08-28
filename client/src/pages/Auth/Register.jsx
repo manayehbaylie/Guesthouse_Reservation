@@ -230,27 +230,6 @@ export function Register() {
       return;
     }
 
-    if (!agreedToTerms) {
-      setError('You must agree to the verification terms before submitting.');
-      return;
-    }
-
-    if (!idFront) {
-      setError('Please upload the front side of your identification document.');
-      return;
-    }
-    if (!idBack) {
-      setError('Please upload the back side of your identification document.');
-      return;
-    }
-    if (!businessLicense) {
-      setError('Please upload your business registration/license document.');
-      return;
-    }
-    if (!guesthousePhotos.length) {
-      setError('Please upload at least one guesthouse photo.');
-      return;
-    }
     if (!name.trim()) {
       setError('Full name is required.');
       return;
@@ -271,47 +250,10 @@ export function Register() {
       setError('ID number is required.');
       return;
     }
-    if (!guesthouseName.trim()) {
-      setError('Guesthouse name is required.');
-      return;
-    }
-    if (!guesthouseAddress.trim()) {
-      setError('Guesthouse address is required.');
-      return;
-    }
-    if (!city.trim()) {
-      setError('City is required.');
-      return;
-    }
-    if (!subCity.trim()) {
-      setError('Sub-city is required.');
-      return;
-    }
-    if (!woreda.trim()) {
-      setError('Woreda is required.');
-      return;
-    }
-    if (!guesthousePhone.trim()) {
-      setError('Guesthouse phone number is required.');
-      return;
-    }
-    if (!numberOfRooms || Number(numberOfRooms) < 1) {
-      setError('Number of rooms must be at least 1.');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Guesthouse description is required.');
-      return;
-    }
-    if (!businessLicenseNumber.trim()) {
-      setError('Business/license number is required.');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const ownerApplication = {
+      const ownerAccount = {
         role: 'Owner',
         name: name.trim(),
         email: email.trim(),
@@ -320,31 +262,14 @@ export function Register() {
         address: address.trim(),
         idType,
         idNumber: idNumber.trim(),
-        idFront,
-        idBack,
-        guesthouseName: guesthouseName.trim(),
-        guesthouseAddress: guesthouseAddress.trim(),
-        city: city.trim(),
-        subCity: subCity.trim(),
-        woreda: woreda.trim(),
-        guesthousePhone: guesthousePhone.trim(),
-        guesthouseEmail: guesthouseEmail.trim(),
-        numberOfRooms: Number(numberOfRooms),
-        description: description.trim(),
-        businessLicenseNumber: businessLicenseNumber.trim(),
-        businessLicense,
-        guesthousePhotos,
-        agreedToTerms: true,
       };
 
-      console.log('Submitting owner application:', ownerApplication);
+      await register(ownerAccount);
 
-      const result = await register(ownerApplication);
-      console.log('Owner registration result:', result);
-
-      navigate('/login', {
+      navigate('/owner', {
+        replace: true,
         state: {
-          message: 'Your owner registration has been submitted successfully. Please wait for administrator verification.',
+          message: 'Owner account created successfully. You can now register your guesthouse.',
         },
       });
 
@@ -658,7 +583,7 @@ export function Register() {
             <div className="text-center mb-8">
               <h2 className="text-3xl font-black text-stone-900">Owner Registration</h2>
               <p className="mt-2 text-stone-500">
-                Submit your guesthouse information for administrator verification
+                Create your owner account. You can register a guesthouse from your dashboard.
               </p>
             </div>
 
@@ -758,192 +683,18 @@ export function Register() {
                     placeholder="Enter your ID number"
                     required
                   />
-                  <FileField
-                    label="ID Front"
-                    file={idFront}
-                    onChange={setIdFront}
-                    required
-                  />
-                  <FileField
-                    label="ID Back"
-                    file={idBack}
-                    onChange={setIdBack}
-                    required
-                  />
                 </div>
               </section>
 
-              {/* Guesthouse Information */}
-              <section>
-                <SectionHeader
-                  icon={<Building2 className="w-5 h-5" />}
-                  title="Guesthouse Information"
-                  description="Details about the property you want to register"
-                />
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <InputField
-                    label="Guesthouse Name"
-                    value={guesthouseName}
-                    onChange={setGuesthouseName}
-                    placeholder="Bole Comfort Guesthouse"
-                    required
-                    icon={<Building2 className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Guesthouse Address"
-                    value={guesthouseAddress}
-                    onChange={setGuesthouseAddress}
-                    placeholder="Bole, Addis Ababa"
-                    required
-                    icon={<MapPin className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="City"
-                    value={city}
-                    onChange={setCity}
-                    placeholder="Addis Ababa"
-                    required
-                  />
-                  <InputField
-                    label="Sub-City"
-                    value={subCity}
-                    onChange={setSubCity}
-                    placeholder="Bole"
-                    required
-                  />
-                  <InputField
-                    label="Woreda"
-                    value={woreda}
-                    onChange={setWoreda}
-                    placeholder="Woreda number"
-                    required
-                  />
-                  <InputField
-                    label="Guesthouse Phone"
-                    value={guesthousePhone}
-                    onChange={setGuesthousePhone}
-                    placeholder="+251 91 123 4567"
-                    required
-                    icon={<Phone className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Guesthouse Email"
-                    type="email"
-                    value={guesthouseEmail}
-                    onChange={setGuesthouseEmail}
-                    placeholder="info@guesthouse.com"
-                  />
-                  <InputField
-                    label="Number of Rooms"
-                    type="number"
-                    min="1"
-                    value={numberOfRooms}
-                    onChange={setNumberOfRooms}
-                    placeholder="10"
-                    required
-                  />
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-stone-700 mb-2">Guesthouse Description</label>
-                    <textarea
-                      required
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={4}
-                      placeholder="Describe your guesthouse, location, services and facilities..."
-                      className="w-full px-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition resize-none"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              {/* Business Verification */}
-              <section>
-                <SectionHeader
-                  icon={<FileText className="w-5 h-5" />}
-                  title="Business Verification"
-                  description="Documents required for administrator approval"
-                />
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <InputField
-                    label="Business / License Number"
-                    value={businessLicenseNumber}
-                    onChange={setBusinessLicenseNumber}
-                    placeholder="Business registration number"
-                    required
-                  />
-                  <FileField
-                    label="Business Registration / License"
-                    file={businessLicense}
-                    onChange={setBusinessLicense}
-                    required
-                  />
-                </div>
-              </section>
-
-              {/* Guesthouse Photos */}
-              <section>
-                <SectionHeader
-                  icon={<ImageIcon className="w-5 h-5" />}
-                  title="Guesthouse Photos"
-                  description="Upload photos of your property for verification"
-                />
-
-                <label className="block">
-                  <div className="border-2 border-dashed border-stone-300 hover:border-amber-400 rounded-xl p-8 text-center cursor-pointer transition-colors">
-                    <ImageIcon className="w-12 h-12 mx-auto text-stone-400 mb-3" />
-                    <p className="text-base font-bold text-stone-700">Upload Guesthouse Photos</p>
-                    <p className="text-sm text-stone-500 mt-1">
-                      Exterior, rooms, reception, bathroom, facilities, etc.
-                    </p>
-
-                    {guesthousePhotos.length > 0 && (
-                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {guesthousePhotos.map((photo, index) => (
-                          <div key={`${photo.name}-${index}`} className="relative group">
-                            <img
-                              src={URL.createObjectURL(photo)}
-                              alt={`Guesthouse ${index + 1}`}
-                              className="w-full h-28 object-cover rounded-lg border border-stone-200"
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setGuesthousePhotos((previous) =>
-                                  previous.filter((_, photoIndex) => photoIndex !== index)
-                                );
-                              }}
-                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Remove photo"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => setGuesthousePhotos(Array.from(e.target.files || []))}
-                    className="hidden"
-                  />
-                </label>
-              </section>
-
-              {/* Agreement */}
+              {/* Account Agreement */}
               <section>
                 <div className="rounded-xl bg-stone-50 border border-stone-200 p-6">
                   <div className="flex gap-3">
                     <ShieldCheck className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="text-base font-bold text-stone-900">Verification Agreement</h3>
+                        <h3 className="text-base font-bold text-stone-900">Owner Account Agreement</h3>
                       <p className="text-sm text-stone-500 mt-1">
-                        Your application will be reviewed by an administrator before your owner account is approved.
+                        Your owner account is created immediately. Guesthouse information is reviewed separately after submission from your dashboard.
                       </p>
                     </div>
                   </div>
@@ -956,8 +707,7 @@ export function Register() {
                       className="mt-1 w-5 h-5 accent-amber-500"
                     />
                     <span className="text-sm text-stone-600">
-                      I confirm that the information and documents I provide are accurate, that I am authorized
-                      to register this guesthouse, and that I agree to the platform's verification process and terms.
+                      I confirm that my personal information is accurate and that I agree to the platform's terms.
                     </span>
                   </label>
                 </div>
@@ -975,7 +725,7 @@ export function Register() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Submit Owner Application</span>
+                      <span>Create Owner Account</span>
                     </>
                   )}
                 </button>

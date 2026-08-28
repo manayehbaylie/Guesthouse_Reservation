@@ -57,14 +57,14 @@ export function RoomManage() {
   const handleAddRoom = async (e) => {
     e.preventDefault();
     try {
-      await ApiService.addRoom({
-        guesthouseId,
-        roomNumber,
-        type,
-        capacity: Number(capacity),
-        pricePerNight: Number(pricePerNight),
-        availabilityStatus: 'available',
-      });
+     await ApiService.addRoom({
+  guesthouseId,
+  roomNumber,
+  roomType: type,
+  capacity: Number(capacity),
+  price: Number(pricePerNight),
+  available: true,
+});
       setShowForm(false);
       setRoomNumber('');
       setType('SUITE');
@@ -76,15 +76,20 @@ export function RoomManage() {
     }
   };
 
-  const handleToggleStatus = async (roomId, currentStatus) => {
-    const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available';
-    try {
-      await ApiService.updateRoomAvailability(roomId, nextStatus);
-      loadGuesthouseAndRooms();
-    } catch (err) {
-      alert(err.message || 'Error updating room status');
-    }
-  };
+ const handleToggleStatus = async (roomId, currentAvailable) => {
+  const nextAvailable = !currentAvailable;
+
+  try {
+    await ApiService.updateRoomAvailability(
+      roomId,
+      nextAvailable
+    );
+
+    await loadGuesthouseAndRooms();
+  } catch (err) {
+    alert(err.message || 'Error updating room status');
+  }
+};
 
   const handleDeleteRoom = async (roomId) => {
     if (!confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
@@ -104,7 +109,7 @@ export function RoomManage() {
     setUpdateType(room.type);
     setUpdateCapacity(room.capacity);
     setUpdatePricePerNight(room.pricePerNight);
-    setUpdateAvailability(room.availabilityStatus === 'available');
+setUpdateAvailability(room.available === true);
     setShowUpdateForm(true);
   };
 
@@ -340,12 +345,12 @@ export function RoomManage() {
                   <td className="px-6 py-4">
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        room.availabilityStatus === 'available'
+                       room.available === true
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-stone-200 text-stone-600'
                       }`}
                     >
-                      {room.availabilityStatus}
+                {room.available ? 'AVAILABLE' : 'UNAVAILABLE'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -358,11 +363,11 @@ export function RoomManage() {
                         Update
                       </button>
                       <button
-                        onClick={() => handleToggleStatus(room.id, room.availabilityStatus)}
-                        className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-lg text-xs"
-                      >
-                        Toggle Availability
-                      </button>
+  onClick={() => handleToggleStatus(room.id, room.available)}
+  className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-lg text-xs"
+>
+  Toggle Availability
+</button>
                       <button
                         onClick={() => handleDeleteRoom(room.id)}
                         className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-bold rounded-lg text-xs flex items-center gap-1"

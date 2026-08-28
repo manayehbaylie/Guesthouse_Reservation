@@ -211,7 +211,7 @@ export const getOwnerRevenue = async (ownerId) => {
   const cbe = await prisma.payment.aggregate({
     where: {
       status: "PAID",
-      method: "CBE_BIRR",
+      method: "BANK_TRANSFER",
       reservation: {
         room: {
           guesthouse: {

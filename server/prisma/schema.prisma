@@ -14,6 +14,9 @@ model User {
   password String
   phone    String @unique
   role     Role
+  residentialAddress String?
+  idType String?
+  idNumber String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -37,9 +40,17 @@ model Guesthouse {
   name        String
   address     String
   city        String
+  subCity     String?
+  woreda      String?
+  phone       String?
+  email       String?
+  numberOfRooms Int?
   description String
   image       String?
-  status      GuesthouseStatus @default(PENDING)
+  photos      String[] @default([])
+  licenseNumber String?
+  licenseDocument String?
+  status      GuesthouseStatus @default(DRAFT)
 
   rejectionReason String?
   ownerId         Int
@@ -94,6 +105,7 @@ enum RoomMaintenanceStatus {
 }
 
 enum GuesthouseStatus {
+  DRAFT
   PENDING
   APPROVED
   REJECTED

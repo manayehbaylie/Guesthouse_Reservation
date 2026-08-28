@@ -26,6 +26,9 @@ export const getAllGuesthouses = async () => {
           email: true,
           phone: true,
           role: true,
+          residentialAddress: true,
+          idType: true,
+          idNumber: true,
           createdAt: true,
         },
       },
@@ -42,9 +45,10 @@ export const updateGuesthouse = async (id, data) => {
   });
 };
 export const getGuesthouseById = async (id) => {
-  return await prisma.guesthouse.findUnique({
+  return await prisma.guesthouse.findFirst({
     where: {
       id: Number(id),
+      status: "APPROVED",
     },
     include: {
       owner: {
@@ -103,6 +107,9 @@ export const getPendingGuesthouses = async () => {
           email: true,
           phone: true,
           role: true,
+          residentialAddress: true,
+          idType: true,
+          idNumber: true,
           createdAt: true,
         },
       },

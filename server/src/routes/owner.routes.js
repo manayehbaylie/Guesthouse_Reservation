@@ -3,6 +3,9 @@ import express from "express";
 import {
   getGuesthouse,
   updateGuesthouse,
+  createGuesthouse,
+  resubmitGuesthouse,
+  submitGuesthouseForReview,
   addReceptionist,
   getStaff,
   assignStaff,
@@ -13,8 +16,34 @@ import {
 
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
+import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /api/owner/guesthouse:
+ *   post:
+ *     summary: Register a new guesthouse (from Owner Dashboard)
+ *     description: Creates a new guesthouse with PENDING status. Admin must approve before it goes live.
+ *     tags:
+ *       - Owner
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Guesthouse registered, pending approval
+ */
+router.post(
+  "/guesthouse",
+  authenticate,
+  authorize("OWNER"),
+  upload.fields([
+    { name: "licenseDocument", maxCount: 1 },
+    { name: "photos", maxCount: 10 },
+  ]),
+  createGuesthouse
+);
 
 /**
  * @swagger
@@ -38,6 +67,42 @@ router.get(
 
 /**
  * @swagger
+ * /api/owner/guesthouse/resubmit:
+ *   put:
+ *     summary: Resubmit a rejected guesthouse
+ *     description: Owner edits a rejected guesthouse and resubmits for admin review. Status resets to PENDING.
+ *     tags:
+ *       - Owner
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Guesthouse resubmitted for review
+ */
+router.put(
+  "/guesthouse/resubmit",
+  authenticate,
+  authorize("OWNER"),
+  upload.fields([
+    { name: "licenseDocument", maxCount: 1 },
+    { name: "photos", maxCount: 10 },
+  ]),
+  resubmitGuesthouse
+);
+
+router.put(
+  "/guesthouse/submit",
+  authenticate,
+  authorize("OWNER"),
+  upload.fields([
+    { name: "licenseDocument", maxCount: 1 },
+    { name: "photos", maxCount: 10 },
+  ]),
+  submitGuesthouseForReview
+);
+
+/**
+ * @swagger
  * /api/owner/guesthouse:
  *   put:
  *     summary: Update owner's guesthouse
@@ -53,6 +118,10 @@ router.put(
   "/guesthouse",
   authenticate,
   authorize("OWNER"),
+  upload.fields([
+    { name: "licenseDocument", maxCount: 1 },
+    { name: "photos", maxCount: 10 },
+  ]),
   updateGuesthouse
 );
 

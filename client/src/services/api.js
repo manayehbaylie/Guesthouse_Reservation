@@ -75,6 +75,11 @@ api.interceptors.request.use(
         `Bearer ${token}`;
     }
 
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    }
+
     return config;
   },
 
@@ -111,6 +116,40 @@ function unwrap(response) {
     response?.data?.data ??
     response?.data
   );
+}
+
+function guesthouseFormData(data = {}, status) {
+  const formData = new FormData();
+  const fields = [
+    'name', 'address', 'city', 'subCity', 'woreda', 'phone', 'email',
+    'numberOfRooms', 'description', 'licenseNumber',
+  ];
+
+  fields.forEach((field) => {
+    if (data[field] !== undefined && data[field] !== null) {
+      formData.append(field, data[field]);
+    }
+  });
+
+  if (status) formData.append('status', status);
+  if (
+    data.licenseDocument &&
+    typeof data.licenseDocument === 'object' &&
+    typeof data.licenseDocument.name === 'string'
+  ) {
+    formData.append('licenseDocument', data.licenseDocument);
+  }
+  (data.photos || []).forEach((photo) => {
+    if (
+      photo &&
+      typeof photo === 'object' &&
+      typeof photo.name === 'string'
+    ) {
+      formData.append('photos', photo);
+    }
+  });
+
+  return formData;
 }
 
 // ============================================================
@@ -172,6 +211,15 @@ function mapUserFromBackend(user) {
     phone:
       user.phone || '',
 
+    residentialAddress:
+      user.residentialAddress || '',
+
+    idType:
+      user.idType || '',
+
+    idNumber:
+      user.idNumber || '',
+
     role:
       normalizeRole(user.role),
 
@@ -188,9 +236,13 @@ function mapUserFromBackend(user) {
 // ============================================================
 
 function mapGuesthouseStatus(status) {
-  if (!status) return 'pending';
+  if (!status) return 'draft';
 
-  return String(status).toLowerCase();
+  const normalized = String(status).toLowerCase();
+
+  return normalized === 'pending_review'
+    ? 'pending'
+    : normalized;
 }
 
 // ============================================================
@@ -363,6 +415,16 @@ function mapGuesthouseFromBackend(
     ownerId:
       guesthouse.ownerId,
 
+    owner:
+      guesthouse.owner
+        ? mapUserFromBackend(guesthouse.owner)
+        : null,
+
+    rooms:
+      Array.isArray(guesthouse.rooms)
+        ? guesthouse.rooms.map(mapRoomFromBackend).filter(Boolean)
+        : guesthouseRooms.map(mapRoomFromBackend),
+
     name:
       guesthouse.name || '',
 
@@ -377,6 +439,12 @@ function mapGuesthouseFromBackend(
     city:
       guesthouse.city || '',
 
+    subCity:
+      guesthouse.subCity || '',
+
+    woreda:
+      guesthouse.woreda || '',
+
     address:
       guesthouse.address ||
       guesthouse.location ||
@@ -387,6 +455,23 @@ function mapGuesthouseFromBackend(
 
     email:
       guesthouse.email || '',
+
+    numberOfRooms:
+      guesthouse.numberOfRooms ?? rooms.length,
+
+    licenseNumber:
+      guesthouse.licenseNumber || '',
+
+    licenseDocument:
+      guesthouse.licenseDocument || '',
+
+    photos:
+      Array.isArray(guesthouse.photos)
+        ? guesthouse.photos
+        : [],
+
+    rejectionReason:
+      guesthouse.rejectionReason || '',
 
     status:
       mapGuesthouseStatus(
@@ -1015,7 +1100,12 @@ export const ApiService = {
 
 
   // ==========================================================
-  // REGISTER - UPDATED with better error handling
+  // REGISTER
+  // ==========================================================
+  // Both GUEST and OWNER registrations now create only a
+  // personal account and receive a JWT token immediately.
+  // Owner guesthouse registration is a separate step done
+  // from the dashboard via registerGuesthouse().
   // ==========================================================
 
   async registerUser(
@@ -1031,6 +1121,7 @@ export const ApiService = {
           payload.role || 'Guest'
         );
 
+      // Only personal fields — no guesthouse data at registration
       const body = {
         fullName:
           payload.name,
@@ -1041,30 +1132,21 @@ export const ApiService = {
         phone:
           payload.phone,
 
+        residentialAddress:
+          payload.address,
+
+        idType:
+          payload.idType,
+
+        idNumber:
+          payload.idNumber,
+
         password:
           payload.password ||
           'password123',
 
         role,
       };
-
-      if (role === 'OWNER') {
-        body.guesthouseName =
-          payload.guesthouseName;
-
-        body.guesthouseAddress =
-          payload.guesthouseAddress;
-
-        body.city =
-          payload.city;
-
-        body.guesthouseDescription =
-          payload.description;
-
-        body.guesthouseImage =
-          payload.guesthousePhotos?.[0] ||
-          null;
-      }
 
       const response =
         await api.post(
@@ -1075,46 +1157,18 @@ export const ApiService = {
       const result =
         unwrap(response) || {};
 
-      // Check if registration requires approval (Owner)
-      if (
-        result.requiresApproval ||
-        !result.token
-      ) {
-        return {
-          ...mapUserFromBackend(
-            result.user
-          ),
+      // Both GUEST and OWNER now get a token on registration
+      const user = mapUserFromBackend(result.user);
 
-          requiresApproval:
-            Boolean(
-              result.requiresApproval
-            ),
-
-          message:
-            result.message,
-
-          guesthouse:
-            result.guesthouse,
-        };
+      if (user && result.token) {
+        setCurrentUser(user, result.token);
       }
 
-      // Guest registration - auto login
-      const user =
-        mapUserFromBackend({
-          ...result.user,
-
-          guesthouseId:
-            payload.guesthouseId,
-        });
-
-      if (user) {
-        setCurrentUser(
-          user,
-          result.token
-        );
-      }
-
-      return user;
+      return {
+        ...user,
+        requiresApproval: false,
+        message: result.message,
+      };
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -1429,43 +1483,90 @@ export const ApiService = {
     );
   },
 
+  // ==========================================================
+  // REGISTER GUESTHOUSE (from Owner Dashboard)
+  // ==========================================================
+  // Creates a new guesthouse via the authenticated owner endpoint.
+  // The guesthouse starts as PENDING and awaits admin approval.
+  // ==========================================================
+
   async registerGuesthouse(
     data
   ) {
-    const images =
-      Array.isArray(data.images)
-        ? data.images
-        : [];
-
-    const image =
-      images[0] ||
-      data.image ||
-      null;
-
     const response =
       await api.post(
-        '/guesthouses',
-        {
-          name:
-            data.name,
-
-          address:
-            data.location ||
-            data.address,
-
-          city:
-            data.city,
-
-          description:
-            data.description,
-
-          image,
-        }
+        '/owner/guesthouse',
+        guesthouseFormData({
+          ...data,
+          address: data.location || data.address,
+        }),
+        undefined
       );
 
-    return mapGuesthouseFromBackend(
-      unwrap(response)
+    return mapGuesthouseFromBackend(unwrap(response));
+  },
+
+  async saveGuesthouseDraft(data) {
+    const response = await api.put(
+      '/owner/guesthouse',
+      guesthouseFormData(data, 'DRAFT'),
+      undefined
     );
+
+    return mapGuesthouseFromBackend(unwrap(response));
+  },
+
+  async submitGuesthouseForReview(data) {
+    const response = await api.put(
+      '/owner/guesthouse/submit',
+      guesthouseFormData(data, 'PENDING'),
+      undefined
+    );
+
+    return mapGuesthouseFromBackend(unwrap(response));
+  },
+
+  // ==========================================================
+  // RESUBMIT REJECTED GUESTHOUSE
+  // ==========================================================
+  // Owner edits the rejected guesthouse and resubmits it.
+  // Status is reset to PENDING for admin re-review.
+  // ==========================================================
+
+  async resubmitGuesthouse(
+    data
+  ) {
+    const response =
+      await api.put(
+        '/owner/guesthouse/resubmit',
+        guesthouseFormData({
+          ...data,
+          address: data.location || data.address,
+        }, 'PENDING'),
+        undefined
+      );
+
+    return unwrap(response);
+  },
+
+  // ==========================================================
+  // GET MY GUESTHOUSE (owner)
+  // ==========================================================
+  // Returns the owner's guesthouse (with status) or null
+  // if no guesthouse has been registered yet.
+  // ==========================================================
+
+  async getMyGuesthouse() {
+    try {
+      const response = await api.get('/owner/guesthouse');
+      return unwrap(response) || null;
+    } catch (error) {
+      // 404 means no guesthouse yet — that's ok
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   // ----------------------------------------------------------
@@ -1540,173 +1641,38 @@ export const ApiService = {
     );
   },
 
-  async updateRoomAvailability(
-  roomId,
-  status
-) {
+  async updateRoomAvailability(roomId, status) {
   if (!roomId) {
-    throw new Error('Room ID is required.');
+    throw new Error("Room ID is required.");
   }
 
-  const normalizedStatus =
-    String(status || '')
-      .toLowerCase()
-      .trim();
+  const normalizedStatus = String(status || "")
+    .toLowerCase()
+    .trim();
 
+  // ONLY TWO ROOM STATUSES
   const allowedStatuses = [
-    'available',
-    'unavailable',
-    'cleaning',
-    'maintenance',
+    "available",
+    "unavailable",
   ];
 
-  if (
-    !allowedStatuses.includes(
-      normalizedStatus
-    )
-  ) {
+  if (!allowedStatuses.includes(normalizedStatus)) {
     throw new Error(
       `Invalid room status: ${status}`
     );
   }
 
-  const response =
-    await api.put(
-      `/rooms/${roomId}`,
-      {
-        // NEW canonical status
-        availabilityStatus:
-          normalizedStatus,
-
-        // Backward compatibility
-        available:
-          normalizedStatus ===
-          'available',
-
-        // For existing receptionist/backend logic
-        maintenanceStatus:
-          normalizedStatus,
-      }
-    );
+  const response = await api.patch(
+    `/rooms/${roomId}/availability`,
+    {
+      available: normalizedStatus === "available",
+    }
+  );
 
   return mapRoomFromBackend(
     unwrap(response)
   );
 },
-
-  async updateRoom(
-    roomId,
-    roomData
-  ) {
-    const payload = {};
-
-    if (
-      roomData.roomNumber !== undefined
-    ) {
-      payload.roomNumber =
-        String(
-          roomData.roomNumber
-        );
-    }
-
-    if (
-      roomData.roomType ||
-      roomData.type
-    ) {
-      payload.roomType =
-        String(
-          roomData.roomType ||
-          roomData.type
-        ).toUpperCase();
-    }
-
-    if (
-      roomData.price !== undefined ||
-      roomData.pricePerNight !== undefined
-    ) {
-      payload.price =
-        Number(
-          roomData.price !== undefined
-            ? roomData.price
-            : roomData.pricePerNight
-        );
-    }
-
-    if (
-      roomData.capacity !== undefined
-    ) {
-      payload.capacity =
-        Number(
-          roomData.capacity
-        );
-    }
-
-    if (
-      roomData.available !== undefined
-    ) {
-      payload.available =
-        Boolean(
-          roomData.available
-        );
-    }
-
-if (
-  roomData.availabilityStatus !==
-  undefined
-) {
-  const status =
-    String(
-      roomData.availabilityStatus
-    )
-      .toLowerCase()
-      .trim();
-
-  const allowedStatuses = [
-    'available',
-    'unavailable',
-    'cleaning',
-    'maintenance',
-  ];
-
-  if (
-    !allowedStatuses.includes(status)
-  ) {
-    throw new Error(
-      `Invalid room status: ${status}`
-    );
-  }
-
-  payload.availabilityStatus =
-    status;
-
-  payload.maintenanceStatus =
-    status;
-
-  payload.available =
-    status === 'available';
-}
-
-    const response =
-      await api.put(
-        `/rooms/${roomId}`,
-        payload
-      );
-
-    return mapRoomFromBackend(
-      unwrap(response)
-    );
-  },
-
-  async deleteRoom(
-    roomId
-  ) {
-    const response =
-      await api.delete(
-        `/rooms/${roomId}`
-      );
-
-    return unwrap(response);
-  },
 
   // ----------------------------------------------------------
   // RESERVATIONS - UPDATED with numberOfGuests
@@ -2187,16 +2153,18 @@ const initiatePayload = {
 
       let rooms = [];
 
-      try {
-        const roomsRes =
-          await api.get(
-            `/rooms/guesthouse/${data.id}`
-          );
+      if (data.id !== undefined && data.id !== null) {
+        try {
+          const roomsRes =
+            await api.get(
+              `/rooms/guesthouse/${data.id}`
+            );
 
-        rooms =
-          unwrap(roomsRes) || [];
-      } catch {
-        rooms = [];
+          rooms =
+            unwrap(roomsRes) || [];
+        } catch {
+          rooms = [];
+        }
       }
 
       return mapGuesthouseFromBackend(
@@ -2933,7 +2901,7 @@ const initiatePayload = {
     }
 
     const response =
-      await api.put(
+      await api.patch(
         `/admin/guesthouses/${id}/reject`,
         {
           reason,
@@ -2963,6 +2931,7 @@ const initiatePayload = {
   // ==========================================================
 
   async getNotifications() {
+    if (!localStorage.getItem(TOKEN_KEY)) return [];
     try {
       const response = await api.get('/notifications');
       const rawList = unwrap(response) || [];
@@ -2974,6 +2943,7 @@ const initiatePayload = {
   },
 
   async getUnreadNotifications() {
+    if (!localStorage.getItem(TOKEN_KEY)) return [];
     try {
       const response = await api.get('/notifications/unread');
       const rawList = unwrap(response) || [];
@@ -2985,6 +2955,7 @@ const initiatePayload = {
   },
 
   async getUnreadNotificationCount() {
+    if (!localStorage.getItem(TOKEN_KEY)) return 0;
     try {
       const response = await api.get('/notifications/count');
       const data = unwrap(response);
