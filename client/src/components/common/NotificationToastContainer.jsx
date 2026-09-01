@@ -8,6 +8,7 @@ import {
   Star,
   Building2,
   Info,
+  MessageSquare,
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -15,6 +16,20 @@ import { useAuth } from '../../context/AuthContext.jsx';
 function getToastVisuals(toast) {
   const category = toast.category || 'system';
   const title = (toast.title || '').toLowerCase();
+  const message = (toast.message || '').toLowerCase();
+
+  // ✅ ADDED: Review response detection
+  if (category === 'review_response' || 
+      title.includes('responded') || 
+      message.includes('responded to your review')) {
+    return {
+      icon: MessageSquare,
+      borderColor: 'border-purple-500',
+      iconBg: 'bg-purple-100 text-purple-700',
+      accentColor: 'text-purple-700',
+      badge: 'Review Response',
+    };
+  }
 
   if (category === 'payment' || title.includes('payment') || title.includes('paid')) {
     return {
@@ -82,9 +97,15 @@ export function NotificationToastContainer() {
 
     const userRole = String(user?.role || '').toUpperCase();
     const title = (toast.title || '').toLowerCase();
+    const message = (toast.message || '').toLowerCase();
 
+    // ✅ If guest and review response, go to reviews
     if (userRole === 'GUEST') {
-      navigate('/reservations');
+      if (title.includes('responded') || message.includes('responded to your review')) {
+        navigate('/guest/reviews');
+      } else {
+        navigate('/reservations');
+      }
     } else if (userRole === 'OWNER') {
       if (title.includes('payment') || title.includes('revenue')) {
         navigate('/owner/revenue');

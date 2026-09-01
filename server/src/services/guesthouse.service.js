@@ -1,24 +1,26 @@
 import prisma from "../config/prisma.js";
-import {createNotification,} from "./notification.service.js";
+import { createNotification } from "./notification.service.js";
+
 export const createGuesthouse = async (data, ownerId) => {
   return await prisma.guesthouse.create({
     data: {
-  name: data.name,
-  address: data.address,
-  city: data.city,
-  description: data.description,
-  image: data.image,
-  ownerId,
-  status: "PENDING",
-},
+      name: data.name,
+      address: data.address,
+      city: data.city,
+      description: data.description,
+      image: data.image,
+      ownerId,
+      status: "PENDING",
+    },
   });
 };
+
 export const getAllGuesthouses = async () => {
- return await prisma.guesthouse.findMany({
-  where: {
-    status: "APPROVED",
-  },
-  include: {
+  return await prisma.guesthouse.findMany({
+    where: {
+      status: "APPROVED",
+    },
+    include: {
       owner: {
         select: {
           id: true,
@@ -36,6 +38,7 @@ export const getAllGuesthouses = async () => {
     },
   });
 };
+
 export const updateGuesthouse = async (id, data) => {
   return await prisma.guesthouse.update({
     where: {
@@ -44,6 +47,7 @@ export const updateGuesthouse = async (id, data) => {
     data,
   });
 };
+
 export const getGuesthouseById = async (id) => {
   return await prisma.guesthouse.findFirst({
     where: {
@@ -65,6 +69,7 @@ export const getGuesthouseById = async (id) => {
     },
   });
 };
+
 export const getGuesthouseByOwnerId = async (ownerId) => {
   const guesthouse = await prisma.guesthouse.findFirst({
     where: {
@@ -81,6 +86,7 @@ export const getGuesthouseByOwnerId = async (ownerId) => {
 
   return guesthouse;
 };
+
 export const deleteGuesthouse = async (id) => {
   return await prisma.guesthouse.delete({
     where: {
@@ -88,15 +94,14 @@ export const deleteGuesthouse = async (id) => {
     },
   });
 };
+
 // ========================================
-// Get Pending Guesthouses
+// Get Pending Guesthouses - FIXED
 // ========================================
 export const getPendingGuesthouses = async () => {
   return await prisma.guesthouse.findMany({
     where: {
-      status: {
-        in: ["DRAFT", "PENDING"],
-      },
+      status: "PENDING", // ✅ FIXED: Removed "DRAFT" since it doesn't exist in enum
     },
     orderBy: {
       createdAt: "desc",
@@ -110,7 +115,6 @@ export const getPendingGuesthouses = async () => {
           phone: true,
           role: true,
           residentialAddress: true,
-         // idType: true,//
           idNumber: true,
           createdAt: true,
         },
@@ -119,6 +123,33 @@ export const getPendingGuesthouses = async () => {
     },
   });
 };
+
+// ========================================
+// Get All Guesthouses for Admin (including non-approved)
+// ========================================
+export const getAllGuesthousesAdmin = async () => {
+  return await prisma.guesthouse.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          role: true,
+          residentialAddress: true,
+          idNumber: true,
+          createdAt: true,
+        },
+      },
+      rooms: true,
+    },
+  });
+};
+
 // ========================================
 // Approve Guesthouse
 // ========================================
@@ -151,6 +182,7 @@ export const approveGuesthouse = async (id) => {
 
   return updatedGuesthouse;
 };
+
 // ========================================
 // Reject Guesthouse
 // ========================================

@@ -15,6 +15,7 @@ import {
   ExternalLink,
   X,
   RefreshCw,
+  MessageSquare,
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -54,6 +55,18 @@ function getNotificationVisuals(notification) {
   const category = notification.category || 'system';
   const title = (notification.title || '').toLowerCase();
   const message = (notification.message || '').toLowerCase();
+
+  // ✅ Review response detection
+  if (category === 'review_response' || 
+      title.includes('responded') || 
+      message.includes('responded to your review')) {
+    return {
+      icon: MessageSquare,
+      bgColor: 'bg-purple-50 text-purple-600 border-purple-200',
+      badgeColor: 'bg-purple-600',
+      tag: 'Review Response',
+    };
+  }
 
   if (category === 'payment' || title.includes('payment') || title.includes('paid')) {
     return {
@@ -119,7 +132,7 @@ export function NotificationBell({ variant = 'navbar' }) {
   } = useNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'unread'
+  const [activeTab, setActiveTab] = useState('all');
   const dropdownRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -150,7 +163,7 @@ export function NotificationBell({ variant = 'navbar' }) {
       ? notifications.filter((n) => !n.isRead)
       : notifications;
 
-  // Handle clicking on a notification item to mark it read and navigate appropriately
+  // Handle clicking on a notification item
   const handleItemClick = (item) => {
     if (!item.isRead) {
       markAsRead(item.id);
@@ -162,7 +175,12 @@ export function NotificationBell({ variant = 'navbar' }) {
 
     // Smart routing based on notification content and user role
     if (userRole === 'GUEST') {
-      navigate('/reservations');
+      // ✅ If review response, go to guest reviews
+      if (title.includes('responded') || title.includes('review') || msg.includes('responded to your review')) {
+        navigate('/guest/reviews');
+      } else {
+        navigate('/reservations');
+      }
     } else if (userRole === 'OWNER') {
       if (title.includes('payment') || title.includes('revenue')) {
         navigate('/owner/revenue');
@@ -184,9 +202,7 @@ export function NotificationBell({ variant = 'navbar' }) {
 
   return (
     <div className="relative inline-block" ref={dropdownRef}>
-      {/* =========================================================
-          BELL TRIGGER BUTTON
-      ========================================================= */}
+      {/* Bell Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -202,7 +218,7 @@ export function NotificationBell({ variant = 'navbar' }) {
       >
         <Bell className="h-5 w-5" />
 
-        {/* UNREAD COUNT BADGE */}
+        {/* Unread Count Badge */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white shadow-md ring-2 ring-white animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -210,13 +226,11 @@ export function NotificationBell({ variant = 'navbar' }) {
         )}
       </button>
 
-      {/* =========================================================
-          DROPDOWN POPOVER PANEL
-      ========================================================= */}
+      {/* Dropdown Panel */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-stone-200 bg-white shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
           
-          {/* HEADER */}
+          {/* Header */}
           <div className="flex items-center justify-between border-b border-stone-100 bg-[#043658] px-4 py-3.5 text-white">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-[#FFC107]">
@@ -233,7 +247,7 @@ export function NotificationBell({ variant = 'navbar' }) {
             </div>
 
             <div className="flex items-center gap-1">
-              {/* REFRESH BUTTON */}
+              {/* Refresh Button */}
               <button
                 type="button"
                 onClick={() => fetchNotifications(false)}
@@ -244,7 +258,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               </button>
 
-              {/* MARK ALL AS READ BUTTON */}
+              {/* Mark All As Read Button */}
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -257,7 +271,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                 </button>
               )}
 
-              {/* CLOSE BUTTON */}
+              {/* Close Button */}
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -268,7 +282,7 @@ export function NotificationBell({ variant = 'navbar' }) {
             </div>
           </div>
 
-          {/* TABS & ACTIONS BAR */}
+          {/* Tabs & Actions Bar */}
           <div className="flex items-center justify-between border-b border-stone-100 bg-stone-50/80 px-4 py-2 text-xs">
             <div className="flex gap-1">
               <button
@@ -308,7 +322,7 @@ export function NotificationBell({ variant = 'navbar' }) {
             )}
           </div>
 
-          {/* NOTIFICATION LIST */}
+          {/* Notification List */}
           <div className="max-h-[380px] divide-y divide-stone-100 overflow-y-auto overscroll-contain">
             {filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
@@ -323,7 +337,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                 <p className="mt-1 text-xs text-stone-500 max-w-[220px]">
                   {activeTab === 'unread'
                     ? 'All your notifications have been marked as read.'
-                    : 'When you make reservations, payments, or receive updates, they will appear here.'}
+                    : 'When owners respond to your reviews or you receive updates, they will appear here.'}
                 </p>
               </div>
             ) : (
@@ -341,7 +355,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                         : 'bg-white'
                     }`}
                   >
-                    {/* CATEGORY ICON */}
+                    {/* Category Icon */}
                     <div className="relative shrink-0">
                       <div
                         className={`flex h-9 w-9 items-center justify-center rounded-xl border ${visuals.bgColor}`}
@@ -353,7 +367,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                       )}
                     </div>
 
-                    {/* CONTENT BODY */}
+                    {/* Content Body */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <h4
@@ -371,11 +385,26 @@ export function NotificationBell({ variant = 'navbar' }) {
                         </span>
                       </div>
 
-                      <p className="mt-1 text-xs leading-relaxed text-stone-600 line-clamp-2">
+                      {/* ✅ SHOW FULL MESSAGE - NO TRUNCATION */}
+                      <p className="mt-1 text-xs leading-relaxed text-stone-600">
                         {item.message}
                       </p>
 
-                      {/* QUICK ACTIONS ON HOVER / VISIBLE */}
+                      {/* ✅ "View Full Response" button for review responses */}
+                      {item.category === 'review_response' && (
+                        <button
+                          onClick={() => {
+                            markAsRead(item.id);
+                            navigate('/guest/reviews');
+                            setIsOpen(false);
+                          }}
+                          className="mt-2 px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 text-[10px] font-bold rounded-lg transition"
+                        >
+                          View Full Response →
+                        </button>
+                      )}
+
+                      {/* Quick Actions */}
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span
                           className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
@@ -422,7 +451,7 @@ export function NotificationBell({ variant = 'navbar' }) {
             )}
           </div>
 
-          {/* FOOTER */}
+          {/* Footer */}
           <div className="border-t border-stone-100 bg-stone-50 px-4 py-2.5 text-center">
             <p className="text-[11px] font-medium text-stone-500">
               Live updates enabled • Auto-syncing with server

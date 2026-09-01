@@ -1,63 +1,36 @@
-import express from "express";
-
+import express from 'express';
 import {
+  getReviewForReservation,
   create,
   getByGuesthouse,
   getByGuest,
   getOwnerReviews,
   respond,
-  getReviewForReservation,
-} from "../controllers/review.controller.js";
-
-import { authenticate } from "../middleware/auth.middleware.js";
-import { authorize } from "../middleware/role.middleware.js";
+} from '../controllers/review.controller.js';
+import { authenticate } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// Create a review
-router.post(
-  "/",
-  authenticate,
-  authorize("GUEST"),
-  create
-);
+// ============================================================
+// REVIEW ROUTES
+// ============================================================
 
-// Get reviews for a guesthouse
-router.get(
-  "/guesthouse/:guesthouseId",
-  getByGuesthouse
-);
+// Get review for a specific reservation
+router.get('/reservation/:reservationId', authenticate, getReviewForReservation);
 
-// Get review by reservation ID
-router.get(
-  "/reservation/:reservationId",
-  authenticate,
-  authorize("GUEST"),
-  getReviewForReservation
-);
+// Create a new review (Guest only)
+router.post('/', authenticate, create);
 
-// Get guest's own reviews
-router.get(
-  "/my-reviews",
-  authenticate,
-  authorize("GUEST"),
-  getByGuest
-);
+// Get reviews for a specific guesthouse (Public)
+router.get('/guesthouse/:guesthouseId', getByGuesthouse);
 
-// Get owner's guesthouse reviews
-router.get(
-  "/owner-reviews",
-  authenticate,
-  authorize("OWNER"),
-  getOwnerReviews
-);
+// Get current guest's reviews (Guest only)
+router.get('/guest', authenticate, getByGuest);
 
-// Owner responds to a review
-router.put(
-  "/:reviewId/respond",
-  authenticate,
-  authorize("OWNER"),
-  respond
-);
+// Get owner's guesthouse reviews (Owner only)
+router.get('/owner-reviews', authenticate, getOwnerReviews);
+
+// Respond to a review (Owner only)
+router.put('/:reviewId/respond', authenticate, respond);
 
 export default router;

@@ -92,7 +92,7 @@ export function BookingDetail() {
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#ffc107] rounded-full animate-spin mx-auto" />
+            <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
             <p className="mt-4 text-[#647b8a]">Loading booking details...</p>
           </div>
         </div>
@@ -104,13 +104,13 @@ export function BookingDetail() {
     return (
       <DashboardLayout>
         <div className="max-w-lg mx-auto py-20 text-center">
-          <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm">
+          <div className="bg-white border border-[#e5edf2] rounded-3xl p-8 shadow-sm">
             <XCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h2 className="mt-4 text-2xl font-black text-stone-900">Booking Not Found</h2>
-            <p className="mt-2 text-stone-500">{error || 'The booking you are looking for does not exist.'}</p>
+            <h2 className="mt-4 text-2xl font-black text-[#043658]">Booking Not Found</h2>
+            <p className="mt-2 text-[#647b8a]">{error || 'The booking you are looking for does not exist.'}</p>
             <button
               onClick={() => navigate('/reservations')}
-              className="mt-6 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl transition"
+              className="mt-6 px-6 py-3 bg-[#FFC107] hover:bg-[#ffb300] text-[#043658] font-bold rounded-xl transition"
             >
               Back to My Bookings
             </button>
@@ -135,15 +135,15 @@ export function BookingDetail() {
       <div className="bg-white rounded-3xl border border-[#e5edf2] shadow-lg overflow-hidden">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-500 to-amber-400 px-6 py-8 text-stone-950">
+        <div className="bg-gradient-to-r from-[#FFC107] to-[#ffb300] px-6 py-8 text-[#043658]">
           <div className="flex items-start justify-between">
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-stone-800/80">
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#043658]/80">
                 <Building2 className="w-4 h-4" />
                 <span>Reservation #{booking.id}</span>
               </div>
               <h1 className="text-2xl font-black mt-1">{booking.guesthouseName}</h1>
-              <p className="text-stone-800/70 flex items-center gap-1 mt-0.5">
+              <p className="text-[#043658]/70 flex items-center gap-1 mt-0.5">
                 <MapPin className="w-4 h-4" />
                 {booking.guesthouseLocation || 'Ethiopia'}
               </p>
@@ -186,18 +186,18 @@ export function BookingDetail() {
 
           {/* Payment Details */}
           <div className="border-t border-[#e5edf2] pt-4">
-            <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-bold text-[#043658] uppercase tracking-wider mb-3">
               Payment Details
             </h3>
-            <div className="bg-stone-50 rounded-2xl p-4 space-y-2">
+            <div className="bg-[#f5f8fa] rounded-2xl p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-stone-500">Payment Method</span>
-                <span className="font-semibold text-stone-900">
+                <span className="text-[#647b8a]">Payment Method</span>
+                <span className="font-semibold text-[#043658]">
                   {booking.paymentMethod || booking.payment?.method || 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-stone-500">Payment Status</span>
+                <span className="text-[#647b8a]">Payment Status</span>
                 <span className={`font-semibold ${
                   booking.paymentStatus === 'paid' || booking.paymentStatus === 'PAID'
                     ? 'text-emerald-600'
@@ -206,9 +206,9 @@ export function BookingDetail() {
                   {booking.paymentStatus || 'Pending'}
                 </span>
               </div>
-              <div className="flex justify-between text-lg font-black border-t border-stone-200 pt-2 mt-2">
-                <span className="text-stone-700">Total Paid</span>
-                <span className="text-amber-600">
+              <div className="flex justify-between text-lg font-black border-t border-[#e5edf2] pt-2 mt-2">
+                <span className="text-[#043658]">Total Paid</span>
+                <span className="text-[#FFC107]">
                   {booking.totalPrice?.toLocaleString()} ETB
                 </span>
               </div>
@@ -219,21 +219,21 @@ export function BookingDetail() {
           <div className="flex flex-wrap gap-3 pt-4 border-t border-[#e5edf2]">
             <button
               onClick={handlePrint}
-              className="flex-1 sm:flex-none px-6 py-3 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none px-6 py-3 bg-[#043658] hover:bg-[#0b2f4a] text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
             >
               <Printer className="w-4 h-4" />
               Print Receipt
             </button>
             <button
               onClick={() => navigate('/reservations')}
-              className="flex-1 sm:flex-none px-6 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl transition flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none px-6 py-3 bg-[#FFC107] hover:bg-[#ffb300] text-[#043658] font-bold rounded-xl transition flex items-center justify-center gap-2"
             >
               <Calendar className="w-4 h-4" />
               View All Bookings
             </button>
             <button
-              onClick={() => navigate('/search')}
-              className="flex-1 sm:flex-none px-6 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl transition flex items-center justify-center gap-2"
+              onClick={() => navigate('/guest/search')}
+              className="flex-1 sm:flex-none px-6 py-3 bg-[#f5f8fa] hover:bg-[#e5edf2] text-[#043658] font-bold rounded-xl transition flex items-center justify-center gap-2"
             >
               <Building2 className="w-4 h-4" />
               Book Another Stay
@@ -251,13 +251,13 @@ export function BookingDetail() {
 
 function DetailItem({ icon, label, value }) {
   return (
-    <div className="bg-stone-50 rounded-2xl p-4 flex items-start gap-3">
-      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+    <div className="bg-[#f5f8fa] rounded-2xl p-4 flex items-start gap-3">
+      <div className="w-9 h-9 rounded-xl bg-[#FFC107]/20 text-[#FFC107] flex items-center justify-center flex-shrink-0">
         {icon}
       </div>
       <div>
-        <p className="text-xs text-stone-500 font-semibold uppercase tracking-wider">{label}</p>
-        <p className="font-bold text-stone-900">{value || '-'}</p>
+        <p className="text-xs text-[#647b8a] font-semibold uppercase tracking-wider">{label}</p>
+        <p className="font-bold text-[#043658]">{value || '-'}</p>
       </div>
     </div>
   );

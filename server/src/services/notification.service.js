@@ -1,3 +1,5 @@
+// server/src/services/notification.service.js
+
 import prisma from "../config/prisma.js";
 
 // ========================================
@@ -17,27 +19,38 @@ export const getNotifications = async (userId) => {
 };
 
 // ========================================
-// Create Notification
+// Create Notification - UPDATED with type and guesthouseId
 // ========================================
 export const createNotification = async ({
   title,
   message,
   userId,
+  guesthouseId = null,
+  type = 'system',
 }) => {
   if (!userId || !title || !message) {
+    console.warn('⚠️ Missing required fields for notification:', { userId, title, message });
     return null;
   }
 
   try {
-    return await prisma.notification.create({
+    console.log(`📨 Creating notification for user ${userId}: ${title}`);
+    
+    const notification = await prisma.notification.create({
       data: {
         title: String(title).trim(),
         message: String(message).trim(),
         userId: Number(userId),
+        guesthouseId: guesthouseId ? Number(guesthouseId) : null,
+        type: type || 'system',
+        isRead: false,
       },
     });
+    
+    console.log(`✅ Notification created: ${notification.id}`);
+    return notification;
   } catch (error) {
-    console.error("Failed to create notification in DB:", error.message || error);
+    console.error("❌ Failed to create notification:", error.message || error);
     return null;
   }
 };

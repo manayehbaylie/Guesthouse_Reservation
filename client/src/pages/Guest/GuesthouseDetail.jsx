@@ -20,8 +20,10 @@ export function GuesthouseDetail() {
   const [guesthouse, setGuesthouse] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [reservations, setReservations] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -74,6 +76,25 @@ export function GuesthouseDetail() {
             ? reservationList
             : []
         );
+
+        // Load reviews for this guesthouse
+        try {
+          setReviewsLoading(true);
+          const reviewList = await ApiService.getGuesthouseReviews(gh.id);
+          if (mounted) {
+            setReviews(reviewList || []);
+          }
+        } catch (reviewError) {
+          console.warn('Could not load reviews:', reviewError);
+          if (mounted) {
+            setReviews([]);
+          }
+        } finally {
+          if (mounted) {
+            setReviewsLoading(false);
+          }
+        }
+
       } catch (error) {
         console.error(
           'Failed to load guesthouse:',
@@ -84,6 +105,7 @@ export function GuesthouseDetail() {
           setGuesthouse(null);
           setRooms([]);
           setReservations([]);
+          setReviews([]);
         }
       } finally {
         if (mounted) {
@@ -183,6 +205,27 @@ export function GuesthouseDetail() {
     );
   };
 
+  // Helper function to render star ratings
+  const renderStars = (rating, size = 'w-4 h-4') => {
+    const stars = [];
+    const roundedRating = Math.round(rating || 0);
+    
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <Star
+          key={i}
+          className={`${size} ${
+            i <= roundedRating
+              ? 'fill-amber-400 text-amber-400'
+              : 'text-stone-200'
+          }`}
+        />
+      );
+    }
+    
+    return stars;
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -236,6 +279,9 @@ export function GuesthouseDetail() {
           <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
             {Number(guesthouse.rating || 0).toFixed(1)}
+          </span>
+          <span className="text-xs text-stone-400">
+            ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
           </span>
         </div>
 
@@ -317,7 +363,118 @@ export function GuesthouseDetail() {
             )}
           </div>
 
-          {/* Rooms - No Reviews Section */}
+          {/* ==========================================================
+              REVIEWS SECTION - NEWLY ADDED
+              ========================================================== */}
+          <div className="bg-white p-6 rounded-3xl border space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold">Guest Reviews</h3>
+                <p className="text-xs text-stone-500">
+                  What guests are saying about this guesthouse
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
+                  {renderStars(guesthouse.rating || 0, 'w-4 h-4')}
+                </div>
+                <span className="text-sm font-bold text-stone-900">
+                  {Number(guesthouse.rating || 0).toFixed(1)}
+                </span>
+              </div>
+            </div>
+
+            {reviewsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="text-center py-8 border-t border-stone-100">
+                <div className="flex justify-center mb-3">
+                  <Star className="w-12 h-12 text-stone-200" />
+                </div>
+                <p className="text-sm font-medium text-stone-600">
+                  No reviews yet
+                </p>
+                <p className="text-xs text-stone-400 mt-1">
+                  Be the first to share your experience at this guesthouse!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="border-t border-stone-100 pt-4 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-stone-900">
+                            {review.guest?.name || review.guest?.fullName || 'Guest'}
+                          </span>
+                          <div className="flex items-center gap-0.5">
+                            {renderStars(review.rating || 0, 'w-3.5 h-3.5')}
+                          </div>
+                          <span className="text-xs font-medium text-amber-600">
+                            {review.rating}.0
+                          </span>
+                        </div>
+                        <p className="text-xs text-stone-400 mt-0.5">
+                          {review.createdAt
+                            ? new Date(review.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                            : 'Recent stay'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-stone-700 mt-2 leading-relaxed">
+                      {review.comment || 'No comment provided.'}
+                    </p>
+
+                    {/* Owner Response */}
+                    {review.ownerResponse && (
+                      <div className="mt-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">
+                            Owner Response
+                          </span>
+                          <div className="flex-1 h-px bg-stone-200" />
+                        </div>
+                        <p className="text-sm text-stone-700">
+                          {review.ownerResponse}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Review Summary Stats */}
+            {reviews.length > 0 && (
+              <div className="border-t border-stone-100 pt-4 mt-2">
+                <div className="flex items-center justify-between text-xs text-stone-500">
+                  <span>
+                    Based on <strong className="text-stone-700">{reviews.length}</strong>{' '}
+                    {reviews.length === 1 ? 'review' : 'reviews'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="font-bold text-stone-700">
+                      {Number(guesthouse.rating || 0).toFixed(1)}
+                    </span>
+                    / 5.0
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Rooms Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>

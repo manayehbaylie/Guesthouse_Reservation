@@ -112,10 +112,25 @@ api.interceptors.response.use(
 // ============================================================
 
 function unwrap(response) {
-  return (
-    response?.data?.data ??
-    response?.data
-  );
+  // If response is undefined or null
+  if (!response) {
+    console.warn('⚠️ unwrap: No response provided');
+    return null;
+  }
+  
+  // If response.data is undefined or null
+  if (!response.data) {
+    console.warn('⚠️ unwrap: No response.data');
+    return null;
+  }
+  
+  // If response.data.data exists, use it
+  if (response.data.data !== undefined && response.data.data !== null) {
+    return response.data.data;
+  }
+  
+  // Otherwise return response.data
+  return response.data;
 }
 
 function guesthouseFormData(data = {}, status) {
@@ -363,8 +378,17 @@ function mapGuesthouseFromBackend(
   rooms = []
 ) {
   if (!guesthouse) {
+    console.warn('⚠️ mapGuesthouseFromBackend: No guesthouse provided');
     return null;
   }
+
+  // Check if guesthouse has an id
+  if (!guesthouse.id) {
+    console.warn('⚠️ mapGuesthouseFromBackend: Guesthouse has no id', guesthouse);
+    return null;
+  }
+
+  console.log('🏠 Mapping guesthouse:', guesthouse.id, guesthouse.name);
 
   const guesthouseRooms =
     rooms.filter(
@@ -408,109 +432,46 @@ function mapGuesthouseFromBackend(
   const image =
     images[0] || '';
 
-  return {
-    id:
-      guesthouse.id,
-
-    ownerId:
-      guesthouse.ownerId,
-
-    owner:
-      guesthouse.owner
-        ? mapUserFromBackend(guesthouse.owner)
-        : null,
-
-    rooms:
-      Array.isArray(guesthouse.rooms)
-        ? guesthouse.rooms.map(mapRoomFromBackend).filter(Boolean)
-        : guesthouseRooms.map(mapRoomFromBackend),
-
-    name:
-      guesthouse.name || '',
-
-    description:
-      guesthouse.description || '',
-
-    location:
-      guesthouse.location ||
-      guesthouse.address ||
-      '',
-
-    city:
-      guesthouse.city || '',
-
-    subCity:
-      guesthouse.subCity || '',
-
-    woreda:
-      guesthouse.woreda || '',
-
-    address:
-      guesthouse.address ||
-      guesthouse.location ||
-      '',
-
-    phone:
-      guesthouse.phone || '',
-
-    email:
-      guesthouse.email || '',
-
-    numberOfRooms:
-      guesthouse.numberOfRooms ?? rooms.length,
-
-    licenseNumber:
-      guesthouse.licenseNumber || '',
-
-    licenseDocument:
-      guesthouse.licenseDocument || '',
-
-    photos:
-      Array.isArray(guesthouse.photos)
-        ? guesthouse.photos
-        : [],
-
-    rejectionReason:
-      guesthouse.rejectionReason || '',
-
-    status:
-      mapGuesthouseStatus(
-        guesthouse.status
-      ),
-
-    image,
-
-    images,
-
-    amenities:
-      Array.isArray(
-        guesthouse.amenities
-      )
-        ? guesthouse.amenities
-        : [],
-
-    rating:
-      Number(
-        guesthouse.rating ?? 0
-      ),
-
-    reviewCount:
-      Number(
-        guesthouse.reviewCount ?? 0
-      ),
-
-    createdAt:
-      guesthouse.createdAt,
-
+  const mapped = {
+    id: guesthouse.id,
+    ownerId: guesthouse.ownerId || guesthouse.owner?.id || null,
+    owner: guesthouse.owner ? mapUserFromBackend(guesthouse.owner) : null,
+    rooms: Array.isArray(guesthouse.rooms)
+      ? guesthouse.rooms.map(mapRoomFromBackend).filter(Boolean)
+      : guesthouseRooms.map(mapRoomFromBackend),
+    name: guesthouse.name || '',
+    description: guesthouse.description || '',
+    location: guesthouse.location || guesthouse.address || '',
+    city: guesthouse.city || '',
+    subCity: guesthouse.subCity || '',
+    woreda: guesthouse.woreda || '',
+    address: guesthouse.address || guesthouse.location || '',
+    phone: guesthouse.phone || '',
+    email: guesthouse.email || '',
+    numberOfRooms: guesthouse.numberOfRooms ?? rooms.length,
+    licenseNumber: guesthouse.licenseNumber || '',
+    licenseDocument: guesthouse.licenseDocument || '',
+    photos: Array.isArray(guesthouse.photos) ? guesthouse.photos : [],
+    rejectionReason: guesthouse.rejectionReason || '',
+    status: mapGuesthouseStatus(guesthouse.status),
+    image: image,
+    images: images,
+    amenities: Array.isArray(guesthouse.amenities) ? guesthouse.amenities : [],
+    rating: Number(guesthouse.rating ?? 0),
+    reviewCount: Number(guesthouse.reviewCount ?? 0),
+    createdAt: guesthouse.createdAt,
     priceRange: {
       min: minPrice,
       max: maxPrice,
     },
   };
+
+  console.log('✅ Mapped guesthouse:', mapped.id, mapped.name);
+  return mapped;
 }
 
 // ============================================================
-// ROOM MAPPING - UPDATED with maxGuests
+// ROOM MAPPING
 // ============================================================
 
 function normalizeRoomStatus(room) {
@@ -591,8 +552,9 @@ function mapRoomFromBackend(room) {
       availabilityStatus,
   };
 }
+
 // ============================================================
-// RESERVATION MAPPING - UPDATED with numberOfGuests
+// RESERVATION MAPPING
 // ============================================================
 
 function mapReservationStatus(
@@ -770,7 +732,7 @@ function calculateNights(
 }
 
 // ============================================================
-// PAYMENT MAPPING - UPDATED with BANK_TRANSFER
+// PAYMENT MAPPING
 // ============================================================
 
 function mapPaymentFromBackend(
@@ -823,14 +785,12 @@ function mapPaymentFromBackend(
   };
 }
 
-// ✅ UPDATED: Changed CBE_BIRR to BANK_TRANSFER
 function mapPaymentMethodToBackend(method) {
   const normalized =
     String(
       method || 'TELEBIRR'
     ).toUpperCase();
 
-  // Map BANK_TRANSFER to BANK_TRANSFER
   if (
     normalized === 'BANK_TRANSFER' ||
     normalized === 'BANK' ||
@@ -858,22 +818,18 @@ function formatEthiopianPhone(phone) {
     .replace(/\s+/g, '')
     .replace(/-/g, '');
 
-  // +251912345678
   if (/^\+2519\d{8}$/.test(cleaned)) {
     return cleaned;
   }
 
-  // 251912345678
   if (/^2519\d{8}$/.test(cleaned)) {
     return `+${cleaned}`;
   }
 
-  // 0912345678
   if (/^09\d{8}$/.test(cleaned)) {
     return `+251${cleaned.slice(1)}`;
   }
 
-  // 912345678
   if (/^9\d{8}$/.test(cleaned)) {
     return `+251${cleaned}`;
   }
@@ -899,7 +855,7 @@ function toIsoDateTime(
 }
 
 // ============================================================
-// AUTH / CURRENT USER - UPDATED
+// AUTH / CURRENT USER
 // ============================================================
 
 function getCurrentUser() {
@@ -934,7 +890,6 @@ function setCurrentUser(
       TOKEN_KEY
     );
 
-    // Dispatch event for auth state change
     window.dispatchEvent(new CustomEvent('auth-state-change', {
       detail: { user: null, isLoggedIn: false }
     }));
@@ -954,7 +909,6 @@ function setCurrentUser(
     );
   }
 
-  // Dispatch event for auth state change
   window.dispatchEvent(new CustomEvent('auth-state-change', {
     detail: { user, isLoggedIn: true }
   }));
@@ -969,7 +923,6 @@ function logoutUser() {
     TOKEN_KEY
   );
 
-  // Dispatch event for auth state change
   window.dispatchEvent(new CustomEvent('auth-state-change', {
     detail: { user: null, isLoggedIn: false }
   }));
@@ -1014,7 +967,7 @@ export const ApiService = {
 
 
   // ----------------------------------------------------------
-  // AUTH - UPDATED
+  // AUTH
   // ----------------------------------------------------------
 
   getCurrentUser() {
@@ -1037,10 +990,6 @@ export const ApiService = {
     logoutUser();
   },
 
-
-  // ==========================================================
-  // LOGIN - UPDATED with better error handling
-  // ==========================================================
 
   async loginUser(
     email,
@@ -1076,7 +1025,6 @@ export const ApiService = {
         throw new Error('Failed to map user data');
       }
 
-      // Store user and token
       setCurrentUser(
         user,
         payload.token
@@ -1087,7 +1035,6 @@ export const ApiService = {
     } catch (error) {
       console.error('Login error:', error);
       
-      // Clear any existing user data on login failure
       logoutUser();
       
       throw new Error(
@@ -1098,15 +1045,6 @@ export const ApiService = {
     }
   },
 
-
-  // ==========================================================
-  // REGISTER
-  // ==========================================================
-  // Both GUEST and OWNER registrations now create only a
-  // personal account and receive a JWT token immediately.
-  // Owner guesthouse registration is a separate step done
-  // from the dashboard via registerGuesthouse().
-  // ==========================================================
 
   async registerUser(
     payload
@@ -1121,7 +1059,6 @@ export const ApiService = {
           payload.role || 'Guest'
         );
 
-      // Only personal fields — no guesthouse data at registration
       const body = {
         fullName:
           payload.name,
@@ -1157,7 +1094,6 @@ export const ApiService = {
       const result =
         unwrap(response) || {};
 
-      // Both GUEST and OWNER now get a token on registration
       const user = mapUserFromBackend(result.user);
 
       if (user && result.token) {
@@ -1180,10 +1116,6 @@ export const ApiService = {
     }
   },
 
-
-  // ==========================================================
-  // UPDATE CURRENT ADMIN/USER PROFILE
-  // ==========================================================
 
   async updateProfile(data) {
     if (!data) {
@@ -1235,10 +1167,6 @@ export const ApiService = {
   },
 
 
-  // ==========================================================
-  // CHECK AUTH STATUS - NEW
-  // ==========================================================
-
   async checkAuthStatus() {
     try {
       const response = await api.get('/auth/status');
@@ -1252,7 +1180,6 @@ export const ApiService = {
       
       return null;
     } catch (error) {
-      // If token is invalid, clear user data
       if (error?.response?.status === 401) {
         logoutUser();
       }
@@ -1260,10 +1187,6 @@ export const ApiService = {
     }
   },
 
-
-  // ==========================================================
-  // REFRESH TOKEN - NEW
-  // ==========================================================
 
   async refreshToken() {
     try {
@@ -1284,10 +1207,6 @@ export const ApiService = {
   },
 
 
-  // ==========================================================
-  // FORGOT PASSWORD - NEW
-  // ==========================================================
-
   async forgotPassword(email) {
     if (!email) {
       throw new Error('Email is required');
@@ -1306,10 +1225,6 @@ export const ApiService = {
     }
   },
 
-
-  // ==========================================================
-  // RESET PASSWORD - NEW
-  // ==========================================================
 
   async resetPassword(token, newPassword) {
     if (!token || !newPassword) {
@@ -1332,10 +1247,6 @@ export const ApiService = {
     }
   },
 
-
-  // ==========================================================
-  // VERIFY EMAIL - NEW
-  // ==========================================================
 
   async verifyEmail(token) {
     if (!token) {
@@ -1379,73 +1290,97 @@ export const ApiService = {
   },
 
   // ----------------------------------------------------------
-  // GUESTHOUSES
+  // GUESTHOUSES - FIXED
   // ----------------------------------------------------------
 
   async getGuesthouses(
     filters = {}
   ) {
-    const response =
-      await api.get(
-        '/guesthouses',
-        {
-          params: filters,
-        }
-      );
-
-    const guesthouses =
-      unwrap(response) || [];
-
-    let rooms = [];
-
     try {
-      const roomsResponse =
-        await api.get('/rooms');
+      console.log('🔍 Fetching all guesthouses with filters:', filters);
+      
+      const response = await api.get('/guesthouses', {
+        params: filters,
+      });
+      
+      console.log('📦 Raw API response status:', response.status);
+      console.log('📦 Raw API response data:', response.data);
+      
+      const guesthouses = unwrap(response) || [];
+      console.log('📦 Unwrapped guesthouses:', guesthouses);
+      console.log('📦 Number of guesthouses from API:', guesthouses.length);
+      
+      // Fetch rooms for all guesthouses
+      let rooms = [];
+      try {
+        console.log('🛏️ Fetching rooms...');
+        const roomsResponse = await api.get('/rooms');
+        rooms = unwrap(roomsResponse) || [];
+        console.log('🛏️ Rooms fetched:', rooms.length);
+      } catch (error) {
+        console.warn('⚠️ Could not fetch rooms:', error);
+        rooms = [];
+      }
 
-      rooms =
-        unwrap(
-          roomsResponse
-        ) || [];
-    } catch {
-      rooms = [];
-    }
-
-    let list =
-      guesthouses
-        .map(
-          (guesthouse) =>
-            mapGuesthouseFromBackend(
-              guesthouse,
-              rooms
-            )
-        )
+      // Map each guesthouse
+      let list = guesthouses
+        .map((guesthouse) => {
+          const mapped = mapGuesthouseFromBackend(guesthouse, rooms);
+          console.log(`🏠 Mapping guesthouse: ${guesthouse.id} - ${guesthouse.name}`, mapped);
+          return mapped;
+        })
         .filter(Boolean);
 
-    if (filters.city) {
-      list =
-        list.filter(
-          (guesthouse) =>
-            guesthouse.city
-              ?.toLowerCase() ===
-            String(
-              filters.city
-            ).toLowerCase()
-        );
-    }
+      console.log('📊 Mapped guesthouses before filters:', list.length);
 
-    if (filters.maxPrice) {
-      list =
-        list.filter(
+      // Apply city filter
+      if (filters.city) {
+        list = list.filter(
           (guesthouse) =>
-            guesthouse.priceRange
-              .min <=
-            Number(
-              filters.maxPrice
-            )
+            guesthouse.city?.toLowerCase() === String(filters.city).toLowerCase()
         );
-    }
+        console.log(`📍 Filtered by city ${filters.city}: ${list.length}`);
+      }
 
-    return list;
+      // Apply max price filter
+      if (filters.maxPrice) {
+        list = list.filter(
+          (guesthouse) => guesthouse.priceRange.min <= Number(filters.maxPrice)
+        );
+        console.log(`💰 Filtered by max price ${filters.maxPrice}: ${list.length}`);
+      }
+
+      // ✅ FIX: Only return APPROVED guesthouses
+      const approved = list.filter(g => 
+        g.status === 'approved' || 
+        g.status === 'APPROVED' ||
+        g.status === 'verified' ||
+        g.status === 'VERIFIED'
+      );
+      console.log(`✅ Approved guesthouses: ${approved.length}`);
+      
+      // ✅ FIX: Log if Lalibela is in the list
+      const lalibela = approved.find(g => 
+        g.name && g.name.toLowerCase().includes('lalibela')
+      );
+      if (lalibela) {
+        console.log('🏠✅ Lalibela Heritage Guesthouse found in API response!', lalibela);
+      } else {
+        console.warn('⚠️ Lalibela Heritage Guesthouse NOT found in API response');
+        // Check if it exists in the unfiltered list
+        const lalibelaUnfiltered = list.find(g => 
+          g.name && g.name.toLowerCase().includes('lalibela')
+        );
+        if (lalibelaUnfiltered) {
+          console.warn('⚠️ Lalibela found but filtered out. Status:', lalibelaUnfiltered.status);
+        }
+      }
+
+      return approved;
+    } catch (error) {
+      console.error('❌ Error in getGuesthouses:', error);
+      return [];
+    }
   },
 
   async getGuesthouseById(
@@ -1484,10 +1419,7 @@ export const ApiService = {
   },
 
   // ==========================================================
-  // REGISTER GUESTHOUSE (from Owner Dashboard)
-  // ==========================================================
-  // Creates a new guesthouse via the authenticated owner endpoint.
-  // The guesthouse starts as PENDING and awaits admin approval.
+  // REGISTER GUESTHOUSE
   // ==========================================================
 
   async registerGuesthouse(
@@ -1526,13 +1458,6 @@ export const ApiService = {
     return mapGuesthouseFromBackend(unwrap(response));
   },
 
-  // ==========================================================
-  // RESUBMIT REJECTED GUESTHOUSE
-  // ==========================================================
-  // Owner edits the rejected guesthouse and resubmits it.
-  // Status is reset to PENDING for admin re-review.
-  // ==========================================================
-
   async resubmitGuesthouse(
     data
   ) {
@@ -1549,23 +1474,67 @@ export const ApiService = {
     return unwrap(response);
   },
 
-  // ==========================================================
-  // GET MY GUESTHOUSE (owner)
-  // ==========================================================
-  // Returns the owner's guesthouse (with status) or null
-  // if no guesthouse has been registered yet.
-  // ==========================================================
+  // ============================================================
+  // GET MY GUESTHOUSE - FIXED
+  // ============================================================
 
   async getMyGuesthouse() {
     try {
+      console.log('🔍 Fetching owner guesthouse...');
       const response = await api.get('/owner/guesthouse');
-      return unwrap(response) || null;
-    } catch (error) {
-      // 404 means no guesthouse yet — that's ok
-      if (error?.response?.status === 404) {
+      console.log('📦 Raw response status:', response.status);
+      console.log('📦 Raw response data:', response.data);
+      
+      const data = unwrap(response);
+      console.log('📦 Unwrapped data:', data);
+      
+      // ✅ FIX: Check for empty object, null, undefined, or missing id
+      if (!data) {
+        console.warn('⚠️ No data returned from API');
         return null;
       }
-      throw error;
+      
+      // ✅ FIX: Check if it's an empty object
+      if (typeof data === 'object' && Object.keys(data).length === 0) {
+        console.warn('⚠️ API returned empty object - no guesthouse exists');
+        return null;
+      }
+      
+      // ✅ FIX: Check if it has an id
+      if (!data.id) {
+        console.warn('⚠️ API returned data without id:', data);
+        return null;
+      }
+
+      let rooms = [];
+      try {
+        console.log('📦 Fetching rooms for guesthouse:', data.id);
+        const roomsRes = await api.get(`/rooms/guesthouse/${data.id}`);
+        rooms = unwrap(roomsRes) || [];
+        console.log('🛏️ Rooms fetched:', rooms.length);
+      } catch (error) {
+        console.error('❌ Error fetching rooms:', error);
+        rooms = [];
+      }
+
+      const mappedGuesthouse = mapGuesthouseFromBackend(data, rooms);
+      console.log('🏠 Mapped guesthouse:', mappedGuesthouse?.id, mappedGuesthouse?.name);
+      
+      // ✅ FIX: Make sure mapped guesthouse has an id
+      if (!mappedGuesthouse || !mappedGuesthouse.id) {
+        console.warn('⚠️ Mapped guesthouse has no id');
+        return null;
+      }
+      
+      return mappedGuesthouse;
+    } catch (error) {
+      console.error('❌ Error in getMyGuesthouse:', error);
+      // If it's a 404, that means no guesthouse exists - return null
+      if (error?.response?.status === 404) {
+        console.log('ℹ️ No guesthouse found (404)');
+        return null;
+      }
+      return null;
     }
   },
 
@@ -1576,25 +1545,35 @@ export const ApiService = {
   async getRoomsForGuesthouse(
     guesthouseId
   ) {
-    const response =
-      await api.get('/rooms');
+    if (!guesthouseId) {
+      console.warn('⚠️ getRoomsForGuesthouse: No guesthouseId provided');
+      return [];
+    }
 
-    const rooms =
-      unwrap(response) || [];
+    try {
+      const response = await api.get('/rooms');
+      const rooms = unwrap(response) || [];
 
-    return rooms
-      .filter(
-        (room) =>
-          String(
-            room.guesthouseId
-          ) ===
-          String(
-            guesthouseId
-          )
-      )
-      .map(
-        mapRoomFromBackend
-      );
+      const filtered = rooms
+        .filter(
+          (room) =>
+            String(
+              room.guesthouseId
+            ) ===
+            String(
+              guesthouseId
+            )
+        )
+        .map(
+          mapRoomFromBackend
+        );
+      
+      console.log(`📦 Found ${filtered.length} rooms for guesthouse ${guesthouseId}`);
+      return filtered;
+    } catch (error) {
+      console.error('❌ Error fetching rooms:', error);
+      return [];
+    }
   },
 
   async addRoom(
@@ -1642,40 +1621,72 @@ export const ApiService = {
   },
 
   async updateRoomAvailability(roomId, status) {
-  if (!roomId) {
-    throw new Error("Room ID is required.");
-  }
-
-  const normalizedStatus = String(status || "")
-    .toLowerCase()
-    .trim();
-
-  // ONLY TWO ROOM STATUSES
-  const allowedStatuses = [
-    "available",
-    "unavailable",
-  ];
-
-  if (!allowedStatuses.includes(normalizedStatus)) {
-    throw new Error(
-      `Invalid room status: ${status}`
-    );
-  }
-
-  const response = await api.patch(
-    `/rooms/${roomId}/availability`,
-    {
-      available: normalizedStatus === "available",
+    if (!roomId) {
+      throw new Error("Room ID is required.");
     }
-  );
 
-  return mapRoomFromBackend(
-    unwrap(response)
-  );
-},
+    const normalizedStatus = String(status || "")
+      .toLowerCase()
+      .trim();
+
+    const allowedStatuses = [
+      "available",
+      "unavailable",
+    ];
+
+    if (!allowedStatuses.includes(normalizedStatus)) {
+      throw new Error(
+        `Invalid room status: ${status}`
+      );
+    }
+
+    const response = await api.patch(
+      `/rooms/${roomId}/availability`,
+      {
+        available: normalizedStatus === "available",
+      }
+    );
+
+    return mapRoomFromBackend(
+      unwrap(response)
+    );
+  },
+
+  async updateRoom(roomId, data) {
+    if (!roomId) {
+      throw new Error("Room ID is required.");
+    }
+
+    const response = await api.put(
+      `/rooms/${roomId}`,
+      {
+        roomNumber: data.roomNumber,
+        roomType: data.roomType,
+        capacity: data.capacity,
+        pricePerNight: data.pricePerNight,
+        available: data.available,
+      }
+    );
+
+    return mapRoomFromBackend(
+      unwrap(response)
+    );
+  },
+
+  async deleteRoom(roomId) {
+    if (!roomId) {
+      throw new Error("Room ID is required.");
+    }
+
+    const response = await api.delete(
+      `/rooms/${roomId}`
+    );
+
+    return unwrap(response);
+  },
 
   // ----------------------------------------------------------
-  // RESERVATIONS - UPDATED with numberOfGuests
+  // RESERVATIONS
   // ----------------------------------------------------------
 
   async createBookingAndPay({
@@ -1908,10 +1919,6 @@ const initiatePayload = {
     };
   },
 
-  // ----------------------------------------------------------
-  // RECEPTIONIST GUESTHOUSE
-  // ----------------------------------------------------------
-
   async getReceptionistGuesthouse() {
     try {
       const response =
@@ -1930,14 +1937,6 @@ const initiatePayload = {
         data
       );
     } catch (error) {
-      /*
-       * Some backend versions do not have
-       * /receptionist/guesthouse.
-       *
-       * Do not break the dashboard if it
-       * does not exist.
-       */
-
       console.warn(
         'Receptionist guesthouse endpoint unavailable:',
         error
@@ -1946,10 +1945,6 @@ const initiatePayload = {
       return null;
     }
   },
-
-  // ----------------------------------------------------------
-  // RECEPTIONIST SEARCH
-  // ----------------------------------------------------------
 
   async searchReceptionistReservations(
     term
@@ -1968,10 +1963,6 @@ const initiatePayload = {
       mapReservationFromBackend
     );
   },
-
-  // ----------------------------------------------------------
-  // TODAY ARRIVALS
-  // ----------------------------------------------------------
 
   async getReceptionistArrivals(
     guesthouseId
@@ -2003,10 +1994,6 @@ const initiatePayload = {
     );
   },
 
-  // ----------------------------------------------------------
-  // TODAY DEPARTURES
-  // ----------------------------------------------------------
-
   async getReceptionistDepartures(
     guesthouseId
   ) {
@@ -2036,10 +2023,6 @@ const initiatePayload = {
         )
     );
   },
-
-  // ----------------------------------------------------------
-  // IN-HOUSE GUESTS
-  // ----------------------------------------------------------
 
   async getReceptionistInHouse(
     guesthouseId
@@ -2071,10 +2054,6 @@ const initiatePayload = {
     );
   },
 
-  // ----------------------------------------------------------
-  // ALL RESERVATIONS
-  // ----------------------------------------------------------
-
   async getReceptionistReservations(
     guesthouseId
   ) {
@@ -2105,10 +2084,6 @@ const initiatePayload = {
     );
   },
 
-  // ----------------------------------------------------------
-  // RECEPTIONIST ROOMS
-  // ----------------------------------------------------------
-
   async getReceptionistRooms(
     guesthouseId
   ) {
@@ -2119,11 +2094,6 @@ const initiatePayload = {
 
     const list =
       unwrap(response) || [];
-
-    /*
-     * Map room data into the exact frontend
-     * structure expected by ReceptionistDashboard.
-     */
 
     const mapped =
       list.map(
@@ -2145,10 +2115,6 @@ const initiatePayload = {
     );
   },
 
-  // ----------------------------------------------------------
-  // ROOM AVAILABILITY
-  // ----------------------------------------------------------
-
   async updateReceptionistRoomAvailability(
     roomId,
     status
@@ -2158,23 +2124,6 @@ const initiatePayload = {
         'Room ID is required.'
       );
     }
-
-    /*
-     * IMPORTANT:
-     *
-     * Prisma RoomMaintenanceStatus is an enum.
-     *
-     * Convert all frontend values:
-     *
-     * available
-     * AVAILABLE
-     * cleaning
-     * CLEANING
-     * maintenance
-     * MAINTENANCE
-     *
-     * into the exact uppercase enum values.
-     */
 
     const normalizedStatus =
       String(
@@ -2200,20 +2149,6 @@ const initiatePayload = {
       );
     }
 
-    /*
-     * Send the ENUM value in uppercase.
-     *
-     * This fixes:
-     *
-     * maintenance
-     *
-     * Prisma error
-     *
-     * because Prisma expects:
-     *
-     * MAINTENANCE
-     */
-
     const response =
       await api.patch(
         `/receptionist/rooms/${roomId}/availability`,
@@ -2235,10 +2170,6 @@ const initiatePayload = {
     );
   },
 
-  // ----------------------------------------------------------
-  // CHECK IN
-  // ----------------------------------------------------------
-
   async checkInGuest(
     reservationId
   ) {
@@ -2257,10 +2188,6 @@ const initiatePayload = {
       unwrap(response)
     );
   },
-
-  // ----------------------------------------------------------
-  // CHECK OUT
-  // ----------------------------------------------------------
 
   async checkOutGuest(
     reservationId
@@ -2281,10 +2208,6 @@ const initiatePayload = {
     );
   },
 
-  // ----------------------------------------------------------
-  // DELETE RESERVATION
-  // ----------------------------------------------------------
-
   async deleteReceptionistReservation(
     reservationId
   ) {
@@ -2301,64 +2224,10 @@ const initiatePayload = {
 
     return unwrap(response);
   },
+
   // ----------------------------------------------------------
   // OWNER
   // ----------------------------------------------------------
-
-  api,
-
-  async getMyGuesthouse() {
-    try {
-      const response =
-        await api.get(
-          '/owner/guesthouse'
-        );
-
-      const data =
-        unwrap(response);
-
-      if (!data) return null;
-
-      let rooms = [];
-
-      if (data.id !== undefined && data.id !== null) {
-        try {
-          const roomsRes =
-            await api.get(
-              `/rooms/guesthouse/${data.id}`
-            );
-
-          rooms =
-            unwrap(roomsRes) || [];
-        } catch {
-          rooms = [];
-        }
-      }
-
-      return mapGuesthouseFromBackend(
-        data,
-        rooms
-      );
-    } catch {
-      try {
-        const fallbackRes =
-          await api.get(
-            '/guesthouses/owner/me'
-          );
-
-        const data =
-          unwrap(fallbackRes);
-
-        if (!data) return null;
-
-        return mapGuesthouseFromBackend(
-          data
-        );
-      } catch {
-        return null;
-      }
-    }
-  },
 
   async updateMyGuesthouse(
     data
@@ -2395,17 +2264,27 @@ const initiatePayload = {
   async getOwnerReceptionists(
     guesthouseId
   ) {
-    const response =
-      await api.get(
-        '/owner/receptionists'
+    if (!guesthouseId) {
+      console.warn('⚠️ getOwnerReceptionists: No guesthouseId provided');
+      return [];
+    }
+
+    try {
+      const response =
+        await api.get(
+          '/owner/receptionists'
+        );
+
+      const staff =
+        unwrap(response) || [];
+
+      return staff.map(
+        mapUserFromBackend
       );
-
-    const staff =
-      unwrap(response) || [];
-
-    return staff.map(
-      mapUserFromBackend
-    );
+    } catch (error) {
+      console.error('❌ Error fetching staff:', error);
+      return [];
+    }
   },
 
   async registerReceptionist(
@@ -2518,71 +2397,72 @@ const initiatePayload = {
     return unwrap(response) || [];
   },
 
- async getOwnerDashboardRecentReservations() {
-  // Get recent reservations
-  const reservationResponse = await api.get(
-    '/dashboard/owner/recent-reservations'
-  );
-
-  const reservationList =
-    unwrap(reservationResponse) || [];
-
-  // Get recent payments
-  const paymentResponse = await api.get(
-    '/dashboard/owner/recent-payments'
-  );
-
-  const paymentList =
-    unwrap(paymentResponse) || [];
-
-  // Convert backend payments to frontend format
-  const payments = paymentList.map(
-    mapPaymentFromBackend
-  );
-
-  // Attach matching payment information
-  const reservations = reservationList.map(
-    (reservation) => {
-      const payment = payments.find(
-        (p) =>
-          String(p.reservationId) ===
-          String(reservation.id)
+  async getOwnerDashboardRecentReservations() {
+    try {
+      const reservationResponse = await api.get(
+        '/dashboard/owner/recent-reservations'
       );
 
-      return mapReservationFromBackend({
-        ...reservation,
+      const reservationList =
+        unwrap(reservationResponse) || [];
 
-        payment: payment
-          ? {
-              id: payment.id,
-              reservationId:
-                payment.reservationId,
-              amount: payment.amount,
-              method: payment.method,
-              status: payment.status,
-              referenceNumber:
-                payment.referenceNumber,
-              createdAt: payment.createdAt,
-            }
-          : reservation.payment,
+      const paymentResponse = await api.get(
+        '/dashboard/owner/recent-payments'
+      );
 
-        paymentMethod:
-          payment?.method ||
-          reservation.paymentMethod ||
-          reservation.payment_method ||
-          null,
+      const paymentList =
+        unwrap(paymentResponse) || [];
 
-        paymentStatus:
-          payment?.status ||
-          reservation.paymentStatus ||
-          reservation.payment_status ||
-          'pending',
-      });
+      const payments = paymentList.map(
+        mapPaymentFromBackend
+      );
+
+      const reservations = reservationList.map(
+        (reservation) => {
+          const payment = payments.find(
+            (p) =>
+              String(p.reservationId) ===
+              String(reservation.id)
+          );
+
+          return mapReservationFromBackend({
+            ...reservation,
+
+            payment: payment
+              ? {
+                  id: payment.id,
+                  reservationId:
+                    payment.reservationId,
+                  amount: payment.amount,
+                  method: payment.method,
+                  status: payment.status,
+                  referenceNumber:
+                    payment.referenceNumber,
+                  createdAt: payment.createdAt,
+                }
+              : reservation.payment,
+
+            paymentMethod:
+              payment?.method ||
+              reservation.paymentMethod ||
+              reservation.payment_method ||
+              null,
+
+            paymentStatus:
+              payment?.status ||
+              reservation.paymentStatus ||
+              reservation.payment_status ||
+              'pending',
+          });
+        }
+      );
+
+      return reservations;
+    } catch (error) {
+      console.error('❌ Error fetching reservations:', error);
+      return [];
     }
-  );
-
-  return reservations;
-},
+  },
 
   async getOwnerDashboardRecentPayments() {
     const response =
@@ -2601,117 +2481,143 @@ const initiatePayload = {
   async getOwnerPayments(
     guesthouseId
   ) {
-    const response =
-      await api.get(
-        '/dashboard/owner/recent-payments'
-      );
-
-    const payments =
-      (
-        unwrap(response) || []
-      ).map(
-        mapPaymentFromBackend
-      );
-
     if (!guesthouseId) {
-      return payments;
+      console.warn('⚠️ getOwnerPayments: No guesthouseId provided');
+      return [];
     }
 
-    return payments.filter(
-      (payment) =>
-        String(
-          payment.guesthouseId
-        ) ===
-        String(
-          guesthouseId
-        )
-    );
+    try {
+      const response =
+        await api.get(
+          '/dashboard/owner/recent-payments'
+        );
+
+      const payments =
+        (
+          unwrap(response) || []
+        ).map(
+          mapPaymentFromBackend
+        );
+
+      return payments.filter(
+        (payment) =>
+          String(
+            payment.guesthouseId
+          ) ===
+          String(
+            guesthouseId
+          )
+      );
+    } catch (error) {
+      console.error('❌ Error fetching payments:', error);
+      return [];
+    }
   },
 
   async getOwnerRevenueReport(
     guesthouseId
   ) {
-    const response =
-      await api.get(
-        '/dashboard/owner/revenue'
-      );
+    if (!guesthouseId) {
+      console.warn('⚠️ getOwnerRevenueReport: No guesthouseId provided');
+      return {
+        totalRevenue: 0,
+        totalTransactions: 0,
+        paymentMethodBreakdown: { telebirr: 0, chapa: 0, bank_transfer: 0, card: 0 },
+        occupancyRate: 0,
+      };
+    }
 
-    const data =
-      unwrap(response) || {};
-
-    const payments =
-      await this.getOwnerPayments(
-        guesthouseId
-      );
-
-    const telebirr =
-      data.breakdown?.telebirr ??
-      payments
-        .filter(
-          (p) =>
-            p.method ===
-            'telebirr'
-        )
-        .reduce(
-          (sum, p) =>
-            sum + p.amount,
-          0
+    try {
+      const response =
+        await api.get(
+          '/dashboard/owner/revenue'
         );
 
-    const chapa =
-      data.breakdown?.chapa ??
-      payments
-        .filter(
-          (p) =>
-            p.method === 'chapa' ||
-            p.method === 'card'
-        )
-        .reduce(
-          (sum, p) =>
-            sum + p.amount,
-          0
+      const data =
+        unwrap(response) || {};
+
+      const payments =
+        await this.getOwnerPayments(
+          guesthouseId
         );
 
-    const bank_transfer =
-      data.breakdown?.bank_transfer ??
-      payments
-        .filter(
-          (p) =>
-            p.method === 'bank_transfer' ||
-            p.method === 'cbe_birr'
-        )
-        .reduce(
-          (sum, p) =>
-            sum + p.amount,
-          0
-        );
-
-    return {
-      totalRevenue:
-        Number(
-          data.totalRevenue ??
-          (
-            telebirr +
-            chapa +
-            bank_transfer
+      const telebirr =
+        data.breakdown?.telebirr ??
+        payments
+          .filter(
+            (p) =>
+              p.method ===
+              'telebirr'
           )
-        ),
+          .reduce(
+            (sum, p) =>
+              sum + p.amount,
+            0
+          );
 
-      totalTransactions:
-        payments.length,
+      const chapa =
+        data.breakdown?.chapa ??
+        payments
+          .filter(
+            (p) =>
+              p.method === 'chapa' ||
+              p.method === 'card'
+          )
+          .reduce(
+            (sum, p) =>
+              sum + p.amount,
+            0
+          );
 
-      paymentMethodBreakdown: {
-        telebirr,
-        chapa,
-        bank_transfer,
-        card: chapa,
-      },
+      const bank_transfer =
+        data.breakdown?.bank_transfer ??
+        payments
+          .filter(
+            (p) =>
+              p.method === 'bank_transfer' ||
+              p.method === 'cbe_birr'
+          )
+          .reduce(
+            (sum, p) =>
+              sum + p.amount,
+            0
+          );
 
-      occupancyRate:
-        Number(
-          data.occupancyRate ?? 0
-        ),
-    };
+      return {
+        totalRevenue:
+          Number(
+            data.totalRevenue ??
+            (
+              telebirr +
+              chapa +
+              bank_transfer
+            )
+          ),
+
+        totalTransactions:
+          payments.length,
+
+        paymentMethodBreakdown: {
+          telebirr,
+          chapa,
+          bank_transfer,
+          card: chapa,
+        },
+
+        occupancyRate:
+          Number(
+            data.occupancyRate ?? 0
+          ),
+      };
+    } catch (error) {
+      console.error('❌ Error fetching revenue report:', error);
+      return {
+        totalRevenue: 0,
+        totalTransactions: 0,
+        paymentMethodBreakdown: { telebirr: 0, chapa: 0, bank_transfer: 0, card: 0 },
+        occupancyRate: 0,
+      };
+    }
   },
 
   // ----------------------------------------------------------
@@ -2719,34 +2625,62 @@ const initiatePayload = {
   // ----------------------------------------------------------
 
   async getOwnerReviews() {
-    const response =
-      await api.get(
-        '/reviews/owner-reviews'
-      );
-
-    return unwrap(response) || [];
+    try {
+      console.log('🔍 Fetching owner reviews...');
+      const response = await api.get('/reviews/owner-reviews');
+      console.log('📦 Owner reviews response:', response);
+      const data = unwrap(response);
+      console.log('📝 Owner reviews data:', data);
+      
+      if (!data) {
+        console.warn('⚠️ No reviews data returned');
+        return [];
+      }
+      
+      if (Array.isArray(data)) {
+        return data;
+      }
+      
+      if (data.reviews && Array.isArray(data.reviews)) {
+        return data.reviews;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('❌ Error fetching owner reviews:', error);
+      return [];
+    }
   },
 
-  async getGuesthouseReviews(
-    guesthouseId
-  ) {
+  async getGuesthouseReviews(guesthouseId) {
     if (!guesthouseId) {
-      throw new Error(
-        'Guesthouse ID is required.'
-      );
+      throw new Error('Guesthouse ID is required.');
     }
 
-    const response =
-      await api.get(
-        `/reviews/guesthouse/${guesthouseId}`
-      );
-
-    return unwrap(response) || [];
+    try {
+      console.log('🔍 Fetching reviews for guesthouse:', guesthouseId);
+      const response = await api.get(`/reviews/guesthouse/${guesthouseId}`);
+      const data = unwrap(response);
+      console.log('📝 Guesthouse reviews:', data);
+      
+      if (!data) {
+        return [];
+      }
+      
+      if (Array.isArray(data)) {
+        return data;
+      }
+      
+      if (data.reviews && Array.isArray(data.reviews)) {
+        return data.reviews;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('❌ Error fetching guesthouse reviews:', error);
+      return [];
+    }
   },
-
-  // ----------------------------------------------------------
-  // CREATE GUEST REVIEW
-  // ----------------------------------------------------------
 
   async createReview({
     guesthouseId,
@@ -2755,177 +2689,145 @@ const initiatePayload = {
     comment,
   }) {
     if (!guesthouseId) {
-      throw new Error(
-        'Guesthouse ID is required.'
-      );
+      throw new Error('Guesthouse ID is required.');
     }
 
     if (!reservationId) {
-      throw new Error(
-        'Reservation ID is required.'
-      );
+      throw new Error('Reservation ID is required.');
     }
 
     if (!rating) {
-      throw new Error(
-        'Rating is required.'
-      );
+      throw new Error('Rating is required.');
     }
 
-    const numericRating =
-      Number(rating);
+    const numericRating = Number(rating);
 
-    if (
-      numericRating < 1 ||
-      numericRating > 5
-    ) {
-      throw new Error(
-        'Rating must be between 1 and 5.'
-      );
+    if (numericRating < 1 || numericRating > 5) {
+      throw new Error('Rating must be between 1 and 5.');
     }
 
-    if (
-      !comment ||
-      !String(comment).trim()
-    ) {
-      throw new Error(
-        'Please write a review before submitting.'
-      );
+    if (!comment || !String(comment).trim()) {
+      throw new Error('Please write a review before submitting.');
     }
 
-    const response =
-      await api.post(
-        '/reviews',
-        {
-          guesthouseId:
-            Number(guesthouseId),
-
-          reservationId:
-            Number(reservationId),
-
-          rating:
-            numericRating,
-
-          comment:
-            String(comment).trim(),
-        }
+    try {
+      console.log('📝 Creating review for reservation:', reservationId);
+      const response = await api.post('/reviews', {
+        guesthouseId: Number(guesthouseId),
+        reservationId: Number(reservationId),
+        rating: numericRating,
+        comment: String(comment).trim(),
+      });
+      
+      const data = unwrap(response);
+      console.log('✅ Review created:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Error creating review:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to submit review. Please try again.'
       );
-
-    return unwrap(response);
+    }
   },
 
-  // ----------------------------------------------------------
-  // GET REVIEW FOR ONE RESERVATION
-  // ----------------------------------------------------------
-
-  async getReviewForReservation(
-    reservationId
-  ) {
+  async getReviewForReservation(reservationId) {
     if (!reservationId) {
-      throw new Error(
-        'Reservation ID is required.'
-      );
+      throw new Error('Reservation ID is required.');
     }
 
-    const response =
-      await api.get(
-        `/reviews/reservation/${reservationId}`
-      );
-
-    return unwrap(response);
+    try {
+      console.log('🔍 Fetching review for reservation:', reservationId);
+      const response = await api.get(`/reviews/reservation/${reservationId}`);
+      const data = unwrap(response);
+      console.log('📝 Review data:', data);
+      return data || null;
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        console.log('ℹ️ No review found for reservation:', reservationId);
+        return null;
+      }
+      console.error('❌ Error fetching review for reservation:', error);
+      return null;
+    }
   },
 
-  // ----------------------------------------------------------
-  // UPDATE GUEST REVIEW
-  // ----------------------------------------------------------
-
-  async updateReview(
-    reviewId,
-    {
-      rating,
-      comment,
-    }
-  ) {
+  async updateReview(reviewId, { rating, comment }) {
     if (!reviewId) {
-      throw new Error(
-        'Review ID is required.'
-      );
+      throw new Error('Review ID is required.');
     }
 
-    const numericRating =
-      Number(rating);
+    const numericRating = Number(rating);
 
-    if (
-      numericRating < 1 ||
-      numericRating > 5
-    ) {
-      throw new Error(
-        'Rating must be between 1 and 5.'
-      );
+    if (numericRating < 1 || numericRating > 5) {
+      throw new Error('Rating must be between 1 and 5.');
     }
 
-    const response =
-      await api.put(
-        `/reviews/${reviewId}`,
-        {
-          rating:
-            numericRating,
-
-          comment:
-            String(
-              comment || ''
-            ).trim(),
-        }
+    try {
+      const response = await api.put(`/reviews/${reviewId}`, {
+        rating: numericRating,
+        comment: String(comment || '').trim(),
+      });
+      return unwrap(response);
+    } catch (error) {
+      console.error('❌ Error updating review:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to update review.'
       );
-
-    return unwrap(response);
+    }
   },
 
-  // ----------------------------------------------------------
-  // DELETE GUEST REVIEW
-  // ----------------------------------------------------------
-
-  async deleteReview(
-    reviewId
-  ) {
+  async deleteReview(reviewId) {
     if (!reviewId) {
-      throw new Error(
-        'Review ID is required.'
-      );
+      throw new Error('Review ID is required.');
     }
 
-    const response =
-      await api.delete(
-        `/reviews/${reviewId}`
+    try {
+      const response = await api.delete(`/reviews/${reviewId}`);
+      return unwrap(response);
+    } catch (error) {
+      console.error('❌ Error deleting review:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to delete review.'
       );
-
-    return unwrap(response);
+    }
   },
 
-  // ----------------------------------------------------------
-  // OWNER RESPONSE TO REVIEW
-  // ----------------------------------------------------------
-
-  async respondToReview(
-    reviewId,
-    responseText
-  ) {
+  async respondToReview(reviewId, responseText) {
     if (!reviewId) {
-      throw new Error(
-        'Review ID is required.'
-      );
+      throw new Error('Review ID is required.');
     }
 
-    const response =
-      await api.put(
-        `/reviews/${reviewId}/respond`,
-        {
-          response:
-            responseText,
-        }
-      );
+    if (!responseText || !String(responseText).trim()) {
+      throw new Error('Response text is required.');
+    }
 
-    return unwrap(response);
+    if (String(responseText).trim().length < 10) {
+      throw new Error('Response must be at least 10 characters long.');
+    }
+
+    try {
+      console.log('📝 Submitting response for review:', reviewId);
+      const response = await api.put(`/reviews/${reviewId}/respond`, {
+        response: String(responseText).trim(),
+      });
+      
+      const data = unwrap(response);
+      console.log('✅ Review response submitted:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Error responding to review:', error);
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to submit response. Please try again.'
+      );
+    }
   },
 
   // ----------------------------------------------------------

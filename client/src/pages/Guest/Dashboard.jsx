@@ -107,7 +107,7 @@ export default function GuestDashboard() {
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#ffc107] rounded-full animate-spin mx-auto" />
+            <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
             <p className="mt-4 text-[#647b8a]">Loading your dashboard...</p>
           </div>
         </div>
@@ -127,7 +127,7 @@ export default function GuestDashboard() {
         </p>
       </div>
 
-      {/* Stats Cards - Real Time Data */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white p-6 rounded-2xl border border-[#e5edf2]">
           <div className="flex items-center justify-between mb-2">
@@ -152,11 +152,11 @@ export default function GuestDashboard() {
         <div className="bg-white p-6 rounded-2xl border border-[#e5edf2]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-[#647b8a]">Total Spent</span>
-            <div className="w-10 h-10 rounded-xl bg-[#ffc107]/20 flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-[#ffc107]" />
+            <div className="w-10 h-10 rounded-xl bg-[#FFC107]/20 flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-[#FFC107]" />
             </div>
           </div>
-          <p className="text-3xl font-black text-[#ffc107]">
+          <p className="text-3xl font-black text-[#FFC107]">
             {stats.totalSpent.toLocaleString()} ETB
           </p>
         </div>
@@ -172,12 +172,12 @@ export default function GuestDashboard() {
         </div>
       </div>
 
-      {/* Upcoming Stays - Guesthouse Names Appear Here */}
+      {/* Upcoming Stays */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-black text-[#043658]">Upcoming Stays</h2>
           {upcomingBookings.length > 0 && (
-            <Link to="/reservations" className="text-sm font-semibold text-[#ffc107] hover:text-[#ffa000]">
+            <Link to="/reservations" className="text-sm font-semibold text-[#FFC107] hover:text-[#ffb300]">
               View All →
             </Link>
           )}
@@ -192,7 +192,7 @@ export default function GuestDashboard() {
             <p className="text-sm text-[#94a8b5] mt-1">Book a guesthouse to start your journey</p>
             <Link
               to="/guest/search"
-              className="mt-4 inline-block px-6 py-2.5 bg-[#ffc107] hover:bg-[#ffb300] text-[#043658] font-bold rounded-xl text-sm transition"
+              className="mt-4 inline-block px-6 py-2.5 bg-[#FFC107] hover:bg-[#ffb300] text-[#043658] font-bold rounded-xl text-sm transition"
             >
               Start Exploring
             </Link>
@@ -240,12 +240,12 @@ export default function GuestDashboard() {
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-[#e5edf2] flex items-center justify-between">
-                  <span className="text-lg font-black text-[#ffc107]">
+                  <span className="text-lg font-black text-[#FFC107]">
                     {booking.totalPrice?.toLocaleString()} ETB
                   </span>
                   <Link
                     to={`/reservations/${booking.id}`}
-                    className="text-sm font-semibold text-[#ffc107] hover:text-[#ffa000] flex items-center gap-1"
+                    className="text-sm font-semibold text-[#FFC107] hover:text-[#ffb300] flex items-center gap-1"
                   >
                     Details <ChevronRight className="w-4 h-4" />
                   </Link>
@@ -260,7 +260,7 @@ export default function GuestDashboard() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-black text-[#043658]">Recent Guesthouses</h2>
-          <Link to="/guest/search" className="text-sm font-semibold text-[#ffc107] hover:text-[#ffa000]">
+          <Link to="/guest/search" className="text-sm font-semibold text-[#FFC107] hover:text-[#ffb300]">
             Explore More →
           </Link>
         </div>
@@ -285,19 +285,19 @@ export default function GuestDashboard() {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-bold flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-[#ffc107] text-[#ffc107]" />
+                    <Star className="w-3 h-3 fill-[#FFC107] text-[#FFC107]" />
                     {guesthouse.rating?.toFixed(1) || 'New'}
                   </div>
                 </div>
                 <div className="p-4">
-                  <h4 className="font-bold text-[#043658] group-hover:text-[#ffc107] transition">
+                  <h4 className="font-bold text-[#043658] group-hover:text-[#FFC107] transition">
                     {guesthouse.name}
                   </h4>
                   <p className="text-sm text-[#647b8a] flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
                     {guesthouse.city || guesthouse.location || 'Ethiopia'}
                   </p>
-                  <p className="mt-2 text-sm font-bold text-[#ffc107]">
+                  <p className="mt-2 text-sm font-bold text-[#FFC107]">
                     From {guesthouse.priceRange?.min?.toLocaleString() || '0'} ETB/night
                   </p>
                 </div>
@@ -311,10 +311,10 @@ export default function GuestDashboard() {
       <div className="bg-white rounded-2xl border border-[#e5edf2] overflow-hidden">
         <div className="px-6 py-4 border-b border-[#e5edf2] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#ffc107]" />
+            <Clock className="w-5 h-5 text-[#FFC107]" />
             <h2 className="font-bold text-[#043658]">Recent Bookings History</h2>
           </div>
-          <Link to="/reservations" className="text-sm font-semibold text-[#ffc107] hover:text-[#ffa000]">
+          <Link to="/reservations" className="text-sm font-semibold text-[#FFC107] hover:text-[#ffb300]">
             View All →
           </Link>
         </div>

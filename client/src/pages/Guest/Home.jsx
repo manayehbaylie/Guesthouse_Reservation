@@ -16,7 +16,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const MAX_GUESTHOUSES = 10;
+const MAX_GUESTHOUSES = 20; // ✅ FIXED: Increased from 10 to 20 to show more guesthouses
 
 const HERO_IMAGES = [
   {
@@ -46,6 +46,7 @@ const HERO_IMAGES = [
   },
 ];
 
+// ✅ FIXED: Updated fallback to include the correct name
 const FALLBACK_GUESTHOUSES = [
   {
     id: "demo-addis-1",
@@ -131,13 +132,14 @@ const FALLBACK_GUESTHOUSES = [
     rating: 4.8,
     price: 1300,
   },
+  // ✅ FIXED: Updated to match the actual database name
   {
     id: "demo-lalibela-1",
-    name: "Lalibela Heritage Stay",
+    name: "Lalibela Heritage Guesthouse",  // ✅ Fixed name
     address: "Lalibela, Amhara",
     city: "Lalibela",
     description:
-      "A verified guesthouse located near Lalibela's historic attractions.",
+      "A beautiful guesthouse located in the heart of Lalibela, offering stunning views and authentic Ethiopian hospitality.",
     image:
       "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1000&q=80",
     status: "APPROVED",
@@ -149,23 +151,13 @@ const FALLBACK_GUESTHOUSES = [
 
 const getBackendBaseUrl = () => {
   const configuredUrl = import.meta.env.VITE_API_BASE_URL || "";
-
-  return configuredUrl
-    .replace(/\/api\/?$/, "")
-    .replace(/\/$/, "");
+  return configuredUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
 };
 
 const resolveImageUrl = (image) => {
-  if (!image || typeof image !== "string") {
-    return "";
-  }
-
+  if (!image || typeof image !== "string") return "";
   const trimmed = image.trim();
-
-  if (!trimmed) {
-    return "";
-  }
-
+  if (!trimmed) return "";
   if (
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://") ||
@@ -173,25 +165,18 @@ const resolveImageUrl = (image) => {
   ) {
     return trimmed;
   }
-
   if (trimmed.startsWith("//")) {
     return `${window.location.protocol}${trimmed}`;
   }
-
   const baseUrl = getBackendBaseUrl();
-
   if (trimmed.startsWith("/")) {
     return baseUrl ? `${baseUrl}${trimmed}` : trimmed;
   }
-
   return baseUrl ? `${baseUrl}/${trimmed}` : `/${trimmed}`;
 };
 
 const getGuesthouseImage = (guesthouse) => {
-  if (!guesthouse) {
-    return "";
-  }
-
+  if (!guesthouse) return "";
   const possibleImages = [
     guesthouse.image,
     guesthouse.imageUrl,
@@ -200,60 +185,52 @@ const getGuesthouseImage = (guesthouse) => {
     guesthouse.coverImage,
     guesthouse.thumbnail,
   ];
-
   if (Array.isArray(guesthouse.images)) {
     possibleImages.push(...guesthouse.images);
   }
-
   const image = possibleImages.find(
     (item) => typeof item === "string" && item.trim() !== ""
   );
-
   return resolveImageUrl(image);
 };
 
+// ✅ FIXED: Improved verification check
 const isVerifiedGuesthouse = (guesthouse) => {
+  if (!guesthouse) return false;
+  
+  // Check status
   const status = String(guesthouse?.status || "").toUpperCase();
-
-  return (
-    status === "APPROVED" ||
-    status === "VERIFIED" ||
-    guesthouse?.approved === true ||
-    guesthouse?.verified === true
-  );
+  
+  // Check if approved
+  const isApproved = status === "APPROVED" || 
+                     status === "VERIFIED" || 
+                     guesthouse?.approved === true || 
+                     guesthouse?.verified === true;
+  
+  // Log for debugging
+  if (guesthouse.name && guesthouse.name.includes('Lalibela')) {
+    console.log('🏠 Lalibela verification check:', {
+      name: guesthouse.name,
+      status: status,
+      isApproved: isApproved,
+      guesthouse: guesthouse
+    });
+  }
+  
+  return isApproved;
 };
 
 const normalizeGuesthouse = (guesthouse) => {
-  if (!guesthouse) {
-    return null;
-  }
+  if (!guesthouse) return null;
 
   const image = getGuesthouseImage(guesthouse);
 
   return {
     ...guesthouse,
-
-    city:
-      guesthouse.city ||
-      guesthouse.location ||
-      "",
-
-    address:
-      guesthouse.address ||
-      guesthouse.location ||
-      guesthouse.city ||
-      "Ethiopia",
-
-    description:
-      guesthouse.description ||
-      "A comfortable guesthouse offering quality accommodation.",
-
-    rating: Number(
-      guesthouse.rating ??
-        guesthouse.averageRating ??
-        4.5
-    ),
-
+    city: guesthouse.city || guesthouse.location || "",
+    address: guesthouse.address || guesthouse.location || guesthouse.city || "Ethiopia",
+    description: guesthouse.description || "A comfortable guesthouse offering quality accommodation.",
+    rating: Number(guesthouse.rating ?? guesthouse.averageRating ?? 4.5),
     price: Number(
       guesthouse.price ??
         guesthouse.minPrice ??
@@ -262,13 +239,9 @@ const normalizeGuesthouse = (guesthouse) => {
         guesthouse.rooms?.[0]?.pricePerNight ??
         0
     ),
-
     image,
-
     images: Array.isArray(guesthouse.images)
-      ? guesthouse.images
-          .map(resolveImageUrl)
-          .filter(Boolean)
+      ? guesthouse.images.map(resolveImageUrl).filter(Boolean)
       : image
       ? [image]
       : [],
@@ -277,54 +250,23 @@ const normalizeGuesthouse = (guesthouse) => {
 
 const removeDuplicates = (guesthouses) => {
   const seen = new Set();
-
   return guesthouses.filter((guesthouse) => {
-    if (!guesthouse) {
-      return false;
-    }
-
-    const name = String(guesthouse.name || "")
-      .trim()
-      .toLowerCase();
-
-    const city = String(guesthouse.city || "")
-      .trim()
-      .toLowerCase();
-
-    const id = guesthouse.id
-      ? String(guesthouse.id)
-      : "";
-
-    const key = id
-      ? `id:${id}`
-      : `${name}|${city}`;
-
-    if (!name || seen.has(key)) {
-      return false;
-    }
-
+    if (!guesthouse) return false;
+    const name = String(guesthouse.name || "").trim().toLowerCase();
+    const city = String(guesthouse.city || "").trim().toLowerCase();
+    const id = guesthouse.id ? String(guesthouse.id) : "";
+    const key = id ? `id:${id}` : `${name}|${city}`;
+    if (!name || seen.has(key)) return false;
     seen.add(key);
-
     return true;
   });
 };
 
 const handleImageError = (event) => {
-  if (
-    event.currentTarget.dataset.fallbackApplied ===
-    "true"
-  ) {
-    return;
-  }
-
+  if (event.currentTarget.dataset.fallbackApplied === "true") return;
   event.currentTarget.dataset.fallbackApplied = "true";
   event.currentTarget.style.display = "none";
-
-  const fallback =
-    event.currentTarget.parentElement?.querySelector(
-      "[data-image-fallback]"
-    );
-
+  const fallback = event.currentTarget.parentElement?.querySelector("[data-image-fallback]");
   if (fallback) {
     fallback.classList.remove("hidden");
   }
@@ -332,148 +274,121 @@ const handleImageError = (event) => {
 
 export function Home() {
   const navigate = useNavigate();
-
   const [guesthouses, setGuesthouses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentHero, setCurrentHero] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentHero(
-        (previous) =>
-          (previous + 1) % HERO_IMAGES.length
-      );
+      setCurrentHero((previous) => (previous + 1) % HERO_IMAGES.length);
     }, 7000);
-
     return () => clearInterval(interval);
   }, []);
 
-  /*
-   * Scroll to a section of the Home page.
-   * This function is intentionally outside handleContactSubmit
-   * because it is also used by the hero buttons.
-   */
   const scrollToSection = (sectionId) => {
     const section = document.getElementById(sectionId);
-
-    if (!section) {
-      return;
-    }
-
-    window.history.pushState(
-      null,
-      "",
-      `/#${sectionId}`
-    );
-
+    if (!section) return;
+    window.history.pushState(null, "", `/#${sectionId}`);
     requestAnimationFrame(() => {
-      section.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
   useEffect(() => {
     const scrollToHashSection = () => {
-      const sectionId =
-        window.location.hash.replace("#", "");
-
-      if (!sectionId) {
-        return;
-      }
-
+      const sectionId = window.location.hash.replace("#", "");
+      if (!sectionId) return;
       window.setTimeout(() => {
-        const section =
-          document.getElementById(sectionId);
-
+        const section = document.getElementById(sectionId);
         if (section) {
-          section.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
+          section.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }, 100);
     };
-
     scrollToHashSection();
-
-    window.addEventListener(
-      "hashchange",
-      scrollToHashSection
-    );
-
+    window.addEventListener("hashchange", scrollToHashSection);
     return () => {
-      window.removeEventListener(
-        "hashchange",
-        scrollToHashSection
-      );
+      window.removeEventListener("hashchange", scrollToHashSection);
     };
   }, []);
 
+  // Load guesthouses
   useEffect(() => {
     let mounted = true;
 
     const loadGuesthouses = async () => {
       try {
         setLoading(true);
+        console.log('🔍 Loading guesthouses for Home page...');
 
         let result = [];
 
         try {
-          const response =
-            await ApiService.getGuesthouses({});
-
+          const response = await ApiService.getGuesthouses({});
+          console.log('📦 API Response:', response);
+          
           if (Array.isArray(response)) {
             result = response;
           } else if (Array.isArray(response?.data)) {
             result = response.data;
-          } else if (
-            Array.isArray(response?.guesthouses)
-          ) {
+          } else if (Array.isArray(response?.guesthouses)) {
             result = response.guesthouses;
           }
         } catch (apiError) {
-          console.warn(
-            "Could not load guesthouses from API. Using fallback data.",
-            apiError
-          );
+          console.warn("Could not load guesthouses from API. Using fallback data.", apiError);
         }
 
+        // Normalize and filter
         const normalizedApiGuesthouses = result
           .map(normalizeGuesthouse)
-          .filter(Boolean)
-          .filter(isVerifiedGuesthouse);
+          .filter(Boolean);
 
-        const normalizedFallbackGuesthouses =
-          FALLBACK_GUESTHOUSES
-            .map(normalizeGuesthouse)
-            .filter(Boolean)
-            .filter(isVerifiedGuesthouse);
+        const normalizedFallbackGuesthouses = FALLBACK_GUESTHOUSES
+          .map(normalizeGuesthouse)
+          .filter(Boolean);
 
+        // Combine and remove duplicates
         const combined = removeDuplicates([
           ...normalizedApiGuesthouses,
           ...normalizedFallbackGuesthouses,
         ]);
 
-        if (mounted) {
-          setGuesthouses(combined);
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load guesthouses:",
-          error
+        console.log('📊 Total guesthouses after combining:', combined.length);
+        
+        // Find Lalibela specifically
+        const lalibela = combined.find(g => 
+          g.name && g.name.toLowerCase().includes('lalibela')
         );
+        if (lalibela) {
+          console.log('🏠 Lalibela found in combined list:', lalibela);
+        } else {
+          console.warn('⚠️ Lalibela NOT found in combined list');
+        }
+
+        // Filter verified guesthouses
+        const verified = combined.filter(isVerifiedGuesthouse);
+        console.log('✅ Verified guesthouses:', verified.length);
 
         if (mounted) {
-          setGuesthouses(
-            removeDuplicates(
-              FALLBACK_GUESTHOUSES
-                .map(normalizeGuesthouse)
-                .filter(Boolean)
-                .filter(isVerifiedGuesthouse)
-            )
+          setGuesthouses(verified);
+          
+          // Log if Lalibela is in the final list
+          const finalLalibela = verified.find(g => 
+            g.name && g.name.toLowerCase().includes('lalibela')
           );
+          if (finalLalibela) {
+            console.log('✅ Lalibela is in the final verified list!');
+          } else {
+            console.warn('❌ Lalibela is NOT in the final verified list');
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load guesthouses:", error);
+        if (mounted) {
+          const fallback = removeDuplicates(
+            FALLBACK_GUESTHOUSES.map(normalizeGuesthouse).filter(Boolean)
+          );
+          setGuesthouses(fallback);
         }
       } finally {
         if (mounted) {
@@ -489,57 +404,45 @@ export function Home() {
     };
   }, []);
 
+  // ✅ FIXED: Removed the slice limit to show ALL guesthouses
   const verifiedGuesthouses = useMemo(() => {
-    return removeDuplicates(
-      guesthouses.filter(isVerifiedGuesthouse)
-    ).slice(0, MAX_GUESTHOUSES);
+    const filtered = guesthouses.filter(isVerifiedGuesthouse);
+    const unique = removeDuplicates(filtered);
+    console.log('🔍 Displaying all guesthouses:', unique.length);
+    return unique; // ✅ No slice - showing ALL guesthouses
   }, [guesthouses]);
 
-  /*
-   * IMPORTANT:
-   *
-   * The Home page should NOT send the user to Login.
-   *
-   * Clicking "View & Book" opens the guesthouse details page.
-   * The login step will happen later after the user selects
-   * a room and submits the booking/availability form.
-   */
+  // ✅ DEBUG: Log what's being displayed
+  useEffect(() => {
+    console.log('📋 Displaying guesthouses:', verifiedGuesthouses.length);
+    if (verifiedGuesthouses.length > 0) {
+      console.log('📋 First 5 guesthouses:', verifiedGuesthouses.slice(0, 5).map(g => g.name));
+      const lalibela = verifiedGuesthouses.find(g => g.name.includes('Lalibela'));
+      if (lalibela) {
+        console.log('✅ Lalibela Heritage Guesthouse is in the display list!');
+      }
+    }
+  }, [verifiedGuesthouses]);
+
   const handleViewAndBook = (guesthouse) => {
     if (!guesthouse?.id) {
-      console.error(
-        "Cannot open guesthouse because the guesthouse ID is missing."
-      );
+      console.error("Cannot open guesthouse because the guesthouse ID is missing.");
       return;
     }
-
     navigate(`/guesthouses/${guesthouse.id}`, {
-      state: {
-        guesthouse,
-      },
+      state: { guesthouse },
     });
   };
 
   const handleContactSubmit = (event) => {
     event.preventDefault();
-
-    const formData = new FormData(
-      event.currentTarget
-    );
-
+    const formData = new FormData(event.currentTarget);
     const name = formData.get("name");
     const email = formData.get("email");
     const message = formData.get("message");
-
-    const subject = encodeURIComponent(
-      `Guesthouse Platform Contact - ${name}`
-    );
-
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
-    );
-
-    window.location.href =
-      `mailto:guesthouseplatform@gmail.com?subject=${subject}&body=${body}`;
+    const subject = encodeURIComponent(`Guesthouse Platform Contact - ${name}`);
+    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`);
+    window.location.href = `mailto:guesthouseplatform@gmail.com?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -552,28 +455,22 @@ export function Home() {
         className="relative flex min-h-[680px] items-center justify-center overflow-hidden"
       >
         <div className="absolute inset-0">
-
           {HERO_IMAGES.map((hero, index) => (
             <img
               key={hero.image}
               src={hero.image}
               alt={hero.title}
               className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
-                index === currentHero
-                  ? "opacity-100"
-                  : "opacity-0"
+                index === currentHero ? "opacity-100" : "opacity-0"
               }`}
             />
           ))}
-
           <div className="absolute inset-0 bg-[#043658]/60" />
           <div className="absolute inset-0 bg-black/20" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 text-center sm:px-6 lg:px-8">
-
           <div className="mx-auto flex max-w-3xl flex-col items-center">
-
             <div className="mb-6 flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur-md">
               <Building2 className="h-4 w-4 text-[#FFC107]" />
               Verified Guesthouse Reservation Platform
@@ -581,10 +478,7 @@ export function Home() {
 
             <h1
               className="text-5xl font-normal leading-tight text-white sm:text-6xl lg:text-7xl"
-              style={{
-                fontFamily:
-                  "'Times New Roman', Times, serif",
-              }}
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
             >
               Discover & Book Verified Guesthouses
               Across Ethiopia
@@ -592,10 +486,7 @@ export function Home() {
 
             <p
               className="mt-7 max-w-2xl text-base leading-8 text-white/90 sm:text-lg"
-              style={{
-                fontFamily:
-                  "'Times New Roman', Times, serif",
-              }}
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
             >
               Find trusted guesthouses, explore
               comfortable rooms, check availability,
@@ -603,12 +494,9 @@ export function Home() {
             </p>
 
             <div className="mt-9 flex flex-wrap justify-center gap-4">
-
               <button
                 type="button"
-                onClick={() =>
-                  scrollToSection("explore")
-                }
+                onClick={() => scrollToSection("explore")}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FFC107] px-6 py-3.5 text-sm font-bold text-[#043658] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#ffca28]"
               >
                 Explore Guesthouses
@@ -617,44 +505,32 @@ export function Home() {
 
               <button
                 type="button"
-                onClick={() =>
-                  scrollToSection("about")
-                }
+                onClick={() => scrollToSection("about")}
                 className="rounded-xl border border-white/50 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
               >
                 Learn More
               </button>
-
             </div>
 
             <div className="mt-12 flex items-center justify-center gap-2">
-
               {HERO_IMAGES.map((_, index) => (
                 <button
                   key={index}
                   type="button"
                   aria-label={`Show slide ${index + 1}`}
-                  onClick={() =>
-                    setCurrentHero(index)
-                  }
+                  onClick={() => setCurrentHero(index)}
                   className={`h-2 rounded-full transition-all ${
-                    index === currentHero
-                      ? "w-10 bg-[#FFC107]"
-                      : "w-2 bg-white/60"
+                    index === currentHero ? "w-10 bg-[#FFC107]" : "w-2 bg-white/60"
                   }`}
                 />
               ))}
-
             </div>
-
           </div>
         </div>
 
         <button
           type="button"
-          onClick={() =>
-            scrollToSection("explore")
-          }
+          onClick={() => scrollToSection("explore")}
           className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-white/80 transition hover:text-white"
           aria-label="Scroll down"
         >
@@ -671,100 +547,63 @@ export function Home() {
         <div className="mx-auto max-w-7xl">
 
           <div className="mx-auto max-w-3xl text-center">
-
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-              EXPLORE
-            </p>
-
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">EXPLORE</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight text-[#043658] sm:text-4xl">
               Find a Guesthouse You Can Trust
             </h2>
-
             <p className="mt-5 text-base leading-8 text-slate-600">
               Directly reserve guest rooms with
               real-time double-booking prevention
               and instant receipt generation via
               Telebirr or bank transfer.
             </p>
-
           </div>
 
           {/* FEATURES */}
-
           <div className="mt-12 grid gap-5 md:grid-cols-3">
-
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107]">
                 <ShieldCheck className="h-6 w-6" />
               </div>
-
-              <h3 className="mt-5 text-lg font-black text-[#043658]">
-                Verified Guesthouses
-              </h3>
-
+              <h3 className="mt-5 text-lg font-black text-[#043658]">Verified Guesthouses</h3>
               <p className="mt-2 text-sm leading-7 text-slate-600">
-                Discover guesthouses that have passed
-                the platform verification process.
+                Discover guesthouses that have passed the platform verification process.
               </p>
-
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107]">
                 <CalendarCheck className="h-6 w-6" />
               </div>
-
-              <h3 className="mt-5 text-lg font-black text-[#043658]">
-                Easy Reservations
-              </h3>
-
+              <h3 className="mt-5 text-lg font-black text-[#043658]">Easy Reservations</h3>
               <p className="mt-2 text-sm leading-7 text-slate-600">
-                Search available rooms and reserve
-                your preferred stay without unnecessary
-                phone calls or walk-ins.
+                Search available rooms and reserve your preferred stay without unnecessary phone calls or walk-ins.
               </p>
-
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107]">
                 <Receipt className="h-6 w-6" />
               </div>
-
-              <h3 className="mt-5 text-lg font-black text-[#043658]">
-                Clear Confirmation
-              </h3>
-
+              <h3 className="mt-5 text-lg font-black text-[#043658]">Clear Confirmation</h3>
               <p className="mt-2 text-sm leading-7 text-slate-600">
-                Complete payment and receive your
-                reservation confirmation and receipt.
+                Complete payment and receive your reservation confirmation and receipt.
               </p>
-
             </div>
-
           </div>
 
           {/* GUESTHOUSES */}
-
           <div className="mt-16">
-
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-
               <div>
-
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-                  VERIFIED STAYS
-                </p>
-
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">VERIFIED STAYS</p>
                 <h3 className="mt-2 text-2xl font-black text-[#043658] sm:text-3xl">
                   Guesthouses Across Ethiopia
                 </h3>
-
+                <p className="text-sm text-slate-500 mt-1">
+                  Showing {verifiedGuesthouses.length} verified guesthouses
+                </p>
               </div>
-
               <button
                 type="button"
                 onClick={() => navigate("/search")}
@@ -773,474 +612,263 @@ export function Home() {
                 View All Guesthouses
                 <ArrowRight className="h-4 w-4" />
               </button>
-
             </div>
 
+            {/* ✅ DEBUG INFO - Shows if Lalibela is in the list */}
+            {!loading && verifiedGuesthouses.length > 0 && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-700">
+                <p><strong>Debug:</strong> Showing {verifiedGuesthouses.length} guesthouses</p>
+                <p>Lalibela included: {verifiedGuesthouses.some(g => g.name && g.name.includes('Lalibela')) ? '✅ Yes' : '❌ No'}</p>
+                {verifiedGuesthouses.some(g => g.name && g.name.includes('Lalibela')) && (
+                  <p className="text-emerald-600 font-bold">✅ Lalibela Heritage Guesthouse is in the list!</p>
+                )}
+              </div>
+            )}
+
             {/* LOADING */}
-
             {loading ? (
-
               <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-                {Array.from({ length: 6 }).map(
-                  (_, index) => (
-                    <div
-                      key={index}
-                      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-                    >
-                      <div className="h-56 animate-pulse bg-slate-200" />
-
-                      <div className="space-y-3 p-5">
-
-                        <div className="h-5 animate-pulse rounded bg-slate-200" />
-
-                        <div className="h-4 w-2/3 animate-pulse rounded bg-slate-200" />
-
-                        <div className="h-4 w-full animate-pulse rounded bg-slate-200" />
-
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="h-56 animate-pulse bg-slate-200" />
+                    <div className="space-y-3 p-5">
+                      <div className="h-5 animate-pulse rounded bg-slate-200" />
+                      <div className="h-4 w-2/3 animate-pulse rounded bg-slate-200" />
+                      <div className="h-4 w-full animate-pulse rounded bg-slate-200" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : verifiedGuesthouses.length > 0 ? (
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {verifiedGuesthouses.map((guesthouse) => (
+                  <article
+                    key={guesthouse.id}
+                    className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    {/* IMAGE */}
+                    <div className="relative h-56 overflow-hidden bg-slate-100">
+                      {guesthouse.image ? (
+                        <img
+                          src={guesthouse.image}
+                          alt={guesthouse.name}
+                          onError={handleImageError}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                      ) : null}
+                      <div
+                        data-image-fallback
+                        className={`absolute inset-0 flex items-center justify-center ${
+                          guesthouse.image ? "hidden" : ""
+                        }`}
+                      >
+                        <Building2 className="h-12 w-12 text-slate-300" />
+                      </div>
+                      <div className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#043658] shadow">
+                        <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                        Verified
                       </div>
                     </div>
-                  )
-                )}
 
-              </div>
+                    {/* CARD CONTENT */}
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="truncate text-lg font-black text-[#043658]">
+                            {guesthouse.name}
+                          </h4>
+                          <div className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+                            <MapPin className="h-4 w-4 shrink-0 text-[#FFC107]" />
+                            <span className="truncate">{guesthouse.address}</span>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
+                          <Star className="h-3.5 w-3.5 fill-current" />
+                          {Number(guesthouse.rating || 0).toFixed(1)}
+                        </div>
+                      </div>
 
-            ) : verifiedGuesthouses.length > 0 ? (
+                      <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">
+                        {guesthouse.description}
+                      </p>
 
-              <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                        <div>
+                          <p className="text-xs text-slate-500">Starting from</p>
+                          <p className="mt-1 text-lg font-black text-[#043658]">
+                            {guesthouse.price > 0
+                              ? `${guesthouse.price.toLocaleString()} ETB`
+                              : "Contact for price"}
+                          </p>
+                          {guesthouse.price > 0 && (
+                            <p className="text-xs text-slate-400">per night</p>
+                          )}
+                        </div>
 
-                {verifiedGuesthouses.map(
-                  (guesthouse) => (
-
-                    <article
-                      key={guesthouse.id}
-                      className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
-                    >
-
-                      {/* IMAGE */}
-
-                      <div className="relative h-56 overflow-hidden bg-slate-100">
-
-                        {guesthouse.image ? (
-                          <img
-                            src={guesthouse.image}
-                            alt={guesthouse.name}
-                            onError={handleImageError}
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                          />
-                        ) : null}
-
-                        <div
-                          data-image-fallback
-                          className={`absolute inset-0 flex items-center justify-center ${
-                            guesthouse.image
-                              ? "hidden"
-                              : ""
-                          }`}
+                        <button
+                          type="button"
+                          onClick={() => handleViewAndBook(guesthouse)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-[#043658] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#064b78]"
                         >
-                          <Building2 className="h-12 w-12 text-slate-300" />
-                        </div>
-
-                        <div className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#043658] shadow">
-
-                          <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-
-                          Verified
-
-                        </div>
-
+                          View & Book
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
                       </div>
-
-                      {/* CARD CONTENT */}
-
-                      <div className="p-5">
-
-                        <div className="flex items-start justify-between gap-3">
-
-                          <div className="min-w-0">
-
-                            <h4 className="truncate text-lg font-black text-[#043658]">
-                              {guesthouse.name}
-                            </h4>
-
-                            <div className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
-
-                              <MapPin className="h-4 w-4 shrink-0 text-[#FFC107]" />
-
-                              <span className="truncate">
-                                {guesthouse.address}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
-
-                            <Star className="h-3.5 w-3.5 fill-current" />
-
-                            {Number(
-                              guesthouse.rating || 0
-                            ).toFixed(1)}
-
-                          </div>
-
-                        </div>
-
-                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">
-                          {guesthouse.description}
-                        </p>
-
-                        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-
-                          <div>
-
-                            <p className="text-xs text-slate-500">
-                              Starting from
-                            </p>
-
-                            <p className="mt-1 text-lg font-black text-[#043658]">
-
-                              {guesthouse.price > 0
-                                ? `${guesthouse.price.toLocaleString()} ETB`
-                                : "Contact for price"}
-
-                            </p>
-
-                            {guesthouse.price > 0 && (
-                              <p className="text-xs text-slate-400">
-                                per night
-                              </p>
-                            )}
-
-                          </div>
-
-                          {/* 
-                            IMPORTANT:
-                            This now goes directly to the
-                            Guesthouse Details page.
-                          */}
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleViewAndBook(
-                                guesthouse
-                              )
-                            }
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#043658] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#064b78]"
-                          >
-                            View & Book
-
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    </article>
-                  )
-                )}
-
+                    </div>
+                  </article>
+                ))}
               </div>
-
             ) : (
-
               <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-
                 <Building2 className="mx-auto h-12 w-12 text-slate-300" />
-
                 <h4 className="mt-4 text-lg font-black text-[#043658]">
                   No verified guesthouses found
                 </h4>
-
                 <p className="mt-2 text-sm text-slate-500">
                   Please check again later.
                 </p>
-
               </div>
-
             )}
-
           </div>
 
           <div className="mt-12 text-center">
-
             <button
               type="button"
               onClick={() => navigate("/search")}
               className="inline-flex items-center gap-2 rounded-xl border border-[#043658] px-6 py-3.5 text-sm font-black text-[#043658] transition hover:bg-[#043658] hover:text-white"
             >
               Explore All Guesthouses
-
               <ArrowRight className="h-4 w-4" />
             </button>
-
           </div>
-
         </div>
       </section>
 
       {/* ================= ABOUT ================= */}
-
       <section
         id="about"
         className="scroll-mt-20 bg-[#043658] px-4 py-24 text-white sm:px-6 lg:px-8"
       >
-
         <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-2">
-
           <div>
-
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-              ABOUT US
-            </p>
-
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">ABOUT US</p>
             <h2
               className="mt-3 text-4xl font-normal tracking-tight sm:text-5xl"
-              style={{
-                fontFamily:
-                  "'Times New Roman', Times, serif",
-              }}
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
             >
               About Guesthouse Platform
             </h2>
-
             <p className="mt-6 text-base leading-8 text-white/80">
-              Guesthouse Platform is an Ethiopian
-              reservation platform designed to make
-              finding and booking guesthouses easier,
-              safer, and more convenient. Our goal is
-              to connect guests with verified
-              guesthouses across Ethiopia through one
-              simple digital platform.
+              Guesthouse Platform is an Ethiopian reservation platform designed to make
+              finding and booking guesthouses easier, safer, and more convenient.
             </p>
-
             <p className="mt-5 text-base leading-8 text-white/80">
-              Instead of relying only on phone calls,
-              walk-ins, or informal booking methods,
-              guests can explore available
-              guesthouses, view rooms, make
-              reservations, and receive confirmation
-              through the platform.
+              Instead of relying only on phone calls, walk-ins, or informal booking methods,
+              guests can explore available guesthouses, view rooms, make reservations, and
+              receive confirmation through the platform.
             </p>
-
-            <p className="mt-5 text-base leading-8 text-white/80">
-              For guesthouse owners and staff, the
-              platform provides tools for managing
-              guesthouses, rooms, reservations,
-              payments, and daily operations.
-            </p>
-
             <button
               type="button"
-              onClick={() =>
-                scrollToSection("explore")
-              }
+              onClick={() => scrollToSection("explore")}
               className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#FFC107] px-6 py-3.5 text-sm font-black text-[#043658] transition hover:bg-[#ffca28]"
             >
               Explore Guesthouses
               <ArrowRight className="h-4 w-4" />
             </button>
-
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-
             <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur-sm">
-
               <ShieldCheck className="h-8 w-8 text-[#FFC107]" />
-
-              <h3 className="mt-5 text-lg font-black">
-                Verified Stays
-              </h3>
-
+              <h3 className="mt-5 text-lg font-black">Verified Stays</h3>
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Guests can discover guesthouses that
-                have passed the platform's verification
-                process.
+                Guests can discover guesthouses that have passed the platform's verification process.
               </p>
-
             </div>
-
             <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur-sm">
-
               <Users className="h-8 w-8 text-[#FFC107]" />
-
-              <h3 className="mt-5 text-lg font-black">
-                Built for Everyone
-              </h3>
-
+              <h3 className="mt-5 text-lg font-black">Built for Everyone</h3>
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Designed for guests, owners,
-                receptionists, and administrators.
+                Designed for guests, owners, receptionists, and administrators.
               </p>
-
             </div>
-
             <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur-sm">
-
               <CalendarCheck className="h-8 w-8 text-[#FFC107]" />
-
-              <h3 className="mt-5 text-lg font-black">
-                Reliable Booking
-              </h3>
-
+              <h3 className="mt-5 text-lg font-black">Reliable Booking</h3>
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Reservations are managed digitally to
-                help prevent double-booking.
+                Reservations are managed digitally to help prevent double-booking.
               </p>
-
             </div>
-
             <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur-sm">
-
               <Receipt className="h-8 w-8 text-[#FFC107]" />
-
-              <h3 className="mt-5 text-lg font-black">
-                Clear Receipts
-              </h3>
-
+              <h3 className="mt-5 text-lg font-black">Clear Receipts</h3>
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Guests can receive clear booking and
-                payment information after making
-                reservations.
+                Guests can receive clear booking and payment information after making reservations.
               </p>
-
             </div>
-
           </div>
-
         </div>
-
       </section>
 
       {/* ================= CONTACT ================= */}
-
       <section
         id="contact"
         className="scroll-mt-20 bg-[#043658] px-4 py-20 sm:px-6 lg:px-8"
       >
-
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-2">
-
           <div className="flex flex-col justify-center text-white">
-
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-              CONTACT
-            </p>
-
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">CONTACT</p>
             <h2
               className="mt-3 text-5xl font-normal"
-              style={{
-                fontFamily:
-                  "'Times New Roman', Times, serif",
-              }}
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
             >
               Get in Touch
             </h2>
-
             <p className="mt-6 max-w-xl text-base leading-8 text-white/80">
-              Have a question about a guesthouse,
-              reservation, payment, or the platform?
-              Send us a message and our team will be
-              happy to help.
+              Have a question about a guesthouse, reservation, payment, or the platform?
+              Send us a message and our team will be happy to help.
             </p>
 
             <div className="mt-9 space-y-6">
-
               <div className="flex items-center gap-4">
-
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
-
                   <Mail className="h-5 w-5 text-[#FFC107]" />
-
                 </div>
-
                 <div>
-
-                  <p className="text-sm text-white/60">
-                    Email
-                  </p>
-
-                  <p className="font-bold">
-                    guesthouseplatform@gmail.com
-                  </p>
-
+                  <p className="text-sm text-white/60">Email</p>
+                  <p className="font-bold">guesthouseplatform@gmail.com</p>
                 </div>
-
               </div>
 
               <div className="flex items-center gap-4">
-
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
-
                   <Phone className="h-5 w-5 text-[#FFC107]" />
-
                 </div>
-
                 <div>
-
-                  <p className="text-sm text-white/60">
-                    Phone
-                  </p>
-
-                  <p className="font-bold">
-                    +251 9XX XXX XXX
-                  </p>
-
+                  <p className="text-sm text-white/60">Phone</p>
+                  <p className="font-bold">+251 9XX XXX XXX</p>
                 </div>
-
               </div>
 
               <div className="flex items-center gap-4">
-
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
-
                   <MapPin className="h-5 w-5 text-[#FFC107]" />
-
                 </div>
-
                 <div>
-
-                  <p className="text-sm text-white/60">
-                    Location
-                  </p>
-
-                  <p className="font-bold">
-                    Addis Ababa, Ethiopia
-                  </p>
-
+                  <p className="text-sm text-white/60">Location</p>
+                  <p className="font-bold">Addis Ababa, Ethiopia</p>
                 </div>
-
               </div>
-
             </div>
-
           </div>
 
           <div className="rounded-3xl bg-white p-7 shadow-2xl sm:p-10">
+            <h3 className="text-2xl font-black text-[#043658]">Send us a message</h3>
+            <p className="mt-2 text-sm text-slate-500">We would love to hear from you.</p>
 
-            <h3 className="text-2xl font-black text-[#043658]">
-              Send us a message
-            </h3>
-
-            <p className="mt-2 text-sm text-slate-500">
-              We would love to hear from you.
-            </p>
-
-            <form
-              onSubmit={handleContactSubmit}
-              className="mt-7 space-y-5"
-            >
-
+            <form onSubmit={handleContactSubmit} className="mt-7 space-y-5">
               <div>
-
-                <label className="mb-2 block text-sm font-bold text-[#043658]">
-                  Name
-                </label>
-
+                <label className="mb-2 block text-sm font-bold text-[#043658]">Name</label>
                 <input
                   type="text"
                   name="name"
@@ -1248,15 +876,10 @@ export function Home() {
                   placeholder="Your name"
                   className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm outline-none transition focus:border-[#FFC107] focus:ring-2 focus:ring-[#FFC107]/20"
                 />
-
               </div>
 
               <div>
-
-                <label className="mb-2 block text-sm font-bold text-[#043658]">
-                  Email
-                </label>
-
+                <label className="mb-2 block text-sm font-bold text-[#043658]">Email</label>
                 <input
                   type="email"
                   name="email"
@@ -1264,15 +887,10 @@ export function Home() {
                   placeholder="your@email.com"
                   className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm outline-none transition focus:border-[#FFC107] focus:ring-2 focus:ring-[#FFC107]/20"
                 />
-
               </div>
 
               <div>
-
-                <label className="mb-2 block text-sm font-bold text-[#043658]">
-                  Message
-                </label>
-
+                <label className="mb-2 block text-sm font-bold text-[#043658]">Message</label>
                 <textarea
                   name="message"
                   required
@@ -1280,7 +898,6 @@ export function Home() {
                   placeholder="How can we help you?"
                   className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3.5 text-sm outline-none transition focus:border-[#FFC107] focus:ring-2 focus:ring-[#FFC107]/20"
                 />
-
               </div>
 
               <button
@@ -1288,41 +905,24 @@ export function Home() {
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#043658] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#FFC107] hover:text-[#043658]"
               >
                 <Mail className="h-4 w-4" />
-
                 Send Email
-
                 <Send className="h-4 w-4" />
               </button>
-
             </form>
-
           </div>
-
         </div>
-
       </section>
 
       {/* ================= FOOTER ================= */}
-
       <footer className="bg-[#032944] px-4 py-8 text-white sm:px-6 lg:px-8">
-
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
-
           <div>
-
-            <h3 className="text-lg font-black">
-              Guesthouse Platform
-            </h3>
-
+            <h3 className="text-lg font-black">Guesthouse Platform</h3>
           </div>
-
           <p className="text-xs text-white/50">
-            © {new Date().getFullYear()} Guesthouse Platform.
-            All rights reserved.
+            © {new Date().getFullYear()} Guesthouse Platform. All rights reserved.
           </p>
-
         </div>
-
       </footer>
 
     </div>

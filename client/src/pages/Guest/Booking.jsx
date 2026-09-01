@@ -57,19 +57,27 @@ export function Booking() {
   const cameFromLogin = location.state?.fromLogin || false;
   const showConfirmation = location.state?.showConfirmation || false;
 
-  // ✅ If coming from login with showConfirmation, set step to success
+  // Brand Colors
+  const brandColors = {
+    primary: "#043658",      // Navy Blue
+    secondary: "#FFC107",    // Amber/Gold
+    lightBg: "#f5f8fa",      // Light Gray
+    border: "#e5edf2",       // Border Gray
+    text: "#043658",         // Navy Text
+    textSecondary: "#647b8a", // Slate Text
+    white: "#ffffff",
+  };
+
   useEffect(() => {
     if (cameFromLogin && showConfirmation && resultData) {
       setStep("success");
     }
   }, [cameFromLogin, showConfirmation, resultData]);
 
-  // ✅ If coming from login with booking data but no result yet, process booking
   useEffect(() => {
     if (cameFromLogin && location.state?.bookingData && !resultData && !loading) {
       const savedData = location.state.bookingData;
       
-      // Restore the booking data
       setGuesthouse(savedData.guesthouse || null);
       setRoom(savedData.room || null);
       setCheckInDate(savedData.checkInDate || "");
@@ -409,8 +417,8 @@ export function Booking() {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-base text-stone-500">
+          <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-base text-[#647b8a]">
             Loading booking details...
           </p>
         </div>
@@ -421,19 +429,19 @@ export function Booking() {
   if (!guesthouse || !room) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm">
+        <div className="bg-white border border-[#e5edf2] rounded-3xl p-8 shadow-sm">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-          <h2 className="mt-4 text-2xl font-black text-stone-900">
+          <h2 className="mt-4 text-2xl font-black text-[#043658]">
             Booking unavailable
           </h2>
-          <p className="mt-2 text-base text-stone-500">
+          <p className="mt-2 text-base text-[#647b8a]">
             {error ||
               "The selected room could not be found."}
           </p>
           <button
             type="button"
             onClick={() => navigate("/search")}
-            className="mt-6 px-6 py-4 rounded-xl bg-stone-900 text-white font-bold text-base"
+            className="mt-6 px-6 py-4 rounded-xl bg-[#043658] text-white font-bold text-base hover:bg-[#0b2f4a] transition"
           >
             Back to Guesthouses
           </button>
@@ -445,12 +453,12 @@ export function Booking() {
   if (step === "processing") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20">
-        <div className="bg-white border border-stone-200 rounded-3xl p-10 text-center shadow-sm">
-          <div className="w-16 h-16 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
-          <h2 className="mt-6 text-2xl font-black text-stone-900">
+        <div className="bg-white border border-[#e5edf2] rounded-3xl p-10 text-center shadow-sm">
+          <div className="w-16 h-16 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
+          <h2 className="mt-6 text-2xl font-black text-[#043658]">
             Processing your booking
           </h2>
-          <p className="mt-2 text-base text-stone-500">
+          <p className="mt-2 text-base text-[#647b8a]">
             Please wait while we confirm your payment and
             reserve the room.
           </p>
@@ -463,9 +471,6 @@ export function Booking() {
     );
   }
 
-  // ============================================================
-  // SUCCESS - INSIDE DASHBOARD LAYOUT
-  // ============================================================
   if (step === "success" && resultData) {
     const reservation =
       resultData.reservation || {};
@@ -487,35 +492,35 @@ export function Booking() {
               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-12 h-12" />
               </div>
-              <h1 className="mt-4 text-3xl font-black text-stone-900">
+              <h1 className="mt-4 text-3xl font-black text-[#043658]">
                 Booking Confirmed!
               </h1>
-              <p className="mt-2 text-base text-stone-600">
+              <p className="mt-2 text-base text-[#647b8a]">
                 Your room has been reserved successfully.
               </p>
             </div>
 
             <div className="p-8 space-y-6">
               {(reservation.id || reservation.reservationId) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                  <p className="text-sm text-amber-700 font-semibold">Reservation ID</p>
-                  <p className="mt-1 font-mono font-black text-stone-900 text-lg">
+                <div className="bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-2xl p-4">
+                  <p className="text-sm text-[#FFC107] font-semibold">Reservation ID</p>
+                  <p className="mt-1 font-mono font-black text-[#043658] text-lg">
                     {reservation.id || reservation.reservationId}
                   </p>
                 </div>
               )}
 
               <div className="flex items-center gap-4">
-                <Building2 className="w-6 h-6 text-amber-600" />
+                <Building2 className="w-6 h-6 text-[#FFC107]" />
                 <div>
-                  <p className="text-sm text-stone-500">Guesthouse</p>
-                  <p className="text-xl font-bold text-stone-900">
+                  <p className="text-sm text-[#647b8a]">Guesthouse</p>
+                  <p className="text-xl font-bold text-[#043658]">
                     {reservation.guesthouseName || guesthouse.name}
                   </p>
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4 bg-stone-50 rounded-2xl p-6">
+              <div className="grid sm:grid-cols-2 gap-4 bg-[#f5f8fa] rounded-2xl p-6">
                 <InfoItem label="Room" value={`Room ${reservation.roomNumber || room.roomNumber || "-"}`} />
                 <InfoItem label="Room Type" value={reservation.roomType || room.type || room.roomType} />
                 <InfoItem label="Guests" value={String(reservation.numberOfGuests || numberOfGuests)} />
@@ -525,9 +530,9 @@ export function Booking() {
                 <InfoItem label="Payment" value={paymentMethod === "TELEBIRR" ? "Telebirr" : paymentMethod === "BANK_TRANSFER" ? "Bank Transfer" : paymentMethod === "CHAPA" ? "Chapa" : "Card"} />
               </div>
 
-              <div className="border-t border-stone-200 pt-5">
+              <div className="border-t border-[#e5edf2] pt-5">
                 <div className="flex justify-between items-center">
-                  <span className="text-xl font-bold text-stone-700">Total Paid</span>
+                  <span className="text-xl font-bold text-[#043658]">Total Paid</span>
                   <span className="text-3xl font-black text-emerald-600">
                     {Number(confirmedTotal || 0).toLocaleString()} ETB
                   </span>
@@ -535,9 +540,9 @@ export function Booking() {
               </div>
 
               {(payment.referenceNumber || payment.reference || reservation.paymentReference || reservation.referenceNumber) && (
-                <div className="bg-stone-50 rounded-2xl p-4">
-                  <p className="text-sm text-stone-500">Payment Reference</p>
-                  <p className="font-mono font-bold text-stone-900 mt-1 text-lg">
+                <div className="bg-[#f5f8fa] rounded-2xl p-4">
+                  <p className="text-sm text-[#647b8a]">Payment Reference</p>
+                  <p className="font-mono font-bold text-[#043658] mt-1 text-lg">
                     {payment.referenceNumber || payment.reference || reservation.paymentReference || reservation.referenceNumber}
                   </p>
                 </div>
@@ -547,7 +552,7 @@ export function Booking() {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="flex-1 py-4 rounded-xl bg-stone-900 text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-stone-800 transition"
+                  className="flex-1 py-4 rounded-xl bg-[#043658] text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-[#0b2f4a] transition"
                 >
                   <Printer className="w-5 h-5" />
                   Print Receipt
@@ -555,7 +560,7 @@ export function Booking() {
                 <button
                   type="button"
                   onClick={() => navigate("/reservations")}
-                  className="flex-1 py-4 rounded-xl bg-amber-500 text-stone-950 font-bold text-base hover:bg-amber-400 transition"
+                  className="flex-1 py-4 rounded-xl bg-[#FFC107] hover:bg-[#ffb300] text-[#043658] font-bold text-base transition"
                 >
                   View My Reservations
                 </button>
@@ -568,273 +573,252 @@ export function Booking() {
   }
 
   // ============================================================
-  // CHECKOUT - MAIN RESERVATION FORM
+  // CHECKOUT - MAIN RESERVATION FORM WITH BRAND COLORS
   // ============================================================
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
+    <DashboardLayout>
+      <div className="max-w-6xl mx-auto">
 
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-base font-semibold text-stone-600 hover:text-stone-900 mb-8"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        Back
-      </button>
+        {error && (
+          <div className="mb-6 p-5 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 shrink-0" />
+            <span className="text-base font-medium">{error}</span>
+          </div>
+        )}
 
-      {error && (
-        <div className="mb-6 p-5 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 shrink-0" />
-          <span className="text-base font-medium">{error}</span>
-        </div>
-      )}
+        <form onSubmit={handlePaymentAndConfirmation}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-      <form onSubmit={handlePaymentAndConfirmation} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-        <div className="lg:col-span-2 space-y-8">
-
-          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black text-stone-900 flex items-center gap-3">
-                <Calendar className="w-7 h-7 text-amber-500" />
+            {/* ============================================================
+                LEFT COLUMN - Check Your Stay (WITH BRAND COLORS)
+            ============================================================ */}
+            <div className="bg-white rounded-3xl border border-[#e5edf2] p-6 shadow-sm">
+              <h2 className="text-xl font-black text-[#043658] flex items-center gap-2 mb-4">
+                <Calendar className="w-6 h-6 text-[#FFC107]" />
                 Check Your Stay
               </h2>
-              <button type="button" onClick={() => navigate(-1)} className="text-2xl text-stone-400 hover:text-stone-600">✕</button>
-            </div>
 
-            <p className="text-base text-stone-500 mb-6">
-              Select your dates and number of guests before continuing.
-            </p>
+              <p className="text-sm text-[#647b8a] mb-4">
+                Select your dates and number of guests before continuing.
+              </p>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
-              <div className="flex justify-between items-start">
+              {/* DATES */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-stone-500 font-bold">SELECTED ROOM</p>
-                  <h3 className="text-2xl font-black text-stone-900">Room {room.roomNumber}</h3>
-                  <p className="text-base text-stone-600">{room.type || room.roomType || "Room"} · Maximum {maxGuests} guests</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-3xl font-black text-amber-600">{pricePerNight.toLocaleString()} ETB</p>
-                  <p className="text-sm text-stone-500">per night</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Check-in</label>
-                <input
-                  type="date"
-                  required
-                  min={todayString}
-                  value={checkInDate}
-                  onChange={(e) => {
-                    const newCheckIn = e.target.value;
-                    setCheckInDate(newCheckIn);
-                    if (!checkOutDate || checkOutDate <= newCheckIn) {
-                      setCheckOutDate(getNextDate(newCheckIn));
-                    }
-                  }}
-                  className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Check-out</label>
-                <input
-                  type="date"
-                  required
-                  min={minimumCheckOutDate}
-                  value={checkOutDate}
-                  onChange={(e) => setCheckOutDate(e.target.value)}
-                  className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Number of Guests</label>
-              <div className="relative">
-                <select
-                  value={numberOfGuests}
-                  onChange={(e) => setNumberOfGuests(Number(e.target.value))}
-                  className="w-full px-5 py-4 rounded-xl border border-stone-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-amber-400 appearance-none"
-                >
-                  {[...Array(Math.min(maxGuests, 10))].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1} {i === 0 ? "guest" : "guests"}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-stone-400 pointer-events-none" />
-              </div>
-              <p className="text-sm text-stone-500 mt-2">Maximum {maxGuests} guests for this room.</p>
-            </div>
-
-            {nightsCount > 0 && (
-              <div className="mt-4 bg-amber-50 rounded-xl px-5 py-4 text-base text-amber-800 font-semibold">
-                {nightsCount} night{nightsCount !== 1 ? "s" : ""} selected
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-            <h2 className="text-2xl font-black text-stone-900">Payment Method</h2>
-
-            <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("TELEBIRR")}
-                className={`p-6 rounded-2xl border-2 text-left transition ${
-                  paymentMethod === "TELEBIRR"
-                    ? "border-blue-600 bg-blue-50"
-                    : "border-stone-200 hover:border-stone-300"
-                }`}
-              >
-                <Smartphone className="w-10 h-10 text-blue-600 mb-3" />
-                <div className="text-lg font-black text-stone-900">Telebirr</div>
-                <p className="text-sm text-stone-500 mt-1">Pay using your Telebirr mobile account.</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("CHAPA")}
-                className={`p-6 rounded-2xl border-2 text-left transition ${
-                  paymentMethod === "CHAPA"
-                    ? "border-purple-600 bg-purple-50"
-                    : "border-stone-200 hover:border-stone-300"
-                }`}
-              >
-                <CreditCard className="w-10 h-10 text-purple-600 mb-3" />
-                <div className="text-lg font-black text-stone-900">Chapa</div>
-                <p className="text-sm text-stone-500 mt-1">Pay using Chapa payment gateway.</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("BANK_TRANSFER")}
-                className={`p-6 rounded-2xl border-2 text-left transition ${
-                  paymentMethod === "BANK_TRANSFER"
-                    ? "border-emerald-600 bg-emerald-50"
-                    : "border-stone-200 hover:border-stone-300"
-                }`}
-              >
-                <Landmark className="w-10 h-10 text-emerald-600 mb-3" />
-                <div className="text-lg font-black text-stone-900">Bank Transfer</div>
-                <p className="text-sm text-stone-500 mt-1">Transfer from any Ethiopian bank account.</p>
-              </button>
-            </div>
-
-            {paymentMethod === "TELEBIRR" && (
-              <div className="mt-6">
-                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Mobile Number for Confirmation</label>
-                <input
-                  type="tel"
-                  required
-                  value={telebirrPhone}
-                  onChange={(e) => setTelebirrPhone(e.target.value)}
-                  placeholder="+251 9XXXXXXXX"
-                  className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-sm text-stone-500 mt-2">Enter the phone number connected to your Telebirr account.</p>
-              </div>
-            )}
-
-            {paymentMethod === "CHAPA" && (
-              <div className="mt-6 p-5 bg-purple-50 border border-purple-200 rounded-xl">
-                <p className="text-base text-purple-800 font-medium">You will be redirected to Chapa to complete your payment securely.</p>
-              </div>
-            )}
-
-            {paymentMethod === "BANK_TRANSFER" && (
-              <div className="mt-6 space-y-5">
-                <div>
-                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Select Bank</label>
-                  <select
-                    required
-                    value={selectedBank}
-                    onChange={(e) => setSelectedBank(e.target.value)}
-                    className="w-full px-5 py-4 rounded-xl border border-stone-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">Select your bank</option>
-                    {ETHIOPIAN_BANKS.map((bank) => (
-                      <option key={bank} value={bank}>{bank}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">Account Number</label>
+                  <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Check-in</label>
                   <input
-                    type="text"
+                    type="date"
                     required
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                    placeholder="Enter your bank account number"
-                    className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    min={todayString}
+                    value={checkInDate}
+                    onChange={(e) => {
+                      const newCheckIn = e.target.value;
+                      setCheckInDate(newCheckIn);
+                      if (!checkOutDate || checkOutDate <= newCheckIn) {
+                        setCheckOutDate(getNextDate(newCheckIn));
+                      }
+                    }}
+                    className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC107]"
                   />
                 </div>
-                {selectedBank && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-base text-emerald-800">
-                    You selected <strong>{selectedBank}</strong>. Enter your account number above to continue.
+                <div>
+                  <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Check-out</label>
+                  <input
+                    type="date"
+                    required
+                    min={minimumCheckOutDate}
+                    value={checkOutDate}
+                    onChange={(e) => setCheckOutDate(e.target.value)}
+                    className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC107]"
+                  />
+                </div>
+              </div>
+
+              {/* NUMBER OF GUESTS */}
+              <div className="mt-4">
+                <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Number of Guests</label>
+                <div className="relative">
+                  <select
+                    value={numberOfGuests}
+                    onChange={(e) => setNumberOfGuests(Number(e.target.value))}
+                    className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC107] appearance-none"
+                  >
+                    {[...Array(Math.min(maxGuests, 10))].map((_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1} {i === 0 ? "guest" : "guests"}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#647b8a] pointer-events-none" />
+                </div>
+                <p className="text-xs text-[#647b8a] mt-1">
+                  Maximum {maxGuests} guests for this room.
+                </p>
+              </div>
+
+              {nightsCount > 0 && (
+                <div className="mt-3 bg-[#FFC107]/10 rounded-xl px-3 py-2 text-sm text-[#043658] font-semibold">
+                  {nightsCount} night{nightsCount !== 1 ? "s" : ""} selected
+                </div>
+              )}
+            </div>
+
+            {/* ============================================================
+                RIGHT COLUMN - Payment Method (WITH BRAND COLORS)
+            ============================================================ */}
+            <div className="bg-white rounded-3xl border border-[#e5edf2] p-6 shadow-sm flex flex-col">
+              <h2 className="text-xl font-black text-[#043658] mb-4">Payment Method</h2>
+
+              <div className="space-y-3 flex-1">
+                {/* TELEBIRR */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("TELEBIRR")}
+                  className={`w-full p-4 rounded-2xl border-2 text-left transition flex items-center gap-3 ${
+                    paymentMethod === "TELEBIRR"
+                      ? "border-blue-600 bg-blue-50"
+                      : "border-[#e5edf2] hover:border-[#FFC107]"
+                  }`}
+                >
+                  <Smartphone className="w-6 h-6 text-blue-600" />
+                  <div>
+                    <div className="font-bold text-[#043658]">Telebirr</div>
+                    <div className="text-xs text-[#647b8a]">Pay using your Telebirr mobile account.</div>
+                  </div>
+                </button>
+
+                {/* CHAPA */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("CHAPA")}
+                  className={`w-full p-4 rounded-2xl border-2 text-left transition flex items-center gap-3 ${
+                    paymentMethod === "CHAPA"
+                      ? "border-purple-600 bg-purple-50"
+                      : "border-[#e5edf2] hover:border-[#FFC107]"
+                  }`}
+                >
+                  <CreditCard className="w-6 h-6 text-purple-600" />
+                  <div>
+                    <div className="font-bold text-[#043658]">Chapa</div>
+                    <div className="text-xs text-[#647b8a]">Pay using Chapa payment gateway.</div>
+                  </div>
+                </button>
+
+                {/* BANK TRANSFER */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                  className={`w-full p-4 rounded-2xl border-2 text-left transition flex items-center gap-3 ${
+                    paymentMethod === "BANK_TRANSFER"
+                      ? "border-emerald-600 bg-emerald-50"
+                      : "border-[#e5edf2] hover:border-[#FFC107]"
+                  }`}
+                >
+                  <Landmark className="w-6 h-6 text-emerald-600" />
+                  <div>
+                    <div className="font-bold text-[#043658]">Bank Transfer</div>
+                    <div className="text-xs text-[#647b8a]">Transfer from any Ethiopian bank account.</div>
+                  </div>
+                </button>
+              </div>
+
+              {/* PAYMENT DETAILS */}
+              <div className="mt-4">
+                {paymentMethod === "TELEBIRR" && (
+                  <div className="pt-4 border-t border-[#e5edf2]">
+                    <label className="block text-xs font-bold text-[#043658] uppercase mb-1">
+                      Mobile Number for Confirmation
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={telebirrPhone}
+                      onChange={(e) => setTelebirrPhone(e.target.value)}
+                      placeholder="+251 9XXXXXXXX"
+                      className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-[#647b8a] mt-1">
+                      Enter the phone number connected to your Telebirr account.
+                    </p>
+                  </div>
+                )}
+
+                {paymentMethod === "CHAPA" && (
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                    <p className="text-sm text-purple-800 font-medium">
+                      You will be redirected to Chapa to complete your payment securely.
+                    </p>
+                  </div>
+                )}
+
+                {paymentMethod === "BANK_TRANSFER" && (
+                  <div className="pt-4 border-t border-[#e5edf2] space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Select Bank</label>
+                      <select
+                        required
+                        value={selectedBank}
+                        onChange={(e) => setSelectedBank(e.target.value)}
+                        className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="">Select your bank</option>
+                        {ETHIOPIAN_BANKS.map((bank) => (
+                          <option key={bank} value={bank}>{bank}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Account Number</label>
+                      <input
+                        type="text"
+                        required
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                        placeholder="Enter your bank account number"
+                        className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    {selectedBank && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-800">
+                        You selected <strong>{selectedBank}</strong>. Enter your account number above to continue.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </div>
 
-        <div>
-          <div className="bg-stone-900 text-white rounded-3xl p-8 sticky top-24">
-            <h2 className="text-2xl font-black">Booking Summary</h2>
+              {/* PAYMENT & CONFIRMATION - INSIDE PAYMENT METHOD BOX */}
+              <div className="mt-6 pt-6 border-t border-[#e5edf2]">
+                <div className="bg-[#f5f8fa] rounded-2xl p-4">
+                  <button
+                    type="submit"
+                    disabled={nightsCount <= 0 || pricePerNight <= 0 || !room?.id}
+                    className="w-full py-4 rounded-xl bg-[#FFC107] hover:bg-[#ffb300] disabled:bg-[#e5edf2] disabled:text-[#647b8a] text-[#043658] font-black text-base transition"
+                  >
+                    Payment & Confirmation
+                  </button>
 
-            <div className="mt-8 space-y-5 text-base">
-              <div className="flex justify-between gap-4">
-                <span className="text-stone-400">Room</span>
-                <span className="font-bold text-right text-lg">{room.roomNumber}</span>
+                  <div className="mt-3 flex items-start gap-2 text-xs text-[#647b8a]">
+                    <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>Your room is checked for availability before the reservation is confirmed.</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-stone-400">Price / night</span>
-                <span className="font-bold text-lg">{pricePerNight.toLocaleString()} ETB</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-stone-400">Nights</span>
-                <span className="font-bold text-lg">{nightsCount}</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-stone-400">Guests</span>
-                <span className="font-bold text-lg">{numberOfGuests}</span>
-              </div>
-              <div className="border-t border-stone-700 pt-5 flex justify-between">
-                <span className="text-xl font-bold">Total</span>
-                <span className="text-3xl font-black text-amber-400">
-                  {totalPrice.toLocaleString()} ETB
-                </span>
-              </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={nightsCount <= 0 || pricePerNight <= 0 || !room?.id}
-              className="w-full mt-8 py-5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-600 disabled:text-stone-400 text-stone-950 font-black text-lg transition"
-            >
-              Payment & Confirmation
-            </button>
-
-            <div className="mt-6 flex items-start gap-3 text-sm text-stone-400">
-              <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-400" />
-              <span>Your room is checked for availability before the reservation is confirmed.</span>
             </div>
           </div>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+    </DashboardLayout>
   );
 }
 
 function InfoItem({ label, value }) {
   return (
     <div>
-      <p className="text-sm text-stone-500">{label}</p>
-      <p className="mt-1 text-lg font-bold text-stone-900">{value || "-"}</p>
+      <p className="text-sm text-[#647b8a]">{label}</p>
+      <p className="mt-1 text-lg font-bold text-[#043658]">{value || "-"}</p>
     </div>
   );
 }
