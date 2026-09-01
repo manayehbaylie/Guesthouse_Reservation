@@ -141,23 +141,57 @@ export const registerUser = async (data) => {
 // ==========================
 // Login User
 // ==========================
-export const loginUser = async (email, password) => {
-  requireField(email, "Email");
+export const loginUser = async (identifier, password, loginMethod = 'email') => {
+  requireField(identifier, loginMethod === 'phone' ? "Phone" : "Email");
   requireField(password, "Password");
 
-  const normalizedEmail = String(email).trim().toLowerCase();
+  // ==========================
+  // Normalize and find user
+  // ==========================
+  let user;
+  
+  if (loginMethod === 'phone') {
+    // Normalize phone number with same logic as frontend
+    let normalizedPhone = String(identifier).trim();
+    normalizedPhone = normalizedPhone.replace(/[\s\-()]/g, "");
 
-  // ==========================
-  // Find user
-  // ==========================
-  const user = await prisma.user.findUnique({
-    where: {
-      email: normalizedEmail,
-    },
-    include: {
-      guesthouses: true,
-    },
-  });
+    // 09XXXXXXXX -> +2519XXXXXXXX
+    if (/^09\d{8}$/.test(normalizedPhone)) {
+      normalizedPhone = `+251${normalizedPhone.substring(1)}`;
+    }
+    // 9XXXXXXXX -> +2519XXXXXXXX
+    else if (/^9\d{8}$/.test(normalizedPhone)) {
+      normalizedPhone = `+251${normalizedPhone}`;
+    }
+    // 2519XXXXXXXX -> +2519XXXXXXXX
+    else if (/^2519\d{8}$/.test(normalizedPhone)) {
+      normalizedPhone = `+${normalizedPhone}`;
+    }
+    // +2519XXXXXXXX (already correct)
+    else if (!/^\+2519\d{8}$/.test(normalizedPhone)) {
+      // If it doesn't match any pattern, keep as-is and try
+    }
+
+    user = await prisma.user.findUnique({
+      where: {
+        phone: normalizedPhone,
+      },
+      include: {
+        guesthouses: true,
+      },
+    });
+  } else {
+    // Email login - normalize to lowercase
+    const normalizedEmail = String(identifier).trim().toLowerCase();
+    user = await prisma.user.findUnique({
+      where: {
+        email: normalizedEmail,
+      },
+      include: {
+        guesthouses: true,
+      },
+    });
+  }
 
   if (!user) {
     const error = new Error("Invalid email or password");

@@ -2,7 +2,7 @@ import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
 
 // Helper function to get receptionist's assigned guesthouse
-const getReceptionistGuesthouse = async (receptionistId) => {
+export const getReceptionistGuesthouse = async (receptionistId) => {
   const assignment = await prisma.staffAssignment.findFirst({
     where: {
       staffId: receptionistId,
@@ -308,6 +308,7 @@ export const confirmReservation = async (receptionistId, id) => {
     title: "Reservation Confirmed",
     message: "Your reservation has been confirmed by the receptionist.",
     userId: reservation.guestId,
+    category: "reservation",
   });
 
   return updatedReservation;
@@ -365,6 +366,7 @@ export const checkInGuest = async (receptionistId, id) => {
     title: "Guest Checked In",
     message: "Welcome! Your check-in has been completed.",
     userId: reservation.guestId,
+    category: "reservation",
   });
 
   return result;
@@ -423,6 +425,7 @@ export const checkOutGuest = async (receptionistId, id) => {
     title: "Checked Out",
     message: "Thank you for staying with us.",
     userId: reservation.guestId,
+    category: "reservation",
   });
 
   return result;
@@ -481,6 +484,7 @@ export const cancelReservation = async (receptionistId, id) => {
     title: "Reservation Cancelled",
     message: "Your reservation has been cancelled by the receptionist.",
     userId: reservation.guestId,
+    category: "reservation",
   });
 
   return result;

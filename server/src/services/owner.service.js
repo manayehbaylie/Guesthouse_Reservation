@@ -52,6 +52,15 @@ export const registerGuesthouse = async (ownerId, data) => {
     throw new Error("City is required");
   }
 
+  const normalizedPhotos = Array.isArray(data.photos)
+    ? data.photos.filter((photo) => typeof photo === "string" && photo.trim())
+    : [];
+
+  const primaryImage =
+    normalizedPhotos[0] ||
+    (typeof data.image === "string" ? data.image.trim() : null) ||
+    null;
+
   const guesthouse = await prisma.guesthouse.create({
     data: {
       name: String(data.name).trim(),
@@ -63,8 +72,8 @@ export const registerGuesthouse = async (ownerId, data) => {
       email: data.email ? String(data.email).trim() : null,
       numberOfRooms: data.numberOfRooms ? Number(data.numberOfRooms) : null,
       description: data.description ? String(data.description).trim() : "",
-      image: data.image ? String(data.image).trim() : null,
-      photos: Array.isArray(data.photos) ? data.photos : [],
+      image: primaryImage,
+      photos: normalizedPhotos,
       licenseNumber: data.licenseNumber ? String(data.licenseNumber).trim() : null,
       licenseDocument: typeof data.licenseDocument === "string"
         ? data.licenseDocument
@@ -79,6 +88,7 @@ export const registerGuesthouse = async (ownerId, data) => {
       title: "Guesthouse Registered",
       message: `Your property "${guesthouse.name}" has been submitted and is pending administrator approval.`,
       userId: ownerId,
+      category: "guesthouse",
     });
   } catch (error) {
     console.error("Failed to notify owner of guesthouse registration:", error);
@@ -111,6 +121,16 @@ export const resubmitGuesthouse = async (ownerId, data) => {
   }
 
   if (guesthouse.status === "APPROVED") {
+    const normalizedPhotos = Array.isArray(data.photos)
+      ? data.photos.filter((photo) => typeof photo === "string" && photo.trim())
+      : [];
+
+    const primaryImage =
+      normalizedPhotos[0] ||
+      (typeof data.image === "string" ? data.image.trim() : guesthouse.image) ||
+      guesthouse.image ||
+      null;
+
     // APPROVED → just do a normal update, no re-review needed
     return await prisma.guesthouse.update({
       where: { id: guesthouse.id },
@@ -126,11 +146,21 @@ export const resubmitGuesthouse = async (ownerId, data) => {
         ...(data.numberOfRooms !== undefined && { numberOfRooms: Number(data.numberOfRooms) }),
         ...(data.licenseNumber !== undefined && { licenseNumber: String(data.licenseNumber).trim() }),
         ...(typeof data.licenseDocument === "string" && { licenseDocument: data.licenseDocument }),
-        ...(Array.isArray(data.photos) && { photos: data.photos }),
-        ...(data.image !== undefined && { image: data.image }),
+        ...(Array.isArray(data.photos) && { photos: normalizedPhotos }),
+        ...(data.image !== undefined || Array.isArray(data.photos) ? { image: primaryImage } : {}),
       },
     });
   }
+
+  const normalizedPhotos = Array.isArray(data.photos)
+    ? data.photos.filter((photo) => typeof photo === "string" && photo.trim())
+    : [];
+
+  const primaryImage =
+    normalizedPhotos[0] ||
+    (typeof data.image === "string" ? data.image.trim() : guesthouse.image) ||
+    guesthouse.image ||
+    null;
 
   // REJECTED → update fields and reset to PENDING
   const updated = await prisma.guesthouse.update({
@@ -147,8 +177,8 @@ export const resubmitGuesthouse = async (ownerId, data) => {
       ...(data.numberOfRooms !== undefined && { numberOfRooms: Number(data.numberOfRooms) }),
       ...(data.licenseNumber !== undefined && { licenseNumber: String(data.licenseNumber).trim() }),
       ...(typeof data.licenseDocument === "string" && { licenseDocument: data.licenseDocument }),
-      ...(Array.isArray(data.photos) && { photos: data.photos }),
-      ...(data.image !== undefined && { image: data.image }),
+      ...(Array.isArray(data.photos) && { photos: normalizedPhotos }),
+      image: primaryImage,
       status: "PENDING",
       rejectionReason: null,
     },
@@ -159,6 +189,7 @@ export const resubmitGuesthouse = async (ownerId, data) => {
       title: "Guesthouse Resubmitted",
       message: `Your property "${updated.name}" has been resubmitted for review.`,
       userId: ownerId,
+      category: "guesthouse",
     });
   } catch (error) {
     console.error("Failed to notify owner of resubmission:", error);
@@ -187,6 +218,16 @@ export const updateMyGuesthouse = async (
     throw new Error("Guesthouse not found");
   }
 
+  const normalizedPhotos = Array.isArray(data.photos)
+    ? data.photos.filter((photo) => typeof photo === "string" && photo.trim())
+    : [];
+
+  const primaryImage =
+    normalizedPhotos[0] ||
+    (typeof data.image === "string" ? data.image.trim() : guesthouse.image) ||
+    guesthouse.image ||
+    null;
+
   return await prisma.guesthouse.update({
     where: {
       id: guesthouse.id,
@@ -205,8 +246,8 @@ export const updateMyGuesthouse = async (
       ...(data.numberOfRooms !== undefined && { numberOfRooms: Number(data.numberOfRooms) }),
       ...(data.licenseNumber !== undefined && { licenseNumber: data.licenseNumber }),
       ...(data.licenseDocument !== undefined && { licenseDocument: data.licenseDocument }),
-      ...(Array.isArray(data.photos) && { photos: data.photos }),
-      ...(data.image !== undefined && { image: data.image }),
+      ...(Array.isArray(data.photos) && { photos: normalizedPhotos }),
+      image: primaryImage,
       ...(data.images?.[0] && { image: data.images[0] }),
     },
   });
@@ -232,7 +273,7 @@ export const submitGuesthouseForReview = async (ownerId, data = {}) => {
           ? data.licenseDocument
           : null,
         photos: Array.isArray(data.photos) ? data.photos : [],
-        status: "DRAFT",
+        status: "PENDING",
         ownerId,
       },
     });
@@ -282,6 +323,7 @@ export const submitGuesthouseForReview = async (ownerId, data = {}) => {
     title: "Guesthouse Submitted",
     message: `Your property "${updated.name}" is pending administrator review.`,
     userId: ownerId,
+    category: "guesthouse",
   });
 
   return updated;
@@ -360,6 +402,7 @@ export const createReceptionist = async (
       title: "Staff Assignment",
       message: `You have been assigned as a Receptionist for "${guesthouse.name}". You can now manage front desk operations.`,
       userId: receptionist.id,
+      category: "guesthouse",
     });
   } catch (error) {
     console.error("Failed to notify receptionist of assignment:", error);
@@ -466,6 +509,7 @@ export const assignReceptionistToGuesthouse = async (
       title: "Staff Assignment",
       message: `You have been assigned as a Receptionist for "${guesthouse.name}".`,
       userId: staffId,
+      category: "guesthouse",
     });
   } catch (error) {
     console.error("Failed to notify receptionist of assignment:", error);

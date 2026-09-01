@@ -11,7 +11,10 @@ export const searchGuesthouses = async ({
   maxPrice,
   roomType,
 }) => {
-  const where = {};
+  const where = {
+    // Only show APPROVED guesthouses to public/customers
+    status: "APPROVED",
+  };
 
   // Guesthouse Name
   if (name) {

@@ -19,6 +19,11 @@ import prisma from "../config/prisma.js";
 
 const ownerGuesthousePayload = (req) => ({
   ...req.body,
+  image: req.files?.image?.[0]
+    ? `/uploads/guesthouses/${req.files.image[0].filename}`
+    : typeof req.body.image === "string"
+      ? req.body.image
+      : undefined,
   licenseDocument: req.files?.licenseDocument?.[0]
     ? `/uploads/guesthouses/${req.files.licenseDocument[0].filename}`
     : typeof req.body.licenseDocument === "string"

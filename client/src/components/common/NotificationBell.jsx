@@ -124,6 +124,7 @@ export function NotificationBell({ variant = 'navbar' }) {
     notifications,
     unreadCount,
     loading,
+    error,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
@@ -221,7 +222,7 @@ export function NotificationBell({ variant = 'navbar' }) {
         {/* Unread Count Badge */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white shadow-md ring-2 ring-white animate-pulse">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount}
           </span>
         )}
       </button>
@@ -324,7 +325,23 @@ export function NotificationBell({ variant = 'navbar' }) {
 
           {/* Notification List */}
           <div className="max-h-[380px] divide-y divide-stone-100 overflow-y-auto overscroll-contain">
-            {filteredNotifications.length === 0 ? (
+            {error ? (
+              <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+                  <Bell className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-bold text-stone-800">Notifications unavailable</p>
+                <p className="mt-1 max-w-[240px] text-xs text-stone-500">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => fetchNotifications(false)}
+                  disabled={loading}
+                  className="mt-4 rounded-lg bg-[#043658] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-400 mb-3">
                   <Bell className="h-6 w-6" />

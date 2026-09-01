@@ -1,31 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import {
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from "react-router-dom";
+
 import { ApiService } from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { DashboardLayout } from "../../components/DashboardLayout.jsx";
+import PaymentScreen from "../../components/PaymentScreen.jsx";
+
 import {
   AlertCircle,
   ArrowLeft,
   Building2,
   CheckCircle2,
-  CreditCard,
   Printer,
   ShieldCheck,
-  Smartphone,
-  Users,
   Calendar,
   ChevronDown,
-  Landmark,
 } from "lucide-react";
-
-const ETHIOPIAN_BANKS = [
-  "CBE",
-  "Awash Bank",
-  "Dashen Bank",
-  "Bank of Abyssinia",
-  "Zemen Bank",
-  "PRIDE Microfinance",
-];
 
 export function Booking() {
   const [searchParams] = useSearchParams();
@@ -36,65 +30,50 @@ export function Booking() {
   const guesthouseId = searchParams.get("guesthouseId");
   const roomIdFromUrl = searchParams.get("roomId");
 
+  // ============================================================
+  // BOOKING DATA
+  // ============================================================
+
   const [guesthouse, setGuesthouse] = useState(null);
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // ============================================================
+  // STAY INFORMATION
+  // ============================================================
 
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [numberOfGuests, setNumberOfGuests] = useState(1);
   const [maxGuests, setMaxGuests] = useState(4);
 
-  const [paymentMethod, setPaymentMethod] = useState("TELEBIRR");
-  const [telebirrPhone, setTelebirrPhone] = useState("");
-  const [selectedBank, setSelectedBank] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
+  // ============================================================
+  // PAYMENT / BOOKING STATE
+  // ============================================================
 
   const [step, setStep] = useState("checkout");
   const [error, setError] = useState("");
   const [resultData, setResultData] = useState(null);
 
-  const cameFromLogin = location.state?.fromLogin || false;
-  const showConfirmation = location.state?.showConfirmation || false;
+  const [paymentData, setPaymentData] = useState({
+    paymentMethod: "TELEBIRR",
+    telebirrPhone: "",
+    selectedBank: "",
+    accountNumber: "",
+  });
 
-  // Brand Colors
-  const brandColors = {
-    primary: "#043658",      // Navy Blue
-    secondary: "#FFC107",    // Amber/Gold
-    lightBg: "#f5f8fa",      // Light Gray
-    border: "#e5edf2",       // Border Gray
-    text: "#043658",         // Navy Text
-    textSecondary: "#647b8a", // Slate Text
-    white: "#ffffff",
-  };
+  // ============================================================
+  // RESTORE BOOKING DATA
+  // ============================================================
 
-  useEffect(() => {
-    if (cameFromLogin && showConfirmation && resultData) {
-      setStep("success");
-    }
-  }, [cameFromLogin, showConfirmation, resultData]);
+  const restoredBooking =
+    location.state?.bookingData ||
+    location.state?.reservationData ||
+    null;
 
-  useEffect(() => {
-    if (cameFromLogin && location.state?.bookingData && !resultData && !loading) {
-      const savedData = location.state.bookingData;
-      
-      setGuesthouse(savedData.guesthouse || null);
-      setRoom(savedData.room || null);
-      setCheckInDate(savedData.checkInDate || "");
-      setCheckOutDate(savedData.checkOutDate || "");
-      setNumberOfGuests(savedData.numberOfGuests || 1);
-      setPaymentMethod(savedData.paymentMethod || "TELEBIRR");
-      setTelebirrPhone(savedData.telebirrPhone || "");
-      setSelectedBank(savedData.selectedBank || "");
-      setAccountNumber(savedData.accountNumber || "");
-      
-      if (savedData.room?.maxGuests) {
-        setMaxGuests(savedData.room.maxGuests);
-      } else if (savedData.room?.capacity) {
-        setMaxGuests(savedData.room.capacity);
-      }
-    }
-  }, [cameFromLogin, location.state, resultData, loading]);
+  // ============================================================
+  // LOAD BOOKING DATA
+  // ============================================================
 
   useEffect(() => {
     let mounted = true;
@@ -104,73 +83,195 @@ export function Booking() {
       setError("");
 
       try {
-        if (cameFromLogin && location.state?.bookingData) {
-          const savedData = location.state.bookingData;
-          
-          setGuesthouse(savedData.guesthouse || null);
-          setRoom(savedData.room || null);
-          setCheckInDate(savedData.checkInDate || "");
-          setCheckOutDate(savedData.checkOutDate || "");
-          setNumberOfGuests(savedData.numberOfGuests || 1);
-          setPaymentMethod(savedData.paymentMethod || "TELEBIRR");
-          setTelebirrPhone(savedData.telebirrPhone || "");
-          setSelectedBank(savedData.selectedBank || "");
-          setAccountNumber(savedData.accountNumber || "");
-          
-          if (savedData.room?.maxGuests) {
-            setMaxGuests(savedData.room.maxGuests);
-          } else if (savedData.room?.capacity) {
-            setMaxGuests(savedData.room.capacity);
+        // ========================================================
+        // 1. TRY TO RESTORE BOOKING AFTER LOGIN
+        // ========================================================
+
+        let savedData = restoredBooking;
+
+        if (!savedData) {
+          const stored = sessionStorage.getItem(
+            "pendingReservation"
+          );
+
+          if (stored) {
+            try {
+              savedData = JSON.parse(stored);
+            } catch (parseError) {
+              console.error(
+                "Could not parse pending reservation:",
+                parseError
+              );
+            }
           }
-          
-          setLoading(false);
+        }
+
+        if (savedData) {
+          console.log(
+            "Restoring pending booking:",
+            savedData
+          );
+
+          const restoredGuesthouse =
+            savedData.guesthouse || null;
+
+          const restoredRoom =
+            savedData.room || null;
+
+          if (mounted) {
+            setGuesthouse(restoredGuesthouse);
+            setRoom(restoredRoom);
+
+            setCheckInDate(
+              savedData.checkInDate ||
+                savedData.checkIn ||
+                ""
+            );
+
+            setCheckOutDate(
+              savedData.checkOutDate ||
+                savedData.checkOut ||
+                ""
+            );
+
+            setNumberOfGuests(
+              Number(savedData.numberOfGuests || 1)
+            );
+
+            const restoredMaxGuests = Number(
+              restoredRoom?.maxGuests ||
+                restoredRoom?.capacity ||
+                4
+            );
+
+            setMaxGuests(restoredMaxGuests);
+
+            setPaymentData({
+              paymentMethod:
+                savedData.paymentMethod ||
+                "TELEBIRR",
+
+              telebirrPhone:
+                savedData.telebirrPhone ||
+                user?.phone ||
+                "",
+
+              selectedBank:
+                savedData.selectedBank ||
+                "",
+
+              accountNumber:
+                savedData.accountNumber ||
+                "",
+            });
+
+            setLoading(false);
+          }
+
           return;
         }
 
+        // ========================================================
+        // 2. VALIDATE GUESTHOUSE ID
+        // ========================================================
+
         if (!guesthouseId) {
-          throw new Error("Guesthouse was not selected.");
+          throw new Error(
+            "Guesthouse was not selected."
+          );
         }
 
-        const gh = await ApiService.getGuesthouseById(guesthouseId);
+        // ========================================================
+        // 3. LOAD GUESTHOUSE
+        // ========================================================
+
+        const gh =
+          await ApiService.getGuesthouseById(
+            guesthouseId
+          );
 
         if (!gh) {
-          throw new Error("Guesthouse not found.");
+          throw new Error(
+            "Guesthouse not found."
+          );
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
+
         setGuesthouse(gh);
 
-        const rooms = await ApiService.getRoomsForGuesthouse(gh.id);
+        // ========================================================
+        // 4. LOAD ROOMS
+        // ========================================================
 
-        if (!Array.isArray(rooms) || rooms.length === 0) {
-          throw new Error("No room is available for this guesthouse.");
+        const roomList =
+          await ApiService.getRoomsForGuesthouse(
+            gh.id
+          );
+
+        if (
+          !Array.isArray(roomList) ||
+          roomList.length === 0
+        ) {
+          throw new Error(
+            "No room is available for this guesthouse."
+          );
         }
+
+        // ========================================================
+        // 5. SELECT ROOM
+        // ========================================================
 
         const selectedRoom =
-          rooms.find(
+          roomList.find(
             (item) =>
-              String(item.id) === String(roomIdFromUrl)
-          ) || rooms[0];
+              String(item.id) ===
+              String(roomIdFromUrl)
+          ) || roomList[0];
 
         if (!selectedRoom) {
-          throw new Error("No room is available.");
+          throw new Error(
+            "No room is available."
+          );
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         setRoom(selectedRoom);
-        
-        if (selectedRoom.maxGuests) {
-          setMaxGuests(selectedRoom.maxGuests);
-        } else if (selectedRoom.capacity) {
-          setMaxGuests(selectedRoom.capacity);
-        }
+
+        // ========================================================
+        // 6. MAXIMUM GUESTS
+        // ========================================================
+
+        const roomCapacity = Number(
+          selectedRoom.maxGuests ||
+            selectedRoom.capacity ||
+            4
+        );
+
+        setMaxGuests(roomCapacity);
+
+        // ========================================================
+        // 7. USER PHONE
+        // ========================================================
 
         if (user?.phone) {
-          setTelebirrPhone(user.phone);
+          setPaymentData((previous) => ({
+            ...previous,
+            telebirrPhone:
+              previous.telebirrPhone ||
+              user.phone,
+          }));
         }
       } catch (err) {
-        console.error("Failed to load booking data:", err);
+        console.error(
+          "Failed to load booking data:",
+          err
+        );
 
         if (mounted) {
           setError(
@@ -190,21 +291,51 @@ export function Booking() {
     return () => {
       mounted = false;
     };
-  }, [guesthouseId, roomIdFromUrl, cameFromLogin, location.state]);
+  }, [
+    guesthouseId,
+    roomIdFromUrl,
+    restoredBooking,
+    user?.phone,
+  ]);
+
+  // ============================================================
+  // PREFILL PHONE
+  // ============================================================
 
   useEffect(() => {
-    if (user?.phone && !telebirrPhone) {
-      setTelebirrPhone(user.phone);
+    if (
+      user?.phone &&
+      !paymentData.telebirrPhone
+    ) {
+      setPaymentData((previous) => ({
+        ...previous,
+        telebirrPhone: user.phone,
+      }));
     }
-  }, [user?.phone]);
+  }, [
+    user?.phone,
+    paymentData.telebirrPhone,
+  ]);
+
+  // ============================================================
+  // CALCULATE NIGHTS
+  // ============================================================
 
   const nightsCount = useMemo(() => {
-    if (!checkInDate || !checkOutDate) {
+    if (
+      !checkInDate ||
+      !checkOutDate
+    ) {
       return 0;
     }
 
-    const start = new Date(`${checkInDate}T12:00:00`);
-    const end = new Date(`${checkOutDate}T12:00:00`);
+    const start = new Date(
+      `${checkInDate}T12:00:00`
+    );
+
+    const end = new Date(
+      `${checkOutDate}T12:00:00`
+    );
 
     if (
       Number.isNaN(start.getTime()) ||
@@ -217,43 +348,168 @@ export function Booking() {
       (end.getTime() - start.getTime()) /
       (1000 * 60 * 60 * 24);
 
-    return Math.max(0, Math.round(difference));
-  }, [checkInDate, checkOutDate]);
+    return Math.max(
+      0,
+      Math.round(difference)
+    );
+  }, [
+    checkInDate,
+    checkOutDate,
+  ]);
 
-  const pricePerNight = Number(
-    room?.pricePerNight ??
-      room?.price ??
-      room?.amount ??
-      0
+  // ============================================================
+  // ROOM PRICE
+  // ============================================================
+
+  const pricePerNight = useMemo(() => {
+    if (!room) {
+      return 0;
+    }
+
+    return Number(
+      room.pricePerNight ??
+        room.price ??
+        room.amount ??
+        room.roomPrice ??
+        0
+    );
+  }, [room]);
+
+  // ============================================================
+  // TOTAL PRICE
+  // ============================================================
+
+  const totalPrice = useMemo(() => {
+    return pricePerNight * nightsCount;
+  }, [
+    pricePerNight,
+    nightsCount,
+  ]);
+
+  // ============================================================
+  // DEBUG
+  // ============================================================
+
+  useEffect(() => {
+    if (!room) {
+      return;
+    }
+
+    console.log(
+      "========================================"
+    );
+
+    console.log(
+      "BOOKING PAGE - CURRENT DATA"
+    );
+
+    console.log(
+      "guesthouseId:",
+      guesthouse?.id
+    );
+
+    console.log(
+      "roomId:",
+      room?.id
+    );
+
+    console.log(
+      "checkInDate:",
+      checkInDate
+    );
+
+    console.log(
+      "checkOutDate:",
+      checkOutDate
+    );
+
+    console.log(
+      "numberOfGuests:",
+      numberOfGuests
+    );
+
+    console.log(
+      "nightsCount:",
+      nightsCount
+    );
+
+    console.log(
+      "pricePerNight:",
+      pricePerNight
+    );
+
+    console.log(
+      "totalPrice:",
+      totalPrice
+    );
+
+    console.log(
+      "room:",
+      room
+    );
+
+    console.log(
+      "========================================"
+    );
+  }, [
+    guesthouse,
+    room,
+    checkInDate,
+    checkOutDate,
+    numberOfGuests,
+    nightsCount,
+    pricePerNight,
+    totalPrice,
+  ]);
+
+  // ============================================================
+  // DATE HELPERS
+  // ============================================================
+
+  const todayString = toDateInput(
+    new Date()
   );
-
-  const totalPrice = pricePerNight * nightsCount;
-
-  const todayString = toDateInput(new Date());
 
   const minimumCheckOutDate = checkInDate
     ? getNextDate(checkInDate)
     : todayString;
 
-  function validatePayment() {
-    if (!checkInDate || !checkOutDate) {
-      return "Please select your check-in and check-out dates.";
+  // ============================================================
+  // VALIDATE BOOKING
+  // ============================================================
+
+  function validateBooking() {
+    if (
+      !checkInDate ||
+      !checkOutDate
+    ) {
+      return (
+        "Please select your check-in and check-out dates."
+      );
     }
 
     if (checkInDate < todayString) {
-      return "Check-in date cannot be in the past.";
+      return (
+        "Check-in date cannot be in the past."
+      );
     }
 
     if (checkOutDate <= checkInDate) {
-      return "Check-out date must be after check-in date.";
+      return (
+        "Check-out date must be after check-in date."
+      );
     }
 
     if (nightsCount <= 0) {
-      return "Please select a valid stay duration.";
+      return (
+        "Please select a valid stay duration."
+      );
     }
 
     if (numberOfGuests < 1) {
-      return "Please select at least 1 guest.";
+      return (
+        "Please select at least 1 guest."
+      );
     }
 
     if (numberOfGuests > maxGuests) {
@@ -261,221 +517,378 @@ export function Booking() {
     }
 
     if (!room?.id) {
-      return "The selected room could not be identified.";
+      return (
+        "The selected room could not be identified."
+      );
     }
 
     if (pricePerNight <= 0) {
-      return "The selected room does not have a valid price.";
+      return (
+        "The selected room does not have a valid price."
+      );
     }
 
-    if (paymentMethod === "TELEBIRR") {
-      if (!telebirrPhone.trim()) {
-        return "Please enter your Telebirr mobile number.";
-      }
-    }
-
-    if (paymentMethod === "BANK_TRANSFER") {
-      if (!selectedBank) {
-        return "Please select your bank.";
-      }
-
-      if (!accountNumber.trim()) {
-        return "Please enter your bank account number.";
-      }
+    if (!guesthouse?.id) {
+      return (
+        "The selected guesthouse could not be identified."
+      );
     }
 
     return null;
   }
 
-  const handlePaymentAndConfirmation = async (event) => {
-    event.preventDefault();
+  // ============================================================
+  // CREATE RESERVATION DATA
+  // ============================================================
 
+  const createReservationData = () => {
+    return {
+      guesthouse,
+      room,
+
+      guesthouseId: Number(
+        guesthouse?.id
+      ),
+
+      roomId: Number(
+        room?.id
+      ),
+
+      checkInDate,
+      checkOutDate,
+
+      numberOfGuests: Number(
+        numberOfGuests
+      ),
+
+      nightsCount: Number(
+        nightsCount
+      ),
+
+      pricePerNight: Number(
+        pricePerNight
+      ),
+
+      totalPrice: Number(
+        totalPrice
+      ),
+
+      // Compatibility fields
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+
+      roomPrice: Number(
+        pricePerNight
+      ),
+
+      amount: Number(
+        totalPrice
+      ),
+
+      // Payment
+      paymentMethod:
+        paymentData?.paymentMethod ||
+        "TELEBIRR",
+
+      telebirrPhone:
+        paymentData?.telebirrPhone ||
+        "",
+
+      selectedBank:
+        paymentData?.selectedBank ||
+        "",
+
+      accountNumber:
+        paymentData?.accountNumber ||
+        "",
+    };
+  };
+
+  // ============================================================
+  // CONTINUE TO PAYMENT
+  // ============================================================
+
+  const handleContinueToPayment = () => {
     setError("");
 
-    const validationError = validatePayment();
+    const validationError =
+      validateBooking();
 
     if (validationError) {
       setError(validationError);
       return;
     }
 
-    const reservationData = {
-      guesthouse: guesthouse,
-      room: room,
-      checkInDate: checkInDate,
-      checkOutDate: checkOutDate,
-      numberOfGuests: numberOfGuests,
-      paymentMethod: paymentMethod,
-      telebirrPhone: telebirrPhone,
-      selectedBank: selectedBank,
-      accountNumber: accountNumber,
-      guesthouseId: guesthouse?.id,
-      roomId: room?.id,
-      nightsCount: nightsCount,
-      totalPrice: totalPrice,
-      pricePerNight: pricePerNight,
-    };
+    const reservationData =
+      createReservationData();
+
+    console.log(
+      "========================================"
+    );
+
+    console.log(
+      "BOOKING DATA BEFORE PAYMENT"
+    );
+
+    console.log(
+      reservationData
+    );
+
+    console.log(
+      "checkIn:",
+      reservationData.checkIn
+    );
+
+    console.log(
+      "checkOut:",
+      reservationData.checkOut
+    );
+
+    console.log(
+      "roomPrice:",
+      reservationData.roomPrice
+    );
+
+    console.log(
+      "amount:",
+      reservationData.amount
+    );
+
+    console.log(
+      "guesthouseId:",
+      reservationData.guesthouseId
+    );
+
+    console.log(
+      "roomId:",
+      reservationData.roomId
+    );
+
+    console.log(
+      "========================================"
+    );
+
+    // ========================================================
+    // USER NOT LOGGED IN
+    // ========================================================
 
     if (!user) {
-      sessionStorage.setItem('pendingReservation', JSON.stringify(reservationData));
-      
+      sessionStorage.setItem(
+        "pendingReservation",
+        JSON.stringify(
+          reservationData
+        )
+      );
+
       navigate("/login", {
         state: {
-          from: `/booking?guesthouseId=${guesthouse?.id}&roomId=${room?.id}`,
-          reservationData: reservationData,
+          from:
+            `/booking?guesthouseId=${guesthouse?.id}&roomId=${room?.id}`,
+
+          bookingData:
+            reservationData,
+
+          reservationData:
+            reservationData,
+
           pendingReservation: true,
         },
       });
+
       return;
     }
 
-    try {
-      setStep("processing");
+    // ========================================================
+    // USER LOGGED IN
+    // ========================================================
 
-      const selectedRoomId = room.id;
+    setStep("payment");
+  };
 
-      const paymentPhone =
-        paymentMethod === "TELEBIRR"
-          ? telebirrPhone.trim()
-          : accountNumber.trim();
+  // ============================================================
+  // PAYMENT SUCCESS
+  // ============================================================
 
-      const bookingPayload = {
-        guesthouseId: guesthouse.id,
-        roomId: selectedRoomId,
-        checkInDate,
-        checkOutDate,
-        nightsCount,
-        numberOfGuests,
-        paymentMethod,
-        phone: paymentPhone,
-        bankName:
-          paymentMethod === "BANK_TRANSFER"
-            ? selectedBank
-            : null,
-        accountNumber:
-          paymentMethod === "BANK_TRANSFER"
-            ? accountNumber.trim()
-            : null,
-      };
+  const handlePaymentSuccess = (
+    result
+  ) => {
+    console.log(
+      "Payment/booking completed:",
+      result
+    );
 
-      console.log(
-        "Creating booking with payload:",
-        bookingPayload
+    if (!result) {
+      setError(
+        "The booking request completed but no booking information was returned."
       );
+      return;
+    }
 
-      const result =
-        await ApiService.createBookingAndPay(
-          bookingPayload
-        );
+    setResultData(result);
 
-      console.log(
-        "Booking created successfully:",
-        result
-      );
-
-      if (!result) {
-        throw new Error(
-          "The booking request completed but no booking information was returned."
-        );
-      }
-
-      setResultData(result);
-
-      window.dispatchEvent(
-        new CustomEvent("reservation-created", {
+    window.dispatchEvent(
+      new CustomEvent(
+        "reservation-created",
+        {
           detail: {
             reservation:
-              result?.reservation || null,
+              result?.reservation ||
+              null,
+
             payment:
-              result?.payment || null,
+              result?.payment ||
+              null,
+
             result,
           },
-        })
-      );
+        }
+      )
+    );
 
-      sessionStorage.removeItem('pendingReservation');
+    sessionStorage.removeItem(
+      "pendingReservation"
+    );
 
-      setStep("success");
-    } catch (err) {
-      console.error(
-        "Booking/payment error:",
-        err
-      );
-
-      const message =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Booking or payment failed. Please try again.";
-
-      setError(message);
-      setStep("checkout");
-    }
+    setStep("success");
   };
+
+  // ============================================================
+  // PAYMENT ERROR
+  // ============================================================
+
+  const handlePaymentError = (
+    paymentError
+  ) => {
+    console.error(
+      "Payment error:",
+      paymentError
+    );
+
+    const message =
+      paymentError?.response?.data
+        ?.message ||
+      paymentError?.response?.data
+        ?.error ||
+      paymentError?.message ||
+      "Payment failed. Please try again.";
+
+    setError(message);
+    setStep("payment");
+  };
+
+  // ============================================================
+  // LOADING
+  // ============================================================
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-base text-[#647b8a]">
-            Loading booking details...
-          </p>
+      <DashboardLayout>
+        <div className="min-h-[70vh] flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
+
+            <p className="mt-4 text-base text-stone-500">
+              Loading booking details...
+            </p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
+
+  // ============================================================
+  // BOOKING NOT AVAILABLE
+  // ============================================================
 
   if (!guesthouse || !room) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <div className="bg-white border border-[#e5edf2] rounded-3xl p-8 shadow-sm">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-          <h2 className="mt-4 text-2xl font-black text-[#043658]">
-            Booking unavailable
-          </h2>
-          <p className="mt-2 text-base text-[#647b8a]">
-            {error ||
-              "The selected room could not be found."}
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate("/search")}
-            className="mt-6 px-6 py-4 rounded-xl bg-[#043658] text-white font-bold text-base hover:bg-[#0b2f4a] transition"
-          >
-            Back to Guesthouses
-          </button>
-        </div>
-      </div>
-    );
-  }
+      <DashboardLayout>
+        <div className="max-w-lg mx-auto px-4 py-20 text-center">
+          <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
 
-  if (step === "processing") {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-20">
-        <div className="bg-white border border-[#e5edf2] rounded-3xl p-10 text-center shadow-sm">
-          <div className="w-16 h-16 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
-          <h2 className="mt-6 text-2xl font-black text-[#043658]">
-            Processing your booking
-          </h2>
-          <p className="mt-2 text-base text-[#647b8a]">
-            Please wait while we confirm your payment and
-            reserve the room.
-          </p>
-          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-emerald-600 font-semibold">
-            <ShieldCheck className="w-5 h-5" />
-            Double-booking protection enabled
+            <h2 className="mt-4 text-2xl font-black text-stone-900">
+              Booking unavailable
+            </h2>
+
+            <p className="mt-2 text-base text-stone-500">
+              {error ||
+                "The selected room could not be found."}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/search")
+              }
+              className="mt-6 px-6 py-4 rounded-xl bg-stone-900 text-white font-bold text-base"
+            >
+              Back to Guesthouses
+            </button>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
-  if (step === "success" && resultData) {
+  // ============================================================
+  // PAYMENT SCREEN
+  // ============================================================
+
+  if (step === "payment") {
+    return (
+      <PaymentScreen
+        guesthouse={guesthouse}
+        room={room}
+        guesthouseId={Number(
+          guesthouse.id
+        )}
+        roomId={Number(room.id)}
+        checkInDate={checkInDate}
+        checkOutDate={checkOutDate}
+        numberOfGuests={Number(
+          numberOfGuests
+        )}
+        nightsCount={Number(
+          nightsCount
+        )}
+        pricePerNight={Number(
+          pricePerNight
+        )}
+        totalPrice={Number(
+          totalPrice
+        )}
+        paymentData={paymentData}
+        setPaymentData={
+          setPaymentData
+        }
+        onSuccess={
+          handlePaymentSuccess
+        }
+        onError={
+          handlePaymentError
+        }
+        onBack={() =>
+          setStep("checkout")
+        }
+      />
+    );
+  }
+
+  // ============================================================
+  // SUCCESS
+  // ============================================================
+
+  if (
+    step === "success" &&
+    resultData
+  ) {
     const reservation =
       resultData.reservation || {};
+
     const payment =
       resultData.payment || {};
+
     const confirmedTotal = Number(
       reservation.totalPrice ??
         reservation.totalAmount ??
@@ -487,80 +900,189 @@ export function Booking() {
       <DashboardLayout>
         <div className="max-w-3xl mx-auto">
           <div className="bg-white border border-emerald-200 rounded-3xl shadow-xl overflow-hidden">
+            {/* SUCCESS HEADER */}
 
             <div className="bg-emerald-50 px-6 py-10 text-center">
               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-12 h-12" />
               </div>
-              <h1 className="mt-4 text-3xl font-black text-[#043658]">
+
+              <h1 className="mt-4 text-3xl font-black text-stone-900">
                 Booking Confirmed!
               </h1>
-              <p className="mt-2 text-base text-[#647b8a]">
+
+              <p className="mt-2 text-base text-stone-600">
                 Your room has been reserved successfully.
               </p>
             </div>
 
+            {/* SUCCESS CONTENT */}
+
             <div className="p-8 space-y-6">
-              {(reservation.id || reservation.reservationId) && (
-                <div className="bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-2xl p-4">
-                  <p className="text-sm text-[#FFC107] font-semibold">Reservation ID</p>
-                  <p className="mt-1 font-mono font-black text-[#043658] text-lg">
-                    {reservation.id || reservation.reservationId}
+              {/* RESERVATION ID */}
+
+              {(reservation.id ||
+                reservation.reservationId) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                  <p className="text-sm text-amber-700 font-semibold">
+                    Reservation ID
+                  </p>
+
+                  <p className="mt-1 font-mono font-black text-stone-900 text-lg">
+                    {reservation.id ||
+                      reservation.reservationId}
                   </p>
                 </div>
               )}
 
+              {/* GUESTHOUSE */}
+
               <div className="flex items-center gap-4">
-                <Building2 className="w-6 h-6 text-[#FFC107]" />
+                <Building2 className="w-6 h-6 text-amber-600" />
+
                 <div>
-                  <p className="text-sm text-[#647b8a]">Guesthouse</p>
-                  <p className="text-xl font-bold text-[#043658]">
-                    {reservation.guesthouseName || guesthouse.name}
+                  <p className="text-sm text-stone-500">
+                    Guesthouse
+                  </p>
+
+                  <p className="text-xl font-bold text-stone-900">
+                    {reservation.guesthouseName ||
+                      guesthouse.name ||
+                      "-"}
                   </p>
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4 bg-[#f5f8fa] rounded-2xl p-6">
-                <InfoItem label="Room" value={`Room ${reservation.roomNumber || room.roomNumber || "-"}`} />
-                <InfoItem label="Room Type" value={reservation.roomType || room.type || room.roomType} />
-                <InfoItem label="Guests" value={String(reservation.numberOfGuests || numberOfGuests)} />
-                <InfoItem label="Check-in" value={reservation.checkInDate || checkInDate} />
-                <InfoItem label="Check-out" value={reservation.checkOutDate || checkOutDate} />
-                <InfoItem label="Nights" value={String(reservation.nightsCount ?? nightsCount)} />
-                <InfoItem label="Payment" value={paymentMethod === "TELEBIRR" ? "Telebirr" : paymentMethod === "BANK_TRANSFER" ? "Bank Transfer" : paymentMethod === "CHAPA" ? "Chapa" : "Card"} />
+              {/* BOOKING INFORMATION */}
+
+              <div className="grid sm:grid-cols-2 gap-4 bg-stone-50 rounded-2xl p-6">
+                <InfoItem
+                  label="Room"
+                  value={`Room ${
+                    reservation.roomNumber ||
+                    room.roomNumber ||
+                    "-"
+                  }`}
+                />
+
+                <InfoItem
+                  label="Room Type"
+                  value={
+                    reservation.roomType ||
+                    room.type ||
+                    room.roomType ||
+                    "-"
+                  }
+                />
+
+                <InfoItem
+                  label="Guests"
+                  value={String(
+                    reservation.numberOfGuests ||
+                      numberOfGuests
+                  )}
+                />
+
+                <InfoItem
+                  label="Check-in"
+                  value={
+                    reservation.checkInDate ||
+                    reservation.checkIn ||
+                    checkInDate
+                  }
+                />
+
+                <InfoItem
+                  label="Check-out"
+                  value={
+                    reservation.checkOutDate ||
+                    reservation.checkOut ||
+                    checkOutDate
+                  }
+                />
+
+                <InfoItem
+                  label="Nights"
+                  value={String(
+                    reservation.nightsCount ??
+                      nightsCount
+                  )}
+                />
+
+                <InfoItem
+                  label="Payment"
+                  value={
+                    paymentData.paymentMethod ===
+                    "TELEBIRR"
+                      ? "Telebirr"
+                      : paymentData.paymentMethod ===
+                        "BANK_TRANSFER"
+                      ? "Bank Transfer"
+                      : paymentData.paymentMethod ===
+                        "CHAPA"
+                      ? "Chapa"
+                      : "Card"
+                  }
+                />
               </div>
 
-              <div className="border-t border-[#e5edf2] pt-5">
+              {/* TOTAL */}
+
+              <div className="border-t border-stone-200 pt-5">
                 <div className="flex justify-between items-center">
-                  <span className="text-xl font-bold text-[#043658]">Total Paid</span>
+                  <span className="text-xl font-bold text-stone-700">
+                    Total Paid
+                  </span>
+
                   <span className="text-3xl font-black text-emerald-600">
-                    {Number(confirmedTotal || 0).toLocaleString()} ETB
+                    {Number(
+                      confirmedTotal || 0
+                    ).toLocaleString()}{" "}
+                    ETB
                   </span>
                 </div>
               </div>
 
-              {(payment.referenceNumber || payment.reference || reservation.paymentReference || reservation.referenceNumber) && (
-                <div className="bg-[#f5f8fa] rounded-2xl p-4">
-                  <p className="text-sm text-[#647b8a]">Payment Reference</p>
-                  <p className="font-mono font-bold text-[#043658] mt-1 text-lg">
-                    {payment.referenceNumber || payment.reference || reservation.paymentReference || reservation.referenceNumber}
+              {/* PAYMENT REFERENCE */}
+
+              {(payment.referenceNumber ||
+                payment.reference ||
+                reservation.paymentReference ||
+                reservation.referenceNumber) && (
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-sm text-stone-500">
+                    Payment Reference
+                  </p>
+
+                  <p className="font-mono font-bold text-stone-900 mt-1 text-lg">
+                    {payment.referenceNumber ||
+                      payment.reference ||
+                      reservation.paymentReference ||
+                      reservation.referenceNumber}
                   </p>
                 </div>
               )}
 
+              {/* BUTTONS */}
+
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="flex-1 py-4 rounded-xl bg-[#043658] text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-[#0b2f4a] transition"
+                  onClick={() =>
+                    window.print()
+                  }
+                  className="flex-1 py-4 rounded-xl bg-stone-900 text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-stone-800 transition"
                 >
                   <Printer className="w-5 h-5" />
                   Print Receipt
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => navigate("/reservations")}
-                  className="flex-1 py-4 rounded-xl bg-[#FFC107] hover:bg-[#ffb300] text-[#043658] font-bold text-base transition"
+                  onClick={() =>
+                    navigate("/reservations")
+                  }
+                  className="flex-1 py-4 rounded-xl bg-amber-500 text-stone-950 font-bold text-base hover:bg-amber-400 transition"
                 >
                   View My Reservations
                 </button>
@@ -573,267 +1095,428 @@ export function Booking() {
   }
 
   // ============================================================
-  // CHECKOUT - MAIN RESERVATION FORM WITH BRAND COLORS
+  // CHECKOUT
   // ============================================================
 
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
+        {/* BACK */}
+
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-base font-semibold text-stone-600 hover:text-stone-900 mb-8"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back
+        </button>
+
+        {/* ERROR */}
 
         {error && (
           <div className="mb-6 p-5 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-3">
             <AlertCircle className="w-6 h-6 shrink-0" />
-            <span className="text-base font-medium">{error}</span>
+
+            <span className="text-base font-medium">
+              {error}
+            </span>
           </div>
         )}
 
-        <form onSubmit={handlePaymentAndConfirmation}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* ====================================================
+              LEFT COLUMN
+          ==================================================== */}
 
-            {/* ============================================================
-                LEFT COLUMN - Check Your Stay (WITH BRAND COLORS)
-            ============================================================ */}
-            <div className="bg-white rounded-3xl border border-[#e5edf2] p-6 shadow-sm">
-              <h2 className="text-xl font-black text-[#043658] flex items-center gap-2 mb-4">
-                <Calendar className="w-6 h-6 text-[#FFC107]" />
-                Check Your Stay
-              </h2>
+          <div className="lg:col-span-2 space-y-8">
+            {/* STAY DETAILS */}
 
-              <p className="text-sm text-[#647b8a] mb-4">
-                Select your dates and number of guests before continuing.
+            <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black text-stone-900 flex items-center gap-3">
+                  <Calendar className="w-7 h-7 text-amber-500" />
+                  Check Your Stay
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(-1)
+                  }
+                  className="text-2xl text-stone-400 hover:text-stone-600"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-sm text-stone-500 mb-6">
+                Select your dates and number
+                of guests before continuing.
               </p>
 
+              {/* SELECTED ROOM */}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <p className="text-sm text-stone-500 font-bold">
+                      SELECTED ROOM
+                    </p>
+
+                    <h3 className="text-2xl font-black text-stone-900">
+                      Room{" "}
+                      {room.roomNumber ||
+                        room.id}
+                    </h3>
+
+                    <p className="text-base text-stone-600">
+                      {room.type ||
+                        room.roomType ||
+                        "Room"}{" "}
+                      · Maximum{" "}
+                      {maxGuests} guests
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-3xl font-black text-amber-600">
+                      {pricePerNight.toLocaleString()}{" "}
+                      ETB
+                    </p>
+
+                    <p className="text-sm text-stone-500">
+                      per night
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* DATES */}
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid sm:grid-cols-2 gap-6">
+                {/* CHECK-IN */}
+
                 <div>
-                  <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Check-in</label>
+                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
+                    Check-in
+                  </label>
+
                   <input
                     type="date"
                     required
                     min={todayString}
                     value={checkInDate}
                     onChange={(e) => {
-                      const newCheckIn = e.target.value;
-                      setCheckInDate(newCheckIn);
-                      if (!checkOutDate || checkOutDate <= newCheckIn) {
-                        setCheckOutDate(getNextDate(newCheckIn));
+                      const newCheckIn =
+                        e.target.value;
+
+                      setCheckInDate(
+                        newCheckIn
+                      );
+
+                      if (
+                        !checkOutDate ||
+                        checkOutDate <=
+                          newCheckIn
+                      ) {
+                        setCheckOutDate(
+                          getNextDate(
+                            newCheckIn
+                          )
+                        );
                       }
+
+                      setError("");
                     }}
-                    className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC107]"
+                    className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
                   />
                 </div>
+
+                {/* CHECK-OUT */}
+
                 <div>
-                  <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Check-out</label>
+                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
+                    Check-out
+                  </label>
+
                   <input
                     type="date"
                     required
-                    min={minimumCheckOutDate}
+                    min={
+                      minimumCheckOutDate
+                    }
                     value={checkOutDate}
-                    onChange={(e) => setCheckOutDate(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC107]"
+                    onChange={(e) => {
+                      setCheckOutDate(
+                        e.target.value
+                      );
+                      setError("");
+                    }}
+                    className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
                   />
                 </div>
               </div>
 
-              {/* NUMBER OF GUESTS */}
-              <div className="mt-4">
-                <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Number of Guests</label>
+              {/* GUESTS */}
+
+              <div className="mt-6">
+                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
+                  Number of Guests
+                </label>
+
                 <div className="relative">
                   <select
-                    value={numberOfGuests}
-                    onChange={(e) => setNumberOfGuests(Number(e.target.value))}
-                    className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC107] appearance-none"
+                    value={
+                      numberOfGuests
+                    }
+                    onChange={(e) =>
+                      setNumberOfGuests(
+                        Number(
+                          e.target.value
+                        )
+                      )
+                    }
+                    className="w-full px-5 py-4 rounded-xl border border-stone-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-amber-400 appearance-none"
                   >
-                    {[...Array(Math.min(maxGuests, 10))].map((_, i) => (
-                      <option key={i + 1} value={i + 1}>
-                        {i + 1} {i === 0 ? "guest" : "guests"}
-                      </option>
-                    ))}
+                    {Array.from(
+                      {
+                        length: Math.min(
+                          maxGuests,
+                          10
+                        ),
+                      },
+                      (_, i) => (
+                        <option
+                          key={i + 1}
+                          value={i + 1}
+                        >
+                          {i + 1}{" "}
+                          {i === 0
+                            ? "guest"
+                            : "guests"}
+                        </option>
+                      )
+                    )}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#647b8a] pointer-events-none" />
+
+                  <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-stone-400 pointer-events-none" />
                 </div>
-                <p className="text-xs text-[#647b8a] mt-1">
-                  Maximum {maxGuests} guests for this room.
+
+                <p className="text-sm text-stone-500 mt-2">
+                  Maximum {maxGuests} guests
+                  for this room.
                 </p>
               </div>
 
+              {/* NIGHTS */}
+
               {nightsCount > 0 && (
-                <div className="mt-3 bg-[#FFC107]/10 rounded-xl px-3 py-2 text-sm text-[#043658] font-semibold">
-                  {nightsCount} night{nightsCount !== 1 ? "s" : ""} selected
+                <div className="mt-4 bg-amber-50 rounded-xl px-5 py-4 text-base text-amber-800 font-semibold">
+                  {nightsCount} night
+                  {nightsCount !== 1
+                    ? "s"
+                    : ""}{" "}
+                  selected
                 </div>
               )}
             </div>
 
-            {/* ============================================================
-                RIGHT COLUMN - Payment Method (WITH BRAND COLORS)
-            ============================================================ */}
-            <div className="bg-white rounded-3xl border border-[#e5edf2] p-6 shadow-sm flex flex-col">
-              <h2 className="text-xl font-black text-[#043658] mb-4">Payment Method</h2>
+            {/* SECURE PAYMENT */}
 
-              <div className="space-y-3 flex-1">
-                {/* TELEBIRR */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("TELEBIRR")}
-                  className={`w-full p-4 rounded-2xl border-2 text-left transition flex items-center gap-3 ${
-                    paymentMethod === "TELEBIRR"
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-[#e5edf2] hover:border-[#FFC107]"
-                  }`}
-                >
-                  <Smartphone className="w-6 h-6 text-blue-600" />
-                  <div>
-                    <div className="font-bold text-[#043658]">Telebirr</div>
-                    <div className="text-xs text-[#647b8a]">Pay using your Telebirr mobile account.</div>
-                  </div>
-                </button>
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="w-6 h-6 text-blue-600 shrink-0" />
 
-                {/* CHAPA */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("CHAPA")}
-                  className={`w-full p-4 rounded-2xl border-2 text-left transition flex items-center gap-3 ${
-                    paymentMethod === "CHAPA"
-                      ? "border-purple-600 bg-purple-50"
-                      : "border-[#e5edf2] hover:border-[#FFC107]"
-                  }`}
-                >
-                  <CreditCard className="w-6 h-6 text-purple-600" />
-                  <div>
-                    <div className="font-bold text-[#043658]">Chapa</div>
-                    <div className="text-xs text-[#647b8a]">Pay using Chapa payment gateway.</div>
-                  </div>
-                </button>
+                <div>
+                  <h3 className="font-bold text-blue-900">
+                    Secure Payment
+                  </h3>
 
-                {/* BANK TRANSFER */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("BANK_TRANSFER")}
-                  className={`w-full p-4 rounded-2xl border-2 text-left transition flex items-center gap-3 ${
-                    paymentMethod === "BANK_TRANSFER"
-                      ? "border-emerald-600 bg-emerald-50"
-                      : "border-[#e5edf2] hover:border-[#FFC107]"
-                  }`}
-                >
-                  <Landmark className="w-6 h-6 text-emerald-600" />
-                  <div>
-                    <div className="font-bold text-[#043658]">Bank Transfer</div>
-                    <div className="text-xs text-[#647b8a]">Transfer from any Ethiopian bank account.</div>
-                  </div>
-                </button>
+                  <p className="mt-1 text-sm text-blue-800">
+                    After checking your stay
+                    details, continue to the
+                    payment screen to select
+                    Telebirr, Chapa, or Bank
+                    Transfer.
+                  </p>
+                </div>
               </div>
+            </div>
+          </div>
 
-              {/* PAYMENT DETAILS */}
-              <div className="mt-4">
-                {paymentMethod === "TELEBIRR" && (
-                  <div className="pt-4 border-t border-[#e5edf2]">
-                    <label className="block text-xs font-bold text-[#043658] uppercase mb-1">
-                      Mobile Number for Confirmation
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={telebirrPhone}
-                      onChange={(e) => setTelebirrPhone(e.target.value)}
-                      placeholder="+251 9XXXXXXXX"
-                      className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-[#647b8a] mt-1">
-                      Enter the phone number connected to your Telebirr account.
-                    </p>
-                  </div>
-                )}
+          {/* ====================================================
+              RIGHT COLUMN
+          ==================================================== */}
 
-                {paymentMethod === "CHAPA" && (
-                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                    <p className="text-sm text-purple-800 font-medium">
-                      You will be redirected to Chapa to complete your payment securely.
-                    </p>
-                  </div>
-                )}
+          <div>
+            <div className="bg-stone-900 text-white rounded-3xl p-8 sticky top-24">
+              <h2 className="text-2xl font-black">
+                Booking Summary
+              </h2>
 
-                {paymentMethod === "BANK_TRANSFER" && (
-                  <div className="pt-4 border-t border-[#e5edf2] space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Select Bank</label>
-                      <select
-                        required
-                        value={selectedBank}
-                        onChange={(e) => setSelectedBank(e.target.value)}
-                        className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="">Select your bank</option>
-                        {ETHIOPIAN_BANKS.map((bank) => (
-                          <option key={bank} value={bank}>{bank}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#043658] uppercase mb-1">Account Number</label>
-                      <input
-                        type="text"
-                        required
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder="Enter your bank account number"
-                        className="w-full px-3 py-3 rounded-xl border border-[#e5edf2] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
-                    {selectedBank && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-800">
-                        You selected <strong>{selectedBank}</strong>. Enter your account number above to continue.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <div className="mt-8 space-y-5 text-base">
+                {/* ROOM */}
 
-              {/* PAYMENT & CONFIRMATION - INSIDE PAYMENT METHOD BOX */}
-              <div className="mt-6 pt-6 border-t border-[#e5edf2]">
-                <div className="bg-[#f5f8fa] rounded-2xl p-4">
-                  <button
-                    type="submit"
-                    disabled={nightsCount <= 0 || pricePerNight <= 0 || !room?.id}
-                    className="w-full py-4 rounded-xl bg-[#FFC107] hover:bg-[#ffb300] disabled:bg-[#e5edf2] disabled:text-[#647b8a] text-[#043658] font-black text-base transition"
-                  >
-                    Payment & Confirmation
-                  </button>
+                <div className="flex justify-between gap-4">
+                  <span className="text-stone-400">
+                    Room
+                  </span>
 
-                  <div className="mt-3 flex items-start gap-2 text-xs text-[#647b8a]">
-                    <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
-                    <span>Your room is checked for availability before the reservation is confirmed.</span>
-                  </div>
+                  <span className="font-bold text-right text-lg">
+                    {room.roomNumber ||
+                      room.id}
+                  </span>
+                </div>
+
+                {/* PRICE */}
+
+                <div className="flex justify-between gap-4">
+                  <span className="text-stone-400">
+                    Price / night
+                  </span>
+
+                  <span className="font-bold text-lg">
+                    {pricePerNight.toLocaleString()}{" "}
+                    ETB
+                  </span>
+                </div>
+
+                {/* NIGHTS */}
+
+                <div className="flex justify-between gap-4">
+                  <span className="text-stone-400">
+                    Nights
+                  </span>
+
+                  <span className="font-bold text-lg">
+                    {nightsCount}
+                  </span>
+                </div>
+
+                {/* GUESTS */}
+
+                <div className="flex justify-between gap-4">
+                  <span className="text-stone-400">
+                    Guests
+                  </span>
+
+                  <span className="font-bold text-lg">
+                    {numberOfGuests}
+                  </span>
+                </div>
+
+                {/* TOTAL */}
+
+                <div className="border-t border-stone-700 pt-5 flex justify-between">
+                  <span className="text-xl font-bold">
+                    Total
+                  </span>
+
+                  <span className="text-3xl font-black text-amber-400">
+                    {totalPrice.toLocaleString()}{" "}
+                    ETB
+                  </span>
                 </div>
               </div>
 
+              {/* CONTINUE */}
+
+              <button
+                type="button"
+                onClick={
+                  handleContinueToPayment
+                }
+                disabled={
+                  nightsCount <= 0 ||
+                  pricePerNight <= 0 ||
+                  !room?.id ||
+                  !guesthouse?.id
+                }
+                className="w-full mt-8 py-5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-600 disabled:text-stone-400 text-stone-950 font-black text-lg transition"
+              >
+                Continue to Payment
+              </button>
+
+              <div className="mt-6 flex items-start gap-3 text-sm text-stone-400">
+                <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-400" />
+
+                <span>
+                  Your room is checked for
+                  availability before the
+                  reservation is confirmed.
+                </span>
+              </div>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </DashboardLayout>
   );
 }
 
-function InfoItem({ label, value }) {
+// ============================================================
+// INFO ITEM
+// ============================================================
+
+function InfoItem({
+  label,
+  value,
+}) {
   return (
     <div>
-      <p className="text-sm text-[#647b8a]">{label}</p>
-      <p className="mt-1 text-lg font-bold text-[#043658]">{value || "-"}</p>
+      <p className="text-sm text-stone-500">
+        {label}
+      </p>
+
+      <p className="mt-1 text-lg font-bold text-stone-900">
+        {value || "-"}
+      </p>
     </div>
   );
 }
 
+// ============================================================
+// DATE HELPERS
+// ============================================================
+
 function toDateInput(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year =
+    date.getFullYear();
+
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
+
   return `${year}-${month}-${day}`;
 }
 
 function getNextDate(dateString) {
-  if (!dateString) return toDateInput(new Date());
-  const date = new Date(`${dateString}T12:00:00`);
-  date.setDate(date.getDate() + 1);
+  if (!dateString) {
+    return toDateInput(
+      new Date()
+    );
+  }
+
+  const date = new Date(
+    `${dateString}T12:00:00`
+  );
+
+  if (Number.isNaN(date.getTime())) {
+    return toDateInput(
+      new Date()
+    );
+  }
+
+  date.setDate(
+    date.getDate() + 1
+  );
+
   return toDateInput(date);
 }
 

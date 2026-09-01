@@ -2,7 +2,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 
@@ -31,9 +30,21 @@ import {
   MapPin,
   Mail,
   Phone,
+  ArrowUpRight,
   ArrowRight,
   Activity,
   AlertCircle,
+  Wallet,
+  Percent,
+  DollarSign,
+  Menu,
+  Home,
+  UserCheck,
+  TrendingUp,
+  BarChart3,
+  CircleDollarSign,
+  FileCheck2,
+  Ban,
 } from 'lucide-react';
 
 
@@ -41,78 +52,71 @@ import {
 // ADMIN DASHBOARD
 // ============================================================
 
-export function AdminDashboard() {
+export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // ==========================================================
-  // SECTION REFS
-  // ==========================================================
+  // ----------------------------------------------------------
+  // ACTIVE SIDEBAR PAGE
+  // ----------------------------------------------------------
 
-  const dashboardRef = useRef(null);
-  const guesthousesRef = useRef(null);
-  const pendingRef = useRef(null);
-  const ownersRef = useRef(null);
-  const backupRef = useRef(null);
+  const [activePage, setActivePage] = useState('dashboard');
 
-  // ==========================================================
-  // STATE
-  // ==========================================================
+  const [mobileSidebarOpen, setMobileSidebarOpen] =
+    useState(false);
 
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [showProfileMenu, setShowProfileMenu] =
+    useState(false);
 
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] =
+    useState(false);
+
+  // ----------------------------------------------------------
+  // DATA
+  // ----------------------------------------------------------
 
   const [stats, setStats] = useState({
     totalGuesthouses: 0,
     approvedGuesthouses: 0,
     pendingGuesthouses: 0,
+    rejectedGuesthouses: 0,
     totalOwners: 0,
+    totalUsers: 0,
+
+    totalRevenue: 0,
+    commissionRate: 10,
+    commissionRevenue: 0,
+    ownerPayouts: 0,
   });
 
-  const [pendingGuesthouses, setPendingGuesthouses] = useState([]);
-  const [allGuesthouses, setAllGuesthouses] = useState([]);
-  const [usersList, setUsersList] = useState([]);
+  const [pendingGuesthouses, setPendingGuesthouses] =
+    useState([]);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [allGuesthouses, setAllGuesthouses] =
+    useState([]);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [guesthouseSearch, setGuesthouseSearch] = useState('');
+  const [usersList, setUsersList] =
+    useState([]);
 
-  // ==========================================================
-  // SCROLL TO SECTION
-  // ==========================================================
+  const [loading, setLoading] =
+    useState(false);
 
-  const scrollToSection = useCallback((section) => {
-    setActiveSection(section);
+  const [error, setError] =
+    useState('');
 
-    const refs = {
-      dashboard: dashboardRef,
-      guesthouses: guesthousesRef,
-      pending: pendingRef,
-      owners: ownersRef,
-      backup: backupRef,
-    };
+  // ----------------------------------------------------------
+  // SEARCH
+  // ----------------------------------------------------------
 
-    const targetRef = refs[section];
+  const [guesthouseSearch, setGuesthouseSearch] =
+    useState('');
 
-    if (!targetRef?.current) {
-      return;
-    }
+  const [ownerSearch, setOwnerSearch] =
+    useState('');
 
-    window.setTimeout(() => {
-      targetRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }, 30);
-  }, []);
-
-  // ==========================================================
+  // ----------------------------------------------------------
   // LOAD ADMIN DATA
-  // ==========================================================
+  // ----------------------------------------------------------
 
   const loadAdminData = useCallback(async () => {
     setLoading(true);
@@ -131,56 +135,138 @@ export function AdminDashboard() {
         ApiService.getAllUsers(),
       ]);
 
-      const safePending = Array.isArray(pending)
-        ? pending
-        : [];
+      const safePending =
+        Array.isArray(pending)
+          ? pending
+          : [];
 
-      const safeGuesthouses = Array.isArray(guesthouses)
-        ? guesthouses
-        : [];
+      const safeGuesthouses =
+        Array.isArray(guesthouses)
+          ? guesthouses
+          : [];
 
-      const safeUsers = Array.isArray(users)
-        ? users
-        : [];
+      const safeUsers =
+        Array.isArray(users)
+          ? users
+          : [];
 
-      // --------------------------------------------------------
-      // IMPORTANT:
-      // ADMIN MANAGE OWNERS = ONLY OWNER USERS
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+      // OWNERS ONLY
+      // ------------------------------------------------------
 
-      const ownersOnly = safeUsers.filter((item) => {
-        return (
-          String(item?.role || '').toUpperCase() === 'OWNER'
+      const ownersOnly =
+        safeUsers.filter((item) =>
+          String(item?.role || '')
+            .toUpperCase() === 'OWNER'
         );
-      });
+
+      // ------------------------------------------------------
+      // CALCULATE BASIC COUNTS
+      // ------------------------------------------------------
 
       const totalGuesthouses =
-        Number(platformStats?.totalGuesthouses) ||
+        Number(
+          platformStats?.totalGuesthouses
+        ) ||
         safeGuesthouses.length ||
         0;
 
       const approvedGuesthouses =
-        Number(platformStats?.approvedGuesthouses) ||
-        safeGuesthouses.filter((gh) => {
-          return (
-            String(gh?.status || '').toLowerCase() ===
-            'approved'
-          );
-        }).length ||
+        Number(
+          platformStats?.approvedGuesthouses
+        ) ||
+        safeGuesthouses.filter(
+          (gh) =>
+            String(gh?.status || '')
+              .toLowerCase() === 'approved'
+        ).length ||
         0;
+
+      const rejectedGuesthouses =
+        Number(
+          platformStats?.rejectedGuesthouses
+        ) ||
+        safeGuesthouses.filter(
+          (gh) =>
+            String(gh?.status || '')
+              .toLowerCase() === 'rejected'
+        ).length ||
+        0;
+
+      // ------------------------------------------------------
+      // REVENUE / COMMISSION
+      // ------------------------------------------------------
+
+      const totalRevenue =
+        Number(
+          platformStats?.totalRevenue
+        ) ||
+        Number(
+          platformStats?.grossRevenue
+        ) ||
+        Number(
+          platformStats?.revenue
+        ) ||
+        0;
+
+      const commissionRate =
+        Number(
+          platformStats?.commissionRate
+        ) ||
+        10;
+
+      const commissionRevenue =
+        Number(
+          platformStats?.commissionRevenue
+        ) ||
+        Number(
+          platformStats?.platformCommission
+        ) ||
+        (totalRevenue * commissionRate) / 100;
+
+      const ownerPayouts =
+        Number(
+          platformStats?.ownerPayouts
+        ) ||
+        Math.max(
+          totalRevenue - commissionRevenue,
+          0
+        );
 
       setStats({
         totalGuesthouses,
         approvedGuesthouses,
-        pendingGuesthouses: safePending.length,
-        totalOwners: ownersOnly.length,
+        pendingGuesthouses:
+          safePending.length,
+        rejectedGuesthouses,
+        totalOwners:
+          ownersOnly.length,
+        totalUsers:
+          safeUsers.length,
+
+        totalRevenue,
+        commissionRate,
+        commissionRevenue,
+        ownerPayouts,
       });
 
-      setPendingGuesthouses(safePending);
-      setAllGuesthouses(safeGuesthouses);
-      setUsersList(safeUsers);
+      setPendingGuesthouses(
+        safePending
+      );
+
+      setAllGuesthouses(
+        safeGuesthouses
+      );
+
+      setUsersList(
+        safeUsers
+      );
+
     } catch (err) {
-      console.error('Admin data loading error:', err);
+      console.error(
+        'Admin data loading error:',
+        err
+      );
 
       setError(
         err?.response?.data?.message ||
@@ -192,261 +278,308 @@ export function AdminDashboard() {
       setAllGuesthouses([]);
       setUsersList([]);
 
-      setStats({
-        totalGuesthouses: 0,
-        approvedGuesthouses: 0,
-        pendingGuesthouses: 0,
-        totalOwners: 0,
-      });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // ==========================================================
+  // ----------------------------------------------------------
   // INITIAL LOAD
-  // ==========================================================
+  // ----------------------------------------------------------
 
   useEffect(() => {
     loadAdminData();
   }, [loadAdminData]);
 
-  // ==========================================================
-  // OBSERVE CURRENT SECTION WHILE SCROLLING
-  // ==========================================================
+  // ----------------------------------------------------------
+  // OWNERS
+  // ----------------------------------------------------------
 
-  useEffect(() => {
-    const sections = [
-      {
-        name: 'dashboard',
-        ref: dashboardRef,
-      },
-      {
-        name: 'guesthouses',
-        ref: guesthousesRef,
-      },
-      {
-        name: 'pending',
-        ref: pendingRef,
-      },
-      {
-        name: 'owners',
-        ref: ownersRef,
-      },
-      {
-        name: 'backup',
-        ref: backupRef,
-      },
-    ];
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntries = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) =>
-              b.intersectionRatio -
-              a.intersectionRatio
-          );
-
-        if (visibleEntries.length > 0) {
-          const visible = visibleEntries[0];
-
-          const found = sections.find(
-            (section) =>
-              section.ref.current === visible.target
-          );
-
-          if (found) {
-            setActiveSection(found.name);
-          }
-        }
-      },
-      {
-        threshold: [0.15, 0.3, 0.5],
-        rootMargin: '-100px 0px -45% 0px',
-      }
+  const owners = useMemo(() => {
+    return usersList.filter(
+      (item) =>
+        String(item?.role || '')
+          .toUpperCase() === 'OWNER'
     );
+  }, [usersList]);
 
-    sections.forEach((section) => {
-      if (section.ref.current) {
-        observer.observe(section.ref.current);
-      }
+  // ----------------------------------------------------------
+  // FILTER OWNERS
+  // ----------------------------------------------------------
+
+  const filteredOwners = useMemo(() => {
+    const query =
+      ownerSearch.trim().toLowerCase();
+
+    if (!query) {
+      return owners;
+    }
+
+    return owners.filter((owner) => {
+      const name =
+        String(
+          owner?.name ||
+          owner?.fullName ||
+          ''
+        ).toLowerCase();
+
+      const email =
+        String(
+          owner?.email || ''
+        ).toLowerCase();
+
+      const phone =
+        String(
+          owner?.phone || ''
+        ).toLowerCase();
+
+      return (
+        name.includes(query) ||
+        email.includes(query) ||
+        phone.includes(query)
+      );
     });
+  }, [
+    owners,
+    ownerSearch,
+  ]);
 
-    return () => {
-      observer.disconnect();
+  // ----------------------------------------------------------
+  // FILTER GUESTHOUSES
+  // ----------------------------------------------------------
+
+  const filteredGuesthouses =
+    useMemo(() => {
+      const query =
+        guesthouseSearch
+          .trim()
+          .toLowerCase();
+
+      if (!query) {
+        return allGuesthouses;
+      }
+
+      return allGuesthouses.filter(
+        (gh) => {
+          const name =
+            String(
+              gh?.name || ''
+            ).toLowerCase();
+
+          const city =
+            String(
+              gh?.city || ''
+            ).toLowerCase();
+
+          const location =
+            String(
+              gh?.location ||
+              gh?.address ||
+              ''
+            ).toLowerCase();
+
+          return (
+            name.includes(query) ||
+            city.includes(query) ||
+            location.includes(query)
+          );
+        }
+      );
+    }, [
+      allGuesthouses,
+      guesthouseSearch,
+    ]);
+
+  // ==========================================================
+  // NAVIGATION
+  // ==========================================================
+
+  const handlePageChange = (
+    page
+  ) => {
+    setActivePage(page);
+    setMobileSidebarOpen(false);
+    setShowProfileMenu(false);
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
+
+  // ==========================================================
+  // APPROVE
+  // ==========================================================
+
+  const handleApproveGuesthouse =
+    async (id) => {
+      if (!id) return;
+
+      try {
+        setLoading(true);
+
+        await ApiService.approveGuesthouse(
+          id
+        );
+
+        await loadAdminData();
+
+      } catch (err) {
+        console.error(
+          'Approve guesthouse error:',
+          err
+        );
+
+        alert(
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to approve guesthouse.'
+        );
+
+      } finally {
+        setLoading(false);
+      }
     };
-  }, []);
 
   // ==========================================================
-  // APPROVE GUESTHOUSE
+  // REJECT
   // ==========================================================
 
-  const handleApproveGuesthouse = async (id) => {
-    if (!id) {
-      return;
-    }
+  const handleRejectGuesthouse =
+    async (id) => {
+      if (!id) return;
 
-    try {
-      setLoading(true);
+      const reason =
+        window.prompt(
+          'Enter rejection reason:',
+          'Does not meet platform standards'
+        );
 
-      await ApiService.approveGuesthouse(id);
+      if (reason === null) {
+        return;
+      }
 
-      await loadAdminData();
+      try {
+        setLoading(true);
 
-      scrollToSection('pending');
-    } catch (err) {
-      console.error(
-        'Approve guesthouse error:',
-        err
-      );
+        await ApiService.rejectGuesthouse(
+          id,
+          reason
+        );
 
-      alert(
-        err?.response?.data?.message ||
-        err?.message ||
-        'Failed to approve guesthouse.'
-      );
+        await loadAdminData();
 
-      setLoading(false);
-    }
-  };
+      } catch (err) {
+        console.error(
+          'Reject guesthouse error:',
+          err
+        );
 
-  // ==========================================================
-  // REJECT GUESTHOUSE
-  // ==========================================================
+        alert(
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to reject guesthouse.'
+        );
 
-  const handleRejectGuesthouse = async (id) => {
-    if (!id) {
-      return;
-    }
-
-    const reason = window.prompt(
-      'Enter rejection reason:',
-      'Does not meet platform standards'
-    );
-
-    if (reason === null) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      await ApiService.rejectGuesthouse(
-        id,
-        reason
-      );
-
-      await loadAdminData();
-
-      scrollToSection('pending');
-    } catch (err) {
-      console.error(
-        'Reject guesthouse error:',
-        err
-      );
-
-      alert(
-        err?.response?.data?.message ||
-        err?.message ||
-        'Failed to reject guesthouse.'
-      );
-
-      setLoading(false);
-    }
-  };
+      } finally {
+        setLoading(false);
+      }
+    };
 
   // ==========================================================
   // DELETE GUESTHOUSE
   // ==========================================================
 
-  const handleDeleteGuesthouse = async (id) => {
-    if (!id) {
-      return;
-    }
+  const handleDeleteGuesthouse =
+    async (id) => {
+      if (!id) return;
 
-    const confirmed = window.confirm(
-      'Are you sure you want to delete this guesthouse?\n\nThis action cannot be undone.'
-    );
+      const confirmed =
+        window.confirm(
+          'Are you sure you want to delete this guesthouse?\n\nThis action cannot be undone.'
+        );
 
-    if (!confirmed) {
-      return;
-    }
+      if (!confirmed) {
+        return;
+      }
 
-    try {
-      setLoading(true);
+      try {
+        setLoading(true);
 
-      await ApiService.deleteGuesthouse(id);
+        await ApiService.deleteGuesthouse(
+          id
+        );
 
-      await loadAdminData();
+        await loadAdminData();
 
-      scrollToSection('guesthouses');
-    } catch (err) {
-      console.error(
-        'Delete guesthouse error:',
-        err
-      );
+      } catch (err) {
+        console.error(
+          'Delete guesthouse error:',
+          err
+        );
 
-      alert(
-        err?.response?.data?.message ||
-        err?.message ||
-        'Failed to delete guesthouse.'
-      );
+        alert(
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to delete guesthouse.'
+        );
 
-      setLoading(false);
-    }
-  };
+      } finally {
+        setLoading(false);
+      }
+    };
 
   // ==========================================================
   // DELETE OWNER
   // ==========================================================
 
-  const handleDeleteOwner = async (id) => {
-    if (!id) {
-      return;
-    }
+  const handleDeleteOwner =
+    async (id) => {
+      if (!id) return;
 
-    const confirmed = window.confirm(
-      'Are you sure you want to delete this owner account?\n\nThis action cannot be undone.'
-    );
+      const confirmed =
+        window.confirm(
+          'Are you sure you want to delete this owner account?\n\nThis action cannot be undone.'
+        );
 
-    if (!confirmed) {
-      return;
-    }
+      if (!confirmed) {
+        return;
+      }
 
-    try {
-      setLoading(true);
+      try {
+        setLoading(true);
 
-      await ApiService.deleteUser(id);
+        await ApiService.deleteUser(
+          id
+        );
 
-      await loadAdminData();
+        await loadAdminData();
 
-      scrollToSection('owners');
-    } catch (err) {
-      console.error(
-        'Delete owner error:',
-        err
-      );
+      } catch (err) {
+        console.error(
+          'Delete owner error:',
+          err
+        );
 
-      alert(
-        err?.response?.data?.message ||
-        err?.message ||
-        'Failed to delete owner.'
-      );
+        alert(
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to delete owner.'
+        );
 
-      setLoading(false);
-    }
-  };
+      } finally {
+        setLoading(false);
+      }
+    };
 
   // ==========================================================
   // LOGOUT
   // ==========================================================
 
   const handleLogout = () => {
-    const confirmed = window.confirm(
-      'Are you sure you want to logout?'
-    );
+    const confirmed =
+      window.confirm(
+        'Are you sure you want to logout?'
+      );
 
     if (!confirmed) {
       return;
@@ -462,95 +595,7 @@ export function AdminDashboard() {
   };
 
   // ==========================================================
-  // ONLY OWNER USERS
-  // ==========================================================
-
-  const owners = useMemo(() => {
-    return usersList.filter((item) => {
-      return (
-        String(item?.role || '').toUpperCase() ===
-        'OWNER'
-      );
-    });
-  }, [usersList]);
-
-  // ==========================================================
-  // SEARCH OWNERS
-  // ==========================================================
-
-  const filteredOwners = useMemo(() => {
-    const query = searchQuery
-      .trim()
-      .toLowerCase();
-
-    if (!query) {
-      return owners;
-    }
-
-    return owners.filter((owner) => {
-      const name = String(
-        owner?.name ||
-        owner?.fullName ||
-        ''
-      ).toLowerCase();
-
-      const email = String(
-        owner?.email || ''
-      ).toLowerCase();
-
-      const phone = String(
-        owner?.phone || ''
-      ).toLowerCase();
-
-      return (
-        name.includes(query) ||
-        email.includes(query) ||
-        phone.includes(query)
-      );
-    });
-  }, [owners, searchQuery]);
-
-  // ==========================================================
-  // SEARCH GUESTHOUSES
-  // ==========================================================
-
-  const filteredGuesthouses = useMemo(() => {
-    const query = guesthouseSearch
-      .trim()
-      .toLowerCase();
-
-    if (!query) {
-      return allGuesthouses;
-    }
-
-    return allGuesthouses.filter((gh) => {
-      const name = String(
-        gh?.name || ''
-      ).toLowerCase();
-
-      const city = String(
-        gh?.city || ''
-      ).toLowerCase();
-
-      const location = String(
-        gh?.location ||
-        gh?.address ||
-        ''
-      ).toLowerCase();
-
-      return (
-        name.includes(query) ||
-        city.includes(query) ||
-        location.includes(query)
-      );
-    });
-  }, [
-    allGuesthouses,
-    guesthouseSearch,
-  ]);
-
-  // ==========================================================
-  // SYSTEM BACKUP
+  // BACKUP
   // ==========================================================
 
   const handleSystemBackup = () => {
@@ -561,6 +606,8 @@ export function AdminDashboard() {
 
         generatedAt:
           new Date().toISOString(),
+
+        statistics: stats,
 
         guesthouses:
           allGuesthouses,
@@ -575,24 +622,31 @@ export function AdminDashboard() {
           usersList,
       };
 
-      const json = JSON.stringify(
-        backupData,
-        null,
-        2
-      );
+      const json =
+        JSON.stringify(
+          backupData,
+          null,
+          2
+        );
 
-      const blob = new Blob(
-        [json],
-        {
-          type: 'application/json',
-        }
-      );
+      const blob =
+        new Blob(
+          [json],
+          {
+            type:
+              'application/json',
+          }
+        );
 
       const url =
-        URL.createObjectURL(blob);
+        URL.createObjectURL(
+          blob
+        );
 
       const link =
-        document.createElement('a');
+        document.createElement(
+          'a'
+        );
 
       link.href = url;
 
@@ -601,13 +655,20 @@ export function AdminDashboard() {
           .toISOString()
           .slice(0, 10)}.json`;
 
-      document.body.appendChild(link);
+      document.body.appendChild(
+        link
+      );
 
       link.click();
 
-      document.body.removeChild(link);
+      document.body.removeChild(
+        link
+      );
 
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(
+        url
+      );
+
     } catch (err) {
       console.error(
         'Backup error:',
@@ -621,49 +682,97 @@ export function AdminDashboard() {
   };
 
   // ==========================================================
+  // PROFILE SAVED
+  // ==========================================================
+
+  const handleProfileSaved =
+    async (updatedUser) => {
+      if (updatedUser) {
+        ApiService.setCurrentUser(
+          updatedUser
+        );
+      }
+
+      setShowProfileModal(false);
+
+      await loadAdminData();
+    };
+
+  // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-[#f7f8fa]">
 
       {/* ======================================================
-          TOP HEADER
+          MOBILE OVERLAY
       ====================================================== */}
 
-      <header className="sticky top-0 z-50 bg-stone-950 text-white border-b border-stone-800">
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() =>
+            setMobileSidebarOpen(false)
+          }
+        />
+      )}
 
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+      {/* ======================================================
+          SIDEBAR
+      ====================================================== */}
 
-          <div className="h-20 flex items-center justify-between">
+      <AdminSidebar
+        activePage={activePage}
+        onPageChange={handlePageChange}
+        mobileOpen={
+          mobileSidebarOpen
+        }
+        user={user}
+        onLogout={handleLogout}
+      />
 
-            {/* BRAND */}
+      {/* ======================================================
+          MAIN AREA
+      ====================================================== */}
 
-            <button
-              type="button"
-              onClick={() =>
-                scrollToSection('dashboard')
-              }
-              className="flex items-center gap-3"
-            >
+      <div className="lg:ml-[280px] min-h-screen">
 
-              <div className="w-11 h-11 rounded-xl bg-purple-700 flex items-center justify-center shadow-lg shadow-purple-900/30">
-                <Building2 className="w-6 h-6 text-white" />
+        {/* ====================================================
+            TOP HEADER
+        ==================================================== */}
+
+        <header className="sticky top-0 z-30 h-[76px] bg-white border-b border-slate-200">
+
+          <div className="h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+
+            <div className="flex items-center gap-3">
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileSidebarOpen(
+                    true
+                  )
+                }
+                className="lg:hidden w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+
+              <div>
+                <h1 className="text-lg sm:text-xl font-black text-[#0b3553]">
+                  {getPageTitle(
+                    activePage
+                  )}
+                </h1>
+
+                <p className="hidden sm:block text-xs text-slate-500 mt-0.5">
+                  Guesthouse Reservation Platform
+                </p>
               </div>
 
-              <div className="text-left">
-
-                <div className="text-lg font-black tracking-tight">
-                  Guesthouse Platform
-                </div>
-
-                <div className="text-[10px] font-black tracking-[0.25em] text-purple-400">
-                  ETHIOPIA
-                </div>
-
-              </div>
-
-            </button>
+            </div>
 
             {/* PROFILE */}
 
@@ -677,24 +786,24 @@ export function AdminDashboard() {
                       !previous
                   )
                 }
-                className="flex items-center gap-3 px-3 py-2 rounded-2xl hover:bg-white/10 transition"
+                className="flex items-center gap-3 px-2 sm:px-3 py-2 rounded-xl hover:bg-slate-50 transition"
               >
 
                 <div className="hidden sm:block text-right">
 
-                  <div className="text-sm font-black">
+                  <div className="text-sm font-black text-[#0b3553]">
                     {user?.name ||
                       user?.fullName ||
                       'Administrator'}
                   </div>
 
-                  <div className="text-[10px] font-black text-purple-400 uppercase tracking-wider">
-                    Admin
+                  <div className="text-[10px] font-black uppercase tracking-wider text-amber-600">
+                    Administrator
                   </div>
 
                 </div>
 
-                <div className="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center font-black">
+                <div className="w-10 h-10 rounded-full bg-amber-400 text-[#0b3553] flex items-center justify-center font-black">
                   {(
                     user?.name ||
                     user?.fullName ||
@@ -706,24 +815,23 @@ export function AdminDashboard() {
                 </div>
 
                 <ChevronDown
-                  className={`w-4 h-4 transition-transform ${showProfileMenu
+                  className={`w-4 h-4 text-slate-500 transition-transform ${
+                    showProfileMenu
                       ? 'rotate-180'
                       : ''
-                    }`}
+                  }`}
                 />
 
               </button>
 
-              {/* PROFILE MENU */}
-
               {showProfileMenu && (
-                <div className="absolute right-0 top-full mt-3 w-72 bg-white text-stone-900 rounded-2xl shadow-2xl border border-stone-200 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
 
-                  <div className="px-5 py-4 border-b border-stone-100">
+                  <div className="p-4 border-b border-slate-100">
 
                     <div className="flex items-center gap-3">
 
-                      <div className="w-11 h-11 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                      <div className="w-11 h-11 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black">
                         {(
                           user?.name ||
                           user?.fullName ||
@@ -736,19 +844,19 @@ export function AdminDashboard() {
 
                       <div className="min-w-0">
 
-                        <div className="text-sm font-black">
+                        <div className="font-black text-[#0b3553]">
                           {user?.name ||
                             user?.fullName ||
                             'Administrator'}
                         </div>
 
-                        <div className="text-xs text-stone-500 truncate">
+                        <div className="text-xs text-slate-500 truncate">
                           {user?.email || ''}
                         </div>
 
-                        <div className="text-[10px] text-purple-600 font-black uppercase mt-1">
-                          Administrator
-                        </div>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black uppercase">
+                          Admin
+                        </span>
 
                       </div>
 
@@ -761,10 +869,14 @@ export function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowProfileMenu(false);
-                        setShowProfileModal(true);
+                        setShowProfileMenu(
+                          false
+                        );
+                        setShowProfileModal(
+                          true
+                        );
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-sm font-bold text-stone-700 hover:bg-stone-100"
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50"
                     >
                       <Settings className="w-4 h-4" />
                       Update Profile
@@ -772,8 +884,10 @@ export function AdminDashboard() {
 
                     <button
                       type="button"
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-sm font-bold text-red-600 hover:bg-red-50"
+                      onClick={
+                        handleLogout
+                      }
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout
@@ -788,376 +902,194 @@ export function AdminDashboard() {
 
           </div>
 
-        </div>
-
-      </header>
-
-
-      {/* ======================================================
-          PAGE
-      ====================================================== */}
-
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* ERROR */}
-
-        {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start justify-between gap-4">
-
-            <div className="flex items-start gap-3">
-
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-
-              <span>{error}</span>
-
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setError('')}
-              className="text-red-500 hover:text-red-700"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-          </div>
-        )}
-
+        </header>
 
         {/* ====================================================
-            MAIN LAYOUT
+            CONTENT
         ==================================================== */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+        <main className="p-4 sm:p-6 lg:p-8">
 
-          {/* ==================================================
-              SIDEBAR
-          ================================================== */}
+          {/* ERROR */}
 
-          <aside className="bg-white rounded-3xl border border-stone-200 p-4 h-fit lg:sticky lg:top-28 shadow-sm">
+          {error && (
+            <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-start justify-between gap-4">
 
-            <div className="px-3 mb-4">
+              <div className="flex gap-3">
 
-              <div className="text-xs uppercase tracking-[0.12em] font-black text-stone-400">
-                Administration
+                <AlertCircle className="w-5 h-5 shrink-0" />
+
+                <span className="text-sm">
+                  {error}
+                </span>
+
               </div>
 
-              <div className="text-sm text-stone-500 mt-1">
-                Platform management
-              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setError('')
+                }
+              >
+                <X className="w-4 h-4" />
+              </button>
 
             </div>
+          )}
 
+          {/* ==================================================
+              DASHBOARD
+          ================================================== */}
 
-            <AdminSidebarButton
-              active={
-                activeSection ===
-                'dashboard'
+          {activePage ===
+            'dashboard' && (
+            <AdminDashboardHome
+              stats={stats}
+              loading={loading}
+              onRefresh={
+                loadAdminData
               }
-              icon={
-                <LayoutDashboard className="w-5 h-5" />
+              onNavigate={
+                handlePageChange
               }
-              label="Dashboard"
-              onClick={() =>
-                scrollToSection(
-                  'dashboard'
-                )
+              pendingGuesthouses={
+                pendingGuesthouses
+              }
+              guesthouses={
+                allGuesthouses
               }
             />
+          )}
 
+          {/* ==================================================
+              GUESTHOUSES
+          ================================================== */}
 
-            <AdminSidebarButton
-              active={
-                activeSection ===
-                'guesthouses'
+          {activePage ===
+            'guesthouses' && (
+            <GuesthousePage
+              guesthouses={
+                filteredGuesthouses
               }
-              icon={
-                <Building2 className="w-5 h-5" />
+              search={
+                guesthouseSearch
               }
-              label="Guesthouses"
-              count={
+              setSearch={
+                setGuesthouseSearch
+              }
+              loading={loading}
+              onApprove={
+                handleApproveGuesthouse
+              }
+              onDelete={
+                handleDeleteGuesthouse
+              }
+            />
+          )}
+
+          {/* ==================================================
+              PENDING
+          ================================================== */}
+
+          {activePage ===
+            'pending' && (
+            <PendingPage
+              pendingGuesthouses={
+                pendingGuesthouses
+              }
+              loading={loading}
+              onApprove={
+                handleApproveGuesthouse
+              }
+              onReject={
+                handleRejectGuesthouse
+              }
+            />
+          )}
+
+          {/* ==================================================
+              OWNERS
+          ================================================== */}
+
+          {activePage ===
+            'owners' && (
+            <OwnersPage
+              owners={
+                filteredOwners
+              }
+              totalOwners={
+                owners.length
+              }
+              search={
+                ownerSearch
+              }
+              setSearch={
+                setOwnerSearch
+              }
+              loading={loading}
+              onDelete={
+                handleDeleteOwner
+              }
+            />
+          )}
+
+          {/* ==================================================
+              COMMISSION
+          ================================================== */}
+
+          {activePage ===
+            'commission' && (
+            <CommissionPage
+              stats={stats}
+              loading={loading}
+              onRefresh={
+                loadAdminData
+              }
+            />
+          )}
+
+          {/* ==================================================
+              BACKUP
+          ================================================== */}
+
+          {activePage ===
+            'backup' && (
+            <BackupPage
+              onBackup={
+                handleSystemBackup
+              }
+              loading={loading}
+              guesthousesCount={
                 allGuesthouses.length
               }
-              onClick={() =>
-                scrollToSection(
-                  'guesthouses'
-                )
+              ownersCount={
+                owners.length
+              }
+              usersCount={
+                usersList.length
               }
             />
+          )}
 
-
-            <AdminSidebarButton
-              active={
-                activeSection ===
-                'pending'
-              }
-              icon={
-                <Clock3 className="w-5 h-5" />
-              }
-              label="Pending Verification"
-              count={
-                pendingGuesthouses.length
-              }
-              onClick={() =>
-                scrollToSection(
-                  'pending'
-                )
-              }
-            />
-
-
-            <AdminSidebarButton
-              active={
-                activeSection ===
-                'owners'
-              }
-              icon={
-                <UserCog className="w-5 h-5" />
-              }
-              label="Manage Owners"
-              count={owners.length}
-              onClick={() =>
-                scrollToSection(
-                  'owners'
-                )
-              }
-            />
-
-
-            <AdminSidebarButton
-              active={
-                activeSection ===
-                'backup'
-              }
-              icon={
-                <DatabaseBackup className="w-5 h-5" />
-              }
-              label="System Backup"
-              onClick={() =>
-                scrollToSection(
-                  'backup'
-                )
-              }
-            />
-
-            {/* SIDEBAR SUMMARY */}
-
-            <div className="mt-5 pt-5 border-t border-stone-100">
-
-              <div className="px-3 text-[10px] font-black uppercase tracking-wider text-stone-400">
-                Current Platform
-              </div>
-
-              <div className="mt-3 space-y-2">
-
-                <SidebarMiniStat
-                  label="Guesthouses"
-                  value={
-                    allGuesthouses.length
-                  }
-                />
-
-                <SidebarMiniStat
-                  label="Pending"
-                  value={
-                    pendingGuesthouses.length
-                  }
-                />
-
-                <SidebarMiniStat
-                  label="Owners"
-                  value={
-                    owners.length
-                  }
-                />
-
-              </div>
-
-            </div>
-
-          </aside>
-
-
-          {/* ==================================================
-              CONTENT
-          ================================================== */}
-
-          <main className="min-w-0 space-y-8">
-
-            {/* =================================================
-                DASHBOARD - ALWAYS VISIBLE
-            ================================================= */}
-
-            <section
-              ref={dashboardRef}
-              id="admin-dashboard"
-              className="scroll-mt-28"
-            >
-
-              <DashboardOverview
-                stats={stats}
-                loading={loading}
-                onRefresh={
-                  loadAdminData
-                }
-                onNavigate={
-                  scrollToSection
-                }
-              />
-
-            </section>
-
-
-            {/* =================================================
-                GUESTHOUSES
-            ================================================= */}
-
-            <section
-              ref={guesthousesRef}
-              id="admin-guesthouses"
-              className="scroll-mt-28"
-            >
-
-              <GuesthouseSection
-                guesthouses={
-                  filteredGuesthouses
-                }
-                search={
-                  guesthouseSearch
-                }
-                setSearch={
-                  setGuesthouseSearch
-                }
-                loading={loading}
-                onApprove={
-                  handleApproveGuesthouse
-                }
-                onDelete={
-                  handleDeleteGuesthouse
-                }
-              />
-
-            </section>
-
-
-            {/* =================================================
-                PENDING
-            ================================================= */}
-
-            <section
-              ref={pendingRef}
-              id="admin-pending"
-              className="scroll-mt-28"
-            >
-
-              <PendingSection
-                pendingGuesthouses={
-                  pendingGuesthouses
-                }
-                loading={loading}
-                onApprove={
-                  handleApproveGuesthouse
-                }
-                onReject={
-                  handleRejectGuesthouse
-                }
-              />
-
-            </section>
-
-
-            {/* =================================================
-                OWNERS / USER ACCOUNTS
-            ================================================= */}
-
-            <section
-              ref={ownersRef}
-              id="admin-owners"
-              className="scroll-mt-28"
-            >
-
-              <OwnersSection
-                owners={
-                  filteredOwners
-                }
-                totalOwners={
-                  owners.length
-                }
-                search={
-                  searchQuery
-                }
-                setSearch={
-                  setSearchQuery
-                }
-                loading={loading}
-                onDelete={
-                  handleDeleteOwner
-                }
-              />
-
-            </section>
-
-
-            {/* =================================================
-                SYSTEM BACKUP
-            ================================================= */}
-
-            <section
-              ref={backupRef}
-              id="admin-backup"
-              className="scroll-mt-28"
-            >
-
-              <BackupSection
-                onBackup={
-                  handleSystemBackup
-                }
-                loading={loading}
-                guesthousesCount={
-                  allGuesthouses.length
-                }
-                ownersCount={
-                  owners.length
-                }
-                usersCount={
-                  owners.length
-                }
-              />
-
-            </section>
-
-          </main>
-
-        </div>
-
-
-        {/* ====================================================
-            PROFILE MODAL
-        ==================================================== */}
-
-        {showProfileModal && (
-          <UpdateProfileModal
-            user={user}
-            onClose={() =>
-              setShowProfileModal(false)
-            }
-            onSaved={async (
-              updatedUser
-            ) => {
-              if (updatedUser) {
-                ApiService.setCurrentUser(
-                  updatedUser
-                );
-              }
-
-              setShowProfileModal(false);
-
-              await loadAdminData();
-            }}
-          />
-        )}
+        </main>
 
       </div>
+
+      {/* ======================================================
+          PROFILE MODAL
+      ====================================================== */}
+
+      {showProfileModal && (
+        <UpdateProfileModal
+          user={user}
+          onClose={() =>
+            setShowProfileModal(false)
+          }
+          onSaved={
+            handleProfileSaved
+          }
+        />
+      )}
 
     </div>
   );
@@ -1165,198 +1097,451 @@ export function AdminDashboard() {
 
 
 // ============================================================
-// DASHBOARD OVERVIEW
+// PAGE TITLE
 // ============================================================
 
-function DashboardOverview({
-  stats,
-  loading,
-  onRefresh,
-  onNavigate,
-}) {
+function getPageTitle(page) {
+  const titles = {
+    dashboard:
+      'Administration Dashboard',
+
+    guesthouses:
+      'Guesthouse Management',
+
+    pending:
+      'Pending Verification',
+
+    owners:
+      'Manage Owners',
+
+    commission:
+      'Commission Management',
+
+    backup:
+      'System Backup',
+  };
+
   return (
-    <div className="space-y-6">
-
-      {/* HERO */}
-
-      <div className="relative overflow-hidden rounded-3xl bg-stone-950 text-white p-6 sm:p-8">
-
-        <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-purple-700/20 blur-3xl" />
-
-        <div className="absolute -left-20 -bottom-20 w-64 h-64 rounded-full bg-purple-500/10 blur-3xl" />
-
-        <div className="relative">
-
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-
-            <div>
-
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-purple-300 text-xs font-black uppercase tracking-wider">
-
-                <ShieldCheck className="w-4 h-4" />
-
-                Administrator
-
-              </div>
-
-              <h1 className="mt-4 text-3xl sm:text-4xl font-black tracking-tight">
-                Administration Dashboard
-              </h1>
-
-              <p className="mt-3 text-sm sm:text-base text-stone-300 max-w-2xl">
-                Manage guesthouses, verify new properties,
-                manage owner accounts and maintain the
-                reservation platform.
-              </p>
-
-            </div>
+    titles[page] ||
+    'Administration'
+  );
+}
 
 
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-stone-900 text-sm font-black hover:bg-stone-100 disabled:opacity-50 transition shrink-0"
-            >
+// ============================================================
+// ADMIN SIDEBAR
+// ============================================================
 
-              <RefreshCw
-                className={`w-4 h-4 ${loading
-                    ? 'animate-spin'
-                    : ''
-                  }`}
-              />
+function AdminSidebar({
+  activePage,
+  onPageChange,
+  mobileOpen,
+  user,
+  onLogout,
+}) {
+  const items = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+    },
+    {
+      id: 'guesthouses',
+      label: 'Guesthouses',
+      icon: Building2,
+    },
+    {
+      id: 'pending',
+      label: 'Pending Verification',
+      icon: Clock3,
+    },
+    {
+      id: 'owners',
+      label: 'Manage Owners',
+      icon: UserCog,
+    },
+    {
+      id: 'commission',
+      label: 'Commission',
+      icon: Percent,
+    },
+    {
+      id: 'backup',
+      label: 'System Backup',
+      icon: DatabaseBackup,
+    },
+  ];
 
-              {loading
-                ? 'Refreshing...'
-                : 'Refresh Data'}
+  return (
+    <aside
+      className={`
+        fixed z-50 left-0 top-0 bottom-0
+        w-[280px]
+        bg-[#073957]
+        text-white
+        flex flex-col
+        shadow-2xl
+        transition-transform duration-300
+        lg:translate-x-0
+        ${
+          mobileOpen
+            ? 'translate-x-0'
+            : '-translate-x-full'
+        }
+      `}
+    >
 
-            </button>
+      {/* ====================================================
+          BRAND
+      ==================================================== */}
 
-          </div>
+      <div className="px-6 pt-7 pb-6">
 
-        </div>
+        <div className="flex items-center gap-3">
 
-      </div>
-
-
-      {/* ======================================================
-          MAIN ADMIN CARDS
-      ====================================================== */}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-        <OverviewCard
-          icon={
-            <Clock3 className="w-7 h-7" />
-          }
-          title="Pending Verification"
-          value={
-            stats.pendingGuesthouses
-          }
-          description="Guesthouses waiting for administrator approval."
-          color="amber"
-          onClick={() =>
-            onNavigate('pending')
-          }
-        />
-
-
-        <OverviewCard
-          icon={
-            <Building2 className="w-7 h-7" />
-          }
-          title="Guesthouses"
-          value={
-            stats.totalGuesthouses
-          }
-          description="All registered guesthouses on the platform."
-          color="purple"
-          onClick={() =>
-            onNavigate('guesthouses')
-          }
-        />
-
-
-        {/* IMPORTANT:
-            SAME VALUE AS MANAGE OWNERS */}
-
-        <OverviewCard
-          icon={
-            <Users className="w-7 h-7" />
-          }
-          title="User Accounts"
-          value={stats.totalOwners}
-          description="Owner accounts registered on the platform."
-          color="blue"
-          onClick={() =>
-            onNavigate('owners')
-          }
-        />
-
-      </div>
-
-
-      {/* ======================================================
-          ADMIN QUICK STATUS
-      ====================================================== */}
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-        <QuickStat
-          icon={
-            <Building2 className="w-5 h-5" />
-          }
-          label="Total Guesthouses"
-          value={
-            stats.totalGuesthouses
-          }
-        />
-
-        <QuickStat
-          icon={
-            <CheckCircle2 className="w-5 h-5" />
-          }
-          label="Approved"
-          value={
-            stats.approvedGuesthouses
-          }
-        />
-
-        <QuickStat
-          icon={
-            <UserCog className="w-5 h-5" />
-          }
-          label="Owner Accounts"
-          value={stats.totalOwners}
-        />
-
-      </div>
-
-
-      {/* INFO */}
-
-      <div className="rounded-3xl bg-white border border-stone-200 p-6">
-
-        <div className="flex items-start gap-4">
-
-          <div className="w-11 h-11 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-            <Activity className="w-5 h-5" />
+          <div className="w-11 h-11 rounded-xl bg-amber-400 text-[#073957] flex items-center justify-center shadow-lg">
+            <Building2 className="w-6 h-6" />
           </div>
 
           <div>
 
-            <h2 className="font-black text-stone-900">
-              Administration Control Center
-            </h2>
+            <div className="text-lg font-black tracking-tight">
+              Guesthouse
+            </div>
 
-            <p className="text-sm text-stone-500 mt-1 leading-6">
-              Use the administration menu to review
-              guesthouses, approve or reject pending
-              properties, manage owner accounts and
-              export platform administration data.
+            <div className="text-lg font-black tracking-tight -mt-1">
+              Platform
+            </div>
+
+          </div>
+
+        </div>
+
+        <div className="mt-5">
+
+          <div className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-300">
+            Administration
+          </div>
+
+          <div className="text-xs text-slate-400 mt-1">
+            Platform control center
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* ====================================================
+          NAVIGATION
+      ==================================================== */}
+
+      <nav className="flex-1 px-4 overflow-y-auto">
+
+        {items.map((item) => {
+          const Icon =
+            item.icon;
+
+          const active =
+            activePage === item.id;
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() =>
+                onPageChange(
+                  item.id
+                )
+              }
+              className={`
+                w-full
+                flex
+                items-center
+                justify-between
+                gap-3
+                px-4
+                py-3.5
+                mb-1.5
+                rounded-xl
+                text-sm
+                font-black
+                transition-all
+                ${
+                  active
+                    ? 'bg-amber-400 text-[#073957] shadow-lg shadow-black/10'
+                    : 'text-slate-200 hover:bg-white/10 hover:text-white'
+                }
+              `}
+            >
+
+              <span className="flex items-center gap-3">
+
+                <Icon className="w-5 h-5" />
+
+                {item.label}
+
+              </span>
+
+              {item.id ===
+                'pending' && (
+                <span
+                  className={`
+                    min-w-6 h-6 px-1.5 rounded-full
+                    flex items-center justify-center
+                    text-[10px]
+                    ${
+                      active
+                        ? 'bg-[#073957] text-white'
+                        : 'bg-white/10 text-slate-200'
+                    }
+                  `}
+                >
+                  !
+                </span>
+              )}
+
+            </button>
+          );
+        })}
+
+      </nav>
+
+      {/* ====================================================
+          ADMIN ACCOUNT
+      ==================================================== */}
+
+      <div className="p-4">
+
+        <div className="border-t border-white/10 pt-4">
+
+          <div className="flex items-center gap-3 px-3 py-3">
+
+            <div className="w-10 h-10 rounded-full bg-amber-400 text-[#073957] flex items-center justify-center font-black shrink-0">
+              {(
+                user?.name ||
+                user?.fullName ||
+                user?.email ||
+                'A'
+              )
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+
+            <div className="min-w-0">
+
+              <div className="font-black text-sm truncate">
+                {user?.name ||
+                  user?.fullName ||
+                  'Administrator'}
+              </div>
+
+              <div className="text-[11px] text-slate-400 truncate">
+                {user?.email || ''}
+              </div>
+
+            </div>
+
+          </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full mt-2 flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-red-500/10 hover:text-red-300 transition"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+
+        </div>
+
+      </div>
+
+    </aside>
+  );
+}
+
+
+// ============================================================
+// ADMIN DASHBOARD HOME
+// ============================================================
+
+function AdminDashboardHome({
+  stats,
+  loading,
+  onRefresh,
+  onNavigate,
+  pendingGuesthouses,
+  guesthouses,
+}) {
+  return (
+    <div className="space-y-6">
+
+      {/* ====================================================
+          4-CARD ADMIN SIDEBAR
+      ==================================================== */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        
+        {/* Card 1: Total Guesthouses */}
+        <div className="bg-gradient-to-br from-[#043658] to-[#0a4f7e] text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#FFC107]/20 cursor-pointer" onClick={() => onNavigate('guesthouses')}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Total Guesthouses</span>
+            <Building2 className="w-5 h-5 text-[#FFC107]" />
+          </div>
+          <div className="text-3xl font-bold font-mono text-[#FFC107]">{stats.totalGuesthouses}</div>
+          <p className="text-[10px] text-white/70 mt-1">{stats.approvedGuesthouses} approved</p>
+        </div>
+
+        {/* Card 2: Owner Accounts */}
+        <div className="bg-gradient-to-br from-[#043658] to-[#0a4f7e] text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#FFC107]/20 cursor-pointer" onClick={() => onNavigate('owners')}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Owner Accounts</span>
+            <Users className="w-5 h-5 text-[#FFC107]" />
+          </div>
+          <div className="text-3xl font-bold font-mono text-[#FFC107]">{stats.totalOwners}</div>
+          <p className="text-[10px] text-white/70 mt-1">active owners</p>
+        </div>
+
+        {/* Card 3: Pending Verification */}
+        <div className="bg-gradient-to-br from-[#FFC107] to-[#ffb300] text-[#043658] p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#043658]/20 cursor-pointer" onClick={() => onNavigate('pending')}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Pending Verification</span>
+            <Clock3 className="w-5 h-5 text-[#043658]" />
+          </div>
+          <div className="text-3xl font-bold font-mono text-[#043658]">{stats.pendingGuesthouses}</div>
+          <p className="text-[10px] text-[#043658]/70 mt-1">awaiting approval</p>
+        </div>
+
+        {/* Card 4: Platform Commission */}
+        <div className="bg-gradient-to-br from-[#043658] to-[#0a4f7e] text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#FFC107]/20 cursor-pointer" onClick={() => onNavigate('commission')}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Platform Commission</span>
+            <Percent className="w-5 h-5 text-[#FFC107]" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-[#FFC107]">{stats.commissionRate}%</div>
+          <p className="text-[10px] text-white/70 mt-1">current rate</p>
+        </div>
+
+      </div>
+
+      {/* ====================================================
+          COMMISSION ACTIVITY SECTION
+      ==================================================== */}
+
+      <div className="bg-gradient-to-r from-[#043658]/5 to-[#FFC107]/5 rounded-xl p-6 border border-[#043658]/10">
+        <div className="flex items-center gap-2 mb-4">
+          <DollarSign className="w-5 h-5 text-[#043658]" />
+          <h2 className="text-lg font-bold text-[#043658]">Commission Activity</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+            <span className="text-xs font-semibold text-slate-500 block mb-1">Total Commission Collected</span>
+            <div className="text-2xl font-bold text-[#043658] font-mono">{formatMoney(stats.commissionRevenue)} ETB</div>
+            <div className="flex items-center gap-1 mt-2">
+              <TrendingUp className="w-4 h-4 text-green-600" />
+              <span className="text-xs text-green-600 font-semibold">+12% this month</span>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+            <span className="text-xs font-semibold text-slate-500 block mb-1">Owner Payouts</span>
+            <div className="text-2xl font-bold text-[#FFC107] font-mono">{formatMoney(stats.ownerPayouts)} ETB</div>
+            <p className="text-xs text-slate-500 mt-2">paid to owners</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+            <span className="text-xs font-semibold text-slate-500 block mb-1">Gross Revenue</span>
+            <div className="text-2xl font-bold text-[#043658] font-mono">{formatMoney(stats.totalRevenue)} ETB</div>
+            <p className="text-xs text-slate-500 mt-2">platform revenue</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ====================================================
+          PENDING APPLICATIONS
+      ==================================================== */}
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+
+          <div>
+
+            <h3 className="font-black text-[#043658]">
+              Pending Applications
+            </h3>
+
+            <p className="text-xs text-slate-500 mt-1">
+              Guesthouses waiting for approval
             </p>
 
           </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              onNavigate(
+                'pending'
+              )
+            }
+            className="text-xs font-black text-[#043658] hover:text-[#0a4f7e]"
+          >
+            View all
+            <ArrowRight className="inline w-3.5 h-3.5 ml-1" />
+          </button>
+
+        </div>
+
+        <div className="p-5">
+
+          {pendingGuesthouses.length ===
+          0 ? (
+            <EmptyState
+              title="No pending applications"
+              text="All guesthouses have been reviewed."
+            />
+          ) : (
+            <div className="space-y-3">
+
+              {pendingGuesthouses
+                .slice(0, 5)
+                .map((gh) => (
+                  <div
+                    key={gh.id}
+                    className="flex items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition"
+                  >
+
+                    <div className="flex items-center gap-3 min-w-0">
+
+                      <div className="w-10 h-10 rounded-lg bg-[#FFC107]/20 text-[#043658] flex items-center justify-center shrink-0">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+
+                      <div className="min-w-0">
+
+                        <div className="font-black text-sm text-[#043658] truncate">
+                          {gh.name ||
+                            'Unnamed Guesthouse'}
+                        </div>
+
+                        <div className="text-xs text-slate-500 truncate">
+                          {gh.city ||
+                            'Unknown city'}
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    <span className="px-2.5 py-1 rounded-lg bg-[#FFC107]/20 text-[#043658] text-[9px] font-black uppercase shrink-0">
+                      Pending
+                    </span>
+
+                  </div>
+                ))}
+
+            </div>
+          )}
 
         </div>
 
@@ -1368,74 +1553,58 @@ function DashboardOverview({
 
 
 // ============================================================
-// OVERVIEW CARD
+// STAT CARD
 // ============================================================
 
-function OverviewCard({
-  icon,
+function AdminStatCard({
   title,
   value,
+  icon,
   description,
-  color,
+  warning,
   onClick,
 }) {
-  const colorClasses = {
-    purple: {
-      icon: 'bg-purple-100 text-purple-700 group-hover:bg-purple-700 group-hover:text-white',
-      value: 'text-purple-700',
-      border:
-        'hover:border-purple-300 hover:shadow-purple-100',
-    },
-
-    amber: {
-      icon: 'bg-amber-100 text-amber-700 group-hover:bg-amber-600 group-hover:text-white',
-      value: 'text-amber-700',
-      border:
-        'hover:border-amber-300 hover:shadow-amber-100',
-    },
-
-    blue: {
-      icon: 'bg-blue-100 text-blue-700 group-hover:bg-blue-700 group-hover:text-white',
-      value: 'text-blue-700',
-      border:
-        'hover:border-blue-300 hover:shadow-blue-100',
-    },
-  };
-
-  const selected =
-    colorClasses[color] ||
-    colorClasses.purple;
-
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group text-left bg-white rounded-3xl border border-stone-200 p-6 hover:shadow-xl transition-all ${selected.border}`}
+      className="text-left bg-white rounded-3xl border border-slate-200 p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all"
     >
 
-      <div
-        className={`w-14 h-14 rounded-2xl flex items-center justify-center transition ${selected.icon}`}
-      >
-        {icon}
+      <div className="flex items-start justify-between">
+
+        <div
+          className={`
+            w-12 h-12 rounded-2xl
+            flex items-center justify-center
+            ${
+              warning
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-sky-50 text-[#073957]'
+            }
+          `}
+        >
+          {icon}
+        </div>
+
+        <ArrowUpRight className="w-4 h-4 text-slate-300" />
+
       </div>
 
-      <div className="mt-6 text-lg font-black text-stone-900">
-        {title}
-      </div>
+      <div className="mt-5">
 
-      <div
-        className={`mt-2 text-4xl font-black ${selected.value}`}
-      >
-        {value}
-      </div>
+        <div className="text-xs font-black uppercase tracking-wider text-slate-400">
+          {title}
+        </div>
 
-      <p className="mt-2 text-sm text-stone-500 leading-6">
-        {description}
-      </p>
+        <div className="mt-2 text-2xl sm:text-3xl font-black text-[#073957]">
+          {value}
+        </div>
 
-      <div className="mt-5 inline-flex items-center gap-1 text-xs font-black text-stone-500 group-hover:text-purple-700 transition">
-        Open section
-        <ArrowRight className="w-3.5 h-3.5" />
+        <div className="mt-2 text-xs text-slate-500">
+          {description}
+        </div>
+
       </div>
 
     </button>
@@ -1444,31 +1613,50 @@ function OverviewCard({
 
 
 // ============================================================
-// QUICK STAT
+// MINI DASHBOARD CARD
 // ============================================================
 
-function QuickStat({
-  icon,
-  label,
+function DashboardMiniCard({
+  title,
   value,
+  icon,
+  type,
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 p-5">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
 
-        <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-600 flex items-center justify-center">
-          {icon}
+        <div className="flex items-center gap-3">
+
+          <div
+            className={`
+              w-10 h-10 rounded-xl
+              flex items-center justify-center
+              ${
+                type === 'success'
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'bg-slate-100 text-[#073957]'
+              }
+            `}
+          >
+            {icon}
+          </div>
+
+          <div>
+
+            <div className="text-xs font-black uppercase tracking-wider text-slate-400">
+              {title}
+            </div>
+
+            <div className="text-xl font-black text-[#073957] mt-1">
+              {value}
+            </div>
+
+          </div>
+
         </div>
 
-        <div className="text-2xl font-black text-stone-900">
-          {value}
-        </div>
-
-      </div>
-
-      <div className="mt-4 text-xs font-black uppercase tracking-wider text-stone-400">
-        {label}
       </div>
 
     </div>
@@ -1477,10 +1665,86 @@ function QuickStat({
 
 
 // ============================================================
-// GUESTHOUSE SECTION
+// ACTIVITY ROW
 // ============================================================
 
-function GuesthouseSection({
+function ActivityRow({
+  icon,
+  title,
+  value,
+  text,
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-3 rounded-xl hover:bg-slate-50">
+
+      <div className="flex items-center gap-3">
+
+        <div className="w-9 h-9 rounded-xl bg-slate-100 text-[#073957] flex items-center justify-center">
+          {icon}
+        </div>
+
+        <div>
+
+          <div className="text-sm font-black text-[#073957]">
+            {title}
+          </div>
+
+          <div className="text-xs text-slate-500">
+            {text}
+          </div>
+
+        </div>
+
+      </div>
+
+      <div className="font-black text-[#073957]">
+        {value}
+      </div>
+
+    </div>
+  );
+}
+
+
+// ============================================================
+// QUICK ACTION
+// ============================================================
+
+function QuickAction({
+  icon,
+  title,
+  text,
+  onClick,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left bg-white border border-slate-200 rounded-2xl p-5 hover:border-amber-300 hover:shadow-md transition"
+    >
+
+      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+        {icon}
+      </div>
+
+      <div className="mt-4 font-black text-[#073957]">
+        {title}
+      </div>
+
+      <p className="text-xs text-slate-500 mt-1 leading-5">
+        {text}
+      </p>
+
+    </button>
+  );
+}
+
+
+// ============================================================
+// GUESTHOUSE PAGE
+// ============================================================
+
+function GuesthousePage({
   guesthouses,
   search,
   setSearch,
@@ -1489,420 +1753,202 @@ function GuesthouseSection({
   onDelete,
 }) {
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+    <div className="space-y-5">
 
-      <div className="p-6 border-b border-stone-200">
+      <PageHeader
+        icon={
+          <Building2 className="w-5 h-5" />
+        }
+        title="Guesthouses"
+        subtitle="View and manage all registered guesthouses."
+      />
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
 
-          <SectionHeader
-            icon={
-              <Building2 className="w-5 h-5 text-purple-600" />
-            }
-            title="Guesthouses"
-            subtitle="View and manage all registered guesthouses."
-          />
+        <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
-          <div className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 text-sm font-black">
+          <div className="relative w-full lg:max-w-lg">
+
+            <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
+
+            <input
+              type="text"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              placeholder="Search guesthouse, city or location..."
+              className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+            />
+
+          </div>
+
+          <div className="px-4 py-2 rounded-xl bg-slate-100 text-[#073957] text-sm font-black">
             {guesthouses.length} shown
           </div>
 
         </div>
 
-
-        {/* SEARCH */}
-
-        <div className="relative mt-5 max-w-lg">
-
-          <Search className="absolute left-3 top-3 w-4 h-4 text-stone-400" />
-
-          <input
-            type="text"
-            value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
-            placeholder="Search by guesthouse, city or location..."
-            className="w-full pl-9 pr-4 py-3 rounded-xl border border-stone-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+        {guesthouses.length ===
+        0 ? (
+          <EmptyState
+            title="No guesthouses found"
+            text="There are no guesthouses matching your search."
           />
+        ) : (
+          <div className="overflow-x-auto">
 
-        </div>
+            <table className="w-full text-left">
 
-      </div>
+              <thead className="bg-slate-50">
 
+                <tr>
 
-      {guesthouses.length === 0 ? (
-        <EmptyState
-          title="No guesthouses found"
-          text="There are no guesthouses matching your search."
-        />
-      ) : (
-        <div className="overflow-x-auto">
+                  <TableHeader>
+                    Guesthouse
+                  </TableHeader>
 
-          <table className="w-full text-left">
+                  <TableHeader>
+                    Location
+                  </TableHeader>
 
-            <thead className="bg-stone-50">
+                  <TableHeader>
+                    Rating
+                  </TableHeader>
 
-              <tr>
+                  <TableHeader>
+                    Status
+                  </TableHeader>
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Guesthouse
-                </th>
+                  <TableHeader align="right">
+                    Actions
+                  </TableHeader>
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Location
-                </th>
+                </tr>
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Rating
-                </th>
+              </thead>
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Status
-                </th>
+              <tbody className="divide-y divide-slate-100">
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider text-right">
-                  Actions
-                </th>
+                {guesthouses.map(
+                  (gh) => (
+                    <tr
+                      key={gh.id}
+                      className="hover:bg-slate-50"
+                    >
 
-              </tr>
+                      <td className="px-5 py-5">
 
-            </thead>
+                        <div className="font-black text-[#073957]">
+                          {gh.name ||
+                            'Unnamed Guesthouse'}
+                        </div>
 
+                        <div className="text-xs text-slate-400 mt-1">
+                          ID: {gh.id}
+                        </div>
 
-            <tbody className="divide-y divide-stone-100">
+                      </td>
 
-              {guesthouses.map((gh) => (
-                <tr
-                  key={gh.id}
-                  className="hover:bg-stone-50 transition"
-                >
+                      <td className="px-5 py-5">
 
-                  <td className="px-6 py-5">
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
 
-                    <div className="font-black text-stone-900">
-                      {gh.name ||
-                        'Unnamed Guesthouse'}
-                    </div>
+                          <MapPin className="w-4 h-4 text-slate-400" />
 
-                    <div className="text-xs text-stone-400 mt-1">
-                      ID: {gh.id}
-                    </div>
+                          {gh.city ||
+                            gh.location ||
+                            gh.address ||
+                            'N/A'}
 
-                  </td>
+                        </div>
 
+                      </td>
 
-                  <td className="px-6 py-5">
+                      <td className="px-5 py-5 text-sm">
 
-                    <div className="flex items-center gap-2 text-sm text-stone-600">
+                        <span className="font-black text-[#073957]">
+                          {Number(
+                            gh.rating ||
+                            0
+                          ).toFixed(1)}
+                        </span>
 
-                      <MapPin className="w-4 h-4 text-stone-400 shrink-0" />
+                        <span className="ml-1">
+                          ★
+                        </span>
 
-                      <span>
-                        {gh.city ||
-                          gh.location ||
-                          gh.address ||
-                          'N/A'}
-                      </span>
+                      </td>
 
-                    </div>
+                      <td className="px-5 py-5">
 
-                  </td>
+                        <StatusBadge
+                          status={
+                            gh.status ||
+                            'unknown'
+                          }
+                        />
 
+                      </td>
 
-                  <td className="px-6 py-5 text-sm text-stone-600">
+                      <td className="px-5 py-5">
 
-                    <span className="font-bold">
-                      {Number(
-                        gh.rating || 0
-                      ).toFixed(1)}
-                    </span>
+                        <div className="flex justify-end gap-2">
 
-                    <span className="ml-1">
-                      ★
-                    </span>
+                          {[
+                            'pending',
+                            'draft',
+                          ].includes(
+                            String(
+                              gh.status ||
+                              ''
+                            ).toLowerCase()
+                          ) && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onApprove(
+                                  gh.id
+                                )
+                              }
+                              disabled={
+                                loading
+                              }
+                              className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                          )}
 
-                  </td>
-
-
-                  <td className="px-6 py-5">
-
-                    <StatusBadge
-                      status={
-                        gh.status ||
-                        'unknown'
-                      }
-                    />
-
-                  </td>
-
-
-                  <td className="px-6 py-5">
-
-                    <div className="flex justify-end gap-2">
-
-                      {['pending', 'draft'].includes(
-                        String(gh.status || '').toLowerCase()
-                      ) && (
                           <button
                             type="button"
                             onClick={() =>
-                              onApprove(
+                              onDelete(
                                 gh.id
                               )
                             }
-                            disabled={loading}
-                            className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50"
+                            disabled={
+                              loading
+                            }
+                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                           >
-                            Approve
+                            <Trash2 className="w-3 h-3" />
+                            Delete
                           </button>
-                        )}
-
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onDelete(
-                            gh.id
-                          )
-                        }
-                        disabled={loading}
-                        className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
-                      >
-
-                        <Trash2 className="w-3 h-3" />
-
-                        Delete
-
-                      </button>
-
-                    </div>
-
-                  </td>
-
-                </tr>
-              ))}
-
-            </tbody>
-
-          </table>
-
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-
-// ============================================================
-// PENDING SECTION
-// ============================================================
-
-function PendingSection({
-  pendingGuesthouses,
-  loading,
-  onApprove,
-  onReject,
-}) {
-  const [expandedId, setExpandedId] = useState(null);
-
-  const fileUrl = (value) => {
-    if (!value) return '';
-    if (/^https?:\/\//i.test(value)) return value;
-    return `http://localhost:5000${value.startsWith('/') ? value : `/${value}`}`;
-  };
-
-  return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
-
-      <SectionHeader
-        icon={
-          <Clock3 className="w-5 h-5 text-amber-600" />
-        }
-        title="Pending Verification"
-        subtitle="Review guesthouses waiting for administrator approval."
-      />
-
-
-      <div className="mt-6">
-
-        {pendingGuesthouses.length === 0 ? (
-          <EmptyState
-            title="No pending guesthouses"
-            text="All guesthouses have been reviewed."
-          />
-        ) : (
-          <div className="space-y-4">
-
-            {pendingGuesthouses.map(
-              (gh) => (
-                <div
-                  key={gh.id}
-                  className="border border-stone-200 rounded-2xl p-5 hover:border-purple-200 hover:shadow-sm transition"
-                >
-
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-
-                    <div className="min-w-0 flex-1">
-
-                      <div className="flex items-center gap-3">
-
-                        <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                          <Building2 className="w-5 h-5" />
-                        </div>
-
-                        <div className="min-w-0">
-
-                          <h3 className="font-black text-stone-900 truncate">
-                            {gh.name ||
-                              'Unnamed Guesthouse'}
-                          </h3>
-
-                          <p className="text-sm text-stone-500 mt-1">
-                            {gh.city ||
-                              'Unknown city'}
-                            {' • '}
-                            {gh.location ||
-                              gh.address ||
-                              'No location'}
-                          </p>
 
                         </div>
 
-                      </div>
+                      </td>
 
+                    </tr>
+                  )
+                )}
 
-                      {gh.description && (
-                        <p className="text-sm text-stone-600 mt-4 leading-6">
-                          {gh.description}
-                        </p>
-                      )}
+              </tbody>
 
-
-                      <div className="text-xs text-stone-400 mt-3">
-                        ID: {gh.id}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setExpandedId(expandedId === gh.id ? null : gh.id)}
-                        className="mt-4 text-xs font-black text-purple-700 hover:text-purple-900"
-                      >
-                        {expandedId === gh.id ? 'Hide full application' : 'View full application'}
-                      </button>
-
-                      {expandedId === gh.id && (
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl bg-stone-50 border border-stone-200 p-4 text-xs text-stone-700">
-                          <div className="space-y-2">
-                            <h4 className="font-black text-stone-900">Owner information</h4>
-                            <p><strong>Name:</strong> {gh.owner?.name || 'Not provided'}</p>
-                            <p><strong>Email:</strong> {gh.owner?.email || 'Not provided'}</p>
-                            <p><strong>Phone:</strong> {gh.owner?.phone || 'Not provided'}</p>
-                            <p><strong>Owner ID:</strong> {gh.owner?.id || gh.ownerId || 'Not provided'}</p>
-                            <p><strong>Account role:</strong> {gh.owner?.role || 'OWNER'}</p>
-                            <p><strong>Residential address:</strong> {gh.owner?.residentialAddress || 'Not provided'}</p>
-                            <p><strong>Identification:</strong> {gh.owner?.idType || 'Not provided'}{gh.owner?.idNumber ? ` - ${gh.owner.idNumber}` : ''}</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <h4 className="font-black text-stone-900">Guesthouse information</h4>
-                            <p><strong>Address:</strong> {gh.address || 'Not provided'}</p>
-                            <p><strong>Sub-city:</strong> {gh.subCity || 'Not provided'}</p>
-                            <p><strong>Woreda:</strong> {gh.woreda || 'Not provided'}</p>
-                            <p><strong>Phone:</strong> {gh.phone || 'Not provided'}</p>
-                            <p><strong>Email:</strong> {gh.email || 'Not provided'}</p>
-                            <p><strong>Number of rooms:</strong> {gh.numberOfRooms || gh.rooms?.length || 'Not provided'}</p>
-                            <p><strong>License number:</strong> {gh.licenseNumber || 'Not provided'}</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <h4 className="font-black text-stone-900">License document</h4>
-                            {gh.licenseDocument ? (
-                              <a href={fileUrl(gh.licenseDocument)} target="_blank" rel="noreferrer" className="text-purple-700 font-bold hover:underline">
-                                Open submitted license document
-                              </a>
-                            ) : (
-                              <p className="text-stone-500">No license document submitted</p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2 md:col-span-2">
-                            <h4 className="font-black text-stone-900">Rooms</h4>
-                            {gh.rooms?.length ? (
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                  <thead><tr className="border-b border-stone-200"><th className="py-2 pr-3">Room</th><th className="py-2 pr-3">Type</th><th className="py-2 pr-3">Capacity</th><th className="py-2">Price</th></tr></thead>
-                                  <tbody>{gh.rooms.map((room) => <tr key={room.id} className="border-b border-stone-100"><td className="py-2 pr-3">{room.roomNumber}</td><td className="py-2 pr-3">{room.type}</td><td className="py-2 pr-3">{room.capacity}</td><td className="py-2">{room.pricePerNight?.toLocaleString()} ETB</td></tr>)}</tbody>
-                                </table>
-                              </div>
-                            ) : <p className="text-stone-500">No rooms submitted</p>}
-                          </div>
-
-                          <div className="space-y-2 md:col-span-2">
-                            <h4 className="font-black text-stone-900">Guesthouse photos</h4>
-                            {gh.photos?.length || gh.images?.length ? (
-                              <div className="flex flex-wrap gap-3">
-                                {(gh.photos?.length ? gh.photos : gh.images).map((photo, index) => (
-                                  <a key={`${photo}-${index}`} href={fileUrl(photo)} target="_blank" rel="noreferrer">
-                                    <img src={fileUrl(photo)} alt={`Guesthouse photo ${index + 1}`} className="w-24 h-20 object-cover rounded-lg border border-stone-200" />
-                                  </a>
-                                ))}
-                              </div>
-                            ) : <p className="text-stone-500">No photos submitted</p>}
-                          </div>
-                        </div>
-                      )}
-
-                    </div>
-
-
-                    <div className="flex gap-2 shrink-0">
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onReject(
-                            gh.id
-                          )
-                        }
-                        disabled={loading}
-                        className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-2 disabled:opacity-50"
-                      >
-
-                        <XCircle className="w-4 h-4" />
-
-                        Reject
-
-                      </button>
-
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onApprove(
-                            gh.id
-                          )
-                        }
-                        disabled={loading}
-                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 disabled:opacity-50"
-                      >
-
-                        <CheckCircle2 className="w-4 h-4" />
-
-                        Approve
-
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                </div>
-              )
-            )}
+            </table>
 
           </div>
         )}
@@ -1915,214 +1961,423 @@ function PendingSection({
 
 
 // ============================================================
-// OWNERS SECTION
+// PENDING PAGE
 // ============================================================
 
-function OwnersSection({
-  owners,
-  totalOwners,
-  search,
-  setSearch,
+function PendingPage({
+  pendingGuesthouses,
   loading,
-  onDelete,
+  onApprove,
+  onReject,
 }) {
+  const [expandedId, setExpandedId] =
+    useState(null);
+
+  const fileUrl = (value) => {
+    if (!value) return '';
+
+    if (
+      /^https?:\/\//i.test(
+        value
+      )
+    ) {
+      return value;
+    }
+
+    return `http://localhost:5000${
+      value.startsWith('/')
+        ? value
+        : `/${value}`
+    }`;
+  };
+
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+    <div className="space-y-5">
 
-      <div className="p-6 border-b border-stone-200">
+      <PageHeader
+        icon={
+          <Clock3 className="w-5 h-5" />
+        }
+        title="Pending Verification"
+        subtitle="Review and approve or reject guesthouse applications."
+      />
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-          <SectionHeader
-            icon={
-              <UserCog className="w-5 h-5 text-purple-600" />
-            }
-            title="Manage Owners"
-            subtitle="Only OWNER accounts are displayed here."
+      {pendingGuesthouses.length ===
+      0 ? (
+        <div className="bg-white rounded-3xl border border-slate-200">
+          <EmptyState
+            title="No pending guesthouses"
+            text="All guesthouses have been reviewed."
           />
-
-          <div className="px-4 py-2 rounded-xl bg-purple-50 text-purple-700 text-sm font-black">
-            {totalOwners} Owners
-          </div>
-
         </div>
-
-
-        {/* OWNER SEARCH ONLY */}
-
-        <div className="relative mt-5 max-w-lg">
-
-          <Search className="absolute left-3 top-3 w-4 h-4 text-stone-400" />
-
-          <input
-            type="text"
-            value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
-            placeholder="Search owner name, email or phone..."
-            className="w-full pl-9 pr-4 py-3 rounded-xl border border-stone-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-          />
-
-        </div>
-
-      </div>
-
-
-      {owners.length === 0 ? (
-        <EmptyState
-          title="No owners found"
-          text="There are no owner accounts matching your search."
-        />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="space-y-4">
 
-          <table className="w-full text-left">
+          {pendingGuesthouses.map(
+            (gh) => (
+              <div
+                key={gh.id}
+                className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm"
+              >
 
-            <thead className="bg-stone-50">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
 
-              <tr>
+                  <div className="flex-1 min-w-0">
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Owner
-                </th>
+                    <div className="flex items-center gap-3">
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Email
-                </th>
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                        <Building2 className="w-6 h-6" />
+                      </div>
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Phone
-                </th>
+                      <div className="min-w-0">
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider">
-                  Role
-                </th>
+                        <h3 className="font-black text-[#073957] truncate">
+                          {gh.name ||
+                            'Unnamed Guesthouse'}
+                        </h3>
 
-                <th className="px-6 py-4 text-xs font-black text-stone-500 uppercase tracking-wider text-right">
-                  Actions
-                </th>
+                        <p className="text-sm text-slate-500 mt-1">
+                          {gh.city ||
+                            'Unknown city'}
+                          {' • '}
+                          {gh.location ||
+                            gh.address ||
+                            'No location'}
+                        </p>
 
-              </tr>
+                      </div>
 
-            </thead>
+                    </div>
 
+                    {gh.description && (
+                      <p className="text-sm text-slate-600 mt-4 leading-6">
+                        {gh.description}
+                      </p>
+                    )}
 
-            <tbody className="divide-y divide-stone-100">
+                    <div className="text-xs text-slate-400 mt-3">
+                      Application ID: {gh.id}
+                    </div>
 
-              {owners.map(
-                (owner) => (
-                  <tr
-                    key={owner.id}
-                    className="hover:bg-stone-50 transition"
-                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedId(
+                          expandedId ===
+                            gh.id
+                            ? null
+                            : gh.id
+                        )
+                      }
+                      className="mt-4 text-xs font-black text-[#073957] hover:text-amber-600"
+                    >
+                      {expandedId ===
+                      gh.id
+                        ? 'Hide full application'
+                        : 'View full application'}
+                    </button>
 
-                    <td className="px-6 py-5">
+                    {expandedId ===
+                      gh.id && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl bg-slate-50 border border-slate-200 p-5 text-xs text-slate-700">
 
-                      <div className="flex items-center gap-3">
+                        <div className="space-y-2">
 
-                        <div className="w-11 h-11 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-black shrink-0">
+                          <h4 className="font-black text-[#073957]">
+                            Owner information
+                          </h4>
 
-                          {(
-                            owner?.name ||
-                            owner?.fullName ||
-                            'O'
-                          )
-                            .charAt(0)
-                            .toUpperCase()}
+                          <p>
+                            <strong>Name:</strong>{' '}
+                            {gh.owner?.name ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Email:</strong>{' '}
+                            {gh.owner?.email ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Phone:</strong>{' '}
+                            {gh.owner?.phone ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Owner ID:</strong>{' '}
+                            {gh.owner?.id ||
+                              gh.ownerId ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Role:</strong>{' '}
+                            {gh.owner?.role ||
+                              'OWNER'}
+                          </p>
+
+                          <p>
+                            <strong>Address:</strong>{' '}
+                            {gh.owner?.residentialAddress ||
+                              'Not provided'}
+                          </p>
 
                         </div>
 
-                        <div>
+                        <div className="space-y-2">
 
-                          <div className="font-black text-stone-900">
-                            {owner?.name ||
-                              owner?.fullName ||
-                              'N/A'}
-                          </div>
+                          <h4 className="font-black text-[#073957]">
+                            Guesthouse information
+                          </h4>
 
-                          <div className="text-xs text-stone-400 mt-1">
-                            ID: {owner.id}
-                          </div>
+                          <p>
+                            <strong>Address:</strong>{' '}
+                            {gh.address ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Sub-city:</strong>{' '}
+                            {gh.subCity ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Woreda:</strong>{' '}
+                            {gh.woreda ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Phone:</strong>{' '}
+                            {gh.phone ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Email:</strong>{' '}
+                            {gh.email ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>Rooms:</strong>{' '}
+                            {gh.numberOfRooms ||
+                              gh.rooms?.length ||
+                              'Not provided'}
+                          </p>
+
+                          <p>
+                            <strong>License:</strong>{' '}
+                            {gh.licenseNumber ||
+                              'Not provided'}
+                          </p>
+
+                        </div>
+
+                        <div className="space-y-2">
+
+                          <h4 className="font-black text-[#073957]">
+                            License document
+                          </h4>
+
+                          {gh.licenseDocument ? (
+                            <a
+                              href={fileUrl(
+                                gh.licenseDocument
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-amber-700 font-bold hover:underline"
+                            >
+                              Open license document
+                            </a>
+                          ) : (
+                            <p className="text-slate-500">
+                              No license document
+                            </p>
+                          )}
+
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+
+                          <h4 className="font-black text-[#073957]">
+                            Rooms
+                          </h4>
+
+                          {gh.rooms?.length ? (
+                            <div className="overflow-x-auto">
+
+                              <table className="w-full text-left">
+
+                                <thead>
+
+                                  <tr className="border-b border-slate-200">
+
+                                    <th className="py-2 pr-3">
+                                      Room
+                                    </th>
+
+                                    <th className="py-2 pr-3">
+                                      Type
+                                    </th>
+
+                                    <th className="py-2 pr-3">
+                                      Capacity
+                                    </th>
+
+                                    <th className="py-2">
+                                      Price
+                                    </th>
+
+                                  </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                  {gh.rooms.map(
+                                    (room) => (
+                                      <tr
+                                        key={
+                                          room.id
+                                        }
+                                        className="border-b border-slate-100"
+                                      >
+
+                                        <td className="py-2 pr-3">
+                                          {room.roomNumber}
+                                        </td>
+
+                                        <td className="py-2 pr-3">
+                                          {room.type}
+                                        </td>
+
+                                        <td className="py-2 pr-3">
+                                          {room.capacity}
+                                        </td>
+
+                                        <td className="py-2">
+                                          {Number(
+                                            room.pricePerNight ||
+                                            0
+                                          ).toLocaleString()}{' '}
+                                          ETB
+                                        </td>
+
+                                      </tr>
+                                    )
+                                  )}
+
+                                </tbody>
+
+                              </table>
+
+                            </div>
+                          ) : (
+                            <p className="text-slate-500">
+                              No rooms submitted
+                            </p>
+                          )}
+
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+
+                          <h4 className="font-black text-[#073957]">
+                            Guesthouse photos
+                          </h4>
+
+                          {gh.photos?.length ||
+                          gh.images?.length ? (
+                            <div className="flex flex-wrap gap-3">
+
+                              {(
+                                gh.photos?.length
+                                  ? gh.photos
+                                  : gh.images
+                              ).map(
+                                (
+                                  photo,
+                                  index
+                                ) => (
+                                  <a
+                                    key={`${photo}-${index}`}
+                                    href={fileUrl(
+                                      photo
+                                    )}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <img
+                                      src={fileUrl(
+                                        photo
+                                      )}
+                                      alt={`Guesthouse photo ${
+                                        index +
+                                        1
+                                      }`}
+                                      className="w-28 h-20 object-cover rounded-xl border border-slate-200"
+                                    />
+                                  </a>
+                                )
+                              )}
+
+                            </div>
+                          ) : (
+                            <p className="text-slate-500">
+                              No photos submitted
+                            </p>
+                          )}
 
                         </div>
 
                       </div>
+                    )}
 
-                    </td>
+                  </div>
 
+                  <div className="flex gap-2 shrink-0">
 
-                    <td className="px-6 py-5 text-sm text-stone-600">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onReject(
+                          gh.id
+                        )
+                      }
+                      disabled={loading}
+                      className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reject
+                    </button>
 
-                      <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onApprove(
+                          gh.id
+                        )
+                      }
+                      disabled={loading}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Approve
+                    </button>
 
-                        <Mail className="w-4 h-4 text-stone-400" />
+                  </div>
 
-                        {owner.email ||
-                          'N/A'}
+                </div>
 
-                      </div>
-
-                    </td>
-
-
-                    <td className="px-6 py-5 text-sm text-stone-600">
-
-                      <div className="flex items-center gap-2">
-
-                        <Phone className="w-4 h-4 text-stone-400" />
-
-                        {owner.phone ||
-                          'N/A'}
-
-                      </div>
-
-                    </td>
-
-
-                    <td className="px-6 py-5">
-
-                      <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-[10px] font-black">
-                        OWNER
-                      </span>
-
-                    </td>
-
-
-                    <td className="px-6 py-5">
-
-                      <div className="flex justify-end">
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onDelete(
-                              owner.id
-                            )
-                          }
-                          disabled={loading}
-                          className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
-                        >
-
-                          <Trash2 className="w-3 h-3" />
-
-                          Delete
-
-                        </button>
-
-                      </div>
-
-                    </td>
-
-                  </tr>
-                )
-              )}
-
-            </tbody>
-
-          </table>
+              </div>
+            )
+          )}
 
         </div>
       )}
@@ -2133,10 +2388,487 @@ function OwnersSection({
 
 
 // ============================================================
-// BACKUP SECTION
+// OWNERS PAGE
 // ============================================================
 
-function BackupSection({
+function OwnersPage({
+  owners,
+  totalOwners,
+  search,
+  setSearch,
+  loading,
+  onDelete,
+}) {
+  return (
+    <div className="space-y-5">
+
+      <PageHeader
+        icon={
+          <UserCog className="w-5 h-5" />
+        }
+        title="Manage Owners"
+        subtitle="Manage registered OWNER accounts."
+      />
+
+      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+
+        <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
+          <div className="relative w-full lg:max-w-lg">
+
+            <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
+
+            <input
+              type="text"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              placeholder="Search owner name, email or phone..."
+              className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+            />
+
+          </div>
+
+          <div className="px-4 py-2 rounded-xl bg-amber-50 text-amber-700 text-sm font-black">
+            {totalOwners} Owners
+          </div>
+
+        </div>
+
+        {owners.length ===
+        0 ? (
+          <EmptyState
+            title="No owners found"
+            text="There are no owner accounts matching your search."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+
+            <table className="w-full text-left">
+
+              <thead className="bg-slate-50">
+
+                <tr>
+
+                  <TableHeader>
+                    Owner
+                  </TableHeader>
+
+                  <TableHeader>
+                    Email
+                  </TableHeader>
+
+                  <TableHeader>
+                    Phone
+                  </TableHeader>
+
+                  <TableHeader>
+                    Role
+                  </TableHeader>
+
+                  <TableHeader align="right">
+                    Actions
+                  </TableHeader>
+
+                </tr>
+
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+
+                {owners.map(
+                  (owner) => (
+                    <tr
+                      key={owner.id}
+                      className="hover:bg-slate-50"
+                    >
+
+                      <td className="px-5 py-5">
+
+                        <div className="flex items-center gap-3">
+
+                          <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black">
+                            {(
+                              owner?.name ||
+                              owner?.fullName ||
+                              'O'
+                            )
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+
+                          <div>
+
+                            <div className="font-black text-[#073957]">
+                              {owner?.name ||
+                                owner?.fullName ||
+                                'N/A'}
+                            </div>
+
+                            <div className="text-xs text-slate-400">
+                              ID: {owner.id}
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </td>
+
+                      <td className="px-5 py-5 text-sm text-slate-600">
+
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-slate-400" />
+                          {owner.email ||
+                            'N/A'}
+                        </div>
+
+                      </td>
+
+                      <td className="px-5 py-5 text-sm text-slate-600">
+
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-slate-400" />
+                          {owner.phone ||
+                            'N/A'}
+                        </div>
+
+                      </td>
+
+                      <td className="px-5 py-5">
+
+                        <span className="px-3 py-1.5 rounded-full bg-sky-50 text-[#073957] text-[9px] font-black">
+                          OWNER
+                        </span>
+
+                      </td>
+
+                      <td className="px-5 py-5">
+
+                        <div className="flex justify-end">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onDelete(
+                                owner.id
+                              )
+                            }
+                            disabled={
+                              loading
+                            }
+                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Delete
+                          </button>
+
+                        </div>
+
+                      </td>
+
+                    </tr>
+                  )
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// ============================================================
+// COMMISSION PAGE
+// ============================================================
+
+function CommissionPage({
+  stats,
+  loading,
+  onRefresh,
+}) {
+  return (
+    <div className="space-y-6">
+
+      <PageHeader
+        icon={
+          <Percent className="w-5 h-5" />
+        }
+        title="Commission Management"
+        subtitle="Monitor platform commission, gross revenue and owner payouts."
+      />
+
+      {/* ====================================================
+          COMMISSION HERO
+      ==================================================== */}
+
+      <div className="rounded-3xl bg-[#073957] text-white p-6 sm:p-8">
+
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+          <div>
+
+            <div className="text-xs uppercase tracking-[0.2em] font-black text-amber-300">
+              Platform Earnings
+            </div>
+
+            <div className="mt-3 text-3xl sm:text-4xl font-black">
+              {formatMoney(
+                stats.commissionRevenue
+              )}{' '}
+              ETB
+            </div>
+
+            <p className="mt-2 text-sm text-slate-300">
+              Estimated platform commission generated
+              from reservation revenue.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            className="px-5 py-3 rounded-xl bg-amber-400 text-[#073957] font-black text-sm disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`inline w-4 h-4 mr-2 ${
+                loading
+                  ? 'animate-spin'
+                  : ''
+              }`}
+            />
+            Refresh
+          </button>
+
+        </div>
+
+      </div>
+
+      {/* ====================================================
+          COMMISSION CARDS
+      ==================================================== */}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+        <CommissionStat
+          title="Commission Rate"
+          value={`${stats.commissionRate}%`}
+          icon={
+            <Percent className="w-6 h-6" />
+          }
+          description="Current platform rate"
+        />
+
+        <CommissionStat
+          title="Gross Revenue"
+          value={`${formatMoney(
+            stats.totalRevenue
+          )} ETB`}
+          icon={
+            <CircleDollarSign className="w-6 h-6" />
+          }
+          description="Total reservation revenue"
+        />
+
+        <CommissionStat
+          title="Owner Payouts"
+          value={`${formatMoney(
+            stats.ownerPayouts
+          )} ETB`}
+          icon={
+            <Wallet className="w-6 h-6" />
+          }
+          description="Revenue after commission"
+        />
+
+      </div>
+
+      {/* ====================================================
+          COMMISSION CALCULATION
+      ==================================================== */}
+
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+
+        <div className="flex items-start gap-4">
+
+          <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+
+          <div>
+
+            <h3 className="font-black text-[#073957]">
+              Commission Calculation
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Current platform commission calculation.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div className="mt-6 overflow-x-auto">
+
+          <table className="w-full">
+
+            <tbody>
+
+              <CommissionRow
+                label="Gross reservation revenue"
+                value={`${formatMoney(
+                  stats.totalRevenue
+                )} ETB`}
+              />
+
+              <CommissionRow
+                label="Platform commission rate"
+                value={`${stats.commissionRate}%`}
+              />
+
+              <CommissionRow
+                label="Platform commission"
+                value={`${formatMoney(
+                  stats.commissionRevenue
+                )} ETB`}
+                highlight
+              />
+
+              <CommissionRow
+                label="Owner payout"
+                value={`${formatMoney(
+                  stats.ownerPayouts
+                )} ETB`}
+              />
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      {/* ====================================================
+          IMPORTANT NOTE
+      ==================================================== */}
+
+      <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200">
+
+        <div className="flex gap-3">
+
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+
+          <div>
+
+            <div className="font-black text-amber-800">
+              Commission data source
+            </div>
+
+            <p className="text-sm text-amber-700 mt-1 leading-6">
+              This page reads commission and revenue
+              values returned by the admin platform statistics
+              API. The backend should calculate commission from
+              successful PAID reservations/payments.
+            </p>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// ============================================================
+// COMMISSION STAT
+// ============================================================
+
+function CommissionStat({
+  title,
+  value,
+  icon,
+  description,
+}) {
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 p-6">
+
+      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+        {icon}
+      </div>
+
+      <div className="mt-5 text-xs font-black uppercase tracking-wider text-slate-400">
+        {title}
+      </div>
+
+      <div className="mt-2 text-2xl font-black text-[#073957]">
+        {value}
+      </div>
+
+      <div className="mt-2 text-xs text-slate-500">
+        {description}
+      </div>
+
+    </div>
+  );
+}
+
+
+// ============================================================
+// COMMISSION ROW
+// ============================================================
+
+function CommissionRow({
+  label,
+  value,
+  highlight,
+}) {
+  return (
+    <tr className="border-b border-slate-100">
+
+      <td className="py-4 text-sm text-slate-600">
+        {label}
+      </td>
+
+      <td
+        className={`
+          py-4 text-right font-black
+          ${
+            highlight
+              ? 'text-amber-600'
+              : 'text-[#073957]'
+          }
+        `}
+      >
+        {value}
+      </td>
+
+    </tr>
+  );
+}
+
+
+// ============================================================
+// BACKUP PAGE
+// ============================================================
+
+function BackupPage({
   onBackup,
   loading,
   guesthousesCount,
@@ -2144,69 +2876,72 @@ function BackupSection({
   usersCount,
 }) {
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
+    <div className="space-y-5">
 
-      <SectionHeader
+      <PageHeader
         icon={
-          <DatabaseBackup className="w-5 h-5 text-purple-600" />
+          <DatabaseBackup className="w-5 h-5" />
         }
         title="System Backup"
-        subtitle="Export the currently loaded administration data."
+        subtitle="Export currently loaded administration data."
       />
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-
-        <MiniStat
+        <BackupStat
           label="Guesthouses"
           value={
             guesthousesCount
           }
         />
 
-        <MiniStat
+        <BackupStat
           label="Owners"
-          value={ownersCount}
+          value={
+            ownersCount
+          }
         />
 
-        <MiniStat
-          label="Owner Accounts"
-          value={usersCount}
+        <BackupStat
+          label="Users"
+          value={
+            usersCount
+          }
         />
 
       </div>
 
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
 
-      <div className="mt-6 p-6 rounded-2xl bg-purple-50 border border-purple-100">
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
 
           <div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
 
-              <DatabaseBackup className="w-5 h-5 text-purple-700" />
+              <div className="w-11 h-11 rounded-2xl bg-sky-50 text-[#073957] flex items-center justify-center">
+                <DatabaseBackup className="w-5 h-5" />
+              </div>
 
-              <h3 className="font-black text-stone-900">
+              <h3 className="font-black text-[#073957]">
                 Export platform data
               </h3>
 
             </div>
 
-            <p className="text-sm text-stone-600 mt-2 max-w-xl leading-6">
-              Download guesthouses, pending verification
-              records, owner accounts and loaded user
-              administration data as a JSON backup.
+            <p className="text-sm text-slate-500 mt-3 max-w-2xl leading-6">
+              Download guesthouses, pending applications,
+              owner accounts, users and platform statistics
+              as a JSON administration backup.
             </p>
 
           </div>
-
 
           <button
             type="button"
             onClick={onBackup}
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-sm font-black disabled:opacity-50 shrink-0 transition"
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#073957] hover:bg-[#052c45] text-white text-sm font-black disabled:opacity-50 shrink-0"
           >
 
             <Download className="w-4 h-4" />
@@ -2225,69 +2960,23 @@ function BackupSection({
 
 
 // ============================================================
-// SIDEBAR BUTTON
+// BACKUP STAT
 // ============================================================
 
-function AdminSidebarButton({
-  active,
-  icon,
-  label,
-  count,
-  onClick,
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-sm font-black mb-1 transition-all ${active
-          ? 'bg-purple-700 text-white shadow-lg shadow-purple-200'
-          : 'text-stone-600 hover:bg-stone-100'
-        }`}
-    >
-
-      <span className="flex items-center gap-3 text-left">
-
-        {icon}
-
-        {label}
-
-      </span>
-
-
-      {count !== undefined && (
-        <span
-          className={`min-w-7 h-7 px-2 rounded-full flex items-center justify-center text-xs font-black ${active
-              ? 'bg-white/20 text-white'
-              : 'bg-stone-100 text-stone-600'
-            }`}
-        >
-          {count}
-        </span>
-      )}
-
-    </button>
-  );
-}
-
-
-// ============================================================
-// SIDEBAR MINI STAT
-// ============================================================
-
-function SidebarMiniStat({
+function BackupStat({
   label,
   value,
 }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-stone-50">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
 
-      <span className="text-xs font-bold text-stone-500">
+      <div className="text-xs font-black uppercase tracking-wider text-slate-400">
         {label}
-      </span>
+      </div>
 
-      <span className="text-sm font-black text-stone-900">
+      <div className="mt-2 text-3xl font-black text-[#073957]">
         {value}
-      </span>
+      </div>
 
     </div>
   );
@@ -2295,30 +2984,34 @@ function SidebarMiniStat({
 
 
 // ============================================================
-// SECTION HEADER
+// PAGE HEADER
 // ============================================================
 
-function SectionHeader({
+function PageHeader({
   icon,
   title,
   subtitle,
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-      <div className="mt-0.5">
-        {icon}
-      </div>
+      <div className="flex items-start gap-3">
 
-      <div>
+        <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          {icon}
+        </div>
 
-        <h2 className="text-xl font-black text-stone-900">
-          {title}
-        </h2>
+        <div>
 
-        <p className="text-sm text-stone-500 mt-1 leading-6">
-          {subtitle}
-        </p>
+          <h2 className="text-2xl font-black text-[#073957]">
+            {title}
+          </h2>
+
+          <p className="text-sm text-slate-500 mt-1">
+            {subtitle}
+          </p>
+
+        </div>
 
       </div>
 
@@ -2328,25 +3021,19 @@ function SectionHeader({
 
 
 // ============================================================
-// MINI STAT
+// TABLE HEADER
 // ============================================================
 
-function MiniStat({
-  label,
-  value,
+function TableHeader({
+  children,
+  align = 'left',
 }) {
   return (
-    <div className="rounded-2xl bg-stone-50 border border-stone-200 p-5">
-
-      <div className="text-xs font-black uppercase tracking-wider text-stone-400">
-        {label}
-      </div>
-
-      <div className="mt-2 text-2xl font-black text-stone-900">
-        {value}
-      </div>
-
-    </div>
+    <th
+      className={`px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-${align}`}
+    >
+      {children}
+    </th>
   );
 }
 
@@ -2362,29 +3049,29 @@ function StatusBadge({
     String(status)
       .toLowerCase();
 
-  const approved =
-    normalized === 'approved';
-
-  const rejected =
-    normalized === 'rejected';
-
-  const pending =
-    normalized === 'pending';
-
   let classes =
-    'bg-stone-100 text-stone-700';
+    'bg-slate-100 text-slate-600';
 
-  if (approved) {
+  if (
+    normalized ===
+    'approved'
+  ) {
     classes =
       'bg-emerald-100 text-emerald-700';
   }
 
-  if (rejected) {
+  if (
+    normalized ===
+    'rejected'
+  ) {
     classes =
       'bg-red-100 text-red-700';
   }
 
-  if (pending) {
+  if (
+    normalized ===
+    'pending'
+  ) {
     classes =
       'bg-amber-100 text-amber-700';
   }
@@ -2410,17 +3097,15 @@ function EmptyState({
   return (
     <div className="p-12 text-center">
 
-      <div className="w-14 h-14 mx-auto rounded-full bg-stone-100 flex items-center justify-center">
-
-        <ShieldCheck className="w-7 h-7 text-stone-400" />
-
+      <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center">
+        <ShieldCheck className="w-7 h-7 text-slate-400" />
       </div>
 
-      <h3 className="font-black text-stone-800 mt-4">
+      <h3 className="font-black text-[#073957] mt-4">
         {title}
       </h3>
 
-      <p className="text-sm text-stone-500 mt-1">
+      <p className="text-sm text-slate-500 mt-1">
         {text}
       </p>
 
@@ -2464,10 +3149,6 @@ function UpdateProfileModal({
   const [error, setError] =
     useState('');
 
-  // ==========================================================
-  // SUBMIT
-  // ==========================================================
-
   const handleSubmit =
     async (event) => {
       event.preventDefault();
@@ -2487,6 +3168,7 @@ function UpdateProfileModal({
         await onSaved(
           updatedUser
         );
+
       } catch (err) {
         console.error(
           'Update profile error:',
@@ -2498,6 +3180,7 @@ function UpdateProfileModal({
           err?.message ||
           'Failed to update profile.'
         );
+
       } finally {
         setSaving(false);
       }
@@ -2505,7 +3188,7 @@ function UpdateProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onMouseDown={(event) => {
         if (
           event.target ===
@@ -2518,17 +3201,15 @@ function UpdateProfileModal({
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
 
-        {/* HEADER */}
-
-        <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
 
           <div>
 
-            <h2 className="text-lg font-black text-stone-900">
+            <h2 className="text-lg font-black text-[#073957]">
               Update Profile
             </h2>
 
-            <p className="text-xs text-stone-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Update your administrator account.
             </p>
 
@@ -2537,15 +3218,12 @@ function UpdateProfileModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
 
         </div>
-
-
-        {/* FORM */}
 
         <form
           onSubmit={handleSubmit}
@@ -2558,14 +3236,12 @@ function UpdateProfileModal({
             </div>
           )}
 
-
           <ProfileInput
             label="Full Name"
             value={name}
             onChange={setName}
             required
           />
-
 
           <ProfileInput
             label="Email"
@@ -2575,14 +3251,12 @@ function UpdateProfileModal({
             required
           />
 
-
           <ProfileInput
             label="Phone"
             type="tel"
             value={phone}
             onChange={setPhone}
           />
-
 
           <ProfileInput
             label="New Password"
@@ -2592,23 +3266,21 @@ function UpdateProfileModal({
             placeholder="Leave empty to keep current password"
           />
 
-
           <div className="flex gap-3 pt-3">
 
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="flex-1 px-4 py-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-bold disabled:opacity-50"
+              className="flex-1 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold"
             >
               Cancel
             </button>
 
-
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-sm font-bold disabled:opacity-50"
+              className="flex-1 px-4 py-3 rounded-xl bg-[#073957] hover:bg-[#052c45] text-white text-sm font-bold"
             >
               {saving
                 ? 'Saving...'
@@ -2641,7 +3313,7 @@ function ProfileInput({
   return (
     <div>
 
-      <label className="block text-xs font-bold text-stone-600 mb-1.5">
+      <label className="block text-xs font-bold text-slate-600 mb-1.5">
         {label}
       </label>
 
@@ -2654,8 +3326,15 @@ function ProfileInput({
           )
         }
         required={required}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-stone-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+        placeholder={
+          placeholder
+        }
+        autoComplete={
+          type === 'password'
+            ? 'new-password'
+            : undefined
+        }
+        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
       />
 
     </div>
@@ -2664,7 +3343,18 @@ function ProfileInput({
 
 
 // ============================================================
-// DEFAULT EXPORT
+// MONEY FORMAT
 // ============================================================
 
-export default AdminDashboard;
+function formatMoney(
+  value
+) {
+  return Number(
+    value || 0
+  ).toLocaleString(
+    'en-US',
+    {
+      maximumFractionDigits: 2,
+    }
+  );
+}

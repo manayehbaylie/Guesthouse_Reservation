@@ -11,11 +11,51 @@ import { useAuth } from './AuthContext.jsx';
 
 const NotificationContext = createContext(null);
 
+function buildDemoNotifications(user) {
+  if (!user) return [];
+
+  const userName = user.name || user.fullName || 'Guest';
+  const role = String(user.role || 'GUEST').toUpperCase();
+
+  const demoList = [
+    {
+      id: 'demo-welcome',
+      title: 'Welcome back',
+      message: `Hello ${userName}! Your guesthouse account is ready and the notification center is active.`,
+      isRead: false,
+      category: 'system',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'demo-reminder',
+      title: 'Booking reminder',
+      message: 'A recent reservation update is waiting for your review in the dashboard.',
+      isRead: false,
+      category: role === 'OWNER' ? 'guesthouse' : 'reservation',
+      createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    },
+  ];
+
+  if (role === 'OWNER') {
+    demoList.push({
+      id: 'demo-owner',
+      title: 'Property update',
+      message: 'Your guesthouse performance summary has been refreshed and is ready to review.',
+      isRead: true,
+      category: 'guesthouse',
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+    });
+  }
+
+  return demoList;
+}
+
 export function NotificationProvider({ children }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [toasts, setToasts] = useState([]);
 
   // Store known notification IDs to detect newly arrived ones during polling
@@ -58,6 +98,7 @@ export function NotificationProvider({ children }) {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
+      setError('');
       knownIdsRef.current.clear();
       isFirstLoadRef.current = true;
       return;
@@ -68,6 +109,19 @@ export function NotificationProvider({ children }) {
     }
 
     try {
+      setError('');
+      const hasAuthToken = Boolean(localStorage.getItem('token'));
+
+      if (!hasAuthToken) {
+        const fallback = buildDemoNotifications(user);
+        const count = fallback.filter((n) => !n.isRead).length;
+        knownIdsRef.current = new Set(fallback.map((n) => n.id));
+        isFirstLoadRef.current = false;
+        setNotifications(fallback);
+        setUnreadCount(count);
+        return;
+      }
+
       const data = await ApiService.getNotifications();
       const list = Array.isArray(data) ? data : [];
 
@@ -96,6 +150,7 @@ export function NotificationProvider({ children }) {
       setNotifications(list);
       setUnreadCount(count);
     } catch (error) {
+      setError(error?.message || 'Could not load notifications from the server.');
       console.warn('Error fetching notifications:', error?.message || error);
     } finally {
       if (!isPolling) {
@@ -112,6 +167,7 @@ export function NotificationProvider({ children }) {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
+      setError('');
       knownIdsRef.current.clear();
       isFirstLoadRef.current = true;
       return;
@@ -120,6 +176,15 @@ export function NotificationProvider({ children }) {
     // Initial load
     fetchNotifications(false);
 
+    const handleAuthStateRefresh = () => {
+      fetchNotifications(false);
+    };
+
+    window.addEventListener('auth-login', handleAuthStateRefresh);
+    window.addEventListener('auth-register', handleAuthStateRefresh);
+    window.addEventListener('auth-switch', handleAuthStateRefresh);
+    window.addEventListener('auth-logout', handleAuthStateRefresh);
+
     // Setup 10-second polling interval for live updates
     const interval = setInterval(() => {
       fetchNotifications(true);
@@ -127,6 +192,10 @@ export function NotificationProvider({ children }) {
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('auth-login', handleAuthStateRefresh);
+      window.removeEventListener('auth-register', handleAuthStateRefresh);
+      window.removeEventListener('auth-switch', handleAuthStateRefresh);
+      window.removeEventListener('auth-logout', handleAuthStateRefresh);
     };
   }, [user, fetchNotifications]);
 
@@ -137,11 +206,23 @@ export function NotificationProvider({ children }) {
   const markAsRead = useCallback(async (id) => {
     if (!id) return;
 
+    const target = notifications.find((n) => n.id === id);
+    const wasUnread = target && !target.isRead;
+
     // Optimistic state update
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(updated.filter((n) => !n.isRead).length);
+      return updated;
+    });
+
+    if (!wasUnread) {
+      return;
+    }
+
+    if (!localStorage.getItem('token')) {
+      return;
+    }
 
     try {
       await ApiService.markNotificationAsRead(id);
@@ -150,7 +231,7 @@ export function NotificationProvider({ children }) {
       // Re-fetch to sync if failed
       fetchNotifications(true);
     }
-  }, [fetchNotifications]);
+  }, [notifications, fetchNotifications]);
 
   // ----------------------------------------------------------------
   // MARK ALL AS READ (Optimistic UI update)
@@ -160,6 +241,10 @@ export function NotificationProvider({ children }) {
     // Optimistic state update
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
+
+    if (!localStorage.getItem('token')) {
+      return;
+    }
 
     try {
       await ApiService.markAllNotificationsAsRead();
@@ -180,9 +265,18 @@ export function NotificationProvider({ children }) {
     const wasUnread = target && !target.isRead;
 
     // Optimistic state update
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    if (wasUnread) {
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+    setNotifications((prev) => {
+      const updated = prev.filter((n) => n.id !== id);
+      setUnreadCount(updated.filter((n) => !n.isRead).length);
+      return updated;
+    });
+
+    if (!wasUnread) {
+      return;
+    }
+
+    if (!localStorage.getItem('token')) {
+      return;
     }
 
     try {
@@ -199,8 +293,14 @@ export function NotificationProvider({ children }) {
 
   const clearAllNotifications = useCallback(async () => {
     // Optimistic state update
-    setNotifications([]);
-    setUnreadCount(0);
+    setNotifications(() => {
+      setUnreadCount(0);
+      return [];
+    });
+
+    if (!localStorage.getItem('token')) {
+      return;
+    }
 
     try {
       await ApiService.deleteAllNotifications();
@@ -214,6 +314,7 @@ export function NotificationProvider({ children }) {
     notifications,
     unreadCount,
     loading,
+    error,
     toasts,
     showToast,
     dismissToast,

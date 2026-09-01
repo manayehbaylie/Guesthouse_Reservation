@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { NotificationBell } from './common/NotificationBell.jsx';
 import {
   Home,
   Search,
@@ -10,7 +11,6 @@ import {
   Menu,
   X,
   Building2,
-  Bell,
   ChevronDown,
 } from 'lucide-react';
 
@@ -49,6 +49,7 @@ export function Navbar({ onToggleSidebar }) {
 
   const navLinks = [
     { path: '/', label: 'Home', icon: <Home className="w-4 h-4" /> },
+    { path: '/guesthouses', label: 'All Guesthouses', icon: <Building2 className="w-4 h-4" /> },
     { path: '/search', label: 'Explore', icon: <Search className="w-4 h-4" /> },
     { path: '/reservations', label: 'My Bookings', icon: <Calendar className="w-4 h-4" /> },
     { path: '/about', label: 'About Us', icon: null },
@@ -103,10 +104,7 @@ export function Navbar({ onToggleSidebar }) {
           {/* Right Side - User Menu */}
           <div className="flex items-center gap-4">
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-stone-100 transition-colors">
-              <Bell className="w-5 h-5 text-stone-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <NotificationBell variant="navbar" />
 
             {isAuthenticated() ? (
               <div className="relative">

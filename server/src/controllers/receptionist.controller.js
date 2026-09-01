@@ -8,6 +8,7 @@ import {
   getTodayArrivals,
   getTodayDepartures,
   getDashboardStats,
+  getReceptionistGuesthouse,
   getReceptionistRooms,
   getInHouseGuests,
   searchReservations,
@@ -31,6 +32,25 @@ async (req, res, next) => {
       res,
       reservations,
       "Reservations fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ===================================
+// Assigned Guesthouse
+// ===================================
+export const receptionistGuesthouse =
+async (req, res, next) => {
+  try {
+    const guesthouse =
+      await getReceptionistGuesthouse(req.user.id);
+
+    successResponse(
+      res,
+      guesthouse,
+      "Assigned guesthouse fetched successfully"
     );
   } catch (error) {
     next(error);

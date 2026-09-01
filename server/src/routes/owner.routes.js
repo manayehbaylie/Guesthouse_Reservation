@@ -39,6 +39,7 @@ router.post(
   authenticate,
   authorize("OWNER"),
   upload.fields([
+    { name: "image", maxCount: 1 },
     { name: "licenseDocument", maxCount: 1 },
     { name: "photos", maxCount: 10 },
   ]),
@@ -84,6 +85,7 @@ router.put(
   authenticate,
   authorize("OWNER"),
   upload.fields([
+    { name: "image", maxCount: 1 },
     { name: "licenseDocument", maxCount: 1 },
     { name: "photos", maxCount: 10 },
   ]),
@@ -95,6 +97,7 @@ router.put(
   authenticate,
   authorize("OWNER"),
   upload.fields([
+    { name: "image", maxCount: 1 },
     { name: "licenseDocument", maxCount: 1 },
     { name: "photos", maxCount: 10 },
   ]),
@@ -119,6 +122,7 @@ router.put(
   authenticate,
   authorize("OWNER"),
   upload.fields([
+    { name: "image", maxCount: 1 },
     { name: "licenseDocument", maxCount: 1 },
     { name: "photos", maxCount: 10 },
   ]),

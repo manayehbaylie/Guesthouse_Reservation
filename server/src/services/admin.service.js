@@ -37,6 +37,7 @@ export const approveGuesthouse = async (id) => {
       title: "Guesthouse Approved",
       message: `Congratulations! Your property "${guesthouse.name}" has been approved by the platform administrator and is now live for guest bookings.`,
       userId: guesthouse.ownerId,
+      category: "guesthouse",
     });
   } catch (error) {
     console.error("Failed to notify owner of guesthouse approval:", error);

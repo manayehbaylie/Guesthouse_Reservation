@@ -280,7 +280,7 @@ export default function GuestDashboard() {
               >
                 <div className="h-40 bg-[#e5edf2] relative">
                   <img
-                    src={guesthouse.images?.[0] || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80'}
+                    src={guesthouse.image || guesthouse.images?.[0] || guesthouse.photos?.[0] || ''}
                     alt={guesthouse.name}
                     className="w-full h-full object-cover"
                   />

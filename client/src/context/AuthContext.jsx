@@ -55,16 +55,16 @@ export function AuthProvider({ children }) {
   // LOGIN
   // ============================================================
 
-  const login = async (email, password) => {
+  const login = async (identifier, password, loginMethod = 'email') => {
     setAuthError(null);
     setLoading(true);
 
     try {
-      if (!email || !password) {
-        throw new Error("Email and password are required");
+      if (!identifier || !password) {
+        throw new Error("Email/Phone and password are required");
       }
 
-      const loggedUser = await ApiService.loginUser(email, password);
+      const loggedUser = await ApiService.loginUser(identifier, password, loginMethod);
 
       if (!loggedUser) {
         throw new Error("Login failed - no user data returned");

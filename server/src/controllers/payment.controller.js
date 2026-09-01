@@ -35,7 +35,7 @@ export const initiate = async (req, res, next) => {
     return successResponse(
       res,
       payment,
-      "Payment processed successfully",
+      "Payment initialized successfully",
       201
     );
   } catch (error) {
@@ -74,10 +74,6 @@ export const getAll = async (req, res, next) => {
 export const getById = async (req, res, next) => {
   try {
     const payment = await getPaymentById(req.params.id);
-
-    if (!payment) {
-      throw new Error("Payment not found");
-    }
 
     return successResponse(
       res,

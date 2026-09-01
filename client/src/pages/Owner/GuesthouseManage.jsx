@@ -20,6 +20,7 @@ export function GuesthouseManage() {
   const [description, setDescription] = useState('');
   const [amenities, setAmenities] = useState('Free Wi-Fi, Breakfast Included, Generator Backup');
   const [licenseNumber, setLicenseNumber] = useState('');
+  const [mainImage, setMainImage] = useState(null);
   const [licenseDocument, setLicenseDocument] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,7 @@ export function GuesthouseManage() {
         setNumberOfRooms(gh.numberOfRooms || '');
         setDescription(gh.description || '');
         setLicenseNumber(gh.licenseNumber || '');
+        setMainImage(gh.image || gh.images?.[0] || null);
         setAmenities(gh.amenities?.join(', ') || '');
       }
     } catch (error) {
@@ -74,6 +76,7 @@ export function GuesthouseManage() {
         numberOfRooms,
         description,
         licenseNumber,
+        image: mainImage,
         licenseDocument,
         photos,
       };
@@ -110,6 +113,7 @@ export function GuesthouseManage() {
         numberOfRooms,
         description,
         licenseNumber,
+        image: mainImage,
         licenseDocument,
         photos,
       };
@@ -191,6 +195,15 @@ export function GuesthouseManage() {
           <div>
             <label className="block text-stone-700 uppercase mb-1">Description</label>
             <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-amber-500" />
+          </div>
+
+          <div>
+            <label className="block text-stone-700 uppercase mb-1">Main Guesthouse Image</label>
+            <label className="flex items-center gap-2 px-3.5 py-3 rounded-xl border border-dashed border-stone-300 cursor-pointer">
+              <Upload className="w-4 h-4 text-stone-500" />
+              <span>{mainImage && typeof mainImage === 'object' ? mainImage.name : (existingGuesthouse?.image || 'Choose main property image')}</span>
+              <input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} className="hidden" />
+            </label>
           </div>
 
           <div>
