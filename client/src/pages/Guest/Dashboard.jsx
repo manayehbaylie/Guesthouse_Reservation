@@ -608,47 +608,47 @@ export default function GuestDashboard() {
             </Link>
           </div>
 
-          {recentGuesthouses.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#e5edf2] p-8 text-center">
-              <Building2 className="w-12 h-12 text-[#94a8b5] mx-auto mb-3" />
-              <p className="text-[#647b8a]">No guesthouses available</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {recentGuesthouses.map((guesthouse) => (
-                <Link
-                  key={guesthouse.id}
-                  to={`/guesthouse/${guesthouse.id}`}
-                  className="bg-white rounded-2xl border border-[#e5edf2] overflow-hidden hover:shadow-md transition group"
-                >
-                  <div className="h-40 bg-[#e5edf2] relative">
-                    <img
-                      src={guesthouse.images?.[0] || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80'}
-                      alt={guesthouse.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-bold flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-[#FFC107] text-[#FFC107]" />
-                      {guesthouse.rating?.toFixed(1) || 'New'}
-                    </div>
+        {recentGuesthouses.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#e5edf2] p-8 text-center">
+            <Building2 className="w-12 h-12 text-[#94a8b5] mx-auto mb-3" />
+            <p className="text-[#647b8a]">No guesthouses available</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recentGuesthouses.map((guesthouse) => (
+              <Link
+                key={guesthouse.id}
+                to={`/guesthouse/${guesthouse.id}`}
+                className="bg-white rounded-2xl border border-[#e5edf2] overflow-hidden hover:shadow-md transition group"
+              >
+                <div className="h-40 bg-[#e5edf2] relative">
+                  <img
+                    src={guesthouse.image || guesthouse.images?.[0] || guesthouse.photos?.[0] || ''}
+                    alt={guesthouse.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-bold flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-[#FFC107] text-[#FFC107]" />
+                    {guesthouse.rating?.toFixed(1) || 'New'}
                   </div>
-                  <div className="p-4">
-                    <h4 className="font-bold text-[#043658] group-hover:text-[#FFC107] transition">
-                      {guesthouse.name}
-                    </h4>
-                    <p className="text-sm text-[#647b8a] flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" />
-                      {guesthouse.city || guesthouse.location || 'Ethiopia'}
-                    </p>
-                    <p className="mt-2 text-sm font-bold text-[#FFC107]">
-                      From {guesthouse.priceRange?.min?.toLocaleString() || '0'} ETB/night
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                </div>
+                <div className="p-4">
+                  <h4 className="font-bold text-[#043658] group-hover:text-[#FFC107] transition">
+                    {guesthouse.name}
+                  </h4>
+                  <p className="text-sm text-[#647b8a] flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {guesthouse.city || guesthouse.location || 'Ethiopia'}
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-[#FFC107]">
+                    From {guesthouse.priceRange?.min?.toLocaleString() || '0'} ETB/night
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
         {/* =========================================================
             RECENT BOOKINGS HISTORY - ORIGINAL

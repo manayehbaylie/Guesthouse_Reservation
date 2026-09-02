@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   receptionReservations,
+  receptionistGuesthouse,
   confirm,
   checkIn,
   checkOut,
@@ -27,6 +28,13 @@ const router = express.Router();
  * RECEPTIONIST ROUTES
  * ========================================
  */
+
+router.get(
+  "/guesthouse",
+  authenticate,
+  authorize("RECEPTIONIST"),
+  receptionistGuesthouse
+);
 
 /**
  * @swagger

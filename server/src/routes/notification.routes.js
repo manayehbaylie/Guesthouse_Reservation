@@ -36,6 +36,12 @@ router.get(
 // Get Unread Notification Count
 // ======================================
 router.get(
+  "/unread-count",
+  authenticate,
+  unreadCount
+);
+
+router.get(
   "/count",
   authenticate,
   unreadCount

@@ -659,9 +659,10 @@ function GuesthouseCard({
   navigate,
 }) {
   const image =
-    gh.images?.[0] ||
     gh.image ||
-    "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80";
+    gh.images?.[0] ||
+    gh.photos?.[0] ||
+    "";
 
   const price =
     getMinimumRoomPrice(gh);
@@ -685,18 +686,20 @@ function GuesthouseCard({
       ------------------------------------------------------- */}
 
       <div className="relative h-52 overflow-hidden bg-stone-100">
-        <img
-          src={image}
-          alt={
-            gh.name ||
-            "Guesthouse"
-          }
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(event) => {
-            event.currentTarget.src =
-              "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80";
-          }}
-        />
+        {image ? (
+          <img
+            src={image}
+            alt={
+              gh.name ||
+              "Guesthouse"
+            }
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <Building2 className="h-12 w-12 text-stone-300" />
+          </div>
+        )}
 
         {/* VERIFIED */}
 

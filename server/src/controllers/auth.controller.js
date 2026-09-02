@@ -24,13 +24,20 @@ export const register = async (req, res, next) => {
 };
 
 /**
- * Login user
+ * Login user (supports email or phone)
  */
 export const login = async (req, res, next) => {
   try {
+    const { email, phone, password } = req.body;
+    
+    // Accept either email or phone as identifier
+    const identifier = email || phone;
+    const loginMethod = email ? 'email' : 'phone';
+    
     const result = await loginUser(
-      req.body.email,
-      req.body.password
+      identifier,
+      password,
+      loginMethod
     );
 
     return successResponse(

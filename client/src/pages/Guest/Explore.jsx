@@ -97,14 +97,24 @@ export function Explore() {
               best fits your needs.
             </p>
 
-            <button
-              type="button"
-              onClick={() => navigate("/search")}
-              className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#043658] px-6 py-3.5 text-sm font-black text-white transition hover:bg-[#064b78]"
-            >
-              Browse Guesthouses
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => navigate("/guesthouses")}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#043658] px-6 py-3.5 text-sm font-black text-white transition hover:bg-[#064b78]"
+              >
+                View All Guesthouses
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/search")}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#043658] px-6 py-3.5 text-sm font-black text-[#043658] transition hover:bg-[#043658]/5"
+              >
+                Search with Filters
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </section>

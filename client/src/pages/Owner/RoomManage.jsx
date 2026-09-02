@@ -8,6 +8,7 @@ export function RoomManage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [guesthouseId, setGuesthouseId] = useState(null);
+  const [guesthouse, setGuesthouse] = useState(null);
 
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,10 +35,12 @@ export function RoomManage() {
       // First get the owner's guesthouse
       const gh = await ApiService.getMyGuesthouse();
       if (gh) {
+        setGuesthouse(gh);
         setGuesthouseId(gh.id);
         const list = await ApiService.getRoomsForGuesthouse(gh.id);
         setRooms(list);
       } else {
+        setGuesthouse(null);
         setGuesthouseId(null);
         setRooms([]);
       }
@@ -56,6 +59,12 @@ export function RoomManage() {
 
   const handleAddRoom = async (e) => {
     e.preventDefault();
+
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      alert('Your guesthouse is still pending approval. Please wait for admin approval before adding rooms.');
+      return;
+    }
+
     try {
      await ApiService.addRoom({
   guesthouseId,
@@ -77,7 +86,11 @@ export function RoomManage() {
   };
 
  const handleToggleStatus = async (roomId, currentAvailable) => {
-  const nextAvailable = !currentAvailable;
+  if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+    alert('Your guesthouse is still pending approval. Room management is locked until the property is approved.');
+    return;
+  }
+
 
   try {
     await ApiService.updateRoomAvailability(
@@ -104,6 +117,11 @@ export function RoomManage() {
   };
 
   const handleUpdateRoomClick = (room) => {
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      alert('Your guesthouse is still pending approval. Room updates are locked until approval is complete.');
+      return;
+    }
+
     setUpdatingRoomId(room.id);
     setUpdateRoomNumber(room.roomNumber);
     setUpdateType(room.type);
@@ -115,6 +133,11 @@ setUpdateAvailability(room.available === true);
 
   const handleUpdateRoom = async (e) => {
     e.preventDefault();
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      alert('Your guesthouse is still pending approval. Room updates are locked until admin approval.');
+      return;
+    }
+
     try {
       await ApiService.updateRoom(updatingRoomId, {
         roomNumber: updateRoomNumber,
@@ -152,14 +175,22 @@ setUpdateAvailability(room.available === true);
           <p className="text-xs text-stone-500">Configure room types, rates per night, and toggle live availability</p>
         </div>
 
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Room</span>
-        </button>
+        {String(guesthouse?.status || '').toUpperCase() === 'APPROVED' && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Room</span>
+          </button>
+        )}
       </div>
+
+      {String(guesthouse?.status || '').toUpperCase() !== 'APPROVED' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900">
+          <strong className="font-bold">Approval required.</strong> Room management is locked until your guesthouse is approved by the admin team.
+        </div>
+      )}
 
       {/* Add Room Form */}
       {showForm && (

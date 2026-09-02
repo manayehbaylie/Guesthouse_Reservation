@@ -50,6 +50,7 @@ import {
   Percent,
   ChevronDown,
   LogOut,
+  Info,
 } from 'lucide-react';
 
 const ETHIOPIAN_CITIES = [
@@ -331,6 +332,11 @@ export function OwnerDashboard() {
      ROOM INVENTORY ACTIONS
      ========================================================== */
   const handleToggleRoomStatus = async (room) => {
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      showToast('Your guesthouse is still pending approval. Room controls are locked until approval.', 'info');
+      return;
+    }
+
     const nextStatus = room.availabilityStatus === 'available' ? 'unavailable' : 'available';
     try {
       await ApiService.updateRoomAvailability(room.id, nextStatus);
@@ -342,6 +348,11 @@ export function OwnerDashboard() {
   };
 
   const handleOpenAddRoomModal = () => {
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      showToast('Your guesthouse is still pending approval. Room creation is locked until approval.', 'info');
+      return;
+    }
+
     setEditingRoom(null);
     setRoomNumber('');
     setRoomType('SUITE');
@@ -352,6 +363,11 @@ export function OwnerDashboard() {
   };
 
   const handleOpenEditRoomModal = (room) => {
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      showToast('Your guesthouse is still pending approval. Room editing is locked until approval.', 'info');
+      return;
+    }
+
     setEditingRoom(room);
     setRoomNumber(room.roomNumber);
     setRoomType(room.type || 'SUITE');
@@ -364,6 +380,11 @@ export function OwnerDashboard() {
   const handleSaveRoomSubmit = async (e) => {
     e.preventDefault();
     if (!guesthouse) return;
+
+    if (String(guesthouse.status || '').toUpperCase() !== 'APPROVED') {
+      showToast('Your guesthouse is still pending approval. Room changes are disabled until approval is complete.', 'info');
+      return;
+    }
 
     try {
       if (editingRoom) {
@@ -413,6 +434,11 @@ export function OwnerDashboard() {
     e.preventDefault();
     if (!guesthouse) return;
 
+    if (String(guesthouse.status || '').toUpperCase() !== 'APPROVED') {
+      showToast('Your guesthouse is still pending approval. Staff registration is locked until approval is complete.', 'info');
+      return;
+    }
+
     try {
       await ApiService.registerReceptionist({
         fullName: staffName,
@@ -433,6 +459,11 @@ export function OwnerDashboard() {
   };
 
   const handleRemoveStaff = async (staffMember) => {
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      showToast('Your guesthouse is still pending approval. Staff management is locked until approval is complete.', 'info');
+      return;
+    }
+
     if (!confirm(`Are you sure you want to remove ${staffMember.name || staffMember.fullName} from your front-desk staff?`)) {
       return;
     }
@@ -568,112 +599,14 @@ export function OwnerDashboard() {
   }
 
   /* ==========================================================
-     ONBOARDING VIEW - Show when NO guesthouse exists
-     ========================================================== */
-  if (!guesthouse || !guesthouse.id) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="bg-white rounded-3xl border border-stone-200 shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-stone-950 via-stone-900 to-amber-950 p-8 text-white relative">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-black uppercase tracking-wider mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Owner Onboarding Wizard</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Register Your Guesthouse</h1>
-            <p className="text-stone-300 text-xs sm:text-sm mt-1 max-w-xl">
-              Welcome to the Guesthouse Platform. Complete your property profile to unlock your command center, manage rooms, and receive guest reservations.
-            </p>
-          </div>
-
-          <form onSubmit={handleOnboardingSubmit} className="p-6 sm:p-8 space-y-6 text-xs font-semibold">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-stone-700 uppercase mb-1.5 font-bold">Guesthouse Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={onboardingName}
-                  onChange={(e) => setOnboardingName(e.target.value)}
-                  placeholder="e.g. Bole Luxury Grand Villa"
-                  className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-stone-700 uppercase mb-1.5 font-bold">City *</label>
-                <select
-                  value={onboardingCity}
-                  onChange={(e) => setOnboardingCity(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-white focus:ring-2 focus:ring-amber-500 text-stone-900"
-                >
-                  {ETHIOPIAN_CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-stone-700 uppercase mb-1.5 font-bold">Address *</label>
-              <input
-                type="text"
-                required
-                value={onboardingAddress}
-                onChange={(e) => setOnboardingAddress(e.target.value)}
-                placeholder="e.g. Bole Atlas, Near Edna Mall"
-                className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-700 uppercase mb-1.5 font-bold">Property Description *</label>
-              <textarea
-                rows={4}
-                required
-                value={onboardingDesc}
-                onChange={(e) => setOnboardingDesc(e.target.value)}
-                placeholder="Describe your guesthouse..."
-                className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-700 uppercase mb-1.5 font-bold">Main Property Photo URL</label>
-              <input
-                type="url"
-                value={onboardingImage}
-                onChange={(e) => setOnboardingImage(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submittingOnboarding}
-              className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm uppercase tracking-wider rounded-xl transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
-            >
-              {submittingOnboarding ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Registering Property...</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-5 h-5" />
-                  <span>Create Guesthouse & Open Command Center</span>
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  /* ==========================================================
      MAIN OWNER DASHBOARD VIEW
      ========================================================== */
+  const ghDisplay = guesthouse || {
+    name: 'Unregistered Property',
+    status: 'NOT REGISTERED',
+    city: 'Location Not Set',
+    address: 'No property address registered',
+  };
   return (
     <div className="max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 py-6">
       {/* Toast Notification */}
@@ -711,8 +644,8 @@ export function OwnerDashboard() {
             <Building2 className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-bold text-xs line-clamp-1">{guesthouse.name || 'Guesthouse'}</div>
-            <div className="text-[10px] text-amber-400 capitalize">{guesthouse.status || 'Approved'}</div>
+            <div className="font-bold text-xs line-clamp-1">{ghDisplay.name}</div>
+            <div className="text-[10px] text-amber-400 capitalize">{ghDisplay.status}</div>
           </div>
         </div>
         <button
@@ -739,20 +672,20 @@ export function OwnerDashboard() {
               </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                  guesthouse.status === 'approved' || guesthouse.status === 'APPROVED'
+                  String(ghDisplay.status).toUpperCase() === 'APPROVED'
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : guesthouse.status === 'rejected' || guesthouse.status === 'REJECTED'
+                    : String(ghDisplay.status).toUpperCase() === 'REJECTED'
                     ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                     : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                 }`}
               >
-                {guesthouse.status || 'APPROVED'}
+                {ghDisplay.status}
               </span>
             </div>
-            <h2 className="text-sm font-black text-white line-clamp-1">{guesthouse.name}</h2>
+            <h2 className="text-sm font-black text-white line-clamp-1">{ghDisplay.name}</h2>
             <div className="text-[11px] text-stone-400 flex items-center gap-1">
               <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
-              <span className="line-clamp-1">{guesthouse.address || guesthouse.city}, {guesthouse.city}</span>
+              <span className="line-clamp-1">{ghDisplay.address || ghDisplay.city}, {ghDisplay.city}</span>
             </div>
           </div>
 
@@ -893,7 +826,7 @@ export function OwnerDashboard() {
                 {activeTab === 'edit_property' && 'Edit Guesthouse Profile Details'}
               </h1>
               <p className="text-xs text-stone-500">
-                Operating property: <strong className="text-stone-800">{guesthouse.name}</strong> • City: <strong className="text-stone-800">{guesthouse.city}</strong>
+                Operating property: <strong className="text-stone-800">{ghDisplay.name}</strong> • City: <strong className="text-stone-800">{ghDisplay.city}</strong>
               </p>
             </div>
 
@@ -963,24 +896,52 @@ export function OwnerDashboard() {
           {/* TAB 1: PROPERTY OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* Not Registered Banner */}
+              {!guesthouse && (
+                <div className="bg-gradient-to-r from-stone-950 via-stone-900 to-amber-950 p-6 rounded-3xl border border-amber-500/30 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider mb-2">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Action Required</span>
+                    </div>
+                    <h3 className="text-lg font-black">Register Your Guesthouse</h3>
+                    <p className="text-stone-300 text-xs mt-1 max-w-xl">
+                      Submit your guesthouse details to the platform administrator. Once approved, your property will be published and you will be able to add rooms and receptionists.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/owner/guesthouse')}
+                    className="shrink-0 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Register Property</span>
+                  </button>
+                </div>
+              )}
+
               {/* Approval Notice */}
-              {guesthouse.status === 'pending' || guesthouse.status === 'PENDING' ? (
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 text-amber-900 text-xs">
+              {guesthouse && (String(guesthouse.status || '').toUpperCase() === 'PENDING') && (
+                <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start gap-3.5 text-amber-900 text-xs shadow-xs">
                   <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="font-bold block">Property Approval in Progress</strong>
-                    Your guesthouse is being verified. You can configure rooms and staff now.
+                    <strong className="font-bold text-sm block text-amber-950">Property Verification in Progress</strong>
+                    <p className="mt-1 leading-relaxed text-amber-900">
+                      Your guesthouse <strong>{guesthouse.name}</strong> is currently pending administrator verification. While in pending status, public search visibility, room inventory creation, and staff invites are locked until an administrator reviews and approves your submission.
+                    </p>
                   </div>
                 </div>
-              ) : null}
+              )}
 
-              {(guesthouse.status === 'rejected' || guesthouse.status === 'REJECTED') && (
-                <div className="bg-red-50 border border-red-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-red-900 text-xs">
+              {guesthouse && (String(guesthouse.status || '').toUpperCase() === 'REJECTED') && (
+                <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-red-900 text-xs shadow-xs">
                   <div className="flex items-start gap-3">
                     <ShieldAlert className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="font-bold block">Guesthouse Rejected</strong>
-                      <p className="mt-1">{guesthouse.rejectionReason || 'Administrator requested corrections.'}</p>
+                      <strong className="font-bold text-sm block text-red-950">Guesthouse Registration Needs Correction</strong>
+                      <p className="mt-1 text-red-800">
+                        {guesthouse.rejectionReason || 'The administrator requested modifications to your property details.'}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -1116,6 +1077,29 @@ export function OwnerDashboard() {
           {/* TAB 2: ROOMS */}
           {activeTab === 'rooms' && (
             <div className="space-y-6">
+              {(!guesthouse || String(guesthouse.status || '').toUpperCase() !== 'APPROVED') && (
+                <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-amber-900 text-xs shadow-xs">
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-bold text-sm block text-amber-950">Room Management Locked</strong>
+                      <p className="mt-0.5 text-amber-900">
+                        {guesthouse
+                          ? `Your guesthouse (${guesthouse.name}) is currently ${guesthouse.status || 'pending approval'}. Room additions and status changes will unlock automatically once an administrator approves your property.`
+                          : 'You must register a guesthouse and have it approved by an administrator before managing rooms.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/owner/guesthouse')}
+                    className="shrink-0 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>{guesthouse ? 'View Registration Status' : 'Register Guesthouse'}</span>
+                  </button>
+                </div>
+              )}
+
               <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative">
@@ -1140,7 +1124,11 @@ export function OwnerDashboard() {
                 </div>
                 <button
                   onClick={handleOpenAddRoomModal}
-                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs rounded-xl flex items-center gap-1.5"
+                  className={`px-4 py-2.5 font-black text-xs rounded-xl flex items-center gap-1.5 transition-all ${
+                    guesthouse && String(guesthouse.status || '').toUpperCase() === 'APPROVED'
+                      ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-sm'
+                      : 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                  }`}
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add New Room</span>
@@ -1199,12 +1187,42 @@ export function OwnerDashboard() {
           {/* TAB 3: STAFF */}
           {activeTab === 'staff' && (
             <div className="space-y-6">
+              {(!guesthouse || String(guesthouse.status || '').toUpperCase() !== 'APPROVED') && (
+                <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-amber-900 text-xs shadow-xs">
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-bold text-sm block text-amber-950">Receptionist Management Locked</strong>
+                      <p className="mt-0.5 text-amber-900">
+                        {guesthouse
+                          ? `Your guesthouse (${guesthouse.name}) is currently ${guesthouse.status || 'pending approval'}. Front-desk receptionist registration will unlock automatically once an administrator approves your property.`
+                          : 'You must register a guesthouse and have it approved by an administrator before creating receptionist accounts.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/owner/guesthouse')}
+                    className="shrink-0 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>{guesthouse ? 'View Registration Status' : 'Register Guesthouse'}</span>
+                  </button>
+                </div>
+              )}
+
               <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-bold text-stone-900">Front-Desk Team ({staff.length})</h3>
                   <p className="text-xs text-stone-500">Manage receptionist accounts</p>
                 </div>
-                <button onClick={() => setShowAddStaffModal(true)} className="px-4 py-2.5 bg-stone-950 hover:bg-stone-800 text-white font-bold text-xs rounded-xl flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddStaffModal(true)}
+                  className={`px-4 py-2.5 font-bold text-xs rounded-xl flex items-center gap-2 transition-all ${
+                    guesthouse && String(guesthouse.status || '').toUpperCase() === 'APPROVED'
+                      ? 'bg-stone-950 hover:bg-stone-800 text-white'
+                      : 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                  }`}
+                >
                   <UserPlus className="w-4 h-4 text-amber-400" />
                   <span>Register Receptionist</span>
                 </button>

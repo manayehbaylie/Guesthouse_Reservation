@@ -1,1133 +1,1128 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { ApiService } from '../../services/api.js';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
+
 import {
+  User,
   UserPlus,
   Mail,
   Phone,
-  User,
   Lock,
   Building2,
-  CheckCircle2,
   ArrowLeft,
-  CreditCard,
-  MapPin,
-  FileText,
-  Image as ImageIcon,
-  ShieldCheck,
-  X,
+  ArrowRight,
+  CheckCircle2,
   Eye,
   EyeOff,
-  ArrowRight,
-} from 'lucide-react';
+  X,
+  BriefcaseBusiness,
+  ChevronDown,
+} from "lucide-react";
+
+// ============================================================
+// MAIN REGISTER COMPONENT
+// ============================================================
 
 export function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  // ============================================================
-  // REGISTRATION TYPE
-  // ============================================================
+  // ==========================================================
+  // FORM STATE
+  // ==========================================================
 
-  const [registrationType, setRegistrationType] = useState(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [residentialAddress, setResidentialAddress] = useState("");
+  const [idType, setIdType] = useState("");
+  const [idNumber, setIdNumber] = useState("");
 
-  // ============================================================
-  // COMMON USER INFORMATION
-  // ============================================================
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [accountType, setAccountType] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ============================================================
-  // OWNER IDENTIFICATION
-  // ============================================================
-
-  const [address, setAddress] = useState('');
-  const [idType, setIdType] = useState('National ID');
-  const [idNumber, setIdNumber] = useState('');
-  const [idFront, setIdFront] = useState(null);
-  const [idBack, setIdBack] = useState(null);
-
-  // ============================================================
-  // GUESTHOUSE INFORMATION
-  // ============================================================
-
-  const [guesthouseName, setGuesthouseName] = useState('');
-  const [guesthouseAddress, setGuesthouseAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [subCity, setSubCity] = useState('');
-  const [woreda, setWoreda] = useState('');
-  const [guesthousePhone, setGuesthousePhone] = useState('');
-  const [guesthouseEmail, setGuesthouseEmail] = useState('');
-  const [numberOfRooms, setNumberOfRooms] = useState('');
-  const [description, setDescription] = useState('');
-
-  // ============================================================
-  // BUSINESS INFORMATION
-  // ============================================================
-
-  const [businessLicenseNumber, setBusinessLicenseNumber] = useState('');
-  const [businessLicense, setBusinessLicense] = useState(null);
-
-  // ============================================================
-  // GUESTHOUSE PHOTOS
-  // ============================================================
-
-  const [guesthousePhotos, setGuesthousePhotos] = useState([]);
-
-  // ============================================================
-  // AGREEMENT
-  // ============================================================
-
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  // ============================================================
+  // ==========================================================
   // UI STATE
-  // ============================================================
+  // ==========================================================
 
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ============================================================
-  // AUTO-BOOKING FUNCTION
-  // ============================================================
+  // ==========================================================
+  // VALIDATE PERSONAL INFORMATION
+  // ==========================================================
 
-  const createAutoBooking = async (userId) => {
-    try {
-      console.log('Creating auto-booking for user:', userId);
-      
-      const guesthouses = await ApiService.getGuesthouses({ limit: 10 });
-      if (guesthouses.length === 0) {
-        console.log('No guesthouses found for auto-booking');
-        return null;
+  const validatePersonalInformation = () => {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPhone = phone.trim();
+
+    // Full name
+    if (!trimmedName) {
+      return "Full name is required.";
+    }
+
+    if (trimmedName.length < 3) {
+      return "Full name must be at least 3 characters.";
+    }
+
+    // Email is OPTIONAL
+    if (trimmedEmail) {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailPattern.test(trimmedEmail)) {
+        return "Please enter a valid email address.";
       }
-      
-      const gh = guesthouses[0];
-      console.log('Using guesthouse:', gh.name);
-      
-      const rooms = await ApiService.getRoomsForGuesthouse(gh.id);
-      if (rooms.length === 0) {
-        console.log('No rooms found for auto-booking');
-        return null;
-      }
-      
-      const room = rooms[0];
-      console.log('Using room:', room.roomNumber);
-      
-      const today = new Date();
-      const checkIn = new Date(today);
-      checkIn.setDate(today.getDate() + 1);
-      const checkOut = new Date(checkIn);
-      checkOut.setDate(checkIn.getDate() + 2);
-      
-      const checkInStr = checkIn.toISOString().split('T')[0];
-      const checkOutStr = checkOut.toISOString().split('T')[0];
-
-      const bookingData = {
-        guesthouseId: gh.id,
-        roomId: room.id,
-        checkInDate: checkInStr,
-        checkOutDate: checkOutStr,
-        nightsCount: 1,
-        numberOfGuests: 1,
-        paymentMethod: 'TELEBIRR',
-        phone: '+251911111111',
-      };
-
-      const result = await ApiService.createBookingAndPay(bookingData);
-      console.log('✅ Auto-booking created successfully:', result);
-      return result;
-
-    } catch (error) {
-      console.error('❌ Failed to auto-create booking:', error);
-      return null;
     }
-  };
 
-  // ============================================================
-  // PASSWORD VALIDATION
-  // ============================================================
+    // Phone
+    if (!trimmedPhone) {
+      return "Phone number is required.";
+    }
 
-  const validatePassword = () => {
-    if (!password) {
-      return 'Password is required.';
+    const phoneDigits = trimmedPhone.replace(/\D/g, "");
+
+    if (phoneDigits.length < 9) {
+      return "Please enter a valid phone number.";
     }
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters.';
-    }
-    if (!confirmPassword) {
-      return 'Please confirm your password.';
-    }
-    if (password !== confirmPassword) {
-      return 'Passwords do not match.';
-    }
+
     return null;
   };
 
-  // ============================================================
+  // ==========================================================
+  // PASSWORD VALIDATION
+  // ==========================================================
+
+  const validatePassword = () => {
+    if (!password) {
+      return "Password is required.";
+    }
+
+    if (password.length < 6) {
+      return "Password must be at least 6 characters.";
+    }
+
+    if (!confirmPassword) {
+      return "Please confirm your password.";
+    }
+
+    if (password !== confirmPassword) {
+      return "Passwords do not match.";
+    }
+
+    return null;
+  };
+
+  // ==========================================================
+  // ACCOUNT TYPE VALIDATION
+  // ==========================================================
+
+  const validateAccountType = () => {
+    if (!accountType) {
+      return "Please select how you want to use the platform.";
+    }
+
+    return null;
+  };
+
+  // ==========================================================
+  // OWNER REGISTRATION VALIDATION
+  // ==========================================================
+
+  const validateOwnerRegistration = () => {
+    if (accountType !== "Owner") {
+      return null;
+    }
+
+    if (!residentialAddress.trim()) {
+      return "Residential address is required for owner accounts.";
+    }
+
+    if (!idType) {
+      return "Please select your ID type.";
+    }
+
+    if (!idNumber.trim()) {
+      return "ID number is required for owner accounts.";
+    }
+
+    return null;
+  };
+
+  // ==========================================================
   // RESET FORM
-  // ============================================================
+  // ==========================================================
 
   const resetForm = () => {
-    setName('');
-    setEmail('');
-    setPhone('');
-    setPassword('');
-    setConfirmPassword('');
-    setAddress('');
-    setIdType('National ID');
-    setIdNumber('');
-    setIdFront(null);
-    setIdBack(null);
-    setGuesthouseName('');
-    setGuesthouseAddress('');
-    setCity('');
-    setSubCity('');
-    setWoreda('');
-    setGuesthousePhone('');
-    setGuesthouseEmail('');
-    setNumberOfRooms('');
-    setDescription('');
-    setBusinessLicenseNumber('');
-    setBusinessLicense(null);
-    setGuesthousePhotos([]);
+    setName("");
+    setEmail("");
+    setPhone("");
+    setResidentialAddress("");
+    setIdType("");
+    setIdNumber("");
+    setPassword("");
+    setConfirmPassword("");
+    setAccountType("");
+
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+
     setAgreedToTerms(false);
-    setError('');
+    setError("");
   };
 
-  // ============================================================
-  // BACK TO REGISTRATION OPTIONS
-  // ============================================================
+  // ==========================================================
+  // SUBMIT REGISTRATION
+  // ==========================================================
 
-  const handleBackToOptions = () => {
-    setRegistrationType(null);
-    setError('');
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  // ============================================================
-  // GUEST REGISTRATION - ✅ Redirects to Login
-  // ============================================================
+    if (loading) {
+      return;
+    }
 
-  const handleGuestSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+    setError("");
+
+    // --------------------------------------------------------
+    // PERSONAL INFORMATION
+    // --------------------------------------------------------
+
+    const personalError = validatePersonalInformation();
+
+    if (personalError) {
+      setError(personalError);
+      return;
+    }
+
+    // --------------------------------------------------------
+    // PASSWORD
+    // --------------------------------------------------------
 
     const passwordError = validatePassword();
+
     if (passwordError) {
       setError(passwordError);
       return;
     }
 
-    if (!name.trim()) {
-      setError('Full name is required.');
+    // --------------------------------------------------------
+    // ACCOUNT TYPE
+    // --------------------------------------------------------
+
+    const accountTypeError = validateAccountType();
+
+    if (accountTypeError) {
+      setError(accountTypeError);
       return;
     }
-    if (!email.trim()) {
-      setError('Email address is required.');
+
+    const ownerRegistrationError = validateOwnerRegistration();
+
+    if (ownerRegistrationError) {
+      setError(ownerRegistrationError);
       return;
     }
-    if (!phone.trim()) {
-      setError('Phone number is required.');
-      return;
-    }
 
-    setLoading(true);
-
-    try {
-      const newUser = await register({
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        password,
-        role: 'Guest',
-      });
-
-      console.log('Guest registration successful:', newUser);
-
-      // Auto-create booking for new user
-      if (newUser?.id) {
-        await createAutoBooking(newUser.id);
-      }
-
-      if (newUser?.role === 'Owner' || newUser?.role === 'OWNER') {
-        navigate('/owner');
-      } else {
-        // ✅ Redirect to login page instead of dashboard
-        navigate('/login', {
-          replace: true,
-          state: {
-            message: 'Registration successful! Please login to continue.',
-          },
-        });
-      }
-    } catch (err) {
-      console.error('Guest registration error:', err);
-      setError(
-        err?.message ||
-          err?.response?.data?.message ||
-          'Registration failed. Please try again.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ============================================================
-  // OWNER REGISTRATION
-  // ============================================================
-
-  const handleOwnerSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    const passwordError = validatePassword();
-    if (passwordError) {
-      setError(passwordError);
-      return;
-    }
+    // --------------------------------------------------------
+    // TERMS
+    // --------------------------------------------------------
 
     if (!agreedToTerms) {
-      setError('You must agree to the verification terms before submitting.');
-      return;
-    }
-
-    if (!idFront) {
-      setError('Please upload the front side of your identification document.');
-      return;
-    }
-    if (!idBack) {
-      setError('Please upload the back side of your identification document.');
-      return;
-    }
-    if (!businessLicense) {
-      setError('Please upload your business registration/license document.');
-      return;
-    }
-    if (!guesthousePhotos.length) {
-      setError('Please upload at least one guesthouse photo.');
-      return;
-    }
-    if (!name.trim()) {
-      setError('Full name is required.');
-      return;
-    }
-    if (!email.trim()) {
-      setError('Email address is required.');
-      return;
-    }
-    if (!phone.trim()) {
-      setError('Phone number is required.');
-      return;
-    }
-    if (!address.trim()) {
-      setError('Residential address is required.');
-      return;
-    }
-    if (!idNumber.trim()) {
-      setError('ID number is required.');
-      return;
-    }
-    if (!guesthouseName.trim()) {
-      setError('Guesthouse name is required.');
-      return;
-    }
-    if (!guesthouseAddress.trim()) {
-      setError('Guesthouse address is required.');
-      return;
-    }
-    if (!city.trim()) {
-      setError('City is required.');
-      return;
-    }
-    if (!subCity.trim()) {
-      setError('Sub-city is required.');
-      return;
-    }
-    if (!woreda.trim()) {
-      setError('Woreda is required.');
-      return;
-    }
-    if (!guesthousePhone.trim()) {
-      setError('Guesthouse phone number is required.');
-      return;
-    }
-    if (!numberOfRooms || Number(numberOfRooms) < 1) {
-      setError('Number of rooms must be at least 1.');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Guesthouse description is required.');
-      return;
-    }
-    if (!businessLicenseNumber.trim()) {
-      setError('Business/license number is required.');
+      setError(
+        "Please agree to the Terms of Service and Privacy Policy."
+      );
       return;
     }
 
     setLoading(true);
 
     try {
-      const ownerApplication = {
-        role: 'Owner',
+      // ------------------------------------------------------
+      // ROLE: keep the normalized backend enum value intact.
+      // OWNER and GUEST are the only public self-service roles.
+      // ------------------------------------------------------
+
+      const role =
+        accountType === "Owner"
+          ? "OWNER"
+          : accountType === "Guest"
+            ? "GUEST"
+            : String(accountType || "").toUpperCase();
+
+      // ------------------------------------------------------
+      // REGISTRATION DATA
+      //
+      // We send both "name" and "fullName" for compatibility
+      // with different backend registration implementations.
+      //
+      // Email is optional. When empty, we send an empty string.
+      // ------------------------------------------------------
+
+      const registrationData = {
         name: name.trim(),
+        fullName: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        residentialAddress:
+          accountType === "Owner"
+            ? residentialAddress.trim()
+            : "",
+        idType: accountType === "Owner" ? idType : "",
+        idNumber: accountType === "Owner" ? idNumber.trim() : "",
         password,
-        address: address.trim(),
-        idType,
-        idNumber: idNumber.trim(),
-        idFront,
-        idBack,
-        guesthouseName: guesthouseName.trim(),
-        guesthouseAddress: guesthouseAddress.trim(),
-        city: city.trim(),
-        subCity: subCity.trim(),
-        woreda: woreda.trim(),
-        guesthousePhone: guesthousePhone.trim(),
-        guesthouseEmail: guesthouseEmail.trim(),
-        numberOfRooms: Number(numberOfRooms),
-        description: description.trim(),
-        businessLicenseNumber: businessLicenseNumber.trim(),
-        businessLicense,
-        guesthousePhotos,
-        agreedToTerms: true,
+        role,
       };
 
-      console.log('Submitting owner application:', ownerApplication);
+      console.log(
+        "Submitting registration:",
+        registrationData
+      );
 
-      const result = await register(ownerApplication);
-      console.log('Owner registration result:', result);
+      const newUser = await register(registrationData);
 
-      navigate('/login', {
-        state: {
-          message: 'Your owner registration has been submitted successfully. Please wait for administrator verification.',
-        },
-      });
+      console.log(
+        "Registration successful:",
+        newUser
+      );
+
+      // ------------------------------------------------------
+      // RESET
+      // ------------------------------------------------------
 
       resetForm();
+
+      // ------------------------------------------------------
+      // SUCCESS MESSAGE
+      // ------------------------------------------------------
+
+      const successMessage =
+        role === "OWNER"
+          ? "Owner account created successfully. Please login to access your owner dashboard."
+          : "Guest account created successfully. Please login to continue.";
+
+      navigate("/login", {
+        replace: true,
+        state: {
+          message: successMessage,
+        },
+      });
     } catch (err) {
-      console.error('Owner registration error:', err);
-      setError(
-        err?.message ||
-          err?.response?.data?.message ||
-          'Owner registration failed. Please try again.'
+      console.error(
+        "Registration error:",
+        err
       );
+
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error?.message ||
+        err?.message ||
+        "Registration failed. Please try again.";
+
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
-  // REGISTRATION TYPE SELECTION
-  // ============================================================
-
-  if (!registrationType) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
-        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
-
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
-              <Building2 className="w-7 h-7" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-stone-900">Guesthouse</span>
-              <span className="text-2xl font-black text-stone-900"> Platform</span>
-            </div>
-          </div>
-
-          <div className="mb-8 text-center">
-            <h2 className="text-3xl font-black text-stone-900">Create an Account</h2>
-            <p className="mt-2 text-stone-500">Join Ethiopia's premier guesthouse platform</p>
-          </div>
-
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => {
-                setRegistrationType('guest');
-                setError('');
-              }}
-              className="w-full p-6 rounded-2xl border-2 border-stone-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-left group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center group-hover:bg-amber-100 transition">
-                  <User className="w-6 h-6 text-stone-700 group-hover:text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-stone-900">Register as Guest</h3>
-                  <p className="text-sm text-stone-500">Book stays and manage reservations</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-1 transition" />
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRegistrationType('owner');
-                setError('');
-              }}
-              className="w-full p-6 rounded-2xl border-2 border-stone-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-left group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center group-hover:bg-amber-100 transition">
-                  <Building2 className="w-6 h-6 text-stone-700 group-hover:text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-stone-900">Register as Owner</h3>
-                  <p className="text-sm text-stone-500">List and manage your guesthouse</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-1 transition" />
-              </div>
-            </button>
-          </div>
-
-          <p className="mt-8 text-center text-stone-500">
-            Already have an account?{' '}
-            <Link to="/login" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
-              Sign In
-            </Link>
-          </p>
-
-          <div className="mt-8 pt-6 border-t border-stone-200 text-center">
-            <p className="text-sm text-stone-400">
-              © 2026 Guesthouse Platform. All rights reserved.
-            </p>
-          </div>
-
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================
+  // ==========================================================
   // ERROR MESSAGE
-  // ============================================================
+  // ==========================================================
 
   const errorMessage = error ? (
-    <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
-      {error}
+    <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+      <X className="mt-0.5 h-5 w-5 flex-shrink-0" />
+
+      <span>{error}</span>
     </div>
   ) : null;
 
-  // ============================================================
-  // GUEST REGISTRATION PAGE
-  // ============================================================
-
-  if (registrationType === 'guest') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
-
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
-              <Building2 className="w-7 h-7" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-stone-900">Guesthouse</span>
-              <span className="text-2xl font-black text-stone-900"> Platform</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleBackToOptions}
-            className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to options
-          </button>
-
-          <div className="mb-6 text-center">
-            <h2 className="text-3xl font-black text-stone-900">Register as Guest</h2>
-            <p className="mt-2 text-stone-500">Create your guest account to start booking</p>
-          </div>
-
-          {errorMessage}
-
-          <form onSubmit={handleGuestSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-stone-700 mb-2">Full Name</label>
-              <div className="relative">
-                <User className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Abebe Bikila"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-stone-700 mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="guest@example.com"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-stone-700 mb-2">Phone Number</label>
-              <div className="relative">
-                <Phone className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+251 9XXXXXXXX"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-stone-700 mb-2">Password</label>
-              <div className="relative">
-                <Lock className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  className="w-full pl-12 pr-12 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-stone-700 mb-2">Confirm Password</label>
-              <div className="relative">
-                <Lock className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter your password"
-                  className="w-full pl-12 pr-12 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-lg rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
-                  <span>Creating Account...</span>
-                </>
-              ) : (
-                <>
-                  <span>Register as Guest</span>
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-stone-500">
-            Already have an account?{' '}
-            <Link to="/login" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
-              Sign In
-            </Link>
-          </p>
-
-          <div className="mt-8 pt-6 border-t border-stone-200 text-center">
-            <p className="text-sm text-stone-400">
-              © 2026 Guesthouse Platform. All rights reserved.
-            </p>
-          </div>
-
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================
-  // OWNER REGISTRATION PAGE
-  // ============================================================
+  // ==========================================================
+  // MAIN REGISTER PAGE
+  // ==========================================================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            type="button"
-            onClick={handleBackToOptions}
-            className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to options
-          </button>
-        </div>
+    <RegisterLayout>
+      <div className="w-full max-w-xl">
 
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-          <div className="p-8 lg:p-10">
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md">
-                <Building2 className="w-7 h-7" />
-              </div>
-              <div>
-                <span className="text-2xl font-black text-stone-900">Guesthouse</span>
-                <span className="text-2xl font-black text-stone-900"> Platform</span>
-              </div>
+        {/* ==================================================
+            BACK TO LOGIN
+        =================================================== */}
+
+        <BackButton />
+
+        {/* ==================================================
+            PAGE HEADER
+        =================================================== */}
+
+        <div className="mb-8">
+
+          <div className="mb-5 flex items-center gap-4">
+
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-sm">
+              <UserPlus className="h-6 w-6" />
             </div>
 
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-black text-stone-900">Owner Registration</h2>
-              <p className="mt-2 text-stone-500">
-                Submit your guesthouse information for administrator verification
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#082F49] sm:text-4xl">
+                Create your account
+              </h1>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Register once and start using the platform.
               </p>
             </div>
 
-            {errorMessage}
+          </div>
 
-            <form onSubmit={handleOwnerSubmit} className="space-y-8">
-              <section>
-                <SectionHeader
-                  icon={<User className="w-5 h-5" />}
-                  title="Personal Information"
-                  description="Information about the property owner"
-                />
+        </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <InputField
-                    label="Full Name"
-                    value={name}
-                    onChange={setName}
-                    placeholder="Abebe Bikila"
-                    required
-                    icon={<User className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Email Address"
-                    type="email"
-                    value={email}
-                    onChange={setEmail}
-                    placeholder="abebe@example.com"
-                    required
-                    icon={<Mail className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Phone Number"
-                    value={phone}
-                    onChange={setPhone}
-                    placeholder="+251 91 123 4567"
-                    required
-                    icon={<Phone className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Password"
-                    type="password"
-                    value={password}
-                    onChange={setPassword}
-                    placeholder="At least 6 characters"
-                    required
-                    icon={<Lock className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Confirm Password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={setConfirmPassword}
-                    placeholder="Re-enter password"
-                    required
-                    icon={<Lock className="w-4 h-4" />}
-                  />
-                  <div className="md:col-span-2">
-                    <InputField
-                      label="Residential Address"
-                      value={address}
-                      onChange={setAddress}
-                      placeholder="Bole, Addis Ababa"
-                      required
-                      icon={<MapPin className="w-4 h-4" />}
-                    />
-                  </div>
-                </div>
-              </section>
+        {/* ==================================================
+            ERROR
+        =================================================== */}
 
-              <section>
-                <SectionHeader
-                  icon={<CreditCard className="w-5 h-5" />}
-                  title="Identification"
-                  description="Used by administrators to verify your identity"
-                />
+        {errorMessage}
 
-                <div className="grid md:grid-cols-2 gap-4">
+        {/* ==================================================
+            REGISTRATION FORM
+        =================================================== */}
+
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
+
+          {/* ==================================================
+              PERSONAL INFORMATION
+          =================================================== */}
+
+          <FormSection
+            icon={<User className="h-5 w-5" />}
+            title="Personal Information"
+            description="Enter your basic account information."
+          >
+
+            <div className="space-y-5">
+
+              {/* ACCOUNT TYPE */}
+
+              <SelectField
+                label="Register as"
+                value={accountType}
+                onChange={setAccountType}
+                required
+              />
+
+              {/* FULL NAME */}
+
+              <InputField
+                label="Full Name"
+                value={name}
+                onChange={setName}
+                placeholder="Enter your full name"
+                required
+                autoComplete="name"
+                icon={
+                  <User className="h-4 w-4" />
+                }
+              />
+
+              {/* EMAIL */}
+
+              <InputField
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="Enter your email address (optional)"
+                autoComplete="email"
+                icon={
+                  <Mail className="h-4 w-4" />
+                }
+              />
+
+              {/* PHONE */}
+
+              <InputField
+                label="Phone Number"
+                type="tel"
+                value={phone}
+                onChange={setPhone}
+                placeholder="+251 9XX XXX XXX"
+                required
+                autoComplete="tel"
+                icon={
+                  <Phone className="h-4 w-4" />
+                }
+              />
+
+              {accountType === "Owner" && (
+                <>
+                  <InputField
+                    label="Residential Address"
+                    value={residentialAddress}
+                    onChange={setResidentialAddress}
+                    placeholder="Enter your residential address"
+                    required
+                    autoComplete="street-address"
+                    icon={<Building2 className="h-4 w-4" />}
+                  />
+
                   <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-2">ID Type</label>
-                    <select
-                      value={idType}
-                      onChange={(e) => setIdType(e.target.value)}
-                      className="w-full px-4 py-4 rounded-xl border border-stone-300 text-base bg-white focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
-                    >
-                      <option value="National ID">National ID</option>
-                      <option value="Passport">Passport</option>
-                      <option value="Driver's License">Driver's License</option>
-                    </select>
+                    <label className="mb-2 block text-sm font-bold text-[#173B53]">
+                      ID Type
+                      <span className="ml-1 text-red-500">*</span>
+                    </label>
+
+                    <div className="relative">
+                      <BriefcaseBusiness className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                      <select
+                        value={idType}
+                        onChange={(event) => setIdType(event.target.value)}
+                        required
+                        className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm text-[#082F49] outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
+                      >
+                        <option value="">Select ID type</option>
+                        <option value="National ID">National ID</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Driver License">Driver License</option>
+                      </select>
+
+                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    </div>
                   </div>
+
                   <InputField
                     label="ID Number"
                     value={idNumber}
                     onChange={setIdNumber}
                     placeholder="Enter your ID number"
                     required
+                    autoComplete="off"
+                    icon={<BriefcaseBusiness className="h-4 w-4" />}
                   />
-                  <FileField
-                    label="ID Front"
-                    file={idFront}
-                    onChange={setIdFront}
-                    required
-                  />
-                  <FileField
-                    label="ID Back"
-                    file={idBack}
-                    onChange={setIdBack}
-                    required
-                  />
-                </div>
-              </section>
+                </>
+              )}
 
-              <section>
-                <SectionHeader
-                  icon={<Building2 className="w-5 h-5" />}
-                  title="Guesthouse Information"
-                  description="Details about the property you want to register"
-                />
+              {/* PASSWORD */}
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <InputField
-                    label="Guesthouse Name"
-                    value={guesthouseName}
-                    onChange={setGuesthouseName}
-                    placeholder="Bole Comfort Guesthouse"
-                    required
-                    icon={<Building2 className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Guesthouse Address"
-                    value={guesthouseAddress}
-                    onChange={setGuesthouseAddress}
-                    placeholder="Bole, Addis Ababa"
-                    required
-                    icon={<MapPin className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="City"
-                    value={city}
-                    onChange={setCity}
-                    placeholder="Addis Ababa"
-                    required
-                  />
-                  <InputField
-                    label="Sub-City"
-                    value={subCity}
-                    onChange={setSubCity}
-                    placeholder="Bole"
-                    required
-                  />
-                  <InputField
-                    label="Woreda"
-                    value={woreda}
-                    onChange={setWoreda}
-                    placeholder="Woreda number"
-                    required
-                  />
-                  <InputField
-                    label="Guesthouse Phone"
-                    value={guesthousePhone}
-                    onChange={setGuesthousePhone}
-                    placeholder="+251 91 123 4567"
-                    required
-                    icon={<Phone className="w-4 h-4" />}
-                  />
-                  <InputField
-                    label="Guesthouse Email"
-                    type="email"
-                    value={guesthouseEmail}
-                    onChange={setGuesthouseEmail}
-                    placeholder="info@guesthouse.com"
-                  />
-                  <InputField
-                    label="Number of Rooms"
-                    type="number"
-                    min="1"
-                    value={numberOfRooms}
-                    onChange={setNumberOfRooms}
-                    placeholder="10"
-                    required
-                  />
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-stone-700 mb-2">Guesthouse Description</label>
-                    <textarea
-                      required
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={4}
-                      placeholder="Describe your guesthouse, location, services and facilities..."
-                      className="w-full px-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition resize-none"
-                    />
-                  </div>
-                </div>
-              </section>
+              <PasswordField
+                label="Password"
+                value={password}
+                onChange={setPassword}
+                placeholder="Minimum 6 characters"
+                show={showPassword}
+                onToggle={() =>
+                  setShowPassword(
+                    (previous) => !previous
+                  )
+                }
+                required
+                autoComplete="new-password"
+              />
 
-              <section>
-                <SectionHeader
-                  icon={<FileText className="w-5 h-5" />}
-                  title="Business Verification"
-                  description="Documents required for administrator approval"
-                />
+              {/* CONFIRM PASSWORD */}
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <InputField
-                    label="Business / License Number"
-                    value={businessLicenseNumber}
-                    onChange={setBusinessLicenseNumber}
-                    placeholder="Business registration number"
-                    required
-                  />
-                  <FileField
-                    label="Business Registration / License"
-                    file={businessLicense}
-                    onChange={setBusinessLicense}
-                    required
-                  />
-                </div>
-              </section>
+              <PasswordField
+                label="Confirm Password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                placeholder="Re-enter your password"
+                show={showConfirmPassword}
+                onToggle={() =>
+                  setShowConfirmPassword(
+                    (previous) => !previous
+                  )
+                }
+                required
+                autoComplete="new-password"
+              />
 
-              <section>
-                <SectionHeader
-                  icon={<ImageIcon className="w-5 h-5" />}
-                  title="Guesthouse Photos"
-                  description="Upload photos of your property for verification"
-                />
-
-                <label className="block">
-                  <div className="border-2 border-dashed border-stone-300 hover:border-amber-400 rounded-xl p-8 text-center cursor-pointer transition-colors">
-                    <ImageIcon className="w-12 h-12 mx-auto text-stone-400 mb-3" />
-                    <p className="text-base font-bold text-stone-700">Upload Guesthouse Photos</p>
-                    <p className="text-sm text-stone-500 mt-1">
-                      Exterior, rooms, reception, bathroom, facilities, etc.
-                    </p>
-
-                    {guesthousePhotos.length > 0 && (
-                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {guesthousePhotos.map((photo, index) => (
-                          <div key={`${photo.name}-${index}`} className="relative group">
-                            <img
-                              src={URL.createObjectURL(photo)}
-                              alt={`Guesthouse ${index + 1}`}
-                              className="w-full h-28 object-cover rounded-lg border border-stone-200"
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setGuesthousePhotos((previous) =>
-                                  previous.filter((_, photoIndex) => photoIndex !== index)
-                                );
-                              }}
-                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Remove photo"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => setGuesthousePhotos(Array.from(e.target.files || []))}
-                    className="hidden"
-                  />
-                </label>
-              </section>
-
-              <section>
-                <div className="rounded-xl bg-stone-50 border border-stone-200 p-6">
-                  <div className="flex gap-3">
-                    <ShieldCheck className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h3 className="text-base font-bold text-stone-900">Verification Agreement</h3>
-                      <p className="text-sm text-stone-500 mt-1">
-                        Your application will be reviewed by an administrator before your owner account is approved.
-                      </p>
-                    </div>
-                  </div>
-
-                  <label className="flex items-start gap-3 mt-4 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={agreedToTerms}
-                      onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      className="mt-1 w-5 h-5 accent-amber-500"
-                    />
-                    <span className="text-sm text-stone-600">
-                      I confirm that the information and documents I provide are accurate, that I am authorized
-                      to register this guesthouse, and that I agree to the platform's verification process and terms.
-                    </span>
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-6 py-4 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-bold text-lg rounded-xl transition flex items-center justify-center gap-3"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
-                      <span>Submitting Application...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span>Submit Owner Application</span>
-                    </>
-                  )}
-                </button>
-
-                <p className="text-center text-sm text-stone-500 mt-4">
-                  Already registered?{' '}
-                  <Link to="/login" className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
-                    Sign In Here
-                  </Link>
-                </p>
-              </section>
-            </form>
-
-            <div className="mt-8 pt-6 border-t border-stone-200 text-center">
-              <p className="text-sm text-stone-400">
-                © 2026 Guesthouse Platform. All rights reserved.
-              </p>
             </div>
+
+          </FormSection>
+
+          {/* ==================================================
+              TERMS
+          =================================================== */}
+
+          <TermsBox
+            checked={agreedToTerms}
+            onChange={setAgreedToTerms}
+          />
+
+          {/* ==================================================
+              CREATE ACCOUNT BUTTON
+          =================================================== */}
+
+          <div className="flex justify-center pt-1">
+
+            <SubmitButton
+              loading={loading}
+              loadingText="Creating account..."
+              icon={
+                <UserPlus className="h-4 w-4" />
+              }
+            >
+              Create Account
+            </SubmitButton>
+
           </div>
-        </div>
+
+          {/* ==================================================
+              LOGIN LINK
+          =================================================== */}
+
+          <LoginLink />
+
+        </form>
+
       </div>
-    </div>
+    </RegisterLayout>
   );
 }
 
 // ============================================================
-// SECTION HEADER
+// REGISTER PAGE LAYOUT
 // ============================================================
 
-function SectionHeader({ icon, title, description }) {
+function RegisterLayout({ children }) {
   return (
-    <div className="flex items-center gap-3 mb-5">
-      <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-        {icon}
+    <div className="min-h-screen bg-[#F7F7F5]">
+
+      <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
+
+        {/* ==================================================
+            LEFT IMAGE
+        =================================================== */}
+
+        <div className="relative hidden min-h-screen overflow-hidden bg-[#062F49] lg:block lg:w-[43%]">
+
+          <img
+            src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80"
+            alt="Modern guesthouse exterior"
+            className="absolute inset-0 h-full w-full object-cover scale-105 brightness-75 saturate-75"
+          />
+
+          {/* DARK OVERLAY */}
+
+          <div className="absolute inset-0 bg-[#062F49]/60" />
+
+          {/* GRADIENT */}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-[#021E2F] via-[#062F49]/35 to-[#062F49]/15" />
+
+          {/* LIGHT ACCENT OVERLAY */}
+
+          <div className="absolute inset-0 bg-gradient-to-br from-[#E0A800]/10 via-transparent to-[#082F49]/20" />
+
+          {/* CONTENT */}
+
+          <div className="relative z-10 flex min-h-screen flex-col justify-between p-10 xl:p-14">
+
+            {/* BRAND */}
+
+            <div className="flex items-center gap-3">
+
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-lg shadow-[#E0A800]/20">
+                <Building2 className="h-6 w-6" />
+              </div>
+
+              <div>
+
+                <div className="text-xl font-extrabold tracking-tight text-white">
+                  GUESTHOUSE RESERVATION
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* MAIN IMAGE CONTENT */}
+
+            <div className="max-w-xl">
+
+              <div className="mb-4 flex items-center gap-2">
+
+                <span className="h-1 w-10 rounded-full bg-[#E0A800]" />
+
+                <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#E0A800]">
+                  Guesthouse Reservation
+                </span>
+
+              </div>
+
+              <h2 className="text-4xl font-extrabold leading-tight text-white xl:text-5xl">
+
+                Find a comfortable place
+
+                <span className="text-[#E0A800]">
+                  {" "}to stay.
+                </span>
+
+              </h2>
+
+              <p className="mt-5 max-w-lg text-base leading-7 text-white/75">
+                Discover comfortable guesthouses,
+                reserve rooms and manage your stays
+                through one simple platform.
+              </p>
+
+              {/* FEATURE CARD */}
+
+              <div className="mt-8 flex max-w-md items-center gap-4 rounded-2xl border border-white/15 bg-white/10 p-4 shadow-lg shadow-[#021E2F]/20 backdrop-blur-sm">
+
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-md shadow-[#E0A800]/20">
+
+                  <CheckCircle2 className="h-5 w-5" />
+
+                </div>
+
+                <div>
+
+                  <p className="text-sm font-bold text-white">
+                    Simple & Secure
+                  </p>
+
+                  <p className="mt-0.5 text-xs leading-5 text-white/65">
+                    Easy registration and secure
+                    reservation management.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* ==================================================
+            RIGHT FORM SIDE
+        =================================================== */}
+
+        <main className="flex min-h-screen flex-1 items-start justify-center overflow-y-auto px-5 py-8 sm:px-8 lg:px-10 xl:px-14">
+
+          <div className="w-full max-w-xl">
+
+            {/* MOBILE BRAND */}
+
+            <div className="mb-8 flex items-center gap-3 lg:hidden">
+
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49]">
+
+                <Building2 className="h-5 w-5" />
+
+              </div>
+
+              <div>
+
+                <div className="font-extrabold text-[#082F49]">
+                  Guesthouse Platform
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  Reservation Platform
+                </div>
+
+              </div>
+
+            </div>
+
+            {children}
+
+          </div>
+
+        </main>
+
       </div>
-      <div>
-        <h3 className="text-lg font-bold text-stone-900">{title}</h3>
-        <p className="text-sm text-stone-500">{description}</p>
-      </div>
+
     </div>
   );
 }
 
 // ============================================================
-// REUSABLE INPUT
+// BACK BUTTON
+// ============================================================
+
+function BackButton() {
+  return (
+    <Link
+      to="/login"
+      className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-[#082F49]"
+    >
+      <ArrowLeft className="h-4 w-4" />
+
+      Back to login
+    </Link>
+  );
+}
+
+// ============================================================
+// FORM SECTION
+// ============================================================
+
+function FormSection({
+  icon,
+  title,
+  description,
+  children,
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+
+      {/* HEADER */}
+
+      <div className="mb-6 flex items-center gap-4">
+
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#F9F2D8] text-[#B78103]">
+
+          {icon}
+
+        </div>
+
+        <div>
+
+          <h2 className="text-lg font-extrabold text-[#082F49]">
+            {title}
+          </h2>
+
+          <p className="mt-0.5 text-sm text-slate-500">
+            {description}
+          </p>
+
+        </div>
+
+      </div>
+
+      {children}
+
+    </section>
+  );
+}
+
+// ============================================================
+// INPUT FIELD
 // ============================================================
 
 function InputField({
   label,
   value,
   onChange,
-  type = 'text',
-  placeholder = '',
+  type = "text",
+  placeholder = "",
   required = false,
-  min,
   icon,
+  autoComplete = "off",
 }) {
   return (
     <div>
-      <label className="block text-sm font-bold text-stone-700 mb-2">
+
+      <label className="mb-2 block text-sm font-bold text-[#173B53]">
+
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+
+        {required && (
+          <span className="ml-1 text-red-500">
+            *
+          </span>
+        )}
+
+        {!required && (
+          <span className="ml-2 text-xs font-normal text-slate-400">
+            Optional
+          </span>
+        )}
+
       </label>
+
       <div className="relative">
-        {icon && <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">{icon}</span>}
+
+        {icon && (
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+            {icon}
+          </span>
+        )}
+
         <input
           type={type}
-          required={required}
-          min={min}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
           placeholder={placeholder}
-          className={`w-full ${icon ? 'pl-12' : 'px-4'} pr-4 py-4 rounded-xl border border-stone-300 text-base focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition`}
+          required={required}
+          autoComplete={autoComplete}
+          className={`w-full rounded-xl border border-slate-200 bg-white py-3.5 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
+            icon
+              ? "pl-11 pr-4"
+              : "px-4"
+          }`}
         />
+
       </div>
+
     </div>
   );
 }
 
 // ============================================================
-// FILE INPUT
+// SELECT FIELD
 // ============================================================
 
-function FileField({ label, file, onChange, required = false }) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  required = false,
+}) {
   return (
     <div>
-      <label className="block text-sm font-bold text-stone-700 mb-2">
+
+      <label className="mb-2 block text-sm font-bold text-[#173B53]">
+
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+
+        {required && (
+          <span className="ml-1 text-red-500">
+            *
+          </span>
+        )}
+
       </label>
-      <label className="flex items-center gap-3 w-full px-4 py-4 rounded-xl border border-stone-300 hover:border-amber-400 cursor-pointer transition-colors">
-        <FileText className="w-5 h-5 text-stone-400 flex-shrink-0" />
-        <span className="text-sm text-stone-500 truncate">
-          {file ? file.name : 'Choose document...'}
+
+      <div className="relative">
+
+        {/* ICON */}
+
+        <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+          <BriefcaseBusiness className="h-4 w-4" />
         </span>
-        <input
-          type="file"
-          required={required && !file}
-          onChange={(e) => onChange(e.target.files?.[0] || null)}
-          className="hidden"
-          accept=".pdf,.jpg,.jpeg,.png"
-        />
-      </label>
+
+        {/* SELECT */}
+
+        <select
+          value={value}
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
+          required={required}
+          className={`w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
+            value
+              ? "text-[#082F49]"
+              : "text-slate-400"
+          }`}
+        >
+
+          <option value="">
+            Select account type
+          </option>
+
+          <option value="Guest">
+            Guest — Book comfortable stays
+          </option>
+
+          <option value="Owner">
+            Owner — Manage your guesthouse
+          </option>
+
+        </select>
+
+        {/* DROPDOWN ICON */}
+
+        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+      </div>
+
     </div>
+  );
+}
+
+// ============================================================
+// PASSWORD FIELD
+// ============================================================
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  show,
+  onToggle,
+  required = false,
+  autoComplete = "new-password",
+}) {
+  return (
+    <div>
+
+      <label className="mb-2 block text-sm font-bold text-[#173B53]">
+
+        {label}
+
+        {required && (
+          <span className="ml-1 text-red-500">
+            *
+          </span>
+        )}
+
+      </label>
+
+      <div className="relative">
+
+        {/* LOCK ICON */}
+
+        <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+        {/* PASSWORD INPUT */}
+
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
+          placeholder={placeholder}
+          required={required}
+          autoComplete={autoComplete}
+          className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-12 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
+        />
+
+        {/* SHOW / HIDE */}
+
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-[#082F49]"
+          aria-label={
+            show
+              ? "Hide password"
+              : "Show password"
+          }
+        >
+
+          {show ? (
+            <EyeOff className="h-5 w-5" />
+          ) : (
+            <Eye className="h-5 w-5" />
+          )}
+
+        </button>
+
+      </div>
+
+    </div>
+  );
+}
+
+// ============================================================
+// TERMS BOX
+// ============================================================
+
+function TermsBox({
+  checked,
+  onChange,
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300">
+
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) =>
+          onChange(event.target.checked)
+        }
+        className="mt-1 h-4 w-4 rounded border-slate-300 text-[#B78103] focus:ring-[#E0A800]"
+      />
+
+      <span className="text-sm leading-6 text-slate-600">
+
+        I agree to the platform's{" "}
+
+        <span className="font-semibold text-[#082F49]">
+          Terms of Service
+        </span>{" "}
+
+        and{" "}
+
+        <span className="font-semibold text-[#082F49]">
+          Privacy Policy
+        </span>.
+
+      </span>
+
+    </label>
+  );
+}
+
+// ============================================================
+// LOGIN LINK
+// ============================================================
+
+function LoginLink() {
+  return (
+    <p className="mt-6 text-center text-sm text-slate-500">
+
+      Already have an account?{" "}
+
+      <Link
+        to="/login"
+        className="font-bold text-[#B78103] transition hover:text-[#8F6500]"
+      >
+        Sign in
+      </Link>
+
+    </p>
+  );
+}
+
+// ============================================================
+// SUBMIT BUTTON
+// ============================================================
+
+function SubmitButton({
+  loading,
+  loadingText,
+  icon,
+  children,
+}) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="inline-flex min-w-[210px] items-center justify-center gap-2 rounded-xl bg-[#E0A800] px-6 py-3.5 text-sm font-extrabold text-[#082F49] shadow-sm transition hover:bg-[#C99500] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+    >
+
+      {loading ? (
+        <>
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#082F49] border-t-transparent" />
+
+          <span>
+            {loadingText}
+          </span>
+        </>
+      ) : (
+        <>
+          {icon}
+
+          <span>
+            {children}
+          </span>
+
+          <ArrowRight className="h-4 w-4" />
+        </>
+      )}
+
+    </button>
   );
 }
 

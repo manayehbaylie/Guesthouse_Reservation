@@ -26,7 +26,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-
+import PaymentScreen from "../../components/PaymentScreen";
 export function GuestBookings() {
   const { user } = useAuth();
 

@@ -143,6 +143,7 @@ export const createReservation = async (data, guestId) => {
       message:
         `Your reservation for ${roomInfo} at ${ghName} has been created. Please complete payment to confirm.`,
       userId: Number(guestId),
+      category: "reservation",
     });
 
     // 2. Notify Property Owner
@@ -166,6 +167,7 @@ export const createReservation = async (data, guestId) => {
         title: "New Reservation Received",
         message: `${guestName} booked ${roomRecord.roomType} (${roomInfo}) at ${roomRecord.guesthouse.name}. Awaiting payment confirmation.`,
         userId: roomRecord.guesthouse.ownerId,
+        category: "reservation",
       });
 
       // 3. Notify Assigned Receptionists
@@ -180,6 +182,7 @@ export const createReservation = async (data, guestId) => {
             title: "New Reservation Received",
             message: `${guestName} reserved ${roomInfo} at ${roomRecord.guesthouse.name}.`,
             userId: assignment.staffId,
+            category: "reservation",
           });
         }
       }
@@ -392,6 +395,7 @@ export const updateReservationStatus = async (
         message:
           "Welcome! You have successfully checked in.",
         userId: reservation.guestId,
+        category: "reservation",
       });
     } catch (error) {
       console.error(
@@ -408,6 +412,7 @@ export const updateReservationStatus = async (
         message:
           "Thank you for staying with us.",
         userId: reservation.guestId,
+        category: "reservation",
       });
     } catch (error) {
       console.error(
@@ -521,6 +526,7 @@ export const checkoutReservation = async (
       message:
         "Thank you for staying with us.",
       userId: result.guest.id,
+      category: "reservation",
     });
   } catch (error) {
     console.error(
