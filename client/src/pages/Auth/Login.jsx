@@ -344,7 +344,7 @@ export function Login() {
       // ROLE BASED REDIRECTION
       // -----------------------------------------------------
 
-      switch (user.role) {
+      switch (String(user.role || "").toUpperCase()) {
         case "ADMIN":
           navigate("/admin", {
             replace: true,

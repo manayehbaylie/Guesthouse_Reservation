@@ -181,7 +181,7 @@ export const getGuesthouseByOwnerId = async (ownerId) => {
   });
 
   if (!guesthouse) {
-    throw new Error("Guesthouse not found");
+    return null;
   }
 
   return {

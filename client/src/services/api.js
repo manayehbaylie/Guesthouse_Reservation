@@ -1428,6 +1428,19 @@ export const ApiService = {
           payload.residentialAddress ||
           '',
 
+        residentialAddress:
+          payload.residentialAddress ||
+          payload.address ||
+          '',
+
+        idType:
+          payload.idType ||
+          '',
+
+        idNumber:
+          payload.idNumber ||
+          '',
+
         password:
           payload.password ||
           '',
@@ -4404,6 +4417,33 @@ export const ApiService = {
       : [];
   },
 
+  async getAdminGuesthouses() {
+    const response =
+      await api.get(
+        "/admin/guesthouses"
+      );
+
+    const guesthouses =
+      unwrap(response) || [];
+
+    return Array.isArray(
+      guesthouses
+    )
+      ? guesthouses
+          .map(
+            (guesthouse) =>
+              mapGuesthouseFromBackend(
+                guesthouse
+              )
+          )
+          .filter(Boolean)
+      : [];
+  },
+
+  async fetchAdminGuesthouses() {
+    return this.getAdminGuesthouses();
+  },
+
   async deleteUser(id) {
     if (!id) {
       throw new Error(
@@ -4502,7 +4542,7 @@ export const ApiService = {
       const rawList =
         unwrap(response) || [];
 
-      return Array.isArray(
+      const list = Array.isArray(
         rawList
       )
         ? rawList
@@ -4511,13 +4551,39 @@ export const ApiService = {
             )
             .filter(Boolean)
         : [];
+
+      if (list.length > 0) {
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          localStorage.setItem(
+            `gh_notifications:${currentUser.id || currentUser.email || 'guest'}`,
+            JSON.stringify(list)
+          );
+        }
+      }
+
+      return list;
     } catch (error) {
       console.warn(
         "Failed to fetch notifications:",
         error?.message || error
       );
 
-      return [];
+      const currentUser = getCurrentUser();
+      const storageKey = currentUser
+        ? `gh_notifications:${currentUser.id || currentUser.email || 'guest'}`
+        : null;
+
+      if (!storageKey) {
+        return [];
+      }
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        return Array.isArray(saved) ? saved : [];
+      } catch {
+        return [];
+      }
     }
   },
 

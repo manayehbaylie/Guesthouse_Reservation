@@ -20,40 +20,35 @@ model User {
   idType             String?
   idNumber           String?
 
-  guesthouses        Guesthouse[]      @relation("OwnerGuesthouses")
-  notifications      Notification[]
-  reservations       Reservation[]     @relation("GuestReservations")
-  reviews            Review[]          @relation("GuestReviews")
-  staffAssignments   StaffAssignment[]
+  guesthouses      Guesthouse[]      @relation("OwnerGuesthouses")
+  notifications    Notification[]
+  reservations     Reservation[]     @relation("GuestReservations")
+  reviews          Review[]          @relation("GuestReviews")
+  staffAssignments StaffAssignment[]
 }
 
 model Guesthouse {
-  id               Int               @id @default(autoincrement())
-  name             String
-  address          String
-  city             String
-  description      String
-  image            String?
-  subCity          String?
-  woreda           String?
-  phone            String?
-  email            String?
-  numberOfRooms    Int?
-  photos           String[]          @default([])
-  licenseNumber    String?
-  licenseDocument  String?
-  ownerId          Int
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  rejectionReason  String?
-  status           GuesthouseStatus  @default(PENDING)
+  id              Int              @id @default(autoincrement())
+  name            String
+  address         String
+  city            String
+  description     String
+  image           String?
+  subCity         String?
+  woreda          String?
+  phone           String?
+  email           String?
+  numberOfRooms   Int?
+  photos          String[]         @default([])
+  licenseNumber   String?
+  licenseDocument String?
+  ownerId         Int
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rejectionReason String?
+  status          GuesthouseStatus @default(PENDING)
 
-  owner            User              @relation(
-    "OwnerGuesthouses",
-    fields: [ownerId],
-    references: [id]
-  )
-
+  owner            User              @relation("OwnerGuesthouses", fields: [ownerId], references: [id])
   reviews          Review[]          @relation("GuesthouseReviews")
   rooms            Room[]
   staffAssignments StaffAssignment[]
@@ -75,11 +70,8 @@ model Room {
   updatedAt         DateTime              @updatedAt
   maintenanceStatus RoomMaintenanceStatus @default(AVAILABLE)
 
-  reservations      Reservation[]
-  guesthouse        Guesthouse             @relation(
-    fields: [guesthouseId],
-    references: [id]
-  )
+  reservations Reservation[]
+  guesthouse   Guesthouse @relation(fields: [guesthouseId], references: [id])
 
   @@unique([guesthouseId, roomNumber])
   @@index([guesthouseId])
@@ -95,17 +87,10 @@ model Reservation {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 
-  payment   Payment?
-  guest     User              @relation(
-    "GuestReservations",
-    fields: [guestId],
-    references: [id]
-  )
-  room      Room              @relation(
-    fields: [roomId],
-    references: [id]
-  )
-  reviews   Review[]
+  payment Payment?
+  guest   User         @relation("GuestReservations", fields: [guestId], references: [id])
+  room    Room         @relation(fields: [roomId], references: [id])
+  reviews Review[]
 
   @@index([guestId])
   @@index([roomId])
@@ -122,46 +107,25 @@ model Payment {
   updatedAt     DateTime      @updatedAt
   accountNumber String?
 
-  reservation   Reservation   @relation(
-    fields: [reservationId],
-    references: [id],
-    onDelete: Cascade
-  )
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
   @@index([status])
 }
 
 model Notification {
-  id           Int         @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   title        String
   message      String
-
-  // Notification category used by the frontend.
-  // Examples: system, payment, reservation, review, guesthouse
-  category     String      @default("system")
-
-  // Kept for compatibility with existing notification code.
-  type         String      @default("system")
-
-  isRead       Boolean     @default(false)
-
+  category     String   @default("system")
+  type         String   @default("system")
+  isRead       Boolean  @default(false)
   userId       Int
   guesthouseId Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  user         User        @relation(
-    fields: [userId],
-    references: [id],
-    onDelete: Cascade
-  )
-
-  guesthouse   Guesthouse? @relation(
-    fields: [guesthouseId],
-    references: [id],
-    onDelete: SetNull
-  )
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guesthouse Guesthouse? @relation(fields: [guesthouseId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([guesthouseId])
@@ -170,22 +134,13 @@ model Notification {
 }
 
 model StaffAssignment {
-  id           Int        @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   guesthouseId Int
   staffId      Int
-  assignedAt   DateTime   @default(now())
+  assignedAt   DateTime @default(now())
 
-  guesthouse   Guesthouse @relation(
-    fields: [guesthouseId],
-    references: [id],
-    onDelete: Cascade
-  )
-
-  staff        User       @relation(
-    fields: [staffId],
-    references: [id],
-    onDelete: Cascade
-  )
+  guesthouse Guesthouse @relation(fields: [guesthouseId], references: [id], onDelete: Cascade)
+  staff      User       @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@unique([guesthouseId, staffId])
   @@index([guesthouseId])
@@ -193,35 +148,19 @@ model StaffAssignment {
 }
 
 model Review {
-  id            Int         @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   rating        Int
   comment       String
   guestId       Int
   guesthouseId  Int
   reservationId Int
   ownerResponse String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  guest         User        @relation(
-    "GuestReviews",
-    fields: [guestId],
-    references: [id],
-    onDelete: Cascade
-  )
-
-  guesthouse    Guesthouse  @relation(
-    "GuesthouseReviews",
-    fields: [guesthouseId],
-    references: [id],
-    onDelete: Cascade
-  )
-
-  reservation   Reservation @relation(
-    fields: [reservationId],
-    references: [id],
-    onDelete: Cascade
-  )
+  guest       User        @relation("GuestReviews", fields: [guestId], references: [id], onDelete: Cascade)
+  guesthouse  Guesthouse  @relation("GuesthouseReviews", fields: [guesthouseId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
   @@index([guestId])
   @@index([guesthouseId])

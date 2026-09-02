@@ -10,6 +10,35 @@ import { ApiService } from '../services/api.js';
 import { useAuth } from './AuthContext.jsx';
 
 const NotificationContext = createContext(null);
+const NOTIFICATION_STORAGE_KEY = 'gh_notifications';
+
+function getStoredNotifications(user) {
+  if (!user) return [];
+
+  try {
+    const raw = localStorage.getItem(`${NOTIFICATION_STORAGE_KEY}:${user.id || user.email || 'guest'}`);
+
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredNotifications(user, list) {
+  if (!user) return;
+
+  try {
+    localStorage.setItem(
+      `${NOTIFICATION_STORAGE_KEY}:${user.id || user.email || 'guest'}`,
+      JSON.stringify(Array.isArray(list) ? list : [])
+    );
+  } catch {
+    // Ignore storage quota issues.
+  }
+}
 
 function buildDemoNotifications(user) {
   if (!user) return [];
@@ -39,11 +68,40 @@ function buildDemoNotifications(user) {
   if (role === 'OWNER') {
     demoList.push({
       id: 'demo-owner',
-      title: 'Property update',
-      message: 'Your guesthouse performance summary has been refreshed and is ready to review.',
+      title: 'New reservation received',
+      message: 'A guest has booked a room in your guesthouse and payment is awaiting confirmation.',
+      isRead: false,
+      category: 'reservation',
+      createdAt: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
+    });
+
+    demoList.push({
+      id: 'demo-owner-payment',
+      title: 'Payment received',
+      message: 'A guest payment was successfully received and the reservation has been confirmed.',
       isRead: true,
-      category: 'guesthouse',
+      category: 'payment',
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+    });
+  }
+
+  if (role === 'GUEST') {
+    demoList.push({
+      id: 'demo-guest',
+      title: 'Reservation created',
+      message: 'Your reservation request has been created successfully and is waiting for payment confirmation.',
+      isRead: false,
+      category: 'reservation',
+      createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+    });
+
+    demoList.push({
+      id: 'demo-payment',
+      title: 'Payment successful',
+      message: 'Your payment was processed successfully and your reservation is now confirmed.',
+      isRead: false,
+      category: 'payment',
+      createdAt: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
     });
   }
 
@@ -111,45 +169,59 @@ export function NotificationProvider({ children }) {
     try {
       setError('');
       const hasAuthToken = Boolean(localStorage.getItem('token'));
+      const stored = getStoredNotifications(user);
 
       if (!hasAuthToken) {
-        const fallback = buildDemoNotifications(user);
+        const fallback = stored.length > 0 ? stored : buildDemoNotifications(user);
         const count = fallback.filter((n) => !n.isRead).length;
         knownIdsRef.current = new Set(fallback.map((n) => n.id));
         isFirstLoadRef.current = false;
         setNotifications(fallback);
         setUnreadCount(count);
+        saveStoredNotifications(user, fallback);
         return;
       }
 
       const data = await ApiService.getNotifications();
-      const list = Array.isArray(data) ? data : [];
+      let list = Array.isArray(data) ? data : [];
 
-      // Calculate unread count
+      if (list.length === 0) {
+        list = stored.length > 0 ? stored : buildDemoNotifications(user);
+      }
+
       const count = list.filter((n) => !n.isRead).length;
 
-      // Check for newly arrived notifications to pop up a toast alert
       if (!isFirstLoadRef.current && isPolling) {
         const newUnread = list.filter(
           (n) => !n.isRead && !knownIdsRef.current.has(n.id)
         );
 
         if (newUnread.length > 0) {
-          // Show toast alert for new notifications
           newUnread.slice(0, 2).forEach((n) => {
             showToast(n);
           });
         }
       }
 
-      // Update known IDs
       const currentIds = new Set(list.map((n) => n.id));
       knownIdsRef.current = currentIds;
       isFirstLoadRef.current = false;
 
       setNotifications(list);
       setUnreadCount(count);
+      saveStoredNotifications(user, list);
     } catch (error) {
+      const fallback = getStoredNotifications(user).length > 0
+        ? getStoredNotifications(user)
+        : buildDemoNotifications(user);
+      const count = fallback.filter((n) => !n.isRead).length;
+
+      knownIdsRef.current = new Set(fallback.map((n) => n.id));
+      isFirstLoadRef.current = false;
+
+      setNotifications(fallback);
+      setUnreadCount(count);
+      saveStoredNotifications(user, fallback);
       setError(error?.message || 'Could not load notifications from the server.');
       console.warn('Error fetching notifications:', error?.message || error);
     } finally {
@@ -209,10 +281,10 @@ export function NotificationProvider({ children }) {
     const target = notifications.find((n) => n.id === id);
     const wasUnread = target && !target.isRead;
 
-    // Optimistic state update
     setNotifications((prev) => {
       const updated = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n));
       setUnreadCount(updated.filter((n) => !n.isRead).length);
+      saveStoredNotifications(user, updated);
       return updated;
     });
 
@@ -228,19 +300,21 @@ export function NotificationProvider({ children }) {
       await ApiService.markNotificationAsRead(id);
     } catch (error) {
       console.error('Failed to mark notification as read on server:', error);
-      // Re-fetch to sync if failed
       fetchNotifications(true);
     }
-  }, [notifications, fetchNotifications]);
+  }, [notifications, fetchNotifications, user]);
 
   // ----------------------------------------------------------------
   // MARK ALL AS READ (Optimistic UI update)
   // ----------------------------------------------------------------
 
   const markAllAsRead = useCallback(async () => {
-    // Optimistic state update
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setUnreadCount(0);
+    setNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, isRead: true }));
+      setUnreadCount(0);
+      saveStoredNotifications(user, updated);
+      return updated;
+    });
 
     if (!localStorage.getItem('token')) {
       return;
@@ -252,7 +326,7 @@ export function NotificationProvider({ children }) {
       console.error('Failed to mark all notifications as read on server:', error);
       fetchNotifications(true);
     }
-  }, [fetchNotifications]);
+  }, [fetchNotifications, user]);
 
   // ----------------------------------------------------------------
   // DELETE SINGLE NOTIFICATION (Optimistic UI update)
@@ -261,19 +335,12 @@ export function NotificationProvider({ children }) {
   const deleteNotification = useCallback(async (id) => {
     if (!id) return;
 
-    const target = notifications.find((n) => n.id === id);
-    const wasUnread = target && !target.isRead;
-
-    // Optimistic state update
     setNotifications((prev) => {
       const updated = prev.filter((n) => n.id !== id);
       setUnreadCount(updated.filter((n) => !n.isRead).length);
+      saveStoredNotifications(user, updated);
       return updated;
     });
-
-    if (!wasUnread) {
-      return;
-    }
 
     if (!localStorage.getItem('token')) {
       return;
@@ -285,16 +352,16 @@ export function NotificationProvider({ children }) {
       console.error('Failed to delete notification on server:', error);
       fetchNotifications(true);
     }
-  }, [notifications, fetchNotifications]);
+  }, [fetchNotifications, user]);
 
   // ----------------------------------------------------------------
   // CLEAR ALL NOTIFICATIONS (Optimistic UI update)
   // ----------------------------------------------------------------
 
   const clearAllNotifications = useCallback(async () => {
-    // Optimistic state update
     setNotifications(() => {
       setUnreadCount(0);
+      saveStoredNotifications(user, []);
       return [];
     });
 
@@ -308,7 +375,7 @@ export function NotificationProvider({ children }) {
       console.error('Failed to clear all notifications on server:', error);
       fetchNotifications(true);
     }
-  }, [fetchNotifications]);
+  }, [fetchNotifications, user]);
 
   const value = {
     notifications,

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext.jsx';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 import {
   User,
@@ -12,15 +12,12 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  MapPin,
   Eye,
   EyeOff,
   X,
-  CreditCard,
-  Upload,
-  FileImage,
-  List,
-} from 'lucide-react';
+  BriefcaseBusiness,
+  ChevronDown,
+} from "lucide-react";
 
 // ============================================================
 // MAIN REGISTER COMPONENT
@@ -31,46 +28,23 @@ export function Register() {
   const { register } = useAuth();
 
   // ==========================================================
-  // REGISTRATION TYPE
+  // FORM STATE
   // ==========================================================
 
-  const [registrationType, setRegistrationType] = useState(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [residentialAddress, setResidentialAddress] = useState("");
+  const [idType, setIdType] = useState("");
+  const [idNumber, setIdNumber] = useState("");
 
-  // ==========================================================
-  // PERSONAL INFORMATION
-  // ==========================================================
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-
-  // ==========================================================
-  // PASSWORD
-  // ==========================================================
-
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [accountType, setAccountType] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // ==========================================================
-  // OWNER IDENTIFICATION
-  // ==========================================================
-
-  const [idType, setIdType] = useState('');
-  const [idNumber, setIdNumber] = useState('');
-
-  const [idFrontPhoto, setIdFrontPhoto] = useState(null);
-  const [idBackPhoto, setIdBackPhoto] = useState(null);
-
-  const [idFrontPreview, setIdFrontPreview] = useState('');
-  const [idBackPreview, setIdBackPreview] = useState('');
-
-  // ==========================================================
-  // TERMS
-  // ==========================================================
 
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -78,73 +52,11 @@ export function Register() {
   // UI STATE
   // ==========================================================
 
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // ==========================================================
-  // CLEANUP IMAGE PREVIEWS
-  // ==========================================================
-
-  useEffect(() => {
-    return () => {
-      if (idFrontPreview) {
-        URL.revokeObjectURL(idFrontPreview);
-      }
-
-      if (idBackPreview) {
-        URL.revokeObjectURL(idBackPreview);
-      }
-    };
-  }, [idFrontPreview, idBackPreview]);
-
-  // ==========================================================
-  // RESET FORM
-  // ==========================================================
-
-  const resetForm = () => {
-    if (idFrontPreview) {
-      URL.revokeObjectURL(idFrontPreview);
-    }
-
-    if (idBackPreview) {
-      URL.revokeObjectURL(idBackPreview);
-    }
-
-    setName('');
-    setEmail('');
-    setPhone('');
-    setAddress('');
-
-    setPassword('');
-    setConfirmPassword('');
-
-    setIdType('');
-    setIdNumber('');
-
-    setIdFrontPhoto(null);
-    setIdBackPhoto(null);
-
-    setIdFrontPreview('');
-    setIdBackPreview('');
-
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-
-    setAgreedToTerms(false);
-    setError('');
-  };
-
-  // ==========================================================
-  // BACK TO OPTIONS
-  // ==========================================================
-
-  const handleBackToOptions = () => {
-    setRegistrationType(null);
-    setError('');
-  };
-
-  // ==========================================================
-  // PERSONAL VALIDATION
+  // VALIDATE PERSONAL INFORMATION
   // ==========================================================
 
   const validatePersonalInformation = () => {
@@ -152,32 +64,33 @@ export function Register() {
     const trimmedEmail = email.trim();
     const trimmedPhone = phone.trim();
 
+    // Full name
     if (!trimmedName) {
-      return 'Full name is required.';
+      return "Full name is required.";
     }
 
     if (trimmedName.length < 3) {
-      return 'Full name must be at least 3 characters.';
+      return "Full name must be at least 3 characters.";
     }
 
-    if (!trimmedEmail) {
-      return 'Email address is required.';
+    // Email is OPTIONAL
+    if (trimmedEmail) {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailPattern.test(trimmedEmail)) {
+        return "Please enter a valid email address.";
+      }
     }
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailPattern.test(trimmedEmail)) {
-      return 'Please enter a valid email address.';
-    }
-
+    // Phone
     if (!trimmedPhone) {
-      return 'Phone number is required.';
+      return "Phone number is required.";
     }
 
-    const phoneDigits = trimmedPhone.replace(/\D/g, '');
+    const phoneDigits = trimmedPhone.replace(/\D/g, "");
 
     if (phoneDigits.length < 9) {
-      return 'Please enter a valid phone number.';
+      return "Please enter a valid phone number.";
     }
 
     return null;
@@ -189,149 +102,98 @@ export function Register() {
 
   const validatePassword = () => {
     if (!password) {
-      return 'Password is required.';
+      return "Password is required.";
     }
 
     if (password.length < 6) {
-      return 'Password must be at least 6 characters.';
+      return "Password must be at least 6 characters.";
     }
 
     if (!confirmPassword) {
-      return 'Please confirm your password.';
+      return "Please confirm your password.";
     }
 
     if (password !== confirmPassword) {
-      return 'Passwords do not match.';
+      return "Passwords do not match.";
     }
 
     return null;
   };
 
   // ==========================================================
-  // OWNER IDENTIFICATION VALIDATION
+  // ACCOUNT TYPE VALIDATION
   // ==========================================================
 
-  const validateIdentification = () => {
-    if (!idType.trim()) {
-      return 'ID type is required.';
+  const validateAccountType = () => {
+    if (!accountType) {
+      return "Please select how you want to use the platform.";
+    }
+
+    return null;
+  };
+
+  // ==========================================================
+  // OWNER REGISTRATION VALIDATION
+  // ==========================================================
+
+  const validateOwnerRegistration = () => {
+    if (accountType !== "Owner") {
+      return null;
+    }
+
+    if (!residentialAddress.trim()) {
+      return "Residential address is required for owner accounts.";
+    }
+
+    if (!idType) {
+      return "Please select your ID type.";
     }
 
     if (!idNumber.trim()) {
-      return 'ID number is required.';
-    }
-
-    if (!idFrontPhoto) {
-      return 'ID front photo is required.';
-    }
-
-    if (!idBackPhoto) {
-      return 'ID back photo is required.';
+      return "ID number is required for owner accounts.";
     }
 
     return null;
   };
 
   // ==========================================================
-  // IMAGE VALIDATION
+  // RESET FORM
   // ==========================================================
 
-  const validateImage = (file) => {
-    if (!file) {
-      return 'Please select an image.';
-    }
+  const resetForm = () => {
+    setName("");
+    setEmail("");
+    setPhone("");
+    setResidentialAddress("");
+    setIdType("");
+    setIdNumber("");
+    setPassword("");
+    setConfirmPassword("");
+    setAccountType("");
 
-    const allowedTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/webp',
-    ];
+    setShowPassword(false);
+    setShowConfirmPassword(false);
 
-    if (!allowedTypes.includes(file.type)) {
-      return 'Only JPG, JPEG, PNG, or WEBP images are allowed.';
-    }
-
-    const maxSize = 5 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      return 'Image size must be less than 5 MB.';
-    }
-
-    return null;
+    setAgreedToTerms(false);
+    setError("");
   };
 
   // ==========================================================
-  // FRONT ID IMAGE
+  // SUBMIT REGISTRATION
   // ==========================================================
 
-  const handleFrontPhotoChange = (event) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    const validationError = validateImage(file);
-
-    if (validationError) {
-      setError(validationError);
-      event.target.value = '';
-      return;
-    }
-
-    if (idFrontPreview) {
-      URL.revokeObjectURL(idFrontPreview);
-    }
-
-    const previewUrl = URL.createObjectURL(file);
-
-    setError('');
-    setIdFrontPhoto(file);
-    setIdFrontPreview(previewUrl);
-  };
-
-  // ==========================================================
-  // BACK ID IMAGE
-  // ==========================================================
-
-  const handleBackPhotoChange = (event) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    const validationError = validateImage(file);
-
-    if (validationError) {
-      setError(validationError);
-      event.target.value = '';
-      return;
-    }
-
-    if (idBackPreview) {
-      URL.revokeObjectURL(idBackPreview);
-    }
-
-    const previewUrl = URL.createObjectURL(file);
-
-    setError('');
-    setIdBackPhoto(file);
-    setIdBackPreview(previewUrl);
-  };
-
-  // ==========================================================
-  // GUEST REGISTRATION
-  // ==========================================================
-
-  const handleGuestSubmit = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (loading) {
       return;
     }
 
-    setError('');
+    setError("");
+
+    // --------------------------------------------------------
+    // PERSONAL INFORMATION
+    // --------------------------------------------------------
 
     const personalError = validatePersonalInformation();
 
@@ -340,6 +202,10 @@ export function Register() {
       return;
     }
 
+    // --------------------------------------------------------
+    // PASSWORD
+    // --------------------------------------------------------
+
     const passwordError = validatePassword();
 
     if (passwordError) {
@@ -347,9 +213,31 @@ export function Register() {
       return;
     }
 
+    // --------------------------------------------------------
+    // ACCOUNT TYPE
+    // --------------------------------------------------------
+
+    const accountTypeError = validateAccountType();
+
+    if (accountTypeError) {
+      setError(accountTypeError);
+      return;
+    }
+
+    const ownerRegistrationError = validateOwnerRegistration();
+
+    if (ownerRegistrationError) {
+      setError(ownerRegistrationError);
+      return;
+    }
+
+    // --------------------------------------------------------
+    // TERMS
+    // --------------------------------------------------------
+
     if (!agreedToTerms) {
       setError(
-        'Please agree to the Terms of Service and Privacy Policy.'
+        "Please agree to the Terms of Service and Privacy Policy."
       );
       return;
     }
@@ -357,139 +245,78 @@ export function Register() {
     setLoading(true);
 
     try {
-      const guestData = {
+      // ------------------------------------------------------
+      // ROLE: keep the normalized backend enum value intact.
+      // OWNER and GUEST are the only public self-service roles.
+      // ------------------------------------------------------
+
+      const role =
+        accountType === "Owner"
+          ? "OWNER"
+          : accountType === "Guest"
+            ? "GUEST"
+            : String(accountType || "").toUpperCase();
+
+      // ------------------------------------------------------
+      // REGISTRATION DATA
+      //
+      // We send both "name" and "fullName" for compatibility
+      // with different backend registration implementations.
+      //
+      // Email is optional. When empty, we send an empty string.
+      // ------------------------------------------------------
+
+      const registrationData = {
         name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        password,
-        role: 'Guest',
-      };
-
-      console.log(
-        'Submitting guest registration:',
-        guestData
-      );
-
-      const newUser = await register(guestData);
-
-      console.log(
-        'Guest registration successful:',
-        newUser
-      );
-
-      resetForm();
-
-      navigate('/login', {
-        replace: true,
-        state: {
-          message:
-            'Registration successful! Please login to continue.',
-        },
-      });
-    } catch (err) {
-      console.error(
-        'Guest registration error:',
-        err
-      );
-
-      const message =
-        err?.response?.data?.message ||
-        err?.response?.data?.error?.message ||
-        err?.message ||
-        'Registration failed. Please try again.';
-
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ==========================================================
-  // OWNER REGISTRATION
-  // ==========================================================
-
-  const handleOwnerSubmit = async (event) => {
-    event.preventDefault();
-
-    if (loading) {
-      return;
-    }
-
-    setError('');
-
-    const personalError = validatePersonalInformation();
-
-    if (personalError) {
-      setError(personalError);
-      return;
-    }
-
-    if (!address.trim()) {
-      setError('Residential address is required.');
-      return;
-    }
-
-    const passwordError = validatePassword();
-
-    if (passwordError) {
-      setError(passwordError);
-      return;
-    }
-
-    const identificationError =
-      validateIdentification();
-
-    if (identificationError) {
-      setError(identificationError);
-      return;
-    }
-
-    if (!agreedToTerms) {
-      setError(
-        'Please agree to the Terms of Service and Privacy Policy.'
-      );
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const ownerData = {
         fullName: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
-        residentialAddress: address.trim(),
+        residentialAddress:
+          accountType === "Owner"
+            ? residentialAddress.trim()
+            : "",
+        idType: accountType === "Owner" ? idType : "",
+        idNumber: accountType === "Owner" ? idNumber.trim() : "",
         password,
-        role: 'Owner',
-        idType: idType.trim(),
-        idNumber: idNumber.trim(),
+        role,
       };
 
       console.log(
-        'Submitting owner registration:',
-        ownerData
+        "Submitting registration:",
+        registrationData
       );
 
-      const newOwner =
-        await register(ownerData);
+      const newUser = await register(registrationData);
 
       console.log(
-        'Owner registration successful:',
-        newOwner
+        "Registration successful:",
+        newUser
       );
+
+      // ------------------------------------------------------
+      // RESET
+      // ------------------------------------------------------
 
       resetForm();
 
-      navigate('/login', {
+      // ------------------------------------------------------
+      // SUCCESS MESSAGE
+      // ------------------------------------------------------
+
+      const successMessage =
+        role === "OWNER"
+          ? "Owner account created successfully. Please login to access your owner dashboard."
+          : "Guest account created successfully. Please login to continue.";
+
+      navigate("/login", {
         replace: true,
         state: {
-          message:
-            'Owner registration submitted successfully. Please login after your account is approved.',
+          message: successMessage,
         },
       });
     } catch (err) {
       console.error(
-        'Owner registration error:',
+        "Registration error:",
         err
       );
 
@@ -497,7 +324,7 @@ export function Register() {
         err?.response?.data?.message ||
         err?.response?.data?.error?.message ||
         err?.message ||
-        'Owner registration failed. Please try again.';
+        "Registration failed. Please try again.";
 
       setError(message);
     } finally {
@@ -518,255 +345,82 @@ export function Register() {
   ) : null;
 
   // ==========================================================
-  // REGISTRATION OPTIONS
-  // ==========================================================
-
-  if (!registrationType) {
-    return (
-      <RegisterLayout>
-        <div className="w-full max-w-xl">
-
-          <div className="mb-8">
-            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-sm">
-              <UserPlus className="h-6 w-6" />
-            </div>
-
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#082F49] sm:text-4xl">
-              Create your account
-            </h1>
-
-            <p className="mt-3 text-base leading-7 text-slate-500">
-              Choose how you want to use the guesthouse
-              reservation platform.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-
-            <RegistrationOption
-              icon={<User className="h-6 w-6" />}
-              title="Register as Guest"
-              description="Create an account to discover guesthouses, reserve rooms and manage your bookings."
-              onClick={() => {
-                setRegistrationType('guest');
-                setError('');
-              }}
-            />
-
-            <RegistrationOption
-              icon={<Building2 className="h-6 w-6" />}
-              title="Register as Owner"
-              description="Create your owner account and manage your guesthouse through the reservation platform."
-              onClick={() => {
-                setRegistrationType('owner');
-                setError('');
-              }}
-            />
-
-          </div>
-
-          <p className="mt-8 text-center text-sm text-slate-500">
-            Already have an account?{' '}
-
-            <Link
-              to="/login"
-              className="font-bold text-[#B78103] transition hover:text-[#8F6500]"
-            >
-              Sign in
-            </Link>
-          </p>
-
-          <p className="mt-10 border-t border-slate-200 pt-6 text-center text-xs text-slate-400">
-            © 2026 Guesthouse Reservation Platform.
-            All rights reserved.
-          </p>
-
-        </div>
-      </RegisterLayout>
-    );
-  }
-
-  // ==========================================================
-  // GUEST FORM
-  // ==========================================================
-
-  if (registrationType === 'guest') {
-    return (
-      <RegisterLayout>
-
-        <div className="w-full max-w-xl">
-
-          <BackButton
-            onClick={handleBackToOptions}
-          />
-
-          <div className="mb-7">
-
-            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49]">
-              <User className="h-6 w-6" />
-            </div>
-
-            <h1 className="text-3xl font-extrabold text-[#082F49] sm:text-4xl">
-              Register as Guest
-            </h1>
-
-            <p className="mt-2 text-slate-500">
-              Create your guest account and start
-              discovering comfortable stays.
-            </p>
-
-          </div>
-
-          {errorMessage}
-
-          <form
-            onSubmit={handleGuestSubmit}
-            className="space-y-5"
-          >
-
-            <InputField
-              label="Full Name"
-              value={name}
-              onChange={setName}
-              placeholder="Enter your full name"
-              required
-              autoComplete="name"
-              icon={<User className="h-4 w-4" />}
-            />
-
-            <InputField
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={setEmail}
-              placeholder="Enter your email address"
-              required
-              autoComplete="email"
-              icon={<Mail className="h-4 w-4" />}
-            />
-
-            <InputField
-              label="Phone Number"
-              type="tel"
-              value={phone}
-              onChange={setPhone}
-              placeholder="+251 9XX XXX XXX"
-              required
-              autoComplete="tel"
-              icon={<Phone className="h-4 w-4" />}
-            />
-
-            <PasswordField
-              label="Password"
-              value={password}
-              onChange={setPassword}
-              placeholder="Minimum 6 characters"
-              show={showPassword}
-              onToggle={() =>
-                setShowPassword(
-                  (previous) => !previous
-                )
-              }
-              required
-              autoComplete="new-password"
-            />
-
-            <PasswordField
-              label="Confirm Password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              placeholder="Re-enter your password"
-              show={showConfirmPassword}
-              onToggle={() =>
-                setShowConfirmPassword(
-                  (previous) => !previous
-                )
-              }
-              required
-              autoComplete="new-password"
-            />
-
-            <TermsBox
-              checked={agreedToTerms}
-              onChange={setAgreedToTerms}
-            />
-
-            {/* CENTERED COMPACT GUEST BUTTON */}
-
-            <div className="flex justify-center pt-1">
-
-              <SubmitButton
-                loading={loading}
-                loadingText="Creating account..."
-                icon={
-                  <UserPlus className="h-4 w-4" />
-                }
-              >
-                Create Guest Account
-              </SubmitButton>
-
-            </div>
-
-          </form>
-
-          <LoginLink />
-
-        </div>
-
-      </RegisterLayout>
-    );
-  }
-
-  // ==========================================================
-  // OWNER FORM
+  // MAIN REGISTER PAGE
   // ==========================================================
 
   return (
     <RegisterLayout>
+      <div className="w-full max-w-xl">
 
-      <div className="w-full max-w-3xl">
+        {/* ==================================================
+            BACK TO LOGIN
+        =================================================== */}
 
-        <BackButton
-          onClick={handleBackToOptions}
-        />
+        <BackButton />
 
-        <div className="mb-7">
+        {/* ==================================================
+            PAGE HEADER
+        =================================================== */}
 
-          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49]">
-            <Building2 className="h-6 w-6" />
+        <div className="mb-8">
+
+          <div className="mb-5 flex items-center gap-4">
+
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-sm">
+              <UserPlus className="h-6 w-6" />
+            </div>
+
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#082F49] sm:text-4xl">
+                Create your account
+              </h1>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Register once and start using the platform.
+              </p>
+            </div>
+
           </div>
-
-          <h1 className="text-3xl font-extrabold text-[#082F49] sm:text-4xl">
-            Register as Owner
-          </h1>
-
-          <p className="mt-2 max-w-2xl text-slate-500">
-            Create your owner account using your personal
-            and identification information.
-          </p>
 
         </div>
 
+        {/* ==================================================
+            ERROR
+        =================================================== */}
+
         {errorMessage}
 
+        {/* ==================================================
+            REGISTRATION FORM
+        =================================================== */}
+
         <form
-          onSubmit={handleOwnerSubmit}
-          encType="multipart/form-data"
+          onSubmit={handleSubmit}
           className="space-y-6"
         >
 
           {/* ==================================================
-              01 PERSONAL INFORMATION
+              PERSONAL INFORMATION
           =================================================== */}
 
           <FormSection
             icon={<User className="h-5 w-5" />}
-            number="01"
             title="Personal Information"
-            description="Provide your personal information as the property owner."
+            description="Enter your basic account information."
           >
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-5">
+
+              {/* ACCOUNT TYPE */}
+
+              <SelectField
+                label="Register as"
+                value={accountType}
+                onChange={setAccountType}
+                required
+              />
+
+              {/* FULL NAME */}
 
               <InputField
                 label="Full Name"
@@ -775,19 +429,26 @@ export function Register() {
                 placeholder="Enter your full name"
                 required
                 autoComplete="name"
-                icon={<User className="h-4 w-4" />}
+                icon={
+                  <User className="h-4 w-4" />
+                }
               />
+
+              {/* EMAIL */}
 
               <InputField
                 label="Email Address"
                 type="email"
                 value={email}
                 onChange={setEmail}
-                placeholder="owner@example.com"
-                required
+                placeholder="Enter your email address (optional)"
                 autoComplete="email"
-                icon={<Mail className="h-4 w-4" />}
+                icon={
+                  <Mail className="h-4 w-4" />
+                }
               />
+
+              {/* PHONE */}
 
               <InputField
                 label="Phone Number"
@@ -797,18 +458,61 @@ export function Register() {
                 placeholder="+251 9XX XXX XXX"
                 required
                 autoComplete="tel"
-                icon={<Phone className="h-4 w-4" />}
+                icon={
+                  <Phone className="h-4 w-4" />
+                }
               />
 
-              <InputField
-                label="Residential Address"
-                value={address}
-                onChange={setAddress}
-                placeholder="Enter your residential address"
-                required
-                autoComplete="street-address"
-                icon={<MapPin className="h-4 w-4" />}
-              />
+              {accountType === "Owner" && (
+                <>
+                  <InputField
+                    label="Residential Address"
+                    value={residentialAddress}
+                    onChange={setResidentialAddress}
+                    placeholder="Enter your residential address"
+                    required
+                    autoComplete="street-address"
+                    icon={<Building2 className="h-4 w-4" />}
+                  />
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-[#173B53]">
+                      ID Type
+                      <span className="ml-1 text-red-500">*</span>
+                    </label>
+
+                    <div className="relative">
+                      <BriefcaseBusiness className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                      <select
+                        value={idType}
+                        onChange={(event) => setIdType(event.target.value)}
+                        required
+                        className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm text-[#082F49] outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
+                      >
+                        <option value="">Select ID type</option>
+                        <option value="National ID">National ID</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Driver License">Driver License</option>
+                      </select>
+
+                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    </div>
+                  </div>
+
+                  <InputField
+                    label="ID Number"
+                    value={idNumber}
+                    onChange={setIdNumber}
+                    placeholder="Enter your ID number"
+                    required
+                    autoComplete="off"
+                    icon={<BriefcaseBusiness className="h-4 w-4" />}
+                  />
+                </>
+              )}
+
+              {/* PASSWORD */}
 
               <PasswordField
                 label="Password"
@@ -824,6 +528,8 @@ export function Register() {
                 required
                 autoComplete="new-password"
               />
+
+              {/* CONFIRM PASSWORD */}
 
               <PasswordField
                 label="Confirm Password"
@@ -845,71 +551,6 @@ export function Register() {
           </FormSection>
 
           {/* ==================================================
-              02 IDENTIFICATION
-          =================================================== */}
-
-          <FormSection
-            icon={<CreditCard className="h-5 w-5" />}
-            number="02"
-            title="Identification"
-            description="Provide your identification information for owner account verification."
-          >
-
-            <div className="space-y-5">
-
-              <div className="grid gap-5 md:grid-cols-2">
-
-                <SelectField
-                  label="ID Type"
-                  value={idType}
-                  onChange={setIdType}
-                  required
-                  icon={
-                    <CreditCard className="h-4 w-4" />
-                  }
-                />
-
-                {/* ID NUMBER WITH LIST ICON */}
-
-                <InputField
-                  label="ID Number"
-                  value={idNumber}
-                  onChange={setIdNumber}
-                  placeholder="Enter your ID number"
-                  required
-                  autoComplete="off"
-                  icon={
-                    <List className="h-4 w-4" />
-                  }
-                />
-
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-
-                <PhotoUpload
-                  label="ID Front Photo"
-                  file={idFrontPhoto}
-                  preview={idFrontPreview}
-                  onChange={handleFrontPhotoChange}
-                  inputId="id-front-photo"
-                />
-
-                <PhotoUpload
-                  label="ID Back Photo"
-                  file={idBackPhoto}
-                  preview={idBackPreview}
-                  onChange={handleBackPhotoChange}
-                  inputId="id-back-photo"
-                />
-
-              </div>
-
-            </div>
-
-          </FormSection>
-
-          {/* ==================================================
               TERMS
           =================================================== */}
 
@@ -919,7 +560,7 @@ export function Register() {
           />
 
           {/* ==================================================
-              CENTERED COMPACT OWNER BUTTON
+              CREATE ACCOUNT BUTTON
           =================================================== */}
 
           <div className="flex justify-center pt-1">
@@ -928,20 +569,23 @@ export function Register() {
               loading={loading}
               loadingText="Creating account..."
               icon={
-                <CheckCircle2 className="h-4 w-4" />
+                <UserPlus className="h-4 w-4" />
               }
             >
-              Create Owner Account
+              Create Account
             </SubmitButton>
 
           </div>
+
+          {/* ==================================================
+              LOGIN LINK
+          =================================================== */}
 
           <LoginLink />
 
         </form>
 
       </div>
-
     </RegisterLayout>
   );
 }
@@ -957,60 +601,52 @@ function RegisterLayout({ children }) {
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
 
         {/* ==================================================
-            LEFT MODERN GUESTHOUSE IMAGE
+            LEFT IMAGE
         =================================================== */}
 
         <div className="relative hidden min-h-screen overflow-hidden bg-[#062F49] lg:block lg:w-[43%]">
 
           <img
-            src="/images/guesthouse-register.jpg"
-            alt="Modern guesthouse"
-            className="absolute inset-0 h-full w-full object-cover"
+            src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80"
+            alt="Modern guesthouse exterior"
+            className="absolute inset-0 h-full w-full object-cover scale-105 brightness-75 saturate-75"
           />
 
-          {/* MAIN DARK OVERLAY */}
+          {/* DARK OVERLAY */}
 
-          <div className="absolute inset-0 bg-[#062F49]/55" />
+          <div className="absolute inset-0 bg-[#062F49]/60" />
 
-          {/* MODERN GRADIENT */}
+          {/* GRADIENT */}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-[#03253A] via-[#062F49]/30 to-[#062F49]/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#021E2F] via-[#062F49]/35 to-[#062F49]/15" />
 
-          {/* SUBTLE LIGHT OVERLAY */}
+          {/* LIGHT ACCENT OVERLAY */}
 
-          <div className="absolute inset-0 bg-gradient-to-br from-[#062F49]/20 via-transparent to-[#E0A800]/10" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#E0A800]/10 via-transparent to-[#082F49]/20" />
+
+          {/* CONTENT */}
 
           <div className="relative z-10 flex min-h-screen flex-col justify-between p-10 xl:p-14">
 
-            {/* ==================================================
-                BRAND
-            =================================================== */}
+            {/* BRAND */}
 
             <div className="flex items-center gap-3">
 
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-lg">
-
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-lg shadow-[#E0A800]/20">
                 <Building2 className="h-6 w-6" />
-
               </div>
 
               <div>
 
                 <div className="text-xl font-extrabold tracking-tight text-white">
-                  Guesthouse
-                </div>
-
-                <div className="text-sm font-medium text-white/70">
-                  Reservation Platform
+                  GUESTHOUSE RESERVATION
                 </div>
 
               </div>
 
             </div>
 
-            {/* ==================================================
-                IMAGE CONTENT
-            =================================================== */}
+            {/* MAIN IMAGE CONTENT */}
 
             <div className="max-w-xl">
 
@@ -1029,7 +665,7 @@ function RegisterLayout({ children }) {
                 Find a comfortable place
 
                 <span className="text-[#E0A800]">
-                  {' '}to stay.
+                  {" "}to stay.
                 </span>
 
               </h2>
@@ -1040,11 +676,11 @@ function RegisterLayout({ children }) {
                 through one simple platform.
               </p>
 
-              {/* MODERN FEATURE CARD */}
+              {/* FEATURE CARD */}
 
-              <div className="mt-8 flex max-w-md items-center gap-4 rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
+              <div className="mt-8 flex max-w-md items-center gap-4 rounded-2xl border border-white/15 bg-white/10 p-4 shadow-lg shadow-[#021E2F]/20 backdrop-blur-sm">
 
-                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49]">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#E0A800] text-[#082F49] shadow-md shadow-[#E0A800]/20">
 
                   <CheckCircle2 className="h-5 w-5" />
 
@@ -1072,12 +708,12 @@ function RegisterLayout({ children }) {
         </div>
 
         {/* ==================================================
-            RIGHT SIDE
+            RIGHT FORM SIDE
         =================================================== */}
 
-        <main className="flex min-h-screen flex-1 items-start justify-center overflow-y-auto px-5 py-10 sm:px-8 lg:px-10 xl:px-14">
+        <main className="flex min-h-screen flex-1 items-start justify-center overflow-y-auto px-5 py-8 sm:px-8 lg:px-10 xl:px-14">
 
-          <div className="w-full max-w-3xl">
+          <div className="w-full max-w-xl">
 
             {/* MOBILE BRAND */}
 
@@ -1119,60 +755,16 @@ function RegisterLayout({ children }) {
 // BACK BUTTON
 // ============================================================
 
-function BackButton({ onClick }) {
+function BackButton() {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <Link
+      to="/login"
       className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-[#082F49]"
     >
       <ArrowLeft className="h-4 w-4" />
 
-      Back to registration options
-    </button>
-  );
-}
-
-// ============================================================
-// REGISTRATION OPTION
-// ============================================================
-
-function RegistrationOption({
-  icon,
-  title,
-  description,
-  onClick,
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex w-full items-center gap-5 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#D8A000] hover:shadow-lg sm:p-6"
-    >
-
-      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-[#F9F2D8] text-[#B78103] transition group-hover:bg-[#E0A800] group-hover:text-[#082F49]">
-        {icon}
-      </div>
-
-      <div className="min-w-0 flex-1">
-
-        <h2 className="text-lg font-extrabold text-[#082F49]">
-          {title}
-        </h2>
-
-        <p className="mt-1 text-sm leading-6 text-slate-500">
-          {description}
-        </p>
-
-      </div>
-
-      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-400 transition group-hover:bg-[#F9F2D8] group-hover:text-[#B78103]">
-
-        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-
-      </div>
-
-    </button>
+      Back to login
+    </Link>
   );
 }
 
@@ -1182,23 +774,20 @@ function RegistrationOption({
 
 function FormSection({
   icon,
-  number,
   title,
   description,
   children,
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
 
-      <div className="mb-6 flex items-start gap-4">
+      {/* HEADER */}
 
-        <div className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#F9F2D8] text-[#B78103]">
+      <div className="mb-6 flex items-center gap-4">
+
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#F9F2D8] text-[#B78103]">
 
           {icon}
-
-          <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#082F49] px-1 text-[10px] font-bold text-white">
-            {number}
-          </span>
 
         </div>
 
@@ -1208,7 +797,7 @@ function FormSection({
             {title}
           </h2>
 
-          <p className="mt-1 text-sm leading-6 text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-500">
             {description}
           </p>
 
@@ -1230,11 +819,11 @@ function InputField({
   label,
   value,
   onChange,
-  type = 'text',
-  placeholder = '',
+  type = "text",
+  placeholder = "",
   required = false,
   icon,
-  autoComplete = 'off',
+  autoComplete = "off",
 }) {
   return (
     <div>
@@ -1246,6 +835,12 @@ function InputField({
         {required && (
           <span className="ml-1 text-red-500">
             *
+          </span>
+        )}
+
+        {!required && (
+          <span className="ml-2 text-xs font-normal text-slate-400">
+            Optional
           </span>
         )}
 
@@ -1270,8 +865,8 @@ function InputField({
           autoComplete={autoComplete}
           className={`w-full rounded-xl border border-slate-200 bg-white py-3.5 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
             icon
-              ? 'pl-11 pr-4'
-              : 'px-4'
+              ? "pl-11 pr-4"
+              : "px-4"
           }`}
         />
 
@@ -1290,7 +885,6 @@ function SelectField({
   value,
   onChange,
   required = false,
-  icon,
 }) {
   return (
     <div>
@@ -1309,11 +903,13 @@ function SelectField({
 
       <div className="relative">
 
-        {icon && (
-          <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400">
-            {icon}
-          </span>
-        )}
+        {/* ICON */}
+
+        <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+          <BriefcaseBusiness className="h-4 w-4" />
+        </span>
+
+        {/* SELECT */}
 
         <select
           value={value}
@@ -1321,30 +917,30 @@ function SelectField({
             onChange(event.target.value)
           }
           required={required}
-          className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm text-[#082F49] outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
+          className={`w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
+            value
+              ? "text-[#082F49]"
+              : "text-slate-400"
+          }`}
         >
 
           <option value="">
-            Select ID type
+            Select account type
           </option>
 
-          <option value="National ID">
-            National ID
+          <option value="Guest">
+            Guest — Book comfortable stays
           </option>
 
-          <option value="Passport">
-            Passport
-          </option>
-
-          <option value="Driving License">
-            Driving License
-          </option>
-
-          <option value="Other">
-            Other
+          <option value="Owner">
+            Owner — Manage your guesthouse
           </option>
 
         </select>
+
+        {/* DROPDOWN ICON */}
+
+        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
       </div>
 
@@ -1364,7 +960,7 @@ function PasswordField({
   show,
   onToggle,
   required = false,
-  autoComplete = 'new-password',
+  autoComplete = "new-password",
 }) {
   return (
     <div>
@@ -1383,10 +979,14 @@ function PasswordField({
 
       <div className="relative">
 
+        {/* LOCK ICON */}
+
         <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
+        {/* PASSWORD INPUT */}
+
         <input
-          type={show ? 'text' : 'password'}
+          type={show ? "text" : "password"}
           value={value}
           onChange={(event) =>
             onChange(event.target.value)
@@ -1397,14 +997,16 @@ function PasswordField({
           className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-12 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
         />
 
+        {/* SHOW / HIDE */}
+
         <button
           type="button"
           onClick={onToggle}
           className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-[#082F49]"
           aria-label={
             show
-              ? 'Hide password'
-              : 'Show password'
+              ? "Hide password"
+              : "Show password"
           }
         >
 
@@ -1423,96 +1025,6 @@ function PasswordField({
 }
 
 // ============================================================
-// PHOTO UPLOAD
-// ============================================================
-
-function PhotoUpload({
-  label,
-  file,
-  preview,
-  onChange,
-  inputId,
-}) {
-  return (
-    <div>
-
-      <label className="mb-2 block text-sm font-bold text-[#173B53]">
-
-        {label}
-
-        <span className="ml-1 text-red-500">
-          *
-        </span>
-
-      </label>
-
-      <label
-        htmlFor={inputId}
-        className="group block cursor-pointer overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 transition hover:border-[#D8A000] hover:bg-[#FFFDF5]"
-      >
-
-        {preview ? (
-          <div className="relative">
-
-            <img
-              src={preview}
-              alt={`${label} preview`}
-              className="h-48 w-full object-cover"
-            />
-
-            <div className="absolute inset-x-0 bottom-0 bg-[#082F49]/85 px-4 py-2">
-
-              <p className="truncate text-xs font-semibold text-white">
-                {file?.name}
-              </p>
-
-            </div>
-
-          </div>
-        ) : (
-          <div className="flex min-h-[190px] flex-col items-center justify-center px-5 text-center">
-
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#F9F2D8] text-[#B78103] transition group-hover:bg-[#E0A800] group-hover:text-[#082F49]">
-
-              <FileImage className="h-6 w-6" />
-
-            </div>
-
-            <p className="text-sm font-bold text-[#082F49]">
-              Upload {label}
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              JPG, PNG or WEBP · Max 5 MB
-            </p>
-
-            <span className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-[#B78103] shadow-sm">
-
-              <Upload className="h-4 w-4" />
-
-              Choose file
-
-            </span>
-
-          </div>
-        )}
-
-        <input
-          id={inputId}
-          name={inputId}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp"
-          onChange={onChange}
-          className="hidden"
-        />
-
-      </label>
-
-    </div>
-  );
-}
-
-// ============================================================
 // TERMS BOX
 // ============================================================
 
@@ -1521,7 +1033,7 @@ function TermsBox({
   onChange,
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300">
 
       <input
         type="checkbox"
@@ -1534,13 +1046,13 @@ function TermsBox({
 
       <span className="text-sm leading-6 text-slate-600">
 
-        I agree to the platform's{' '}
+        I agree to the platform's{" "}
 
         <span className="font-semibold text-[#082F49]">
           Terms of Service
-        </span>{' '}
+        </span>{" "}
 
-        and{' '}
+        and{" "}
 
         <span className="font-semibold text-[#082F49]">
           Privacy Policy
@@ -1560,7 +1072,7 @@ function LoginLink() {
   return (
     <p className="mt-6 text-center text-sm text-slate-500">
 
-      Already registered?{' '}
+      Already have an account?{" "}
 
       <Link
         to="/login"
@@ -1574,7 +1086,7 @@ function LoginLink() {
 }
 
 // ============================================================
-// COMPACT SUBMIT BUTTON
+// SUBMIT BUTTON
 // ============================================================
 
 function SubmitButton({
@@ -1587,22 +1099,19 @@ function SubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className="inline-flex min-w-[210px] items-center justify-center gap-2 rounded-xl bg-[#E0A800] px-5 py-3 text-sm font-extrabold text-[#082F49] shadow-sm transition hover:bg-[#C99500] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex min-w-[210px] items-center justify-center gap-2 rounded-xl bg-[#E0A800] px-6 py-3.5 text-sm font-extrabold text-[#082F49] shadow-sm transition hover:bg-[#C99500] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
     >
 
       {loading ? (
         <>
-
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#082F49] border-t-transparent" />
 
           <span>
             {loadingText}
           </span>
-
         </>
       ) : (
         <>
-
           {icon}
 
           <span>
@@ -1610,7 +1119,6 @@ function SubmitButton({
           </span>
 
           <ArrowRight className="h-4 w-4" />
-
         </>
       )}
 

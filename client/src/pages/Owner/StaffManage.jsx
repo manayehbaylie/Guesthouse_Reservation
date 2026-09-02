@@ -8,6 +8,7 @@ export function StaffManage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [guesthouseId, setGuesthouseId] = useState(null);
+  const [guesthouse, setGuesthouse] = useState(null);
 
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,11 +24,13 @@ export function StaffManage() {
       // First get the owner's guesthouse
       const gh = await ApiService.getMyGuesthouse();
       if (gh) {
+        setGuesthouse(gh);
         setGuesthouseId(gh.id);
         // Use the owner-specific endpoint to get assigned receptionists
         const staff = await ApiService.getOwnerReceptionists(gh.id);
         setStaffList(staff);
       } else {
+        setGuesthouse(null);
         setGuesthouseId(null);
         setStaffList([]);
       }
@@ -46,6 +49,12 @@ export function StaffManage() {
 
   const handleCreateStaff = async (e) => {
     e.preventDefault();
+
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      alert('Your guesthouse is still pending approval. Receptionist registration is locked until approval is complete.');
+      return;
+    }
+
     try {
       await ApiService.registerReceptionist({
         name,
@@ -63,6 +72,11 @@ export function StaffManage() {
   };
 
   const handleDeleteStaff = async (staffId) => {
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      alert('Your guesthouse is still pending approval. Staff management is locked until approval is complete.');
+      return;
+    }
+
     if (!confirm('Are you sure you want to remove this receptionist from your guesthouse? This action cannot be undone.')) {
       return;
     }
@@ -90,55 +104,63 @@ export function StaffManage() {
           <p className="text-xs text-stone-500">Register and assign Receptionists to operate front-desk check-in consoles</p>
         </div>
 
-        {/* Register Staff Form */}
-        <form onSubmit={handleCreateStaff} className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4 text-xs font-semibold">
-          <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-amber-600" />
-            <span>Register New Receptionist</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-stone-600 uppercase mb-1">Full Name</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Tigist Alemu"
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-stone-600 uppercase mb-1">Email Address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="receptionist@example.com"
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-stone-600 uppercase mb-1">Phone Number</label>
-              <input
-                type="text"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
-              />
-            </div>
+        {String(guesthouse?.status || '').toUpperCase() !== 'APPROVED' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900">
+            <strong className="font-bold">Approval required.</strong> Receptionist management is locked until your guesthouse is approved by the admin team.
           </div>
+        )}
 
-          <button
-            type="submit"
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl text-xs shadow-xs"
-          >
-            Create Staff Account
-          </button>
-        </form>
+        {/* Register Staff Form */}
+        {String(guesthouse?.status || '').toUpperCase() === 'APPROVED' && (
+          <form onSubmit={handleCreateStaff} className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4 text-xs font-semibold">
+            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-amber-600" />
+              <span>Register New Receptionist</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-stone-600 uppercase mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Tigist Alemu"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 uppercase mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="receptionist@example.com"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 uppercase mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl text-xs shadow-xs"
+            >
+              Create Staff Account
+            </button>
+          </form>
+        )}
 
         {/* Staff Table */}
         <div className="space-y-3">
