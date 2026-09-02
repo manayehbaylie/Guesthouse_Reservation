@@ -70,30 +70,29 @@ export function Login() {
     try {
       const user = await login(email, password);
 
-      // ✅ Check for pending reservation FIRST
-      const pendingData = sessionStorage.getItem('pendingReservation');
+      // ✅ Check for pending reservation in localStorage (not sessionStorage)
+      const pendingData = localStorage.getItem('pendingBooking');
       
       if (pendingData) {
         try {
-          const reservationData = JSON.parse(pendingData);
-          sessionStorage.removeItem('pendingReservation');
+          const bookingData = JSON.parse(pendingData);
+          localStorage.removeItem('pendingBooking');
           
-          // ✅ Navigate to booking page with the data - this shows the confirmation
-          navigate(
-            `/booking?guesthouseId=${reservationData.guesthouseId}&roomId=${reservationData.roomId}`,
-            {
-              replace: true,
-              state: {
-                bookingData: reservationData,
-                fromLogin: true,
-                user: user,
-                showConfirmation: true,
-              }
+          console.log('✅ Redirecting to dashboard with booking data');
+          
+          // ✅ Navigate to guest dashboard with payment flag
+          navigate('/guest/dashboard', {
+            replace: true,
+            state: {
+              showPayment: true,
+              bookingData: bookingData,
+              fromLogin: true,
             }
-          );
+          });
           return;
         } catch (e) {
-          console.error('Failed to process pending reservation:', e);
+          console.error('Failed to process pending booking:', e);
+          localStorage.removeItem('pendingBooking');
         }
       }
 
@@ -101,48 +100,40 @@ export function Login() {
       if (reservationData || bookingData) {
         const data = reservationData || bookingData;
         
-        navigate(
-          `/booking?guesthouseId=${data.guesthouseId || data.guesthouse?.id}&roomId=${data.roomId || data.room?.id}`,
-          {
-            replace: true,
-            state: {
-              bookingData: data,
-              fromLogin: true,
-              user: user,
-              showConfirmation: true,
-            }
+        navigate('/guest/dashboard', {
+          replace: true,
+          state: {
+            showPayment: true,
+            bookingData: data,
+            fromLogin: true,
           }
-        );
+        });
         return;
       }
 
       const cameFromBooking = isComingFromBooking();
 
       if (cameFromBooking) {
-        const retryPending = sessionStorage.getItem('pendingReservation');
+        const retryPending = localStorage.getItem('pendingBooking');
         if (retryPending) {
           try {
             const data = JSON.parse(retryPending);
-            sessionStorage.removeItem('pendingReservation');
+            localStorage.removeItem('pendingBooking');
             
-            navigate(
-              `/booking?guesthouseId=${data.guesthouseId}&roomId=${data.roomId}`,
-              {
-                replace: true,
-                state: {
-                  bookingData: data,
-                  fromLogin: true,
-                  user: user,
-                  showConfirmation: true,
-                }
+            navigate('/guest/dashboard', {
+              replace: true,
+              state: {
+                showPayment: true,
+                bookingData: data,
+                fromLogin: true,
               }
-            );
+            });
             return;
           } catch (e) {
-            console.error('Failed to retry pending reservation:', e);
+            console.error('Failed to retry pending booking:', e);
           }
         }
-        navigate('/guest/search', { replace: true });
+        navigate('/guest/dashboard', { replace: true });
         return;
       }
 
@@ -298,7 +289,8 @@ export function Login() {
               </>
             ) : (
               <>
-                <span>{isFromBooking ? 'Login & Continue Booking' : 'Sign In'}</span>
+                <LogIn className="w-5 h-5" />
+                <span>{isFromBooking ? 'Login & Continue' : 'Sign In'}</span>
                 {isFromBooking && <ArrowRight className="w-5 h-5" />}
               </>
             )}

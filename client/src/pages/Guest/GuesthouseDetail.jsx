@@ -11,6 +11,24 @@ import {
   Mail,
   ShieldCheck,
   ChevronLeft,
+  Wifi,
+  Coffee,
+  Car,
+  Bath,
+  Tv,
+  Utensils,
+  Wind,
+  Maximize,
+  Mountain,
+  Lock,
+  Calendar,
+  Image,
+  ChevronRight,
+  ChevronLeft as ChevronLeftIcon,
+  Clock,
+  CreditCard,
+  Home,
+  Sparkles,
 } from 'lucide-react';
 
 export function GuesthouseDetail() {
@@ -24,6 +42,9 @@ export function GuesthouseDetail() {
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  
+  const [roomImageIndices, setRoomImageIndices] = useState({});
 
   useEffect(() => {
     let mounted = true;
@@ -77,7 +98,14 @@ export function GuesthouseDetail() {
             : []
         );
 
-        // Load reviews for this guesthouse
+        // Initialize room image indices
+        const initialIndices = {};
+        roomList.forEach((room) => {
+          initialIndices[room.id] = 0;
+        });
+        setRoomImageIndices(initialIndices);
+
+        // Load reviews
         try {
           setReviewsLoading(true);
           const reviewList = await ApiService.getGuesthouseReviews(gh.id);
@@ -205,7 +233,27 @@ export function GuesthouseDetail() {
     );
   };
 
-  // Helper function to render star ratings
+  const handleNextImage = (roomId, totalImages) => {
+    setRoomImageIndices(prev => ({
+      ...prev,
+      [roomId]: (prev[roomId] + 1) % totalImages
+    }));
+  };
+
+  const handlePrevImage = (roomId, totalImages) => {
+    setRoomImageIndices(prev => ({
+      ...prev,
+      [roomId]: (prev[roomId] - 1 + totalImages) % totalImages
+    }));
+  };
+
+  const handleSetImageIndex = (roomId, index) => {
+    setRoomImageIndices(prev => ({
+      ...prev,
+      [roomId]: index
+    }));
+  };
+
   const renderStars = (rating, size = 'w-4 h-4') => {
     const stars = [];
     const roundedRating = Math.round(rating || 0);
@@ -224,6 +272,93 @@ export function GuesthouseDetail() {
     }
     
     return stars;
+  };
+
+  // 5 Professional hotel room images for each room type
+  const getRoomImages = (roomType) => {
+    const images = {
+      'SINGLE': [
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80',
+      ],
+      'DOUBLE': [
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+      ],
+      'TWIN': [
+        'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+      ],
+      'FAMILY': [
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+      ],
+      'SUITE': [
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+      ],
+      'STANDARD': [
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+      ],
+      'DELUXE': [
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+      ],
+      'LUXURY': [
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=600&q=80',
+      ],
+    };
+    return images[roomType?.toUpperCase()] || images['STANDARD'];
+  };
+
+  const getRoomAmenities = (roomType) => {
+    const amenities = {
+      'SINGLE': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom', 'Work Desk'],
+      'DOUBLE': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom', 'Mini Bar', 'Coffee Maker'],
+      'TWIN': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom', 'Work Desk', 'Wardrobe'],
+      'FAMILY': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom', 'Kitchenette', 'Living Area', 'Dining Table'],
+      'SUITE': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom', 'Mini Bar', 'Living Room', 'Balcony', 'Bathtub'],
+      'STANDARD': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom'],
+      'DELUXE': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom', 'Mini Bar', 'Balcony', 'Bathtub'],
+      'LUXURY': ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Private Bathroom', 'Mini Bar', 'Living Room', 'Balcony', 'Bathtub', 'Jacuzzi'],
+    };
+    return amenities[roomType?.toUpperCase()] || amenities['STANDARD'];
+  };
+
+  const getStatusBadge = (status) => {
+    if (status === 'available') {
+      return { text: 'Available', color: 'bg-emerald-500' };
+    } else if (status === 'occupied') {
+      return { text: 'Occupied', color: 'bg-stone-500' };
+    } else {
+      return { text: 'Unavailable', color: 'bg-red-500' };
+    }
   };
 
   if (loading) {
@@ -327,304 +462,230 @@ export function GuesthouseDetail() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Main Content - Full width */}
+      <div className="space-y-6">
 
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* About */}
-          <div className="bg-white p-6 rounded-3xl border space-y-3">
+        {/* About Section */}
+        <div className="bg-white p-6 rounded-3xl border space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-amber-500" />
             <h3 className="text-lg font-bold">About this Guesthouse</h3>
-            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-              {guesthouse.description ||
-                'No description is available for this guesthouse.'}
+          </div>
+          
+          <div className="space-y-3 text-sm text-stone-600 leading-relaxed">
+            <p>
+              {guesthouse.description || 'No description is available for this guesthouse.'}
             </p>
-          </div>
-
-          {/* Amenities */}
-          <div className="bg-white p-6 rounded-3xl border space-y-3">
-            <h3 className="text-lg font-bold">Amenities & Services</h3>
-            {guesthouse.amenities?.length ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {guesthouse.amenities.map((amenity) => (
-                  <div
-                    key={amenity}
-                    className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 text-xs font-semibold"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    {amenity}
+            
+            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-stone-100">
+              {guesthouse.address && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-stone-400 tracking-wider">Location</p>
+                    <p className="text-xs text-stone-700">{guesthouse.address}</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-stone-500">
-                No amenities have been listed.
-              </p>
-            )}
-          </div>
-
-          {/* ==========================================================
-              REVIEWS SECTION - NEWLY ADDED
-              ========================================================== */}
-          <div className="bg-white p-6 rounded-3xl border space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold">Guest Reviews</h3>
-                <p className="text-xs text-stone-500">
-                  What guests are saying about this guesthouse
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-0.5">
-                  {renderStars(guesthouse.rating || 0, 'w-4 h-4')}
                 </div>
-                <span className="text-sm font-bold text-stone-900">
-                  {Number(guesthouse.rating || 0).toFixed(1)}
-                </span>
-              </div>
-            </div>
-
-            {reviewsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : reviews.length === 0 ? (
-              <div className="text-center py-8 border-t border-stone-100">
-                <div className="flex justify-center mb-3">
-                  <Star className="w-12 h-12 text-stone-200" />
-                </div>
-                <p className="text-sm font-medium text-stone-600">
-                  No reviews yet
-                </p>
-                <p className="text-xs text-stone-400 mt-1">
-                  Be the first to share your experience at this guesthouse!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                {reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="border-t border-stone-100 pt-4 first:border-t-0 first:pt-0"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-stone-900">
-                            {review.guest?.name || review.guest?.fullName || 'Guest'}
-                          </span>
-                          <div className="flex items-center gap-0.5">
-                            {renderStars(review.rating || 0, 'w-3.5 h-3.5')}
-                          </div>
-                          <span className="text-xs font-medium text-amber-600">
-                            {review.rating}.0
-                          </span>
-                        </div>
-                        <p className="text-xs text-stone-400 mt-0.5">
-                          {review.createdAt
-                            ? new Date(review.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                              })
-                            : 'Recent stay'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-stone-700 mt-2 leading-relaxed">
-                      {review.comment || 'No comment provided.'}
-                    </p>
-
-                    {/* Owner Response */}
-                    {review.ownerResponse && (
-                      <div className="mt-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">
-                            Owner Response
-                          </span>
-                          <div className="flex-1 h-px bg-stone-200" />
-                        </div>
-                        <p className="text-sm text-stone-700">
-                          {review.ownerResponse}
-                        </p>
-                      </div>
-                    )}
+              )}
+              {guesthouse.city && (
+                <div className="flex items-start gap-2">
+                  <Home className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-stone-400 tracking-wider">City</p>
+                    <p className="text-xs text-stone-700">{guesthouse.city}</p>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Review Summary Stats */}
-            {reviews.length > 0 && (
-              <div className="border-t border-stone-100 pt-4 mt-2">
-                <div className="flex items-center justify-between text-xs text-stone-500">
-                  <span>
-                    Based on <strong className="text-stone-700">{reviews.length}</strong>{' '}
-                    {reviews.length === 1 ? 'review' : 'reviews'}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="font-bold text-stone-700">
-                      {Number(guesthouse.rating || 0).toFixed(1)}
-                    </span>
-                    / 5.0
-                  </span>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Rooms Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold">Rooms</h2>
-                <p className="text-xs text-stone-500 mt-1">
-                  Room availability is updated from the reservation system.
-                </p>
-              </div>
+              )}
+              {guesthouse.phone && (
+                <div className="flex items-start gap-2">
+                  <Phone className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-stone-400 tracking-wider">Phone</p>
+                    <p className="text-xs text-stone-700">{guesthouse.phone}</p>
+                  </div>
+                </div>
+              )}
+              {guesthouse.email && (
+                <div className="flex items-start gap-2">
+                  <Mail className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-stone-400 tracking-wider">Email</p>
+                    <p className="text-xs text-stone-700">{guesthouse.email}</p>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {rooms.length === 0 ? (
-              <p className="text-xs text-stone-500 bg-white p-6 rounded-2xl border">
-                No rooms have been registered for this guesthouse.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {rooms.map((room) => {
-                  const status = getRoomStatus(room);
-                  const isAvailable = status === 'available';
-                  const isOccupied = status === 'occupied';
-                  const isUnavailable = status === 'unavailable';
-
-                  return (
-                    <div
-                      key={room.id}
-                      className={`bg-white p-5 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                        !isAvailable ? 'bg-stone-50' : ''
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <b>Room {room.roomNumber} ({room.type})</b>
-                          {isAvailable && (
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
-                              Available
-                            </span>
-                          )}
-                          {isUnavailable && (
-                            <span className="px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
-                              Unavailable
-                            </span>
-                          )}
-                          {isOccupied && (
-                            <span className="px-2.5 py-1 rounded-full bg-stone-200 text-stone-700 text-[10px] font-bold">
-                              Occupied
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-stone-500 mt-2">
-                          <span>
-                            <Users className="inline w-3.5 h-3.5" /> Max {room.capacity}
-                          </span>
-                          <span>
-                            <Bed className="inline w-3.5 h-3.5" /> {room.type}
-                          </span>
-                        </div>
-                        {isUnavailable && (
-                          <p className="text-[10px] text-red-600 mt-2 font-medium">
-                            This room has already been booked and cannot be selected.
-                          </p>
-                        )}
-                        {isOccupied && (
-                          <p className="text-[10px] text-stone-600 mt-2 font-medium">
-                            This room is currently occupied by a guest.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <b className="text-base">
-                            {Number(room.pricePerNight || 0).toLocaleString()} ETB
-                          </b>
-                          <div className="text-[10px] text-stone-400">per night</div>
-                        </div>
-                        {isAvailable && (
-                          <button
-                            type="button"
-                            onClick={() => handleBookRoom(room)}
-                            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-colors"
-                          >
-                            Select & Book
-                          </button>
-                        )}
-                        {isUnavailable && (
-                          <button
-                            type="button"
-                            disabled
-                            className="px-4 py-2.5 rounded-xl bg-stone-200 text-stone-500 font-bold text-xs cursor-not-allowed"
-                          >
-                            Unavailable
-                          </button>
-                        )}
-                        {isOccupied && (
-                          <button
-                            type="button"
-                            disabled
-                            className="px-4 py-2.5 rounded-xl bg-stone-300 text-stone-600 font-bold text-xs cursor-not-allowed"
-                          >
-                            Occupied
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Sidebar */}
-        <aside>
-          <div className="bg-stone-900 text-stone-100 p-6 rounded-3xl space-y-4">
-            <h3 className="font-bold flex gap-2">
-              <ShieldCheck className="w-5 h-5 text-amber-400" />
-              Verified Guarantee
-            </h3>
-            <p className="text-xs text-stone-300">
-              Only administrator-approved properties appear in guest search. Room availability is checked before booking.
+        {/* =========================================================
+            ROOMS SECTION - GRID LAYOUT (SIDE BY SIDE)
+            ========================================================= */}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-bold">Rooms</h2>
+            <p className="text-xs text-stone-500 mt-1">
+              Select your preferred room and book your stay.
             </p>
-
-            <div className="pt-3 border-t border-stone-800 space-y-2">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                <span className="text-stone-300">Available</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                <span className="text-stone-300">Unavailable / Booked</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full bg-stone-400" />
-                <span className="text-stone-300">Occupied</span>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-stone-800 space-y-2 text-xs text-stone-400">
-              <div>
-                <Phone className="inline w-4 h-4 text-amber-400 mr-2" />
-                {guesthouse.phone || '+251 91 100 2233'}
-              </div>
-              <div>
-                <Mail className="inline w-4 h-4 text-amber-400 mr-2" />
-                {guesthouse.email || 'support@guesthouse.et'}
-              </div>
-            </div>
           </div>
-        </aside>
 
+          {rooms.length === 0 ? (
+            <p className="text-xs text-stone-500 bg-white p-6 rounded-2xl border">
+              No rooms have been registered for this guesthouse.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {rooms.map((room) => {
+                const status = getRoomStatus(room);
+                const isAvailable = status === 'available';
+                const roomImages = getRoomImages(room.type);
+                const roomAmenities = getRoomAmenities(room.type);
+                const statusBadge = getStatusBadge(status);
+                const currentImageIndex = roomImageIndices[room.id] || 0;
+
+                return (
+                  <div
+                    key={room.id}
+                    className={`bg-white rounded-2xl border overflow-hidden transition ${
+                      isAvailable ? 'hover:shadow-xl hover:-translate-y-1' : 'opacity-75'
+                    } duration-300 flex flex-col`}
+                  >
+                    {/* Image */}
+                    <div className="relative w-full bg-stone-100 h-[220px]">
+                      <img
+                        src={roomImages[currentImageIndex]}
+                        alt={`Room ${room.roomNumber} - ${room.type}`}
+                        className="w-full h-full object-cover"
+                      />
+                      
+                      {roomImages.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => handlePrevImage(room.id, roomImages.length)}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition text-xs"
+                          >
+                            <ChevronLeftIcon className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleNextImage(room.id, roomImages.length)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition text-xs"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+
+                      {roomImages.length > 1 && (
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                          {roomImages.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleSetImageIndex(room.id, idx)}
+                              className={`w-1.5 h-1.5 rounded-full transition ${
+                                idx === currentImageIndex
+                                  ? 'bg-white'
+                                  : 'bg-white/50 hover:bg-white/70'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      <div className={`absolute top-2 right-2 px-2.5 py-0.5 rounded-full text-white text-[9px] font-bold ${statusBadge.color}`}>
+                        {statusBadge.text}
+                      </div>
+
+                      <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg text-white text-[10px] font-bold">
+                        <Bed className="w-3 h-3" />
+                        <span>{room.type}</span>
+                      </div>
+
+                      {roomImages.length > 1 && (
+                        <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-lg bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold">
+                          {currentImageIndex + 1}/{roomImages.length}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Details */}
+                    <div className="p-4 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="text-base font-black text-stone-900">
+                            Room {room.roomNumber}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500">
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {room.capacity}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Maximize className="w-3 h-3" />
+                              {room.type}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-base font-black text-amber-600">
+                            {Number(room.pricePerNight || 0).toLocaleString()} ETB
+                          </p>
+                          <p className="text-[9px] text-stone-400">/ night</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {roomAmenities.slice(0, 4).map((amenity, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-500 text-[9px] font-medium flex items-center gap-0.5"
+                          >
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                            {amenity}
+                          </span>
+                        ))}
+                        {roomAmenities.length > 4 && (
+                          <span className="px-2 py-0.5 rounded-lg bg-stone-100 text-stone-400 text-[9px] font-medium">
+                            +{roomAmenities.length - 4} more
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-2 text-xs text-stone-500 leading-relaxed line-clamp-2 flex-1">
+                        {room.description || `A comfortable ${room.type} room.`}
+                      </p>
+
+                      {!isAvailable && (
+                        <p className="text-[9px] text-red-500 mt-1.5 font-medium">
+                          {status === 'occupied' ? 'Occupied' : 'Unavailable'}
+                        </p>
+                      )}
+
+                      <div className="mt-3 pt-3 border-t border-stone-100">
+                        {isAvailable ? (
+                          <button
+                            type="button"
+                            onClick={() => handleBookRoom(room)}
+                            className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-colors"
+                          >
+                            Select & Book
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            className="w-full py-2 rounded-xl bg-stone-200 text-stone-500 font-bold text-xs cursor-not-allowed"
+                          >
+                            {status === 'occupied' ? 'Occupied' : 'Unavailable'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
