@@ -3288,14 +3288,14 @@ export const ApiService = {
 
     const normalizedStatus =
       String(status || "")
-        .toLowerCase()
+        .toUpperCase()
         .trim();
 
     const allowedStatuses = [
-      "available",
-      "unavailable",
-      "cleaning",
-      "maintenance",
+      "AVAILABLE",
+      "UNAVAILABLE",
+      "CLEANING",
+      "MAINTENANCE",
     ];
 
     if (
@@ -3312,15 +3312,12 @@ export const ApiService = {
       await api.patch(
         `/receptionist/rooms/${roomId}/availability`,
         {
-          availabilityStatus:
-            normalizedStatus,
-
           maintenanceStatus:
             normalizedStatus,
 
           available:
             normalizedStatus ===
-            "available",
+            "AVAILABLE",
         }
       );
 
@@ -3353,6 +3350,44 @@ export const ApiService = {
   ) {
     return this.performCheckIn(
       reservationId
+    );
+  },
+
+  async confirmReceptionistReservation(
+    reservationId
+  ) {
+    if (!reservationId) {
+      throw new Error(
+        "Reservation ID is required."
+      );
+    }
+
+    const response =
+      await api.patch(
+        `/receptionist/reservations/${reservationId}/confirm`
+      );
+
+    return mapReservationFromBackend(
+      unwrap(response)
+    );
+  },
+
+  async cancelReceptionistReservation(
+    reservationId
+  ) {
+    if (!reservationId) {
+      throw new Error(
+        "Reservation ID is required."
+      );
+    }
+
+    const response =
+      await api.patch(
+        `/receptionist/reservations/${reservationId}/cancel`
+      );
+
+    return mapReservationFromBackend(
+      unwrap(response)
     );
   },
 

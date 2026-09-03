@@ -395,10 +395,26 @@ export const deleteGuesthouse = async (id) => {
     throw new Error(`Invalid guesthouse ID: ${id}`);
   }
 
-  return await prisma.guesthouse.delete({
-    where: {
-      id: guesthouseId,
-    },
+  return await prisma.$transaction(async (tx) => {
+    await tx.reservation.deleteMany({
+      where: {
+        room: {
+          guesthouseId,
+        },
+      },
+    });
+
+    await tx.room.deleteMany({
+      where: {
+        guesthouseId,
+      },
+    });
+
+    return tx.guesthouse.delete({
+      where: {
+        id: guesthouseId,
+      },
+    });
   });
 };
 

@@ -123,9 +123,10 @@ export const getAllGuesthousesForAdmin = async () => {
 ==================================================
 */
 export const deleteGuesthouse = async (id) => {
+  const guesthouseId = Number(id);
   const guesthouse = await prisma.guesthouse.findUnique({
     where: {
-      id: Number(id),
+      id: guesthouseId,
     },
   });
 
@@ -133,10 +134,26 @@ export const deleteGuesthouse = async (id) => {
     throw new Error("Guesthouse not found");
   }
 
-  return await prisma.guesthouse.delete({
-    where: {
-      id: Number(id),
-    },
+  return await prisma.$transaction(async (tx) => {
+    await tx.reservation.deleteMany({
+      where: {
+        room: {
+          guesthouseId,
+        },
+      },
+    });
+
+    await tx.room.deleteMany({
+      where: {
+        guesthouseId,
+      },
+    });
+
+    return tx.guesthouse.delete({
+      where: {
+        id: guesthouseId,
+      },
+    });
   });
 };
 

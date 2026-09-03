@@ -1504,7 +1504,7 @@ function AdminDashboardHome({
             detail: 'active owners',
             icon: Users,
             page: 'owners',
-            className: 'bg-[#0b5277] text-white',
+            className: 'bg-[#073957] text-white',
             valueClass: 'text-sky-200',
             iconClass: 'text-sky-200',
           },
@@ -1514,9 +1514,9 @@ function AdminDashboardHome({
             detail: 'awaiting approval',
             icon: Clock3,
             page: 'pending',
-            className: 'bg-amber-400 text-[#073957]',
-            valueClass: 'text-[#073957]',
-            iconClass: 'text-[#073957]',
+            className: 'bg-[#073957] text-white',
+            valueClass: 'text-amber-300',
+            iconClass: 'text-amber-300',
           },
           {
             label: 'Platform Commission',
@@ -1524,9 +1524,9 @@ function AdminDashboardHome({
             detail: 'current rate',
             icon: Percent,
             page: 'commission',
-            className: 'bg-[#146b68] text-white',
-            valueClass: 'text-emerald-100',
-            iconClass: 'text-emerald-100',
+            className: 'bg-[#073957] text-white',
+            valueClass: 'text-emerald-200',
+            iconClass: 'text-emerald-200',
           },
         ].map((card) => {
           const Icon = card.icon;
@@ -1558,25 +1558,25 @@ function AdminDashboardHome({
           <h2 className="text-lg font-bold text-[#043658]">Commission Activity</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-            <span className="text-xs font-semibold text-slate-500 block mb-1">Total Commission Collected</span>
-            <div className="text-2xl font-bold text-[#043658] font-mono">{formatMoney(stats.commissionRevenue)} ETB</div>
+          <div className="bg-[#073957] p-4 rounded-lg border border-[#0b5277] shadow-sm text-white">
+            <span className="text-xs font-semibold text-white block mb-1">Total Commission Collected</span>
+            <div className="text-2xl font-bold text-amber-300 font-mono">{formatMoney(stats.commissionRevenue)} ETB</div>
             <div className="flex items-center gap-1 mt-2">
               <TrendingUp className="w-4 h-4 text-green-600" />
               <span className="text-xs text-green-600 font-semibold">+12% this month</span>
             </div>
           </div>
           
-          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-            <span className="text-xs font-semibold text-slate-500 block mb-1">Owner Payouts</span>
+          <div className="bg-[#073957] p-4 rounded-lg border border-[#0b5277] shadow-sm text-white">
+            <span className="text-xs font-semibold text-white block mb-1">Owner Payouts</span>
             <div className="text-2xl font-bold text-[#FFC107] font-mono">{formatMoney(stats.ownerPayouts)} ETB</div>
-            <p className="text-xs text-slate-500 mt-2">paid to owners</p>
+            <p className="text-xs text-white mt-2">paid to owners</p>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-            <span className="text-xs font-semibold text-slate-500 block mb-1">Gross Revenue</span>
-            <div className="text-2xl font-bold text-[#043658] font-mono">{formatMoney(stats.totalRevenue)} ETB</div>
-            <p className="text-xs text-slate-500 mt-2">platform revenue</p>
+          <div className="bg-[#073957] p-4 rounded-lg border border-[#0b5277] shadow-sm text-white">
+            <span className="text-xs font-semibold text-white block mb-1">Gross Revenue</span>
+            <div className="text-2xl font-bold text-sky-200 font-mono">{formatMoney(stats.totalRevenue)} ETB</div>
+            <p className="text-xs text-white mt-2">platform revenue</p>
           </div>
         </div>
       </div>
@@ -1879,14 +1879,6 @@ function GuesthousePage({
   return (
     <div className="space-y-5">
 
-      <PageHeader
-        icon={
-          <Building2 className="w-5 h-5" />
-        }
-        title="Guesthouses"
-        subtitle="View and manage all registered guesthouses."
-      />
-
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
 
         <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -2117,14 +2109,6 @@ function PendingPage({
 
   return (
     <div className="space-y-5">
-
-      <PageHeader
-        icon={
-          <Clock3 className="w-5 h-5" />
-        }
-        title="Pending Verification"
-        subtitle="Review and approve or reject guesthouse applications."
-      />
 
       {pendingGuesthouses.length ===
       0 ? (
@@ -2529,14 +2513,6 @@ function OwnersPage({
   return (
     <div className="space-y-5">
 
-      <PageHeader
-        icon={
-          <UserCog className="w-5 h-5" />
-        }
-        title="Manage Owners"
-        subtitle="Manage registered OWNER accounts."
-      />
-
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
 
         <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -2745,14 +2721,6 @@ function CommissionPage({
 
   return (
     <div className="space-y-6">
-
-      <PageHeader
-        icon={
-          <Percent className="w-5 h-5" />
-        }
-        title="Commission Management"
-        subtitle="Monitor platform commission, gross revenue and owner payouts."
-      />
 
       {/* ====================================================
           COMMISSION HERO
@@ -2985,15 +2953,15 @@ function CommissionStat({
 }) {
   const tones = {
     amber: {
-      card: 'bg-gradient-to-br from-amber-50 to-yellow-100 border-amber-200',
+      card: 'bg-[#073957] border-[#0b5277] text-white',
       icon: 'bg-amber-200/70 text-amber-700',
     },
     blue: {
-      card: 'bg-gradient-to-br from-sky-50 to-blue-100 border-sky-200',
+      card: 'bg-[#073957] border-[#0b5277] text-white',
       icon: 'bg-sky-200/70 text-sky-700',
     },
     emerald: {
-      card: 'bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200',
+      card: 'bg-[#073957] border-[#0b5277] text-white',
       icon: 'bg-emerald-200/70 text-emerald-700',
     },
   };
@@ -3006,15 +2974,15 @@ function CommissionStat({
         {icon}
       </div>
 
-      <div className="mt-5 text-xs font-black uppercase tracking-wider text-slate-400">
+      <div className="mt-5 text-xs font-black uppercase tracking-wider text-white">
         {title}
       </div>
 
-      <div className="mt-2 text-2xl font-black text-[#073957]">
+      <div className="mt-2 text-2xl font-black text-amber-300">
         {value}
       </div>
 
-      <div className="mt-2 text-xs text-slate-500">
+      <div className="mt-2 text-xs text-white">
         {description}
       </div>
 
@@ -3073,21 +3041,16 @@ function BackupPage({
   return (
     <div className="space-y-5">
 
-      <PageHeader
-        icon={
-          <DatabaseBackup className="w-5 h-5" />
-        }
-        title="System Backup"
-        subtitle="Export currently loaded administration data."
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 
         <BackupStat
           label="Guesthouses"
           value={
             guesthousesCount
           }
+          icon={Building2}
+          className="bg-[#073957] border-[#0b5277] text-white"
+          iconClassName="bg-blue-600 text-white"
         />
 
         <BackupStat
@@ -3095,6 +3058,9 @@ function BackupPage({
           value={
             ownersCount
           }
+          icon={UserCog}
+          className="bg-[#073957] border-[#0b5277] text-white"
+          iconClassName="bg-amber-500 text-white"
         />
 
         <BackupStat
@@ -3102,6 +3068,9 @@ function BackupPage({
           value={
             usersCount
           }
+          icon={Users}
+          className="bg-[#073957] border-[#0b5277] text-white"
+          iconClassName="bg-emerald-600 text-white"
         />
 
       </div>
@@ -3192,15 +3161,26 @@ function BackupPage({
 function BackupStat({
   label,
   value,
+  icon: Icon,
+  className,
+  iconClassName,
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className={`group min-w-0 rounded-2xl border p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg ${className}`}>
 
-      <div className="text-xs font-black uppercase tracking-wider text-slate-400">
-        {label}
+      <div className="flex items-start justify-between gap-3">
+
+        <div className="min-w-0 text-xs font-black uppercase tracking-wider opacity-70">
+          {label}
+        </div>
+
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition group-hover:scale-105 ${iconClassName}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+
       </div>
 
-      <div className="mt-2 text-3xl font-black text-[#073957]">
+      <div className="mt-5 text-4xl font-black leading-none">
         {value}
       </div>
 

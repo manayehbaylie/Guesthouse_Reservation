@@ -120,6 +120,11 @@ export const getDashboardStats = async (receptionistId) => {
       guesthouseId: guesthouse.id,
       available: true,
       maintenanceStatus: "AVAILABLE",
+      reservations: {
+        none: {
+          status: "CHECKED_IN",
+        },
+      },
     },
   });
 
@@ -144,14 +149,34 @@ export const getDashboardStats = async (receptionistId) => {
 export const getReceptionistRooms = async (receptionistId) => {
   const guesthouse = await getReceptionistGuesthouse(receptionistId);
   
-  return await prisma.room.findMany({
+  const roomList = await prisma.room.findMany({
     where: {
       guesthouseId: guesthouse.id,
+    },
+    include: {
+      reservations: {
+        where: {
+          status: "CHECKED_IN",
+        },
+        select: {
+          id: true,
+        },
+        take: 1,
+      },
     },
     orderBy: {
       roomNumber: "asc",
     },
   });
+
+  return roomList.map((room) => ({
+    ...room,
+    available:
+      room.available &&
+      room.maintenanceStatus === "AVAILABLE" &&
+      room.reservations.length === 0,
+    reservations: undefined,
+  }));
 };
 
 // ===================================
@@ -414,6 +439,7 @@ export const checkOutGuest = async (receptionistId, id) => {
       },
       data: {
         available: true,
+        maintenanceStatus: "AVAILABLE",
       },
     });
 
@@ -473,6 +499,7 @@ export const cancelReservation = async (receptionistId, id) => {
       },
       data: {
         available: true,
+        maintenanceStatus: "AVAILABLE",
       },
     });
 
@@ -600,6 +627,12 @@ export const getTodayDepartures = async (receptionistId) => {
 // ===================================
 export const updateRoomAvailability = async (receptionistId, roomId, maintenanceStatus) => {
   const guesthouse = await getReceptionistGuesthouse(receptionistId);
+
+  const normalizedStatus = String(maintenanceStatus || "").toUpperCase();
+
+  if (!["AVAILABLE", "UNAVAILABLE", "CLEANING", "MAINTENANCE"].includes(normalizedStatus)) {
+    throw new Error("Invalid room maintenance status");
+  }
   
   const room = await prisma.room.findFirst({
     where: {
@@ -612,14 +645,28 @@ export const updateRoomAvailability = async (receptionistId, roomId, maintenance
     throw new Error("Room not found");
   }
 
-  const available = maintenanceStatus === "AVAILABLE";
+  if (normalizedStatus === "AVAILABLE") {
+    const activeReservation = await prisma.reservation.findFirst({
+      where: {
+        roomId: room.id,
+        status: "CHECKED_IN",
+      },
+      select: { id: true },
+    });
+
+    if (activeReservation) {
+      throw new Error("Room cannot be marked available while a guest is checked in.");
+    }
+  }
+
+  const available = normalizedStatus === "AVAILABLE";
 
   return await prisma.room.update({
     where: {
       id: Number(roomId),
     },
     data: {
-      maintenanceStatus,
+      maintenanceStatus: normalizedStatus,
       available,
     },
   });
