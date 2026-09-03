@@ -63,9 +63,8 @@ export const OwnerDashboard = () => {
         const rep = await ApiService.getOwnerRevenueReport(gh.id);
         setRevenueReport(rep);
 
-        const users = await ApiService.getAllUsers();
-        const staff = users.filter((u) => u.role === 'RECEPTIONIST' || u.role === 'Receptionist');
-        setStaffList(staff);
+        const staff = await ApiService.getOwnerReceptionists(gh.id);
+        setStaffList(Array.isArray(staff) ? staff : []);
       } else {
         setGuesthouseId(null);
         setGuesthouse(null);

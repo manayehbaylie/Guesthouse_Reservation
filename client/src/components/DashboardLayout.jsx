@@ -21,7 +21,7 @@ import {
   Settings,
 } from 'lucide-react';
 
-export function DashboardLayout({ children }) {
+export function DashboardLayout({ children, showHeader = true }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -269,6 +269,7 @@ export function DashboardLayout({ children }) {
         {/* =========================================================
             LOGOUT
         ========================================================= */}
+        {showHeader && (
         <div className="px-4 py-4 border-t border-white/10">
           <button
             onClick={handleLogout}
@@ -278,6 +279,7 @@ export function DashboardLayout({ children }) {
             <span className="font-semibold">Logout</span>
           </button>
         </div>
+        )}
       </aside>
 
       {/* =========================================================
@@ -292,6 +294,7 @@ export function DashboardLayout({ children }) {
       ========================================================= */}
       <main className="flex-1 min-w-0">
         {/* TOP HEADER BAR */}
+        {showHeader && (
         <header className="bg-white border-b border-[#e5edf2] sticky top-0 z-30">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4">
             {/* Mobile Menu Button */}
@@ -369,6 +372,7 @@ export function DashboardLayout({ children }) {
             </div>
           </div>
         </header>
+        )}
 
         {/* PAGE CONTENT */}
         <div className="p-4 sm:p-6 lg:p-8">

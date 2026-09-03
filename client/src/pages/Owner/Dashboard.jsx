@@ -48,8 +48,6 @@ import {
   Mail,
   Check,
   Percent,
-  ChevronDown,
-  LogOut,
   Info,
 } from 'lucide-react';
 
@@ -83,14 +81,9 @@ const PRESET_AMENITIES = [
 ];
 
 export function OwnerDashboard() {
-  const { user, switchUser, logout } = useAuth();
+  const { user, switchUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
   
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -137,12 +130,14 @@ export function OwnerDashboard() {
   const [roomCapacity, setRoomCapacity] = useState(2);
   const [roomPrice, setRoomPrice] = useState(2500);
   const [roomAvailable, setRoomAvailable] = useState(true);
+  const [roomFormError, setRoomFormError] = useState('');
 
   // Staff Form State
   const [staffName, setStaffName] = useState('');
   const [staffEmail, setStaffEmail] = useState('');
   const [staffPhone, setStaffPhone] = useState('+251 9');
   const [staffPassword, setStaffPassword] = useState('Reception@123');
+  const [staffFormError, setStaffFormError] = useState('');
 
   // Edit Property Profile State
   const [propName, setPropName] = useState('');
@@ -152,15 +147,6 @@ export function OwnerDashboard() {
   const [propImage, setPropImage] = useState('');
   const [propAmenities, setPropAmenities] = useState([]);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-
-  // Owner Profile State
-  const [showOwnerProfile, setShowOwnerProfile] = useState(false);
-  const [ownerName, setOwnerName] = useState('');
-  const [ownerEmail, setOwnerEmail] = useState('');
-  const [ownerPhone, setOwnerPhone] = useState('');
-  const [ownerPassword, setOwnerPassword] = useState('');
-  const [savingOwnerProfile, setSavingOwnerProfile] = useState(false);
 
   // Onboarding State
   const [onboardingName, setOnboardingName] = useState('');
@@ -337,6 +323,11 @@ export function OwnerDashboard() {
       return;
     }
 
+    if (room.availabilityStatus === 'reserved') {
+      showToast(`Room ${room.roomNumber} is reserved and cannot be toggled until the reservation ends.`, 'info');
+      return;
+    }
+
     const nextStatus = room.availabilityStatus === 'available' ? 'unavailable' : 'available';
     try {
       await ApiService.updateRoomAvailability(room.id, nextStatus);
@@ -359,6 +350,7 @@ export function OwnerDashboard() {
     setRoomCapacity(2);
     setRoomPrice(2500);
     setRoomAvailable(true);
+    setRoomFormError('');
     setShowAddRoomModal(true);
   };
 
@@ -374,14 +366,17 @@ export function OwnerDashboard() {
     setRoomCapacity(room.capacity || 2);
     setRoomPrice(room.pricePerNight || 2500);
     setRoomAvailable(room.availabilityStatus === 'available');
+    setRoomFormError('');
     setShowAddRoomModal(true);
   };
 
   const handleSaveRoomSubmit = async (e) => {
     e.preventDefault();
+    setRoomFormError('');
     if (!guesthouse) return;
 
     if (String(guesthouse.status || '').toUpperCase() !== 'APPROVED') {
+      setRoomFormError('Your guesthouse is still pending approval. Room changes are disabled until approval is complete.');
       showToast('Your guesthouse is still pending approval. Room changes are disabled until approval is complete.', 'info');
       return;
     }
@@ -410,7 +405,7 @@ export function OwnerDashboard() {
       setShowAddRoomModal(false);
       loadOwnerDashboard(true);
     } catch (err) {
-      showToast(err.message || 'Failed to save room details', 'error');
+      setRoomFormError(err.message || 'Failed to save room details');
     }
   };
 
@@ -432,9 +427,11 @@ export function OwnerDashboard() {
      ========================================================== */
   const handleAddStaffSubmit = async (e) => {
     e.preventDefault();
+    setStaffFormError('');
     if (!guesthouse) return;
 
     if (String(guesthouse.status || '').toUpperCase() !== 'APPROVED') {
+      setStaffFormError('Your guesthouse is still pending approval. Staff registration is locked until approval is complete.');
       showToast('Your guesthouse is still pending approval. Staff registration is locked until approval is complete.', 'info');
       return;
     }
@@ -454,8 +451,13 @@ export function OwnerDashboard() {
       setStaffPhone('+251 9');
       loadOwnerDashboard(true);
     } catch (err) {
-      showToast(err.message || 'Failed to register receptionist staff', 'error');
+      setStaffFormError(err.message || 'Failed to register receptionist staff');
     }
+  };
+
+  const handleOpenStaffModal = () => {
+    setStaffFormError('');
+    setShowAddStaffModal(true);
   };
 
   const handleRemoveStaff = async (staffMember) => {
@@ -840,56 +842,6 @@ export function OwnerDashboard() {
                 <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
               </button>
 
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowProfileMenu((prev) => !prev)}
-                  className="flex items-center gap-3 px-3 py-2 bg-stone-950 hover:bg-stone-800 text-white rounded-xl transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center font-black text-xs">
-                    {(user?.name || 'O').charAt(0).toUpperCase()}
-                  </div>
-                  <div className="hidden sm:block text-left">
-                    <div className="text-xs font-black truncate max-w-[140px]">
-                      {user?.name || 'Property Owner'}
-                    </div>
-                    <div className="text-[9px] font-black text-amber-400 uppercase tracking-wider">OWNER</div>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
-                </button>
-
-                {showProfileMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-stone-200 rounded-2xl shadow-xl overflow-hidden z-50">
-                    <div className="px-4 py-3 border-b border-stone-100">
-                      <div className="text-xs font-black text-stone-900 truncate">{user?.name || 'Property Owner'}</div>
-                      <div className="text-[10px] text-stone-500 truncate">{user?.email || ''}</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        setOwnerName(user?.name || '');
-                        setOwnerEmail(user?.email || '');
-                        setOwnerPhone(user?.phone || '');
-                        setOwnerPassword('');
-                        setShowOwnerProfile(true);
-                      }}
-                      className="w-full px-4 py-3 flex items-center gap-3 text-left text-sm font-bold text-stone-700 hover:bg-stone-50"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>Update Profile</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="w-full px-4 py-3 flex items-center gap-3 text-left text-sm font-bold text-red-600 hover:bg-red-50 border-t border-stone-100"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
@@ -1062,9 +1014,11 @@ export function OwnerDashboard() {
                         </div>
                         <button
                           onClick={() => handleToggleRoomStatus(room)}
-                          className="w-full mt-2 py-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-[10px] font-bold rounded-lg transition-colors shadow-xs"
+                          disabled={room.availabilityStatus === 'reserved'}
+                          title={room.availabilityStatus === 'reserved' ? 'Reserved rooms cannot be toggled until the reservation ends' : 'Toggle room availability'}
+                          className="w-full mt-2 py-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-[10px] font-bold rounded-lg transition-colors shadow-xs disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
                         >
-                          Toggle Status
+                          {room.availabilityStatus === 'reserved' ? 'Reserved' : 'Toggle Status'}
                         </button>
                       </div>
                     ))}
@@ -1216,7 +1170,7 @@ export function OwnerDashboard() {
                   <p className="text-xs text-stone-500">Manage receptionist accounts</p>
                 </div>
                 <button
-                  onClick={() => setShowAddStaffModal(true)}
+                  onClick={handleOpenStaffModal}
                   className={`px-4 py-2.5 font-bold text-xs rounded-xl flex items-center gap-2 transition-all ${
                     guesthouse && String(guesthouse.status || '').toUpperCase() === 'APPROVED'
                       ? 'bg-stone-950 hover:bg-stone-800 text-white'
@@ -1233,7 +1187,7 @@ export function OwnerDashboard() {
                   <Users className="w-12 h-12 text-stone-300 mx-auto mb-3" />
                   <h4 className="text-sm font-bold text-stone-800">No Receptionists Assigned</h4>
                   <p className="text-xs text-stone-500 max-w-md mx-auto">Create receptionist credentials for your front-desk staff.</p>
-                  <button onClick={() => setShowAddStaffModal(true)} className="mt-4 px-4 py-2 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl">+ Register First Receptionist</button>
+                  <button onClick={handleOpenStaffModal} className="mt-4 px-4 py-2 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl">+ Register First Receptionist</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1381,6 +1335,12 @@ export function OwnerDashboard() {
                 <input type="checkbox" id="roomAvailableCheck" checked={roomAvailable} onChange={(e) => setRoomAvailable(e.target.checked)} className="w-4 h-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500" />
                 <label htmlFor="roomAvailableCheck" className="text-stone-700 font-bold">Available for Booking</label>
               </div>
+              {roomFormError && (
+                <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm font-semibold text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{roomFormError}</span>
+                </div>
+              )}
               <div className="flex gap-2 justify-end pt-3 border-t border-stone-100">
                 <button type="button" onClick={() => setShowAddRoomModal(false)} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">Cancel</button>
                 <button type="submit" className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl">{editingRoom ? 'Update Room' : 'Add Room'}</button>
@@ -1415,6 +1375,12 @@ export function OwnerDashboard() {
                 <label className="block text-stone-700 uppercase mb-1 font-bold">Password</label>
                 <input type="text" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 font-mono" />
               </div>
+              {staffFormError && (
+                <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm font-semibold text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{staffFormError}</span>
+                </div>
+              )}
               <div className="flex gap-2 justify-end pt-3 border-t border-stone-100">
                 <button type="button" onClick={() => setShowAddStaffModal(false)} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">Cancel</button>
                 <button type="submit" className="px-5 py-2.5 bg-stone-950 hover:bg-stone-800 text-white font-black rounded-xl">Register</button>
@@ -1424,57 +1390,6 @@ export function OwnerDashboard() {
         </div>
       )}
 
-      {/* OWNER PROFILE MODAL */}
-      {showOwnerProfile && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowOwnerProfile(false)} />
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden">
-            <div className="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black text-stone-900">Update Profile</h2>
-                <p className="text-xs text-stone-500 mt-1">Update your account information</p>
-              </div>
-              <button type="button" onClick={() => setShowOwnerProfile(false)} className="w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-black text-stone-700 mb-1.5">Full Name</label>
-                <input type="text" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-400" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-stone-700 mb-1.5">Email</label>
-                <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-400" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-stone-700 mb-1.5">Phone</label>
-                <input type="tel" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-400" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-stone-700 mb-1.5">New Password</label>
-                <input type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Leave blank to keep current" />
-              </div>
-            </div>
-            <div className="px-6 py-4 bg-stone-50 border-t border-stone-200 flex justify-end gap-3">
-              <button type="button" onClick={() => setShowOwnerProfile(false)} className="px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-700 text-xs font-black hover:bg-stone-100">Cancel</button>
-              <button type="button" onClick={async () => {
-                try {
-                  setSavingOwnerProfile(true);
-                  const updatedUser = await ApiService.updateProfile({ name: ownerName.trim(), email: ownerEmail.trim(), phone: ownerPhone.trim(), password: ownerPassword });
-                  if (updatedUser) showToast('Profile updated!');
-                  setOwnerPassword('');
-                  setShowOwnerProfile(false);
-                } catch (error) {
-                  showToast(error?.message || 'Failed to update profile.', 'error');
-                } finally {
-                  setSavingOwnerProfile(false);
-                }
-              }} className="px-5 py-2.5 rounded-xl bg-stone-950 text-white text-xs font-black hover:bg-stone-800 disabled:opacity-50">
-                {savingOwnerProfile ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

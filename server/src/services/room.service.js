@@ -27,14 +27,15 @@ export const createRoom = async (data, guesthouseId) => {
 ============================================================ */
 
 export const getAllRooms = async (guesthouseId = null) => {
+  const parsedId = Number(guesthouseId);
+  const where =
+    guesthouseId && !isNaN(parsedId) && parsedId > 0
+      ? {
+          guesthouseId: parsedId,
+        }
+      : {};
 
-  const where = guesthouseId
-    ? {
-        guesthouseId: Number(guesthouseId),
-      }
-    : {};
-
-  return await prisma.room.findMany({
+  const rooms = await prisma.room.findMany({
     where,
 
     include: {
@@ -45,11 +46,43 @@ export const getAllRooms = async (guesthouseId = null) => {
           city: true,
         },
       },
+
+      reservations: {
+        where: {
+          status: {
+            in: ["PENDING", "CONFIRMED", "CHECKED_IN"],
+          },
+          checkIn: { lt: new Date() },
+          checkOut: { gt: new Date() },
+        },
+        select: {
+          id: true,
+          status: true,
+          checkIn: true,
+          checkOut: true,
+        },
+        take: 1,
+      },
     },
 
     orderBy: {
       id: "asc",
     },
+  });
+
+  return rooms.map((room) => {
+    const isReserved = room.reservations.length > 0;
+
+    return {
+      ...room,
+      available: room.available && !isReserved,
+      availabilityStatus: isReserved
+        ? "reserved"
+        : room.available
+          ? "available"
+          : "unavailable",
+      reservations: undefined,
+    };
   });
 };
 

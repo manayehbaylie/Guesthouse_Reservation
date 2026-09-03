@@ -8,6 +8,7 @@ import {
   Building2,
   Eye,
   EyeOff,
+  X,
   ArrowRight,
   ArrowLeft,
   Phone,
@@ -32,6 +33,7 @@ export function Login() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const [hasPendingReservation, setHasPendingReservation] =
@@ -154,13 +156,16 @@ export function Login() {
 
   const validateInput = () => {
     if (!identifier.trim()) {
-      return loginMethod === "email"
-        ? "Please enter your email address."
-        : "Please enter your phone number.";
+      return {
+        field: "identifier",
+        message: loginMethod === "email"
+          ? "Please enter your email address."
+          : "Please enter your phone number.",
+      };
     }
 
     if (!password) {
-      return "Please enter your password.";
+      return { field: "password", message: "Please enter your password." };
     }
 
     // Email validation
@@ -169,7 +174,7 @@ export function Login() {
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!emailRegex.test(identifier.trim())) {
-        return "Please enter a valid email address.";
+        return { field: "identifier", message: "Please enter a valid email address." };
       }
     }
 
@@ -179,10 +184,10 @@ export function Login() {
         normalizePhoneNumber(identifier);
 
       if (!/^\+2519\d{8}$/.test(normalizedPhone)) {
-        return (
-          "Please enter a valid Ethiopian phone number. " +
-          "Example: +251 9XXXXXXXX"
-        );
+        return {
+          field: "identifier",
+          message: "Please enter a valid Ethiopian phone number. Example: +251 9XXXXXXXX",
+        };
       }
     }
 
@@ -197,6 +202,7 @@ export function Login() {
     setLoginMethod(method);
     setIdentifier("");
     setError("");
+    setFieldErrors({});
   };
 
   // ---------------------------------------------------------
@@ -207,11 +213,12 @@ export function Login() {
     e.preventDefault();
 
     setError("");
+    setFieldErrors({});
 
     const validationError = validateInput();
 
     if (validationError) {
-      setError(validationError);
+      setFieldErrors({ [validationError.field]: validationError.message });
       return;
     }
 
@@ -574,18 +581,6 @@ export function Login() {
 
               </div>
 
-              {/* Error */}
-
-              {error && (
-                <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200">
-
-                  <p className="text-sm font-semibold text-red-700 leading-5">
-                    {error}
-                  </p>
-
-                </div>
-              )}
-
               {/* =================================================
                   LOGIN METHOD
               ================================================= */}
@@ -673,9 +668,11 @@ export function Login() {
                           : "tel"
                       }
                       value={identifier}
-                      onChange={(e) =>
-                        setIdentifier(e.target.value)
-                      }
+                      onChange={(e) => {
+                        setIdentifier(e.target.value);
+                        setFieldErrors((previous) => ({ ...previous, identifier: undefined }));
+                      }}
+                      aria-invalid={Boolean(fieldErrors.identifier)}
                       required
                       autoComplete={
                         loginMethod === "email"
@@ -692,7 +689,7 @@ export function Login() {
                           ? "you@example.com"
                           : "+251 9XXXXXXXX"
                       }
-                      className="w-full h-14 pl-12 pr-4 rounded-xl border border-stone-300 bg-white text-stone-900 placeholder:text-stone-400 outline-none transition-all focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10"
+                      className={`w-full h-14 pl-12 pr-4 rounded-xl border bg-white text-stone-900 placeholder:text-stone-400 outline-none transition-all focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 ${fieldErrors.identifier ? "border-red-400" : "border-stone-300"}`}
                     />
 
                   </div>
@@ -740,13 +737,15 @@ export function Login() {
                           : "password"
                       }
                       value={password}
-                      onChange={(e) =>
-                        setPassword(e.target.value)
-                      }
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setFieldErrors((previous) => ({ ...previous, password: undefined }));
+                      }}
+                      aria-invalid={Boolean(fieldErrors.password)}
                       required
                       autoComplete="current-password"
                       placeholder="Enter your password"
-                      className="w-full h-14 pl-12 pr-12 rounded-xl border border-stone-300 bg-white text-stone-900 placeholder:text-stone-400 outline-none transition-all focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10"
+                      className={`w-full h-14 pl-12 pr-12 rounded-xl border bg-white text-stone-900 placeholder:text-stone-400 outline-none transition-all focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 ${fieldErrors.password ? "border-red-400" : "border-stone-300"}`}
                     />
 
                     <button
@@ -804,6 +803,12 @@ export function Login() {
 
                 </button>
 
+                {(error || fieldErrors.identifier || fieldErrors.password) && (
+                  <FieldError>
+                    {error || fieldErrors.identifier || fieldErrors.password}
+                  </FieldError>
+                )}
+
               </form>
 
               {/* Register */}
@@ -855,6 +860,15 @@ export function Login() {
 
         </div>
       </div>
+    </div>
+  );
+}
+
+function FieldError({ children }) {
+  return (
+    <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+      <X className="mt-0.5 h-4 w-4 flex-shrink-0" />
+      <span>{children}</span>
     </div>
   );
 }

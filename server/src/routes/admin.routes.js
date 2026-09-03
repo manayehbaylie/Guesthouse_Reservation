@@ -11,6 +11,8 @@ import {
   updateAdminProfileController,
   getReports,
   getActivity,
+  downloadBackup,
+  restoreBackup,
 } from "../controllers/admin.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -233,6 +235,8 @@ router.get(
   authorize("ADMIN"),
   getActivity
 );
+router.get("/backup", authenticate, authorize("ADMIN"), downloadBackup);
+router.post("/backup/restore", authenticate, authorize("ADMIN"), restoreBackup);
 router.put(
   "/profile",
   authenticate,

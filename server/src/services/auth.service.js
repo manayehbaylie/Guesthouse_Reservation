@@ -194,7 +194,11 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
   }
 
   if (!user) {
-    const error = new Error("Invalid email or password");
+    const error = new Error(
+      loginMethod === 'phone'
+        ? "Invalid phone number or password"
+        : "Invalid email or password"
+    );
     error.statusCode = 401;
     throw error;
   }
@@ -205,7 +209,11 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
   const isMatch = await comparePassword(password, user.password);
 
   if (!isMatch) {
-    const error = new Error("Invalid email or password");
+    const error = new Error(
+      loginMethod === 'phone'
+        ? "Invalid phone number or password"
+        : "Invalid email or password"
+    );
     error.statusCode = 401;
     throw error;
   }

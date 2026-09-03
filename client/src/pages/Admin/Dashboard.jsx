@@ -27,6 +27,7 @@ import {
   ChevronDown,
   X,
   Download,
+  Upload,
   MapPin,
   Mail,
   Phone,
@@ -47,6 +48,7 @@ import {
   Ban,
 } from 'lucide-react';
 
+const COMMISSION_RATE_KEY = 'gh_admin_commission_rate';
 
 // ============================================================
 // ADMIN DASHBOARD
@@ -70,6 +72,9 @@ export default function AdminDashboard() {
 
   const [showProfileModal, setShowProfileModal] =
     useState(false);
+
+  const [rejectingGuesthouseId, setRejectingGuesthouseId] =
+    useState(null);
 
   // ----------------------------------------------------------
   // DATA
@@ -103,6 +108,7 @@ export default function AdminDashboard() {
 
   const [error, setError] =
     useState('');
+  const [backupMessage, setBackupMessage] = useState('');
 
   // ----------------------------------------------------------
   // SEARCH
@@ -209,11 +215,7 @@ export default function AdminDashboard() {
         ) ||
         0;
 
-      const commissionRate =
-        Number(
-          platformStats?.commissionRate
-        ) ||
-        10;
+      const commissionRate = Number(platformStats?.commissionRate) || 10;
 
       const commissionRevenue =
         Number(
@@ -445,28 +447,20 @@ export default function AdminDashboard() {
   // ==========================================================
 
   const handleRejectGuesthouse =
-    async (id) => {
-      if (!id) return;
-
-      const reason =
-        window.prompt(
-          'Enter rejection reason:',
-          'Does not meet platform standards'
-        );
-
-      if (reason === null) {
-        return;
-      }
+    async (id, reason) => {
+      if (!id || !reason?.trim()) return;
 
       try {
         setLoading(true);
 
         await ApiService.rejectGuesthouse(
           id,
-          reason
+          reason.trim()
         );
 
         await loadAdminData();
+        setRejectingGuesthouseId(null);
+        handlePageChange('dashboard');
 
       } catch (err) {
         console.error(
@@ -598,29 +592,10 @@ export default function AdminDashboard() {
   // BACKUP
   // ==========================================================
 
-  const handleSystemBackup = () => {
+  const handleSystemBackup = async () => {
     try {
-      const backupData = {
-        backupType:
-          'Guesthouse Reservation Platform Admin Backup',
-
-        generatedAt:
-          new Date().toISOString(),
-
-        statistics: stats,
-
-        guesthouses:
-          allGuesthouses,
-
-        pendingGuesthouses:
-          pendingGuesthouses,
-
-        owners:
-          owners,
-
-        users:
-          usersList,
-      };
+      setBackupMessage('');
+      const backupData = await ApiService.downloadAdminBackup();
 
       const json =
         JSON.stringify(
@@ -669,15 +644,33 @@ export default function AdminDashboard() {
         url
       );
 
+      setBackupMessage('Complete backup downloaded successfully. Store it securely for recovery.');
     } catch (err) {
       console.error(
         'Backup error:',
         err
       );
 
-      alert(
-        'Failed to create system backup.'
-      );
+      setBackupMessage(err.message || 'Failed to create system backup.');
+    }
+  };
+
+  const handleRestoreBackup = async (backup) => {
+    if (!backup || backup.format !== 'guesthouse-platform-backup' || !backup.data) {
+      setBackupMessage('Invalid backup file. Please choose a Guesthouse Platform JSON backup.');
+      return;
+    }
+
+    const confirmed = window.confirm('Restore this backup? Current database data will be permanently replaced.');
+    if (!confirmed) return;
+
+    try {
+      setBackupMessage('Restoring backup...');
+      const result = await ApiService.restoreAdminBackup(backup);
+      setBackupMessage(`Restore completed: ${result?.users || 0} users, ${result?.guesthouses || 0} guesthouses, ${result?.rooms || 0} rooms restored.`);
+      await loadAdminData();
+    } catch (err) {
+      setBackupMessage(err.message || 'Failed to restore backup.');
     }
   };
 
@@ -730,6 +723,7 @@ export default function AdminDashboard() {
         }
         user={user}
         onLogout={handleLogout}
+        pendingCount={pendingGuesthouses.length}
       />
 
       {/* ======================================================
@@ -776,7 +770,7 @@ export default function AdminDashboard() {
 
             {/* PROFILE */}
 
-            <div className="relative">
+            <div className="relative hidden">
 
               <button
                 type="button"
@@ -1002,7 +996,8 @@ export default function AdminDashboard() {
                 handleApproveGuesthouse
               }
               onReject={
-                handleRejectGuesthouse
+                (id) =>
+                  setRejectingGuesthouseId(id)
               }
             />
           )}
@@ -1045,6 +1040,15 @@ export default function AdminDashboard() {
               onRefresh={
                 loadAdminData
               }
+              onRateChange={(commissionRate) => {
+                localStorage.setItem(COMMISSION_RATE_KEY, String(commissionRate));
+                setStats((previous) => ({
+                  ...previous,
+                  commissionRate,
+                  commissionRevenue: (previous.totalRevenue * commissionRate) / 100,
+                  ownerPayouts: Math.max(previous.totalRevenue - (previous.totalRevenue * commissionRate) / 100, 0),
+                }));
+              }}
             />
           )}
 
@@ -1058,6 +1062,8 @@ export default function AdminDashboard() {
               onBackup={
                 handleSystemBackup
               }
+              onRestore={handleRestoreBackup}
+              backupMessage={backupMessage}
               loading={loading}
               guesthousesCount={
                 allGuesthouses.length
@@ -1091,6 +1097,140 @@ export default function AdminDashboard() {
         />
       )}
 
+      {rejectingGuesthouseId && (
+        <RejectionReasonModal
+          loading={loading}
+          onClose={() =>
+            setRejectingGuesthouseId(null)
+          }
+          onSubmit={(reason) =>
+            handleRejectGuesthouse(
+              rejectingGuesthouseId,
+              reason
+            )
+          }
+        />
+      )}
+
+    </div>
+  );
+}
+
+
+// ============================================================
+// REJECTION REASON MODAL
+// ============================================================
+
+function RejectionReasonModal({
+  loading,
+  onClose,
+  onSubmit,
+}) {
+  const [reason, setReason] =
+    useState('');
+  const [validationError, setValidationError] =
+    useState('');
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!reason.trim()) {
+      setValidationError(
+        'Please provide a reason for rejecting this application.'
+      );
+      return;
+    }
+
+    onSubmit(reason);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#043658]/60 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reject-guesthouse-title"
+    >
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-7">
+          <div>
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+              <Ban className="h-5 w-5" />
+            </div>
+            <h2
+              id="reject-guesthouse-title"
+              className="text-xl font-black text-[#073957]"
+            >
+              Reject guesthouse application
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Add a clear reason that the owner can act on.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            aria-label="Close rejection dialog"
+            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#073957] disabled:opacity-50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6 sm:px-7">
+          <div>
+            <label
+              htmlFor="rejection-reason"
+              className="mb-2 block text-sm font-black text-[#073957]"
+            >
+              Rejection reason
+            </label>
+            <textarea
+              id="rejection-reason"
+              value={reason}
+              onChange={(event) => {
+                setReason(event.target.value);
+                if (validationError) setValidationError('');
+              }}
+              autoFocus
+              rows={5}
+              maxLength={500}
+              placeholder="Explain what needs to be corrected before approval..."
+              className="w-full resize-y rounded-2xl border border-slate-300 px-4 py-3 text-sm text-[#073957] outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+            />
+            <div className="mt-2 flex items-start justify-between gap-4 text-xs">
+              <span className="text-red-600" role="alert">
+                {validationError}
+              </span>
+              <span className="shrink-0 text-slate-400">
+                {reason.length}/500
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-[#073957] transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <XCircle className="h-4 w-4" />
+              {loading ? 'Rejecting...' : 'Reject application'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -1138,6 +1278,7 @@ function AdminSidebar({
   mobileOpen,
   user,
   onLogout,
+  pendingCount,
 }) {
   const items = [
     {
@@ -1268,7 +1409,7 @@ function AdminSidebar({
                 transition-all
                 ${
                   active
-                    ? 'bg-amber-400 text-[#073957] shadow-lg shadow-black/10'
+                      ? 'bg-amber-400 text-[#073957] shadow-lg shadow-black/10 ring-2 ring-white'
                     : 'text-slate-200 hover:bg-white/10 hover:text-white'
                 }
               `}
@@ -1296,7 +1437,7 @@ function AdminSidebar({
                     }
                   `}
                 >
-                  !
+                  {pendingCount}
                 </span>
               )}
 
@@ -1306,47 +1447,12 @@ function AdminSidebar({
 
       </nav>
 
-      {/* ====================================================
-          ADMIN ACCOUNT
-      ==================================================== */}
-
       <div className="p-4">
-
         <div className="border-t border-white/10 pt-4">
-
-          <div className="flex items-center gap-3 px-3 py-3">
-
-            <div className="w-10 h-10 rounded-full bg-amber-400 text-[#073957] flex items-center justify-center font-black shrink-0">
-              {(
-                user?.name ||
-                user?.fullName ||
-                user?.email ||
-                'A'
-              )
-                .charAt(0)
-                .toUpperCase()}
-            </div>
-
-            <div className="min-w-0">
-
-              <div className="font-black text-sm truncate">
-                {user?.name ||
-                  user?.fullName ||
-                  'Administrator'}
-              </div>
-
-              <div className="text-[11px] text-slate-400 truncate">
-                {user?.email || ''}
-              </div>
-
-            </div>
-
-          </div>
-
           <button
             type="button"
             onClick={onLogout}
-            className="w-full mt-2 flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-red-500/10 hover:text-red-300 transition"
+            className="hidden w-full mt-2 flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-red-500/10 hover:text-red-300 transition"
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -1380,48 +1486,66 @@ function AdminDashboardHome({
           4-CARD ADMIN SIDEBAR
       ==================================================== */}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        
-        {/* Card 1: Total Guesthouses */}
-        <div className="bg-gradient-to-br from-[#043658] to-[#0a4f7e] text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#FFC107]/20 cursor-pointer" onClick={() => onNavigate('guesthouses')}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Total Guesthouses</span>
-            <Building2 className="w-5 h-5 text-[#FFC107]" />
-          </div>
-          <div className="text-3xl font-bold font-mono text-[#FFC107]">{stats.totalGuesthouses}</div>
-          <p className="text-[10px] text-white/70 mt-1">{stats.approvedGuesthouses} approved</p>
-        </div>
-
-        {/* Card 2: Owner Accounts */}
-        <div className="bg-gradient-to-br from-[#043658] to-[#0a4f7e] text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#FFC107]/20 cursor-pointer" onClick={() => onNavigate('owners')}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Owner Accounts</span>
-            <Users className="w-5 h-5 text-[#FFC107]" />
-          </div>
-          <div className="text-3xl font-bold font-mono text-[#FFC107]">{stats.totalOwners}</div>
-          <p className="text-[10px] text-white/70 mt-1">active owners</p>
-        </div>
-
-        {/* Card 3: Pending Verification */}
-        <div className="bg-gradient-to-br from-[#FFC107] to-[#ffb300] text-[#043658] p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#043658]/20 cursor-pointer" onClick={() => onNavigate('pending')}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Pending Verification</span>
-            <Clock3 className="w-5 h-5 text-[#043658]" />
-          </div>
-          <div className="text-3xl font-bold font-mono text-[#043658]">{stats.pendingGuesthouses}</div>
-          <p className="text-[10px] text-[#043658]/70 mt-1">awaiting approval</p>
-        </div>
-
-        {/* Card 4: Platform Commission */}
-        <div className="bg-gradient-to-br from-[#043658] to-[#0a4f7e] text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all border border-[#FFC107]/20 cursor-pointer" onClick={() => onNavigate('commission')}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">Platform Commission</span>
-            <Percent className="w-5 h-5 text-[#FFC107]" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-[#FFC107]">{stats.commissionRate}%</div>
-          <p className="text-[10px] text-white/70 mt-1">current rate</p>
-        </div>
-
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          {
+            label: 'Total Guesthouses',
+            value: stats.totalGuesthouses,
+            detail: `${stats.approvedGuesthouses} approved`,
+            icon: Building2,
+            page: 'guesthouses',
+            className: 'bg-[#073957] text-white',
+            valueClass: 'text-amber-300',
+            iconClass: 'text-amber-300',
+          },
+          {
+            label: 'Owner Accounts',
+            value: stats.totalOwners,
+            detail: 'active owners',
+            icon: Users,
+            page: 'owners',
+            className: 'bg-[#0b5277] text-white',
+            valueClass: 'text-sky-200',
+            iconClass: 'text-sky-200',
+          },
+          {
+            label: 'Pending Verification',
+            value: stats.pendingGuesthouses,
+            detail: 'awaiting approval',
+            icon: Clock3,
+            page: 'pending',
+            className: 'bg-amber-400 text-[#073957]',
+            valueClass: 'text-[#073957]',
+            iconClass: 'text-[#073957]',
+          },
+          {
+            label: 'Platform Commission',
+            value: `${stats.commissionRate}%`,
+            detail: 'current rate',
+            icon: Percent,
+            page: 'commission',
+            className: 'bg-[#146b68] text-white',
+            valueClass: 'text-emerald-100',
+            iconClass: 'text-emerald-100',
+          },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <button
+              key={card.label}
+              type="button"
+              onClick={() => onNavigate(card.page)}
+              className={`min-h-[124px] rounded-2xl border border-white/15 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${card.className}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.12em] opacity-85">{card.label}</span>
+                <Icon className={`h-5 w-5 shrink-0 ${card.iconClass}`} />
+              </div>
+              <div className={`mt-3 text-3xl font-black leading-none ${card.valueClass}`}>{card.value}</div>
+              <p className="mt-2 text-[11px] font-semibold opacity-75">{card.detail}</p>
+            </button>
+          );
+        })}
       </div>
 
       {/* ====================================================
@@ -2292,14 +2416,17 @@ function PendingPage({
                             Guesthouse photos
                           </h4>
 
-                          {gh.photos?.length ||
+                          {gh.image ||
+                          gh.photos?.length ||
                           gh.images?.length ? (
                             <div className="flex flex-wrap gap-3">
 
-                              {(
-                                gh.photos?.length
-                                  ? gh.photos
-                                  : gh.images
+                              {Array.from(
+                                new Set([
+                                  gh.image,
+                                  ...(gh.photos || []),
+                                  ...(gh.images || []),
+                                ].filter(Boolean))
                               ).map(
                                 (
                                   photo,
@@ -2596,7 +2723,26 @@ function CommissionPage({
   stats,
   loading,
   onRefresh,
+  onRateChange,
 }) {
+  const [rateInput, setRateInput] = useState(String(stats.commissionRate));
+  const [rateError, setRateError] = useState('');
+
+  useEffect(() => {
+    setRateInput(String(stats.commissionRate));
+  }, [stats.commissionRate]);
+
+  const handleRateSubmit = (event) => {
+    event.preventDefault();
+    const nextRate = Number(rateInput);
+    if (!Number.isFinite(nextRate) || nextRate < 0 || nextRate > 100) {
+      setRateError('Enter a commission rate between 0 and 100%.');
+      return;
+    }
+    setRateError('');
+    onRateChange(nextRate);
+  };
+
   return (
     <div className="space-y-6">
 
@@ -2668,7 +2814,8 @@ function CommissionPage({
           icon={
             <Percent className="w-6 h-6" />
           }
-          description="Current platform rate"
+          description="Admin-controlled platform rate"
+          tone="amber"
         />
 
         <CommissionStat
@@ -2680,6 +2827,7 @@ function CommissionPage({
             <CircleDollarSign className="w-6 h-6" />
           }
           description="Total reservation revenue"
+          tone="blue"
         />
 
         <CommissionStat
@@ -2691,8 +2839,36 @@ function CommissionPage({
             <Wallet className="w-6 h-6" />
           }
           description="Revenue after commission"
+          tone="emerald"
         />
 
+      </div>
+
+      <div className="rounded-3xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-orange-50 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="font-black text-[#073957]">Control Commission Rate</h3>
+            <p className="mt-1 text-sm text-slate-500">Set the percentage deducted from successful reservation revenue.</p>
+          </div>
+          <form onSubmit={handleRateSubmit} className="flex flex-wrap items-end gap-2">
+            <label className="text-xs font-black uppercase tracking-wide text-slate-600">
+              Rate (%)
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={rateInput}
+                onChange={(event) => setRateInput(event.target.value)}
+                className="mt-1 block w-28 rounded-xl border border-amber-300 bg-white px-3 py-2.5 text-sm font-bold text-[#073957] outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </label>
+            <button type="submit" className="rounded-xl bg-[#073957] px-4 py-2.5 text-sm font-black text-white hover:bg-[#0b4b73]">
+              Save Rate
+            </button>
+          </form>
+        </div>
+        {rateError && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{rateError}</p>}
       </div>
 
       {/* ====================================================
@@ -2805,11 +2981,28 @@ function CommissionStat({
   value,
   icon,
   description,
+  tone = 'blue',
 }) {
-  return (
-    <div className="bg-white rounded-3xl border border-slate-200 p-6">
+  const tones = {
+    amber: {
+      card: 'bg-gradient-to-br from-amber-50 to-yellow-100 border-amber-200',
+      icon: 'bg-amber-200/70 text-amber-700',
+    },
+    blue: {
+      card: 'bg-gradient-to-br from-sky-50 to-blue-100 border-sky-200',
+      icon: 'bg-sky-200/70 text-sky-700',
+    },
+    emerald: {
+      card: 'bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200',
+      icon: 'bg-emerald-200/70 text-emerald-700',
+    },
+  };
+  const selectedTone = tones[tone] || tones.blue;
 
-      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+  return (
+    <div className={`rounded-3xl border p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${selectedTone.card}`}>
+
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${selectedTone.icon}`}>
         {icon}
       </div>
 
@@ -2870,6 +3063,8 @@ function CommissionRow({
 
 function BackupPage({
   onBackup,
+  onRestore,
+  backupMessage,
   loading,
   guesthousesCount,
   ownersCount,
@@ -2950,6 +3145,37 @@ function BackupPage({
 
           </button>
 
+        </div>
+
+        <div className="mt-6 border-t border-slate-100 pt-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-black text-[#073957]">Restore from backup</h3>
+              <p className="mt-1 text-sm text-slate-500">Upload a complete JSON backup to recover the platform after data loss.</p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 hover:bg-red-100">
+              <Upload className="h-4 w-4" />
+              Upload Backup
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (!file) return;
+                  try {
+                    const backup = JSON.parse(await file.text());
+                    await onRestore(backup);
+                  } catch {
+                    onRestore(null);
+                  }
+                }}
+              />
+            </label>
+          </div>
+          {backupMessage && <p role="status" className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">{backupMessage}</p>}
+          <p className="mt-3 text-xs font-semibold text-red-600">Restore replaces current database records. Keep multiple backup copies in a secure location.</p>
         </div>
 
       </div>
@@ -3188,7 +3414,7 @@ function UpdateProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center"
       onMouseDown={(event) => {
         if (
           event.target ===
@@ -3199,7 +3425,7 @@ function UpdateProfileModal({
       }}
     >
 
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+      <div className="my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
 
         <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
 
@@ -3227,8 +3453,10 @@ function UpdateProfileModal({
 
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-4"
+          className="min-h-0 flex-1 overflow-y-auto p-6"
         >
+
+          <div className="space-y-4">
 
           {error && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
@@ -3266,7 +3494,7 @@ function UpdateProfileModal({
             placeholder="Leave empty to keep current password"
           />
 
-          <div className="flex gap-3 pt-3">
+            <div className="flex gap-3 pt-3">
 
             <button
               type="button"
@@ -3286,6 +3514,8 @@ function UpdateProfileModal({
                 ? 'Saving...'
                 : 'Save Changes'}
             </button>
+
+            </div>
 
           </div>
 

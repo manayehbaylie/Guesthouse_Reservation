@@ -4,7 +4,7 @@ import {
   create,
   getAll,
   getById,
-   getMyGuesthouse,
+  getMyGuesthouse,
   update,
   remove,
   pendingGuesthouses,
@@ -17,6 +17,10 @@ import { authorize } from "../middleware/role.middleware.js";
 import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
+
+// ============================================================
+// CREATE GUESTHOUSE
+// ============================================================
 
 /**
  * @swagger
@@ -62,6 +66,7 @@ const router = express.Router();
  *       403:
  *         description: Only OWNER can create a guesthouse
  */
+
 router.post(
   "/",
   authenticate,
@@ -69,6 +74,10 @@ router.post(
   upload.single("image"),
   create
 );
+
+// ============================================================
+// GET ALL GUESTHOUSES
+// ============================================================
 
 /**
  * @swagger
@@ -82,7 +91,12 @@ router.post(
  *       200:
  *         description: Guesthouses fetched successfully
  */
+
 router.get("/", getAll);
+
+// ============================================================
+// GET PENDING GUESTHOUSES
+// ============================================================
 
 /**
  * @swagger
@@ -102,12 +116,17 @@ router.get("/", getAll);
  *       403:
  *         description: Only ADMIN can view pending guesthouses
  */
+
 router.get(
   "/pending",
   authenticate,
   authorize("ADMIN"),
   pendingGuesthouses
 );
+
+// ============================================================
+// GET GUESTHOUSE BY ID
+// ============================================================
 
 /**
  * @swagger
@@ -130,14 +149,19 @@ router.get(
  *       404:
  *         description: Guesthouse not found
  */
+
 router.get("/:id", getById);
+
+// ============================================================
+// UPDATE GUESTHOUSE
+// ============================================================
 
 /**
  * @swagger
  * /api/guesthouses/{id}:
  *   put:
  *     summary: Update guesthouse
- *     description: Allows an OWNER to update their guesthouse.
+ *     description: Allows an OWNER to update their guesthouse, including the main image.
  *     tags:
  *       - Guesthouses
  *     security:
@@ -152,7 +176,7 @@ router.get("/:id", getById);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -170,7 +194,7 @@ router.get("/:id", getById);
  *                 example: Updated guesthouse description
  *               image:
  *                 type: string
- *                 example: guesthouse.jpg
+ *                 format: binary
  *     responses:
  *       200:
  *         description: Guesthouse updated successfully
@@ -181,12 +205,18 @@ router.get("/:id", getById);
  *       404:
  *         description: Guesthouse not found
  */
+
 router.put(
   "/:id",
   authenticate,
   authorize("OWNER"),
+  upload.single("image"),
   update
 );
+
+// ============================================================
+// DELETE GUESTHOUSE
+// ============================================================
 
 /**
  * @swagger
@@ -215,12 +245,17 @@ router.put(
  *       404:
  *         description: Guesthouse not found
  */
+
 router.delete(
   "/:id",
   authenticate,
   authorize("OWNER"),
   remove
 );
+
+// ============================================================
+// APPROVE GUESTHOUSE
+// ============================================================
 
 /**
  * @swagger
@@ -249,12 +284,17 @@ router.delete(
  *       404:
  *         description: Guesthouse not found
  */
+
 router.patch(
   "/:id/approve",
   authenticate,
   authorize("ADMIN"),
   approve
 );
+
+// ============================================================
+// REJECT GUESTHOUSE
+// ============================================================
 
 /**
  * @swagger
@@ -283,17 +323,27 @@ router.patch(
  *       404:
  *         description: Guesthouse not found
  */
+
 router.patch(
   "/:id/reject",
   authenticate,
   authorize("ADMIN"),
   reject
 );
+
+// ============================================================
+// GET MY GUESTHOUSE
+// ============================================================
+
 router.get(
   "/owner/me",
   authenticate,
   authorize("OWNER"),
   getMyGuesthouse
 );
+
+// ============================================================
+// EXPORT ROUTER
+// ============================================================
 
 export default router;

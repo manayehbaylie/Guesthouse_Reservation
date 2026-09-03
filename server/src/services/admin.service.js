@@ -399,13 +399,24 @@ export const getPlatformReport = async () => {
       },
     });
 
+  const totalRevenue = paidPayments._sum.amount || 0;
+  const commissionRate = Math.min(
+    100,
+    Math.max(0, Number(process.env.COMMISSION_RATE ?? 10))
+  );
+  const commissionRevenue = (totalRevenue * commissionRate) / 100;
+
   return {
     totalUsers,
     totalGuesthouses,
     totalRooms,
     totalReservations,
     totalPayments,
-    totalRevenue: paidPayments._sum.amount || 0,
+    totalRevenue,
+    grossRevenue: totalRevenue,
+    commissionRate,
+    commissionRevenue,
+    ownerPayouts: totalRevenue - commissionRevenue,
   };
 };
 
@@ -426,5 +437,62 @@ export const getSystemActivity = async () => {
       createdAt: "desc",
     },
     take: 100,
+  });
+};
+
+export const createSystemBackup = async () => {
+  const [users, guesthouses, rooms, reservations, payments, assignments, reviews, notifications] = await Promise.all([
+    prisma.user.findMany(),
+    prisma.guesthouse.findMany(),
+    prisma.room.findMany(),
+    prisma.reservation.findMany(),
+    prisma.payment.findMany(),
+    prisma.staffAssignment.findMany(),
+    prisma.review.findMany(),
+    prisma.notification.findMany(),
+  ]);
+
+  return {
+    format: "guesthouse-platform-backup",
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    data: { users, guesthouses, rooms, reservations, payments, assignments, reviews, notifications },
+  };
+};
+
+export const restoreSystemBackup = async (backup) => {
+  if (!backup || backup.format !== "guesthouse-platform-backup" || !backup.data) {
+    throw new Error("Invalid backup file. Please upload a Guesthouse Platform backup JSON file.");
+  }
+
+  const { users = [], guesthouses = [], rooms = [], reservations = [], payments = [], assignments = [], reviews = [], notifications = [] } = backup.data;
+  if (!Array.isArray(users) || !Array.isArray(guesthouses) || !Array.isArray(rooms)) {
+    throw new Error("Backup file is missing required data.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.notification.deleteMany();
+    await tx.review.deleteMany();
+    await tx.payment.deleteMany();
+    await tx.reservation.deleteMany();
+    await tx.staffAssignment.deleteMany();
+    await tx.room.deleteMany();
+    await tx.guesthouse.deleteMany();
+    await tx.user.deleteMany();
+
+    for (const user of users) await tx.user.create({ data: user });
+    for (const guesthouse of guesthouses) await tx.guesthouse.create({ data: guesthouse });
+    for (const room of rooms) await tx.room.create({ data: room });
+    for (const reservation of reservations) await tx.reservation.create({ data: reservation });
+    for (const payment of payments) await tx.payment.create({ data: payment });
+    for (const assignment of assignments) await tx.staffAssignment.create({ data: assignment });
+    for (const review of reviews) await tx.review.create({ data: review });
+    for (const notification of notifications) await tx.notification.create({ data: notification });
+
+    for (const table of ["User", "Guesthouse", "Room", "Reservation", "Payment", "StaffAssignment", "Review", "Notification"]) {
+      await tx.$executeRawUnsafe(`SELECT setval(pg_get_serial_sequence('"${table}"', 'id'), COALESCE((SELECT MAX(id) FROM "${table}"), 1), true)`);
+    }
+
+    return { users: users.length, guesthouses: guesthouses.length, rooms: rooms.length, reservations: reservations.length };
   });
 };

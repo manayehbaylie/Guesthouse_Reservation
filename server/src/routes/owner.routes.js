@@ -20,6 +20,10 @@ import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
+/* ============================================================
+   GUESTHOUSE
+============================================================ */
+
 /**
  * @swagger
  * /api/owner/guesthouse:
@@ -30,6 +34,24 @@ const router = express.Router();
  *       - Owner
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               licenseDocument:
+ *                 type: string
+ *                 format: binary
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *     responses:
  *       201:
  *         description: Guesthouse registered, pending approval
@@ -39,9 +61,18 @@ router.post(
   authenticate,
   authorize("OWNER"),
   upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "licenseDocument", maxCount: 1 },
-    { name: "photos", maxCount: 10 },
+    {
+      name: "image",
+      maxCount: 1,
+    },
+    {
+      name: "licenseDocument",
+      maxCount: 1,
+    },
+    {
+      name: "photos",
+      maxCount: 10,
+    },
   ]),
   createGuesthouse
 );
@@ -76,6 +107,24 @@ router.get(
  *       - Owner
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               licenseDocument:
+ *                 type: string
+ *                 format: binary
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *     responses:
  *       200:
  *         description: Guesthouse resubmitted for review
@@ -85,21 +134,71 @@ router.put(
   authenticate,
   authorize("OWNER"),
   upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "licenseDocument", maxCount: 1 },
-    { name: "photos", maxCount: 10 },
+    {
+      name: "image",
+      maxCount: 1,
+    },
+    {
+      name: "licenseDocument",
+      maxCount: 1,
+    },
+    {
+      name: "photos",
+      maxCount: 10,
+    },
   ]),
   resubmitGuesthouse
 );
 
+/**
+ * @swagger
+ * /api/owner/guesthouse/submit:
+ *   put:
+ *     summary: Submit guesthouse for admin review
+ *     description: Submit the owner's guesthouse for admin approval.
+ *     tags:
+ *       - Owner
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               licenseDocument:
+ *                 type: string
+ *                 format: binary
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Guesthouse submitted for review
+ */
 router.put(
   "/guesthouse/submit",
   authenticate,
   authorize("OWNER"),
   upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "licenseDocument", maxCount: 1 },
-    { name: "photos", maxCount: 10 },
+    {
+      name: "image",
+      maxCount: 1,
+    },
+    {
+      name: "licenseDocument",
+      maxCount: 1,
+    },
+    {
+      name: "photos",
+      maxCount: 10,
+    },
   ]),
   submitGuesthouseForReview
 );
@@ -109,10 +208,29 @@ router.put(
  * /api/owner/guesthouse:
  *   put:
  *     summary: Update owner's guesthouse
+ *     description: Updates guesthouse information and optionally replaces the main guesthouse image.
  *     tags:
  *       - Owner
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               licenseDocument:
+ *                 type: string
+ *                 format: binary
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *     responses:
  *       200:
  *         description: Guesthouse updated successfully
@@ -122,12 +240,25 @@ router.put(
   authenticate,
   authorize("OWNER"),
   upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "licenseDocument", maxCount: 1 },
-    { name: "photos", maxCount: 10 },
+    {
+      name: "image",
+      maxCount: 1,
+    },
+    {
+      name: "licenseDocument",
+      maxCount: 1,
+    },
+    {
+      name: "photos",
+      maxCount: 10,
+    },
   ]),
   updateGuesthouse
 );
+
+/* ============================================================
+   RECEPTIONISTS
+============================================================ */
 
 /**
  * @swagger
@@ -223,12 +354,22 @@ router.get(
   authorize("OWNER"),
   getStaff
 );
+
+/* ============================================================
+   OWNER PROFILE
+============================================================ */
+
 router.put(
   "/profile",
   authenticate,
   authorize("OWNER"),
   updateOwnerProfile
 );
+
+/* ============================================================
+   PAYMENTS
+============================================================ */
+
 router.get(
   "/payments",
   authenticate,

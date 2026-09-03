@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
 
@@ -31,6 +30,54 @@ export function GuesthouseDetail() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // ============================================================
+  // IMAGE URL HELPER
+  // ============================================================
+
+  const getImageUrl = (image) => {
+    if (!image) {
+      return "";
+    }
+
+    if (typeof image !== "string") {
+      return "";
+    }
+
+    const value = image.trim();
+
+    if (!value) {
+      return "";
+    }
+
+    // Already a complete URL
+    if (
+      value.startsWith("http://") ||
+      value.startsWith("https://") ||
+      value.startsWith("data:") ||
+      value.startsWith("blob:")
+    ) {
+      return value;
+    }
+
+    const configuredUrl = import.meta.env.VITE_API_URL || "";
+
+    const apiUrl = /^https?:\/\//.test(configuredUrl)
+      ? configuredUrl
+      : "http://localhost:5000/api";
+
+    const cleanApiUrl = apiUrl.replace(/\/api\/?$/, "");
+
+    // Backend absolute path such as:
+    // /uploads/guesthouses/image.jpg
+    if (value.startsWith("/")) {
+      return `${cleanApiUrl}${value}`;
+    }
+
+    // Relative path such as:
+    // uploads/guesthouses/image.jpg
+    return `${cleanApiUrl}/${value}`;
+  };
+
+  // ============================================================
   // LOAD GUESTHOUSE DATA
   // ============================================================
 
@@ -41,36 +88,92 @@ export function GuesthouseDetail() {
       try {
         setLoading(true);
 
+        // --------------------------------------------------------
+        // VALIDATE GUESTHOUSE ID
+        // --------------------------------------------------------
+
+        if (!id) {
+          throw new Error("Guesthouse ID is missing.");
+        }
+
         // Guesthouse IDs in the database are integers.
         const guesthouseId = Number(id);
 
-        if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+        if (
+          !Number.isInteger(guesthouseId) ||
+          guesthouseId <= 0
+        ) {
           throw new Error(
             `Invalid guesthouse ID: ${id}`
           );
         }
 
         console.log(
-          "Loading guesthouse with ID:",
+          "========================================"
+        );
+        console.log(
+          "GUESTHOUSE DETAIL - LOADING"
+        );
+        console.log(
+          "Guesthouse ID:",
           guesthouseId
         );
+        console.log(
+          "========================================"
+        );
+
+        // --------------------------------------------------------
+        // LOAD GUESTHOUSE
+        // --------------------------------------------------------
 
         const gh =
           await ApiService.getGuesthouseById(
             guesthouseId
           );
 
+        console.log(
+          "========================================"
+        );
+        console.log(
+          "GUESTHOUSE DETAIL - API RESPONSE"
+        );
+        console.log(
+          "Guesthouse ID:",
+          guesthouseId
+        );
+        console.log(
+          "Guesthouse:",
+          gh
+        );
+        console.log(
+          "========================================"
+        );
+
+        if (!gh || !gh.id) {
+          throw new Error(
+            "Guesthouse could not be found."
+          );
+        }
+
+        // Only administrator-approved guesthouses
+        // should be publicly visible.
+        const guesthouseStatus = String(
+          gh.status || ""
+        )
+          .trim()
+          .toLowerCase();
+
         if (
-          !gh ||
-          String(gh.status || "").toLowerCase() !==
-            "approved"
+          guesthouseStatus !== "approved"
         ) {
           throw new Error(
             "Guesthouse is not verified."
           );
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         setGuesthouse(gh);
 
@@ -85,6 +188,15 @@ export function GuesthouseDetail() {
             await ApiService.getRoomsForGuesthouse(
               gh.id
             );
+
+          if (!Array.isArray(roomList)) {
+            roomList = [];
+          }
+
+          console.log(
+            "Guesthouse rooms:",
+            roomList
+          );
         } catch (roomError) {
           console.warn(
             "Could not load rooms:",
@@ -97,19 +209,39 @@ export function GuesthouseDetail() {
         // --------------------------------------------------------
         // LOAD RESERVATIONS
         // --------------------------------------------------------
+        //
+        // Reservations are protected in many systems.
+        // Only request them when a token exists.
+        //
+        // If the request returns 401/403, the guesthouse
+        // page continues working and room availability
+        // falls back to the room's own availability data.
+        // --------------------------------------------------------
 
         let reservationList = [];
 
-        const hasToken = Boolean(
-          localStorage.getItem("token")
-        );
+        const token =
+          localStorage.getItem("token");
 
-        if (hasToken) {
+        if (token) {
           try {
             reservationList =
               await ApiService.getReservations({
                 guesthouseId: gh.id,
               });
+
+            if (
+              !Array.isArray(
+                reservationList
+              )
+            ) {
+              reservationList = [];
+            }
+
+            console.log(
+              "Guesthouse reservations:",
+              reservationList
+            );
           } catch (reservationError) {
             console.warn(
               "Could not load reservations:",
@@ -127,7 +259,9 @@ export function GuesthouseDetail() {
         let reviewList = [];
 
         try {
-          setReviewsLoading(true);
+          if (mounted) {
+            setReviewsLoading(true);
+          }
 
           reviewList =
             await ApiService.getGuesthouseReviews(
@@ -137,6 +271,11 @@ export function GuesthouseDetail() {
           if (!Array.isArray(reviewList)) {
             reviewList = [];
           }
+
+          console.log(
+            "Guesthouse reviews:",
+            reviewList
+          );
         } catch (reviewError) {
           console.warn(
             "Could not load reviews:",
@@ -150,25 +289,14 @@ export function GuesthouseDetail() {
           }
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
-        setRooms(
-          Array.isArray(roomList)
-            ? roomList
-            : []
-        );
-
-        setReservations(
-          Array.isArray(reservationList)
-            ? reservationList
-            : []
-        );
-
-        setReviews(
-          Array.isArray(reviewList)
-            ? reviewList
-            : []
-        );
+        setRooms(roomList);
+        setReservations(reservationList);
+        setReviews(reviewList);
+        setActiveImageIndex(0);
       } catch (error) {
         console.error(
           "Failed to load guesthouse:",
@@ -205,8 +333,12 @@ export function GuesthouseDetail() {
   ) => {
     const stars = [];
 
-    const roundedRating = Math.round(
-      Number(rating) || 0
+    const roundedRating = Math.max(
+      0,
+      Math.min(
+        5,
+        Math.round(Number(rating) || 0)
+      )
     );
 
     for (let i = 1; i <= 5; i++) {
@@ -230,19 +362,30 @@ export function GuesthouseDetail() {
   // ============================================================
 
   const getRoomStatus = (room) => {
+    if (!room) {
+      return "unavailable";
+    }
+
     const roomId = String(room.id);
+
+    // ----------------------------------------------------------
+    // Check active reservations when available
+    // ----------------------------------------------------------
 
     const activeReservation =
       reservations.find((reservation) => {
         if (
-          String(reservation.roomId) !== roomId
+          String(reservation.roomId) !==
+          roomId
         ) {
           return false;
         }
 
         const status = String(
           reservation.status || ""
-        ).toLowerCase();
+        )
+          .trim()
+          .toLowerCase();
 
         return [
           "pending",
@@ -251,35 +394,74 @@ export function GuesthouseDetail() {
         ].includes(status);
       });
 
-    if (
-      activeReservation &&
+    if (activeReservation) {
+      const reservationStatus =
+        String(
+          activeReservation.status || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        reservationStatus ===
+        "checked_in"
+      ) {
+        return "occupied";
+      }
+
+      if (
+        reservationStatus ===
+          "confirmed" ||
+        reservationStatus ===
+          "pending"
+      ) {
+        return "unavailable";
+      }
+    }
+
+    // ----------------------------------------------------------
+    // Check room's own availability information
+    // ----------------------------------------------------------
+
+    const availabilityStatus =
       String(
-        activeReservation.status
-      ).toLowerCase() === "checked_in"
+        room.availabilityStatus ||
+          room.status ||
+          ""
+      )
+        .trim()
+        .toLowerCase();
+
+    // Explicit room availability flag
+    if (room.available === false) {
+      return "unavailable";
+    }
+
+    // Occupied takes priority over other unavailable states
+    if (
+      availabilityStatus ===
+      "occupied"
     ) {
       return "occupied";
     }
 
+    // Known unavailable states
     if (
-      activeReservation &&
-      ["confirmed", "pending"].includes(
-        String(
-          activeReservation.status || ""
-        ).toLowerCase()
-      )
+      availabilityStatus ===
+        "unavailable" ||
+      availabilityStatus ===
+        "booked" ||
+      availabilityStatus ===
+        "maintenance"
     ) {
       return "unavailable";
     }
 
-    const availabilityStatus =
-      String(
-        room.availabilityStatus || ""
-      ).toLowerCase();
-
+    // If the backend explicitly provides a status
+    // and it is not available, treat it as unavailable.
     if (
-      room.available === false ||
-      (availabilityStatus &&
-        availabilityStatus !== "available")
+      availabilityStatus &&
+      availabilityStatus !== "available"
     ) {
       return "unavailable";
     }
@@ -292,6 +474,10 @@ export function GuesthouseDetail() {
   // ============================================================
 
   const handleBookRoom = (room) => {
+    if (!guesthouse || !room) {
+      return;
+    }
+
     const status = getRoomStatus(room);
 
     if (status !== "available") {
@@ -417,6 +603,86 @@ export function GuesthouseDetail() {
   };
 
   // ============================================================
+  // BUILD GUESTHOUSE IMAGES
+  // ============================================================
+
+  const images = useMemo(() => {
+    if (!guesthouse) {
+      return [];
+    }
+
+    const result = [];
+
+    // Main image first
+    if (
+      typeof guesthouse.image ===
+        "string" &&
+      guesthouse.image.trim()
+    ) {
+      result.push(
+        guesthouse.image.trim()
+      );
+    }
+
+    // Additional images
+    if (
+      Array.isArray(
+        guesthouse.images
+      )
+    ) {
+      guesthouse.images.forEach(
+        (image) => {
+          if (
+            typeof image ===
+              "string" &&
+            image.trim()
+          ) {
+            const cleanImage =
+              image.trim();
+
+            const exists =
+              result.some(
+                (existing) =>
+                  existing ===
+                  cleanImage
+              );
+
+            if (!exists) {
+              result.push(
+                cleanImage
+              );
+            }
+          }
+        }
+      );
+    }
+
+    return result;
+  }, [guesthouse]);
+
+  // ============================================================
+  // SAFE ACTIVE IMAGE
+  // ============================================================
+
+  const safeImageIndex =
+    images.length > 0
+      ? Math.min(
+          Math.max(
+            activeImageIndex,
+            0
+          ),
+          images.length - 1
+        )
+      : 0;
+
+  const activeImage =
+    images.length > 0
+      ? getImageUrl(
+          images[safeImageIndex]
+        )
+      : "";
+
+  // ============================================================
   // LOADING
   // ============================================================
 
@@ -442,6 +708,12 @@ export function GuesthouseDetail() {
             Verified guesthouse not found
           </h2>
 
+          <p className="mt-2 text-sm text-stone-500">
+            This guesthouse may not be
+            approved or may no longer
+            exist.
+          </p>
+
           <button
             type="button"
             onClick={() =>
@@ -457,16 +729,35 @@ export function GuesthouseDetail() {
   }
 
   // ============================================================
-  // IMAGES
+  // DISPLAY VALUES
   // ============================================================
 
-  const images =
-    Array.isArray(guesthouse.images) &&
-    guesthouse.images.length > 0
-      ? guesthouse.images
-      : guesthouse.image
-      ? [guesthouse.image]
-      : [];
+  const guesthouseRating = Number(
+    guesthouse.rating || 0
+  );
+
+  const guesthousePhone =
+    guesthouse.phone ||
+    guesthouse.phoneNumber ||
+    "";
+
+  const guesthouseEmail =
+    guesthouse.email || "";
+
+  const guesthouseAddress =
+    guesthouse.address ||
+    guesthouse.location ||
+    "";
+
+  const guesthouseCity =
+    guesthouse.city || "";
+
+  const guesthouseDescription =
+    guesthouse.description || "";
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -489,7 +780,6 @@ export function GuesthouseDetail() {
       ====================================================== */}
 
       <div className="relative">
-
         <div className="flex items-center gap-3 flex-wrap">
 
           <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
@@ -500,9 +790,7 @@ export function GuesthouseDetail() {
           <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
 
-            {Number(
-              guesthouse.rating || 0
-            ).toFixed(1)}
+            {guesthouseRating.toFixed(1)}
           </span>
 
           <span className="text-xs text-stone-400">
@@ -515,21 +803,25 @@ export function GuesthouseDetail() {
         </div>
 
         <h1 className="text-3xl font-black mt-2">
-          {guesthouse.name}
+          {guesthouse.name ||
+            "Guesthouse"}
         </h1>
 
-        <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
-          <MapPin className="w-3.5 h-3.5" />
+        {(guesthouseAddress ||
+          guesthouseCity) && (
+          <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
+            <MapPin className="w-3.5 h-3.5" />
 
-          {guesthouse.address ||
-            guesthouse.location ||
-            "Location not available"}
+            {guesthouseAddress}
 
-          {guesthouse.city
-            ? `, ${guesthouse.city}`
-            : ""}
-        </p>
+            {guesthouseAddress &&
+            guesthouseCity
+              ? ", "
+              : ""}
 
+            {guesthouseCity}
+          </p>
+        )}
       </div>
 
       {/* ======================================================
@@ -538,56 +830,91 @@ export function GuesthouseDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
+        {/* MAIN IMAGE */}
+
         <div className="lg:col-span-2 h-80 sm:h-96 rounded-3xl overflow-hidden bg-stone-100">
 
-          {images.length > 0 ? (
+          {activeImage ? (
             <img
-              src={
-                images[
-                  Math.min(
-                    activeImageIndex,
-                    images.length - 1
-                  )
-                ]
+              src={activeImage}
+              alt={
+                guesthouse.name ||
+                "Guesthouse"
               }
-              alt={guesthouse.name}
               className="w-full h-full object-cover"
+              onError={(event) => {
+                console.error(
+                  "Guesthouse image failed to load:",
+                  event.currentTarget.src
+                );
+
+                event.currentTarget.style.display =
+                  "none";
+              }}
             />
           ) : (
             <div className="flex h-full items-center justify-center">
-              <Building2 className="h-16 w-16 text-stone-300" />
+              <div className="text-center">
+                <Building2 className="h-16 w-16 text-stone-300 mx-auto" />
+
+                <p className="text-xs text-stone-400 mt-3">
+                  No guesthouse image available
+                </p>
+              </div>
             </div>
           )}
 
         </div>
 
+        {/* THUMBNAILS */}
+
         <div className="grid grid-cols-2 gap-3 h-80 sm:h-96">
 
           {images
             .slice(0, 4)
-            .map((img, index) => (
-              <button
-                key={`${img}-${index}`}
-                type="button"
-                onClick={() =>
-                  setActiveImageIndex(index)
-                }
-                className={`rounded-2xl overflow-hidden border-2 ${
-                  activeImageIndex === index
-                    ? "border-amber-500"
-                    : "border-transparent"
-                }`}
-              >
-                <img
-                  src={img}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
+            .map((image, index) => {
+              const imageUrl =
+                getImageUrl(image);
+
+              if (!imageUrl) {
+                return null;
+              }
+
+              return (
+                <button
+                  key={`${image}-${index}`}
+                  type="button"
+                  onClick={() =>
+                    setActiveImageIndex(
+                      index
+                    )
+                  }
+                  className={`rounded-2xl overflow-hidden border-2 ${
+                    safeImageIndex === index
+                      ? "border-amber-500"
+                      : "border-transparent"
+                  }`}
+                >
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.style.display =
+                        "none";
+                    }}
+                  />
+                </button>
+              );
+            })}
+
+          {images.length === 0 && (
+            <div className="col-span-2 rounded-2xl bg-stone-100 flex items-center justify-center">
+              <Building2 className="w-10 h-10 text-stone-300" />
+            </div>
+          )}
 
         </div>
-
       </div>
 
       {/* ======================================================
@@ -609,7 +936,7 @@ export function GuesthouseDetail() {
             </h3>
 
             <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-              {guesthouse.description ||
+              {guesthouseDescription ||
                 "No description is available for this guesthouse."}
             </p>
 
@@ -628,7 +955,8 @@ export function GuesthouseDetail() {
             {Array.isArray(
               guesthouse.amenities
             ) &&
-            guesthouse.amenities.length > 0 ? (
+            guesthouse.amenities.length >
+              0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
 
                 {guesthouse.amenities.map(
@@ -647,7 +975,8 @@ export function GuesthouseDetail() {
               </div>
             ) : (
               <p className="text-xs text-stone-500">
-                No amenities have been listed.
+                No amenities have been
+                listed.
               </p>
             )}
 
@@ -667,7 +996,8 @@ export function GuesthouseDetail() {
                 </h3>
 
                 <p className="text-xs text-stone-500">
-                  What guests are saying about this guesthouse
+                  What guests are saying about
+                  this guesthouse
                 </p>
               </div>
 
@@ -675,15 +1005,15 @@ export function GuesthouseDetail() {
 
                 <div className="flex items-center gap-0.5">
                   {renderStars(
-                    guesthouse.rating || 0,
+                    guesthouseRating,
                     "w-4 h-4"
                   )}
                 </div>
 
                 <span className="text-sm font-bold text-stone-900">
-                  {Number(
-                    guesthouse.rating || 0
-                  ).toFixed(1)}
+                  {guesthouseRating.toFixed(
+                    1
+                  )}
                 </span>
 
               </div>
@@ -706,7 +1036,9 @@ export function GuesthouseDetail() {
                 </p>
 
                 <p className="text-xs text-stone-400 mt-1">
-                  Be the first to share your experience at this guesthouse!
+                  Be the first to share your
+                  experience at this
+                  guesthouse!
                 </p>
 
               </div>
@@ -728,22 +1060,26 @@ export function GuesthouseDetail() {
 
                           <span className="font-bold text-sm text-stone-900">
                             {review.guest?.name ||
-                              review.guest?.fullName ||
+                              review.guest
+                                ?.fullName ||
                               review.user?.name ||
-                              review.user?.fullName ||
+                              review.user
+                                ?.fullName ||
                               "Guest"}
                           </span>
 
                           <div className="flex items-center gap-0.5">
                             {renderStars(
-                              review.rating || 0,
+                              review.rating ||
+                                0,
                               "w-3.5 h-3.5"
                             )}
                           </div>
 
                           <span className="text-xs font-medium text-amber-600">
                             {Number(
-                              review.rating || 0
+                              review.rating ||
+                                0
                             ).toFixed(1)}
                           </span>
 
@@ -818,9 +1154,9 @@ export function GuesthouseDetail() {
                   <span className="flex items-center gap-1">
 
                     <span className="font-bold text-stone-700">
-                      {Number(
-                        guesthouse.rating || 0
-                      ).toFixed(1)}
+                      {guesthouseRating.toFixed(
+                        1
+                      )}
                     </span>
 
                     / 5.0
@@ -849,7 +1185,8 @@ export function GuesthouseDetail() {
                 </h2>
 
                 <p className="text-xs text-stone-500 mt-1">
-                  Room availability is updated from the reservation system.
+                  Room availability is updated
+                  from the reservation system.
                 </p>
 
               </div>
@@ -858,7 +1195,9 @@ export function GuesthouseDetail() {
 
             {rooms.length === 0 ? (
               <p className="text-xs text-stone-500 bg-white p-6 rounded-2xl border">
-                No rooms have been registered for this guesthouse.
+                No rooms have been
+                registered for this
+                guesthouse.
               </p>
             ) : (
               <div className="space-y-4">
@@ -875,7 +1214,8 @@ export function GuesthouseDetail() {
                     status === "occupied";
 
                   const isUnavailable =
-                    status === "unavailable";
+                    status ===
+                    "unavailable";
 
                   const roomPrice = Number(
                     room.pricePerNight ??
@@ -946,7 +1286,8 @@ export function GuesthouseDetail() {
                             <Users className="inline w-3.5 h-3.5" />
 
                             {" "}
-                            Max {roomCapacity}
+                            Max{" "}
+                            {roomCapacity}
                           </span>
 
                           <span>
@@ -960,13 +1301,20 @@ export function GuesthouseDetail() {
 
                         {isUnavailable && (
                           <p className="text-[10px] text-red-600 mt-2 font-medium">
-                            This room has already been booked and cannot be selected.
+                            This room has
+                            already been
+                            booked and
+                            cannot be
+                            selected.
                           </p>
                         )}
 
                         {isOccupied && (
                           <p className="text-[10px] text-stone-600 mt-2 font-medium">
-                            This room is currently occupied by a guest.
+                            This room is
+                            currently
+                            occupied by a
+                            guest.
                           </p>
                         )}
 
@@ -977,7 +1325,8 @@ export function GuesthouseDetail() {
                         <div>
 
                           <b className="text-base">
-                            {roomPrice.toLocaleString()} ETB
+                            {roomPrice.toLocaleString()}{" "}
+                            ETB
                           </b>
 
                           <div className="text-[10px] text-stone-400">
@@ -990,7 +1339,9 @@ export function GuesthouseDetail() {
                           <button
                             type="button"
                             onClick={() =>
-                              handleBookRoom(room)
+                              handleBookRoom(
+                                room
+                              )
                             }
                             className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-colors"
                           >
@@ -1045,13 +1396,17 @@ export function GuesthouseDetail() {
             </h3>
 
             <p className="text-xs text-stone-300">
-              Only administrator-approved properties appear in guest search. Room availability is checked before booking.
+              Only administrator-approved
+              properties appear in guest
+              search. Room availability is
+              checked before booking.
             </p>
 
             <div className="pt-3 border-t border-stone-800 space-y-2">
 
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+
                 <span className="text-stone-300">
                   Available
                 </span>
@@ -1059,6 +1414,7 @@ export function GuesthouseDetail() {
 
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+
                 <span className="text-stone-300">
                   Unavailable / Booked
                 </span>
@@ -1066,6 +1422,7 @@ export function GuesthouseDetail() {
 
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-2.5 h-2.5 rounded-full bg-stone-400" />
+
                 <span className="text-stone-300">
                   Occupied
                 </span>
@@ -1073,23 +1430,33 @@ export function GuesthouseDetail() {
 
             </div>
 
-            <div className="pt-3 border-t border-stone-800 space-y-2 text-xs text-stone-400">
+            {/* ==================================================
+                CONTACT INFORMATION
+                Do NOT use fake/default contact information.
+            ================================================== */}
 
-              <div>
-                <Phone className="inline w-4 h-4 text-amber-400 mr-2" />
+            {(guesthousePhone ||
+              guesthouseEmail) && (
+              <div className="pt-3 border-t border-stone-800 space-y-2 text-xs text-stone-400">
 
-                {guesthouse.phone ||
-                  "+251 91 100 2233"}
+                {guesthousePhone && (
+                  <div>
+                    <Phone className="inline w-4 h-4 text-amber-400 mr-2" />
+
+                    {guesthousePhone}
+                  </div>
+                )}
+
+                {guesthouseEmail && (
+                  <div className="break-all">
+                    <Mail className="inline w-4 h-4 text-amber-400 mr-2" />
+
+                    {guesthouseEmail}
+                  </div>
+                )}
+
               </div>
-
-              <div>
-                <Mail className="inline w-4 h-4 text-amber-400 mr-2" />
-
-                {guesthouse.email ||
-                  "support@guesthouse.et"}
-              </div>
-
-            </div>
+            )}
 
           </div>
 
@@ -1102,4 +1469,3 @@ export function GuesthouseDetail() {
 }
 
 export default GuesthouseDetail;
-

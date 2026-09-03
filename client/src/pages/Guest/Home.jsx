@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
@@ -19,6 +18,18 @@ import {
 
 const MAX_GUESTHOUSES = 20;
 
+/*
+ * ============================================================
+ * HERO IMAGES
+ * ============================================================
+ *
+ * These images are only used as static visual references for
+ * the Home page hero section.
+ *
+ * IMPORTANT:
+ * Guesthouse cards are NOT created from these images.
+ * Real guesthouses must always come from the database/API.
+ */
 const HERO_IMAGES = [
   {
     image:
@@ -50,28 +61,52 @@ const HERO_IMAGES = [
 /*
  * IMPORTANT:
  * Do not put fake guesthouse IDs such as:
+ *
  * "demo-lalibela-1"
  *
- * Guesthouses should come from the database through the API.
- * Lalibela Heritage Guesthouse should therefore use its real
- * database ID: 14.
+ * Guesthouses must come from the database through the API.
+ *
+ * Lalibela Heritage Guesthouse should therefore use its
+ * real database ID, which is expected to be 14.
  */
 
+/*
+ * ============================================================
+ * BACKEND URL
+ * ============================================================
+ */
 const getBackendBaseUrl = () => {
-  const configuredUrl = import.meta.env.VITE_API_BASE_URL || "";
+  const configuredUrl =
+    import.meta.env.VITE_API_BASE_URL || "";
 
-  return configuredUrl
+  const apiUrl = /^https?:\/\//.test(configuredUrl)
+    ? configuredUrl
+    : "http://localhost:5000/api";
+
+  return apiUrl
     .replace(/\/api\/?$/, "")
     .replace(/\/$/, "");
 };
 
+/*
+ * ============================================================
+ * IMAGE URL RESOLVER
+ * ============================================================
+ */
 const resolveImageUrl = (image) => {
-  if (!image || typeof image !== "string") return "";
+  if (!image || typeof image !== "string") {
+    return "";
+  }
 
   const trimmed = image.trim();
 
-  if (!trimmed) return "";
+  if (!trimmed) {
+    return "";
+  }
 
+  /*
+   * Already complete URLs.
+   */
   if (
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://") ||
@@ -80,21 +115,47 @@ const resolveImageUrl = (image) => {
     return trimmed;
   }
 
+  /*
+   * Protocol-relative URL.
+   */
   if (trimmed.startsWith("//")) {
     return `${window.location.protocol}${trimmed}`;
   }
 
   const baseUrl = getBackendBaseUrl();
 
+  /*
+   * Absolute backend path.
+   *
+   * Example:
+   * /uploads/guesthouses/image.jpg
+   *
+   * becomes:
+   * http://localhost:5000/uploads/guesthouses/image.jpg
+   */
   if (trimmed.startsWith("/")) {
-    return baseUrl ? `${baseUrl}${trimmed}` : trimmed;
+    return baseUrl
+      ? `${baseUrl}${trimmed}`
+      : trimmed;
   }
 
-  return baseUrl ? `${baseUrl}/${trimmed}` : `/${trimmed}`;
+  /*
+   * Relative backend path.
+   */
+  return baseUrl
+    ? `${baseUrl}/${trimmed}`
+    : `/${trimmed}`;
 };
 
+/*
+ * ============================================================
+ * GET GUESTHOUSE IMAGE
+ * ============================================================
+ */
 const getGuesthouseImage = (guesthouse) => {
-  if (!guesthouse) return "";
+  if (!guesthouse) {
+    return "";
+  }
 
   const possibleImages = [
     guesthouse.image,
@@ -114,16 +175,29 @@ const getGuesthouseImage = (guesthouse) => {
   }
 
   const image = possibleImages.find(
-    (item) => typeof item === "string" && item.trim() !== ""
+    (item) =>
+      typeof item === "string" &&
+      item.trim() !== ""
   );
 
   return resolveImageUrl(image);
 };
 
+/*
+ * ============================================================
+ * VERIFIED GUESTHOUSE CHECK
+ * ============================================================
+ */
 const isVerifiedGuesthouse = (guesthouse) => {
-  if (!guesthouse) return false;
+  if (!guesthouse) {
+    return false;
+  }
 
-  const status = String(guesthouse?.status || "").toUpperCase();
+  const status = String(
+    guesthouse?.status || ""
+  )
+    .trim()
+    .toUpperCase();
 
   return (
     status === "APPROVED" ||
@@ -133,22 +207,48 @@ const isVerifiedGuesthouse = (guesthouse) => {
   );
 };
 
+/*
+ * ============================================================
+ * NORMALIZE GUESTHOUSE
+ * ============================================================
+ */
 const normalizeGuesthouse = (guesthouse) => {
-  if (!guesthouse) return null;
+  if (!guesthouse) {
+    return null;
+  }
 
-  const image = getGuesthouseImage(guesthouse);
+  const image = getGuesthouseImage(
+    guesthouse
+  );
 
   const allImages = [
     ...(Array.isArray(guesthouse.images)
       ? guesthouse.images
       : []),
+
     ...(Array.isArray(guesthouse.photos)
       ? guesthouse.photos
       : []),
+
     image,
   ]
     .map(resolveImageUrl)
     .filter(Boolean);
+
+  const numericRating = Number(
+    guesthouse.rating ??
+      guesthouse.averageRating ??
+      4.5
+  );
+
+  const numericPrice = Number(
+    guesthouse.price ??
+      guesthouse.minPrice ??
+      guesthouse.priceRange?.min ??
+      guesthouse.rooms?.[0]?.price ??
+      guesthouse.rooms?.[0]?.pricePerNight ??
+      0
+  );
 
   return {
     ...guesthouse,
@@ -168,32 +268,34 @@ const normalizeGuesthouse = (guesthouse) => {
       guesthouse.description ||
       "A comfortable guesthouse offering quality accommodation.",
 
-    rating: Number(
-      guesthouse.rating ??
-        guesthouse.averageRating ??
-        4.5
-    ),
+    rating: Number.isFinite(numericRating)
+      ? numericRating
+      : 0,
 
-    price: Number(
-      guesthouse.price ??
-        guesthouse.minPrice ??
-        guesthouse.priceRange?.min ??
-        guesthouse.rooms?.[0]?.price ??
-        guesthouse.rooms?.[0]?.pricePerNight ??
-        0
-    ),
+    price: Number.isFinite(numericPrice)
+      ? numericPrice
+      : 0,
 
     image,
 
-    images: Array.from(new Set(allImages)),
+    images: Array.from(
+      new Set(allImages)
+    ),
   };
 };
 
+/*
+ * ============================================================
+ * REMOVE DUPLICATES
+ * ============================================================
+ */
 const removeDuplicates = (guesthouses) => {
   const seen = new Set();
 
   return guesthouses.filter((guesthouse) => {
-    if (!guesthouse) return false;
+    if (!guesthouse) {
+      return false;
+    }
 
     const name = String(
       guesthouse.name || ""
@@ -218,24 +320,39 @@ const removeDuplicates = (guesthouses) => {
       ? `id:${id}`
       : `${name}|${city}`;
 
-    if (!name || seen.has(key)) {
+    /*
+     * Guesthouse must have a name.
+     */
+    if (!name) {
+      return false;
+    }
+
+    if (seen.has(key)) {
       return false;
     }
 
     seen.add(key);
+
     return true;
   });
 };
 
+/*
+ * ============================================================
+ * IMAGE ERROR HANDLER
+ * ============================================================
+ */
 const handleImageError = (event) => {
   if (
-    event.currentTarget.dataset.fallbackApplied ===
-    "true"
+    event.currentTarget.dataset
+      .fallbackApplied === "true"
   ) {
     return;
   }
 
-  event.currentTarget.dataset.fallbackApplied = "true";
+  event.currentTarget.dataset.fallbackApplied =
+    "true";
+
   event.currentTarget.style.display = "none";
 
   const fallback =
@@ -248,29 +365,32 @@ const handleImageError = (event) => {
   }
 };
 
+/*
+ * ============================================================
+ * HOME COMPONENT
+ * ============================================================
+ */
 export function Home() {
   const navigate = useNavigate();
 
-  const [guesthouses, setGuesthouses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentHero, setCurrentHero] = useState(0);
+  const [guesthouses, setGuesthouses] =
+    useState([]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentHero(
-        (previous) =>
-          (previous + 1) % HERO_IMAGES.length
-      );
-    }, 7000);
+  const [loading, setLoading] =
+    useState(true);
 
-    return () => clearInterval(interval);
-  }, []);
-
+  /*
+   * ==========================================================
+   * SCROLL TO SECTION
+   * ==========================================================
+   */
   const scrollToSection = (sectionId) => {
     const section =
       document.getElementById(sectionId);
 
-    if (!section) return;
+    if (!section) {
+      return;
+    }
 
     window.history.pushState(
       null,
@@ -286,16 +406,28 @@ export function Home() {
     });
   };
 
+  /*
+   * ==========================================================
+   * HANDLE HASH NAVIGATION
+   * ==========================================================
+   */
   useEffect(() => {
     const scrollToHashSection = () => {
       const sectionId =
-        window.location.hash.replace("#", "");
+        window.location.hash.replace(
+          "#",
+          ""
+        );
 
-      if (!sectionId) return;
+      if (!sectionId) {
+        return;
+      }
 
       window.setTimeout(() => {
         const section =
-          document.getElementById(sectionId);
+          document.getElementById(
+            sectionId
+          );
 
         if (section) {
           section.scrollIntoView({
@@ -321,6 +453,11 @@ export function Home() {
     };
   }, []);
 
+  /*
+   * ==========================================================
+   * LOAD GUESTHOUSES FROM DATABASE
+   * ==========================================================
+   */
   useEffect(() => {
     let mounted = true;
 
@@ -342,6 +479,9 @@ export function Home() {
 
         let result = [];
 
+        /*
+         * Support different API response structures.
+         */
         if (Array.isArray(response)) {
           result = response;
         } else if (
@@ -349,13 +489,18 @@ export function Home() {
         ) {
           result = response.data;
         } else if (
-          Array.isArray(response?.guesthouses)
+          Array.isArray(
+            response?.guesthouses
+          )
         ) {
           result = response.guesthouses;
         } else if (
-          Array.isArray(response?.data?.guesthouses)
+          Array.isArray(
+            response?.data?.guesthouses
+          )
         ) {
-          result = response.data.guesthouses;
+          result =
+            response.data.guesthouses;
         }
 
         console.log(
@@ -363,19 +508,29 @@ export function Home() {
           result
         );
 
-        const normalizedGuesthouses = result
-          .map(normalizeGuesthouse)
-          .filter(Boolean);
+        /*
+         * Normalize API guesthouses.
+         */
+        const normalizedApiGuesthouses =
+          result
+            .map(normalizeGuesthouse)
+            .filter(Boolean);
 
+        /*
+         * Remove duplicate database records.
+         */
         const uniqueGuesthouses =
           removeDuplicates(
-            normalizedGuesthouses
+            normalizedApiGuesthouses
           );
 
         /*
-         * Check Lalibela specifically.
+         * ======================================================
+         * CHECK LALIBELA
+         * ======================================================
          *
-         * The correct database record should have:
+         * Correct database record should be:
+         *
          * id: 14
          * name: Lalibela Heritage Guesthouse
          */
@@ -398,7 +553,9 @@ export function Home() {
             lalibela.id
           );
 
-          if (Number(lalibela.id) === 14) {
+          if (
+            Number(lalibela.id) === 14
+          ) {
             console.log(
               "✅ Correct Lalibela ID 14 detected."
             );
@@ -414,6 +571,10 @@ export function Home() {
           );
         }
 
+        /*
+         * Only approved / verified guesthouses
+         * should be displayed.
+         */
         const verified =
           uniqueGuesthouses.filter(
             isVerifiedGuesthouse
@@ -435,11 +596,13 @@ export function Home() {
 
         /*
          * IMPORTANT:
-         * We no longer use fake fallback guesthouses.
          *
-         * This prevents fake IDs such as
-         * "demo-lalibela-1" from being sent to
-         * GuesthouseDetail.jsx.
+         * Do NOT create fake guesthouses here.
+         *
+         * This prevents fake IDs such as:
+         * "demo-lalibela-1"
+         *
+         * from reaching GuesthouseDetail.jsx.
          */
         if (mounted) {
           setGuesthouses([]);
@@ -458,6 +621,11 @@ export function Home() {
     };
   }, []);
 
+  /*
+   * ==========================================================
+   * VERIFIED GUESTHOUSES TO DISPLAY
+   * ==========================================================
+   */
   const verifiedGuesthouses = useMemo(() => {
     const filtered =
       guesthouses.filter(
@@ -478,13 +646,20 @@ export function Home() {
     );
   }, [guesthouses]);
 
+  /*
+   * ==========================================================
+   * DEBUG DISPLAY LIST
+   * ==========================================================
+   */
   useEffect(() => {
     console.log(
       "📋 Displaying guesthouses:",
       verifiedGuesthouses.length
     );
 
-    if (verifiedGuesthouses.length > 0) {
+    if (
+      verifiedGuesthouses.length > 0
+    ) {
       console.log(
         "📋 Guesthouses:",
         verifiedGuesthouses.map(
@@ -513,23 +688,29 @@ export function Home() {
     }
   }, [verifiedGuesthouses]);
 
-  const handleViewAndBook = (guesthouse) => {
+  /*
+   * ==========================================================
+   * VIEW AND BOOK GUESTHOUSE
+   * ==========================================================
+   */
+  const handleViewAndBook = (
+    guesthouse
+  ) => {
     if (!guesthouse?.id) {
       console.error(
         "❌ Cannot open guesthouse because the ID is missing.",
         guesthouse
       );
+
       return;
     }
 
     /*
-     * GuesthouseDetail.jsx expects a numeric database ID.
+     * GuesthouseDetail.jsx expects a numeric
+     * database ID.
      *
      * Example:
      * Lalibela Heritage Guesthouse -> 14
-     *
-     * This prevents IDs such as:
-     * demo-lalibela-1
      */
     const guesthouseId = Number(
       guesthouse.id
@@ -565,53 +746,62 @@ export function Home() {
     );
   };
 
-  const handleContactSubmit = (event) => {
+  /*
+   * ==========================================================
+   * CONTACT FORM
+   * ==========================================================
+   */
+  const handleContactSubmit = (
+    event
+  ) => {
     event.preventDefault();
 
     const formData =
-      new FormData(event.currentTarget);
+      new FormData(
+        event.currentTarget
+      );
 
-    const name = formData.get("name");
-    const email = formData.get("email");
-    const message = formData.get("message");
+    const name =
+      formData.get("name");
 
-    const subject = encodeURIComponent(
-      `Guesthouse Platform Contact - ${name}`
-    );
+    const email =
+      formData.get("email");
 
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
-    );
+    const message =
+      formData.get("message");
+
+    const subject =
+      encodeURIComponent(
+        `Guesthouse Platform Contact - ${name}`
+      );
+
+    const body =
+      encodeURIComponent(
+        `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
+      );
 
     window.location.href =
       `mailto:guesthouseplatform@gmail.com?subject=${subject}&body=${body}`;
   };
 
+  /*
+   * ==========================================================
+   * RENDER
+   * ==========================================================
+   */
   return (
     <div className="min-h-screen bg-white text-slate-900">
 
-      {/* ================= HERO ================= */}
+      {/* ======================================================
+          HERO
+      ======================================================= */}
 
       <section
         id="home"
         className="relative flex min-h-[680px] items-center justify-center overflow-hidden"
       >
-        <div className="absolute inset-0">
-          {HERO_IMAGES.map((hero, index) => (
-            <img
-              key={hero.image}
-              src={hero.image}
-              alt={hero.title}
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
-                index === currentHero
-                  ? "opacity-100"
-                  : "opacity-0"
-              }`}
-            />
-          ))}
-
-          <div className="absolute inset-0 bg-[#043658]/60" />
-          <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0 bg-[#043658]">
+          <div className="absolute inset-0 opacity-20 bg-[linear-gradient(135deg,transparent_0%,#FFC107_50%,transparent_100%)]" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 text-center sm:px-6 lg:px-8">
@@ -649,7 +839,9 @@ export function Home() {
               <button
                 type="button"
                 onClick={() =>
-                  scrollToSection("explore")
+                  scrollToSection(
+                    "explore"
+                  )
                 }
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FFC107] px-6 py-3.5 text-sm font-bold text-[#043658] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#ffca28]"
               >
@@ -660,7 +852,9 @@ export function Home() {
               <button
                 type="button"
                 onClick={() =>
-                  scrollToSection("about")
+                  scrollToSection(
+                    "about"
+                  )
                 }
                 className="rounded-xl border border-white/50 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
               >
@@ -668,32 +862,15 @@ export function Home() {
               </button>
             </div>
 
-            <div className="mt-12 flex items-center justify-center gap-2">
-              {HERO_IMAGES.map((_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  aria-label={`Show slide ${
-                    index + 1
-                  }`}
-                  onClick={() =>
-                    setCurrentHero(index)
-                  }
-                  className={`h-2 rounded-full transition-all ${
-                    index === currentHero
-                      ? "w-10 bg-[#FFC107]"
-                      : "w-2 bg-white/60"
-                  }`}
-                />
-              ))}
-            </div>
           </div>
         </div>
 
         <button
           type="button"
           onClick={() =>
-            scrollToSection("explore")
+            scrollToSection(
+              "explore"
+            )
           }
           className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-white/80 transition hover:text-white"
           aria-label="Scroll down"
@@ -702,7 +879,9 @@ export function Home() {
         </button>
       </section>
 
-      {/* ================= EXPLORE ================= */}
+      {/* ======================================================
+          EXPLORE
+      ======================================================= */}
 
       <section
         id="explore"
@@ -776,6 +955,7 @@ export function Home() {
                 reservation confirmation and receipt.
               </p>
             </div>
+
           </div>
 
           {/* GUESTHOUSES */}
@@ -835,7 +1015,6 @@ export function Home() {
                 ))}
               </div>
             ) : verifiedGuesthouses.length > 0 ? (
-
               <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 
                 {verifiedGuesthouses.map(
@@ -851,8 +1030,12 @@ export function Home() {
 
                         {guesthouse.image ? (
                           <img
-                            src={guesthouse.image}
-                            alt={guesthouse.name}
+                            src={
+                              guesthouse.image
+                            }
+                            alt={
+                              guesthouse.name
+                            }
                             onError={
                               handleImageError
                             }
@@ -893,7 +1076,9 @@ export function Home() {
                               <MapPin className="h-4 w-4 shrink-0 text-[#FFC107]" />
 
                               <span className="truncate">
-                                {guesthouse.address}
+                                {
+                                  guesthouse.address
+                                }
                               </span>
                             </div>
                           </div>
@@ -902,13 +1087,16 @@ export function Home() {
                             <Star className="h-3.5 w-3.5 fill-current" />
 
                             {Number(
-                              guesthouse.rating || 0
+                              guesthouse.rating ||
+                                0
                             ).toFixed(1)}
                           </div>
                         </div>
 
                         <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">
-                          {guesthouse.description}
+                          {
+                            guesthouse.description
+                          }
                         </p>
 
                         <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
@@ -919,12 +1107,14 @@ export function Home() {
                             </p>
 
                             <p className="mt-1 text-lg font-black text-[#043658]">
-                              {guesthouse.price > 0
+                              {guesthouse.price >
+                              0
                                 ? `${guesthouse.price.toLocaleString()} ETB`
                                 : "Contact for price"}
                             </p>
 
-                            {guesthouse.price > 0 && (
+                            {guesthouse.price >
+                              0 && (
                               <p className="text-xs text-slate-400">
                                 per night
                               </p>
@@ -951,9 +1141,7 @@ export function Home() {
                 )}
 
               </div>
-
             ) : (
-
               <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
 
                 <Building2 className="mx-auto h-12 w-12 text-slate-300" />
@@ -988,7 +1176,9 @@ export function Home() {
         </div>
       </section>
 
-      {/* ================= ABOUT ================= */}
+      {/* ======================================================
+          ABOUT
+      ======================================================= */}
 
       <section
         id="about"
@@ -1030,7 +1220,9 @@ export function Home() {
             <button
               type="button"
               onClick={() =>
-                scrollToSection("explore")
+                scrollToSection(
+                  "explore"
+                )
               }
               className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#FFC107] px-6 py-3.5 text-sm font-black text-[#043658] transition hover:bg-[#ffca28]"
             >
@@ -1100,7 +1292,9 @@ export function Home() {
         </div>
       </section>
 
-      {/* ================= CONTACT ================= */}
+      {/* ======================================================
+          CONTACT
+      ======================================================= */}
 
       <section
         id="contact"
@@ -1195,7 +1389,9 @@ export function Home() {
             </p>
 
             <form
-              onSubmit={handleContactSubmit}
+              onSubmit={
+                handleContactSubmit
+              }
               className="mt-7 space-y-5"
             >
 
@@ -1208,6 +1404,7 @@ export function Home() {
                   type="text"
                   name="name"
                   required
+                  autoComplete="name"
                   placeholder="Your name"
                   className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm outline-none transition focus:border-[#FFC107] focus:ring-2 focus:ring-[#FFC107]/20"
                 />
@@ -1222,6 +1419,7 @@ export function Home() {
                   type="email"
                   name="email"
                   required
+                  autoComplete="email"
                   placeholder="your@email.com"
                   className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm outline-none transition focus:border-[#FFC107] focus:ring-2 focus:ring-[#FFC107]/20"
                 />
@@ -1256,7 +1454,9 @@ export function Home() {
         </div>
       </section>
 
-      {/* ================= FOOTER ================= */}
+      {/* ======================================================
+          FOOTER
+      ======================================================= */}
 
       <footer className="bg-[#032944] px-4 py-8 text-white sm:px-6 lg:px-8">
 
@@ -1281,4 +1481,3 @@ export function Home() {
 }
 
 export default Home;
-

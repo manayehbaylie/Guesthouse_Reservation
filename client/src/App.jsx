@@ -62,8 +62,6 @@ export default function App() {
    * - Owner reviews
    * - Booking pages
    * - Review pages
-   * - Admin dashboard
-   * - Admin sub-pages
    */
 
   const isDashboard =
@@ -74,9 +72,11 @@ export default function App() {
     location.pathname === "/owner/reviews" ||
     location.pathname === "/booking" ||
     location.pathname.startsWith("/booking/") ||
-    location.pathname.startsWith("/reviews/") ||
-    location.pathname === "/admin" ||
-    location.pathname.startsWith("/admin/");
+    location.pathname.startsWith("/reviews/");
+
+  const showNavbar =
+    !isDashboard ||
+    location.pathname === "/guest/dashboard";
 
   return (
     <div className="min-h-screen bg-white text-stone-900 flex flex-col font-sans">
@@ -85,7 +85,7 @@ export default function App() {
           NAVBAR
       ========================================================= */}
 
-      {!isDashboard && (
+      {showNavbar && (
         <Navbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />

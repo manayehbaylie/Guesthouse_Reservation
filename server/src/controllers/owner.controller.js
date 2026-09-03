@@ -9,38 +9,97 @@ import {
   assignReceptionistToGuesthouse,
   removeReceptionistFromGuesthouse,
 } from "../services/owner.service.js";
+
 import {
   getOwnerPaymentReport,
 } from "../services/payment.service.js";
 
 import { successResponse } from "../utils/response.js";
+
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
 
-const ownerGuesthousePayload = (req) => ({
-  ...req.body,
-  image: req.files?.image?.[0]
-    ? `/uploads/guesthouses/${req.files.image[0].filename}`
-    : typeof req.body.image === "string"
-      ? req.body.image
-      : undefined,
-  licenseDocument: req.files?.licenseDocument?.[0]
-    ? `/uploads/guesthouses/${req.files.licenseDocument[0].filename}`
-    : typeof req.body.licenseDocument === "string"
-      ? req.body.licenseDocument
-      : undefined,
-  photos: req.files?.photos?.length
-    ? req.files.photos.map((file) => `/uploads/guesthouses/${file.filename}`)
-    : Array.isArray(req.body.photos)
-      ? req.body.photos.filter((photo) => typeof photo === "string")
-      : undefined,
-});
+// ============================================================
+// OWNER GUESTHOUSE PAYLOAD
+// ============================================================
 
-/*
-==================================================
-GET MY GUESTHOUSE
-==================================================
-*/
+const ownerGuesthousePayload = (req) => {
+  const payload = {
+    ...req.body,
+  };
+
+  // ==========================================================
+  // MAIN GUESTHOUSE IMAGE
+  // ==========================================================
+
+  if (
+    req.files?.image &&
+    Array.isArray(req.files.image) &&
+    req.files.image.length > 0
+  ) {
+    const imageFile = req.files.image[0];
+
+    payload.image = `/uploads/guesthouses/${imageFile.filename}`;
+  } else if (
+    typeof req.body.image === "string" &&
+    req.body.image.trim()
+  ) {
+    // Keep existing image when no new file was uploaded.
+    payload.image = req.body.image.trim();
+  }
+
+  // ==========================================================
+  // LICENSE DOCUMENT
+  // ==========================================================
+
+  if (
+    req.files?.licenseDocument &&
+    Array.isArray(req.files.licenseDocument) &&
+    req.files.licenseDocument.length > 0
+  ) {
+    const licenseFile =
+      req.files.licenseDocument[0];
+
+    payload.licenseDocument =
+      `/uploads/guesthouses/${licenseFile.filename}`;
+  } else if (
+    typeof req.body.licenseDocument === "string" &&
+    req.body.licenseDocument.trim()
+  ) {
+    payload.licenseDocument =
+      req.body.licenseDocument.trim();
+  }
+
+  // ==========================================================
+  // ADDITIONAL PHOTOS
+  // ==========================================================
+
+  if (
+    req.files?.photos &&
+    Array.isArray(req.files.photos) &&
+    req.files.photos.length > 0
+  ) {
+    payload.photos = req.files.photos.map(
+      (file) =>
+        `/uploads/guesthouses/${file.filename}`
+    );
+  } else if (
+    Array.isArray(req.body.photos)
+  ) {
+    payload.photos = req.body.photos.filter(
+      (photo) =>
+        typeof photo === "string" &&
+        photo.trim()
+    );
+  }
+
+  return payload;
+};
+
+// ============================================================
+// GET MY GUESTHOUSE
+// ============================================================
+
 export const getGuesthouse = async (
   req,
   res,
@@ -60,53 +119,61 @@ export const getGuesthouse = async (
   }
 };
 
-/*
-==================================================
-REGISTER GUESTHOUSE (from Owner Dashboard)
-==================================================
-POST /owner/guesthouse
-Creates a new PENDING guesthouse for the logged-in owner.
-==================================================
-*/
+// ============================================================
+// REGISTER GUESTHOUSE
+// ============================================================
+// POST /owner/guesthouse
+// Creates a new PENDING guesthouse for the logged-in owner.
+// ============================================================
+
 export const createGuesthouse = async (
   req,
   res,
   next
 ) => {
   try {
-    const guesthouse = await registerGuesthouseService(
-      req.user.id,
-      ownerGuesthousePayload(req)
-    );
+    const payload =
+      ownerGuesthousePayload(req);
+
+    const guesthouse =
+      await registerGuesthouseService(
+        req.user.id,
+        payload
+      );
 
     return res.status(201).json({
       success: true,
+
       data: guesthouse,
-      message: "Guesthouse registered successfully. Pending administrator approval.",
+
+      message:
+        "Guesthouse registered successfully. Pending administrator approval.",
     });
   } catch (error) {
     next(error);
   }
 };
 
-/*
-==================================================
-RESUBMIT REJECTED GUESTHOUSE
-==================================================
-PUT /owner/guesthouse/resubmit
-Owner edits rejected guesthouse and resubmits for review.
-==================================================
-*/
+// ============================================================
+// RESUBMIT REJECTED GUESTHOUSE
+// ============================================================
+// PUT /owner/guesthouse/resubmit
+// ============================================================
+
 export const resubmitGuesthouse = async (
   req,
   res,
   next
 ) => {
   try {
-    const guesthouse = await resubmitGuesthouseService(
-      req.user.id,
-      ownerGuesthousePayload(req)
-    );
+    const payload =
+      ownerGuesthousePayload(req);
+
+    const guesthouse =
+      await resubmitGuesthouseService(
+        req.user.id,
+        payload
+      );
 
     return successResponse(
       res,
@@ -118,21 +185,23 @@ export const resubmitGuesthouse = async (
   }
 };
 
-/*
-==================================================
-UPDATE MY GUESTHOUSE
-==================================================
-*/
+// ============================================================
+// UPDATE MY GUESTHOUSE
+// ============================================================
+
 export const updateGuesthouse = async (
   req,
   res,
   next
 ) => {
   try {
+    const payload =
+      ownerGuesthousePayload(req);
+
     const guesthouse =
       await updateMyGuesthouse(
         req.user.id,
-        ownerGuesthousePayload(req)
+        payload
       );
 
     return successResponse(
@@ -145,21 +214,23 @@ export const updateGuesthouse = async (
   }
 };
 
-/*
-==================================================
-CREATE RECEPTIONIST
-==================================================
-*/
+// ============================================================
+// CREATE RECEPTIONIST
+// ============================================================
+
 export const addReceptionist = async (
   req,
   res,
   next
 ) => {
   try {
-    // Handle both 'name' and 'fullName' from frontend
+    // Handle both "name" and "fullName" from frontend.
     const data = {
       ...req.body,
-      fullName: req.body.fullName || req.body.name,
+
+      fullName:
+        req.body.fullName ||
+        req.body.name,
     };
 
     const receptionist =
@@ -178,11 +249,10 @@ export const addReceptionist = async (
   }
 };
 
-/*
-==================================================
-GET RECEPTIONISTS
-==================================================
-*/
+// ============================================================
+// GET RECEPTIONISTS
+// ============================================================
+
 export const getStaff = async (
   req,
   res,
@@ -190,7 +260,9 @@ export const getStaff = async (
 ) => {
   try {
     const receptionists =
-      await getReceptionists(req.user.id);
+      await getReceptionists(
+        req.user.id
+      );
 
     return successResponse(
       res,
@@ -202,11 +274,10 @@ export const getStaff = async (
   }
 };
 
-/*
-==================================================
-ASSIGN RECEPTIONIST TO GUESTHOUSE
-==================================================
-*/
+// ============================================================
+// ASSIGN RECEPTIONIST TO GUESTHOUSE
+// ============================================================
+
 export const assignStaff = async (
   req,
   res,
@@ -229,11 +300,10 @@ export const assignStaff = async (
   }
 };
 
-/*
-==================================================
-REMOVE RECEPTIONIST FROM GUESTHOUSE
-==================================================
-*/
+// ============================================================
+// REMOVE RECEPTIONIST FROM GUESTHOUSE
+// ============================================================
+
 export const removeReceptionist = async (
   req,
   res,
@@ -255,19 +325,25 @@ export const removeReceptionist = async (
     next(error);
   }
 };
-/*
-==================================================
-UPDATE OWNER PROFILE
-==================================================
-*/
-export async function updateOwnerProfile(req, res) {
+
+// ============================================================
+// UPDATE OWNER PROFILE
+// ============================================================
+
+export async function updateOwnerProfile(
+  req,
+  res
+) {
   try {
-    const userId = req.user?.id;
+    const userId =
+      req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "User ID not found in authentication token",
+
+        message:
+          "User ID not found in authentication token",
       });
     }
 
@@ -285,21 +361,25 @@ export async function updateOwnerProfile(req, res) {
     };
 
     if (password?.trim()) {
-      data.password = await bcrypt.hash(
-        password.trim(),
-        10
-      );
+      data.password =
+        await bcrypt.hash(
+          password.trim(),
+          10
+        );
     }
 
-    const updatedUser = await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data,
-    });
+    const updatedUser =
+      await prisma.user.update({
+        where: {
+          id: userId,
+        },
+
+        data,
+      });
 
     return res.status(200).json({
       success: true,
+
       data: updatedUser,
     });
   } catch (error) {
@@ -310,17 +390,18 @@ export async function updateOwnerProfile(req, res) {
 
     return res.status(500).json({
       success: false,
+
       message:
         error?.message ||
         "Failed to update owner profile",
     });
   }
 }
-/*
-==================================================
-GET OWNER PAYMENT REPORT
-==================================================
-*/
+
+// ============================================================
+// GET OWNER PAYMENT REPORT
+// ============================================================
+
 export const getPayments = async (
   req,
   res,
@@ -342,15 +423,34 @@ export const getPayments = async (
   }
 };
 
-export const submitGuesthouseForReview = async (req, res, next) => {
-  try {
-    const guesthouse = await submitGuesthouseForReviewService(
-      req.user.id,
-      ownerGuesthousePayload(req)
-    );
+// ============================================================
+// SUBMIT GUESTHOUSE FOR REVIEW
+// ============================================================
+// PUT /owner/guesthouse/submit
+// ============================================================
 
-    return successResponse(res, guesthouse, "Guesthouse submitted for review successfully.");
-  } catch (error) {
-    next(error);
-  }
-};
+export const submitGuesthouseForReview =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const payload =
+        ownerGuesthousePayload(req);
+
+      const guesthouse =
+        await submitGuesthouseForReviewService(
+          req.user.id,
+          payload
+        );
+
+      return successResponse(
+        res,
+        guesthouse,
+        "Guesthouse submitted for review successfully."
+      );
+    } catch (error) {
+      next(error);
+    }
+  };

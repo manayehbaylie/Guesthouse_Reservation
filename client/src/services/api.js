@@ -247,22 +247,15 @@ function mapGuesthouseStatus(status) {
 // ============================================================
 // IMAGE HELPERS
 // ============================================================
-
 function normalizeImageUrl(image) {
-  if (!image) {
-    return '';
-  }
-
-  if (typeof image !== 'string') {
-    return '';
-  }
+  if (!image) return '';
+  if (typeof image !== 'string') return '';
 
   const trimmed = image.trim();
 
-  if (!trimmed) {
-    return '';
-  }
+  if (!trimmed) return '';
 
+  // Already a complete URL or browser-generated URL
   if (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
@@ -272,33 +265,48 @@ function normalizeImageUrl(image) {
     return trimmed;
   }
 
-  if (trimmed.startsWith('/')) {
-    return trimmed;
+  const apiBaseUrl = getApiUrl();
+
+  // If API URL is something like:
+  // http://localhost:5000/api
+  // then images should use:
+  // http://localhost:5000/uploads/...
+  if (
+    apiBaseUrl.startsWith('http://') ||
+    apiBaseUrl.startsWith('https://')
+  ) {
+    const cleanBaseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
+
+    const cleanPath = trimmed.startsWith('/')
+      ? trimmed
+      : `/${trimmed}`;
+
+    return `${cleanBaseUrl}${cleanPath}`;
   }
 
-  return `/${trimmed}`;
+  // If using Vite proxy /api
+  return trimmed.startsWith('/')
+    ? trimmed
+    : `/${trimmed}`;
 }
 
 function getGuesthouseImages(guesthouse) {
-  if (!guesthouse) {
-    return [];
-  }
+  if (!guesthouse) return [];
 
   const result = [];
 
   const addImage = (image) => {
-    const normalized =
-      normalizeImageUrl(image);
+    const normalized = normalizeImageUrl(image);
 
-    if (
-      normalized &&
-      !result.includes(normalized)
-    ) {
+    if (normalized && !result.includes(normalized)) {
       result.push(normalized);
     }
   };
 
+  // IMPORTANT:
+  // The database main image must come first.
   addImage(guesthouse.image);
+
   addImage(guesthouse.imageUrl);
 
   if (Array.isArray(guesthouse.images)) {
@@ -377,6 +385,13 @@ function guesthouseFormData(
       }
     });
   }
+
+  if (data.image instanceof File) {
+  formData.append(
+    'image',
+    data.image
+  );
+}
 
   if (
     Array.isArray(data.images)
@@ -2003,62 +2018,123 @@ export const ApiService = {
       );
     }
 
-    const images =
-      Array.isArray(
-        data.images
-      )
-        ? data.images
-        : [];
+    const payload = guesthouseFormData(
+      {
+        ...data,
+        address: data.location || data.address,
+      },
+      'PENDING'
+    );
 
-    const image =
-      images[0] ||
-      data.image ||
-      null;
+    try {
+      const response =
+        await api.post(
+          '/owner/guesthouse',
+          payload
+        );
 
-    const response =
-      await api.post(
-        '/guesthouses',
-        {
-          name:
-            data.name,
-
-          address:
-            data.location ||
-            data.address,
-
-          city:
-            data.city,
-
-          subCity:
-            data.subCity,
-
-          woreda:
-            data.woreda,
-
-          phone:
-            data.phone,
-
-          email:
-            data.email,
-
-          description:
-            data.description,
-
-          numberOfRooms:
-            data.numberOfRooms,
-
-          licenseNumber:
-            data.licenseNumber,
-
-          image,
-        }
+      return mapGuesthouseFromBackend(
+        unwrap(response)
+      );
+    } catch (ownerError) {
+      console.warn(
+        'POST /owner/guesthouse failed, trying /guesthouses:',
+        ownerError
       );
 
-    return mapGuesthouseFromBackend(
-      unwrap(response)
-    );
+      const response =
+        await api.post(
+          '/guesthouses',
+          payload
+        );
+
+      return mapGuesthouseFromBackend(
+        unwrap(response)
+      );
+    }
   },
 
+  // ==========================================================
+  // SAVE GUESTHOUSE DRAFT
+  // ==========================================================
+
+  async saveGuesthouseDraft(
+    data
+  ) {
+    if (!data) {
+      throw new Error(
+        'Guesthouse data is required.'
+      );
+    }
+
+    const payload = guesthouseFormData(
+      {
+        ...data,
+        address: data.location || data.address,
+      },
+      'DRAFT'
+    );
+
+    const response =
+      await api.put(
+        '/owner/guesthouse',
+        payload
+      );
+
+    return unwrap(response);
+  },
+
+  // ==========================================================
+  // SUBMIT GUESTHOUSE FOR REVIEW
+  // ==========================================================
+
+  async submitGuesthouseForReview(
+    data
+  ) {
+    if (!data) {
+      throw new Error(
+        'Guesthouse data is required.'
+      );
+    }
+
+    const payload = guesthouseFormData(
+      {
+        ...data,
+        address: data.location || data.address,
+      },
+      'PENDING'
+    );
+
+    const response =
+      await api.put(
+        '/owner/guesthouse/submit',
+        payload
+      );
+
+    return unwrap(response);
+  },
+
+  // ==========================================================
+  // UPDATE MY GUESTHOUSE
+  // ==========================================================
+
+ async updateMyGuesthouse(data) {
+  if (!data) {
+    throw new Error('Guesthouse data is required.');
+  }
+
+  const payload = guesthouseFormData({
+    ...data,
+    address: data.location || data.address,
+  });
+
+  const response = await api.put(
+    '/owner/guesthouse',
+    payload
+  );
+
+  return mapGuesthouseFromBackend(unwrap(response));
+},
   // ==========================================================
   // RESUBMIT GUESTHOUSE
   // ==========================================================
@@ -3338,7 +3414,7 @@ export const ApiService = {
       const data =
         unwrap(response);
 
-      if (!data) {
+      if (!data || !data.id) {
         return null;
       }
 
@@ -4386,12 +4462,28 @@ export const ApiService = {
           0
         ),
 
+      totalRevenue: Number(stats.totalRevenue ?? 0),
+      grossRevenue: Number(stats.grossRevenue ?? stats.totalRevenue ?? 0),
+      commissionRate: Number(stats.commissionRate ?? 10),
+      commissionRevenue: Number(stats.commissionRevenue ?? 0),
+      ownerPayouts: Number(stats.ownerPayouts ?? 0),
+
       totalUsers:
         Number(
           stats.totalUsers ??
           0
         ),
     };
+  },
+
+  async downloadAdminBackup() {
+    const response = await api.get('/admin/backup');
+    return unwrap(response);
+  },
+
+  async restoreAdminBackup(backup) {
+    const response = await api.post('/admin/backup/restore', backup);
+    return unwrap(response);
   },
 
   async getAdminPendingGuesthouses() {
@@ -4497,7 +4589,7 @@ export const ApiService = {
     }
 
     const response =
-      await api.put(
+      await api.patch(
         `/admin/guesthouses/${id}/reject`,
         {
           reason,

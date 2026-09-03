@@ -30,12 +30,7 @@ export const create = async (req, res, next) => {
 
 export const initiate = async (req, res, next) => {
   try {
-    const payloadWithDashboardRedirect = {
-      ...req.body,
-      returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`,
-    };
-
-    const payment = await initiatePayment(payloadWithDashboardRedirect);
+    const payment = await initiatePayment(req.body);
 
     return successResponse(
       res,

@@ -7,6 +7,8 @@ import {
   BedDouble,
   Search,
   LogOut,
+  CheckCircle,
+  CreditCard,
   Building,
   X,
   SlidersHorizontal,
@@ -17,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export function ReceptionistDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [guesthouse, setGuesthouse] = useState(null);
@@ -36,7 +38,6 @@ export function ReceptionistDashboard() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [receiptReservation, setReceiptReservation] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ============================================================
   // LOGOUT
@@ -45,9 +46,11 @@ export function ReceptionistDashboard() {
   const handleLogout = async () => {
     try {
       setProfileMenuOpen(false);
+
       if (typeof logout === 'function') {
         await logout();
       }
+
       navigate('/login');
     } catch (err) {
       console.error('Logout failed:', err);
@@ -607,16 +610,104 @@ export function ReceptionistDashboard() {
           </span>
         </div>
 
-        {/* ERROR */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-sm">{error}</span>
-            <button onClick={() => setError(null)} className="ml-auto text-red-600 hover:text-red-800">
-              <X className="w-4 h-4" />
-            </button>
           </div>
-        )}
+
+          {/* PROFILE */}
+          <div className="relative">
+
+            <button
+              type="button"
+              onClick={() =>
+                setProfileMenuOpen(
+                  !profileMenuOpen
+                )
+              }
+              className="flex items-center gap-2 px-3 py-2 bg-white border border-stone-300 rounded-xl hover:bg-stone-50"
+            >
+
+              <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                {user?.name?.charAt(0) ||
+                  user?.fullName?.charAt(0) ||
+                  'R'}
+              </div>
+
+              <span className="text-sm font-semibold text-stone-700">
+                {user?.name ||
+                  user?.fullName ||
+                  'Receptionist'}
+              </span>
+
+              <span className="text-stone-400">
+                ▼
+              </span>
+
+            </button>
+
+            {profileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-stone-200 rounded-xl shadow-xl z-50">
+
+                <div className="p-4 border-b border-stone-200">
+
+                  <div className="font-semibold text-stone-900">
+                    {user?.name ||
+                      user?.fullName ||
+                      'Receptionist'}
+                  </div>
+
+                  <div className="text-xs text-stone-500 mt-1">
+                    {user?.email ||
+                      'No email'}
+                  </div>
+
+                  <div className="text-xs font-bold text-blue-600 mt-2">
+                    RECEPTIONIST
+                  </div>
+
+                </div>
+
+                <div className="p-2">
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileMenuOpen(
+                        false
+                      );
+
+                      navigate(
+                        '/profile'
+                      );
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-stone-700 hover:bg-stone-100"
+                  >
+                    ⚙️
+                    <span>
+                      Update Profile
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleLogout
+                    }
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4" />
+
+                    <span>
+                      Logout
+                    </span>
+                  </button>
+
+                </div>
+
+              </div>
+            )}
+
+          </div>
+
+        </div>
 
         {/* ====================================================
             KPI CARDS - BRAND COLORS

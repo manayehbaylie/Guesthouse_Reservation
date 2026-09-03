@@ -9,6 +9,8 @@ import {
   updateAdminProfile,
   getPlatformReport,
   getSystemActivity,
+  createSystemBackup,
+  restoreSystemBackup,
 } from "../services/admin.service.js";
 
 import { successResponse } from "../utils/response.js";
@@ -189,6 +191,22 @@ export const updateAdminProfileController = async (
       },
       "Profile updated successfully"
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const downloadBackup = async (req, res, next) => {
+  try {
+    return successResponse(res, await createSystemBackup(), "System backup created successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const restoreBackup = async (req, res, next) => {
+  try {
+    return successResponse(res, await restoreSystemBackup(req.body), "System restored successfully");
   } catch (error) {
     next(error);
   }

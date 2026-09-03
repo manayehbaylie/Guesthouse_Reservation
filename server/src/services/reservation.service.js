@@ -58,14 +58,17 @@ export const createReservation = async (data, guestId) => {
       );
     }
 
+    if (room.available === false) {
+      throw new Error(
+        "This room is currently unavailable for booking."
+      );
+    }
+
     if (room.maintenanceStatus !== "AVAILABLE") {
       throw new Error(
         "This room is currently unavailable for maintenance."
       );
     }
-
-    // PENDING does NOT block dates.
-    // CONFIRMED and CHECKED_IN block dates.
 
     const overlappingReservation =
       await tx.reservation.findFirst({
@@ -74,6 +77,7 @@ export const createReservation = async (data, guestId) => {
 
           status: {
             in: [
+              "PENDING",
               "CONFIRMED",
               "CHECKED_IN",
             ],

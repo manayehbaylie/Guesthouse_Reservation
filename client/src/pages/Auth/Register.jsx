@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -53,7 +53,16 @@ export function Register() {
   // ==========================================================
 
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const errorRef = useRef(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const hasError = error || Object.values(fieldErrors).some(Boolean);
+    if (hasError) {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [error, fieldErrors]);
 
   // ==========================================================
   // VALIDATE PERSONAL INFORMATION
@@ -66,11 +75,11 @@ export function Register() {
 
     // Full name
     if (!trimmedName) {
-      return "Full name is required.";
+      return { field: "name", message: "Full name is required." };
     }
 
     if (trimmedName.length < 3) {
-      return "Full name must be at least 3 characters.";
+      return { field: "name", message: "Full name must be at least 3 characters." };
     }
 
     // Email is OPTIONAL
@@ -78,19 +87,19 @@ export function Register() {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!emailPattern.test(trimmedEmail)) {
-        return "Please enter a valid email address.";
+        return { field: "email", message: "Please enter a valid email address." };
       }
     }
 
     // Phone
     if (!trimmedPhone) {
-      return "Phone number is required.";
+      return { field: "phone", message: "Phone number is required." };
     }
 
     const phoneDigits = trimmedPhone.replace(/\D/g, "");
 
     if (phoneDigits.length < 9) {
-      return "Please enter a valid phone number.";
+      return { field: "phone", message: "Please enter a valid phone number." };
     }
 
     return null;
@@ -102,19 +111,19 @@ export function Register() {
 
   const validatePassword = () => {
     if (!password) {
-      return "Password is required.";
+      return { field: "password", message: "Password is required." };
     }
 
     if (password.length < 6) {
-      return "Password must be at least 6 characters.";
+      return { field: "password", message: "Password must be at least 6 characters." };
     }
 
     if (!confirmPassword) {
-      return "Please confirm your password.";
+      return { field: "confirmPassword", message: "Please confirm your password." };
     }
 
     if (password !== confirmPassword) {
-      return "Passwords do not match.";
+      return { field: "confirmPassword", message: "Passwords do not match." };
     }
 
     return null;
@@ -126,7 +135,7 @@ export function Register() {
 
   const validateAccountType = () => {
     if (!accountType) {
-      return "Please select how you want to use the platform.";
+      return { field: "accountType", message: "Please select how you want to use the platform." };
     }
 
     return null;
@@ -142,15 +151,15 @@ export function Register() {
     }
 
     if (!residentialAddress.trim()) {
-      return "Residential address is required for owner accounts.";
+      return { field: "residentialAddress", message: "Residential address is required for owner accounts." };
     }
 
     if (!idType) {
-      return "Please select your ID type.";
+      return { field: "idType", message: "Please select your ID type." };
     }
 
     if (!idNumber.trim()) {
-      return "ID number is required for owner accounts.";
+      return { field: "idNumber", message: "ID number is required for owner accounts." };
     }
 
     return null;
@@ -176,6 +185,7 @@ export function Register() {
 
     setAgreedToTerms(false);
     setError("");
+    setFieldErrors({});
   };
 
   // ==========================================================
@@ -190,6 +200,12 @@ export function Register() {
     }
 
     setError("");
+    setFieldErrors({});
+
+    const showFieldError = (validationError) => {
+      setFieldErrors({ [validationError.field]: validationError.message });
+      setError("");
+    };
 
     // --------------------------------------------------------
     // PERSONAL INFORMATION
@@ -198,7 +214,7 @@ export function Register() {
     const personalError = validatePersonalInformation();
 
     if (personalError) {
-      setError(personalError);
+      showFieldError(personalError);
       return;
     }
 
@@ -209,7 +225,7 @@ export function Register() {
     const passwordError = validatePassword();
 
     if (passwordError) {
-      setError(passwordError);
+      showFieldError(passwordError);
       return;
     }
 
@@ -220,14 +236,14 @@ export function Register() {
     const accountTypeError = validateAccountType();
 
     if (accountTypeError) {
-      setError(accountTypeError);
+      showFieldError(accountTypeError);
       return;
     }
 
     const ownerRegistrationError = validateOwnerRegistration();
 
     if (ownerRegistrationError) {
-      setError(ownerRegistrationError);
+      showFieldError(ownerRegistrationError);
       return;
     }
 
@@ -236,9 +252,8 @@ export function Register() {
     // --------------------------------------------------------
 
     if (!agreedToTerms) {
-      setError(
-        "Please agree to the Terms of Service and Privacy Policy."
-      );
+      setFieldErrors({ terms: "Please agree to the Terms of Service and Privacy Policy." });
+      setError("");
       return;
     }
 
@@ -326,7 +341,20 @@ export function Register() {
         err?.message ||
         "Registration failed. Please try again.";
 
-      setError(message);
+      const backendErrors = err?.response?.data?.errors;
+      if (backendErrors && typeof backendErrors === "object") {
+        setFieldErrors(
+          Object.fromEntries(
+            Object.entries(backendErrors).map(([field, value]) => [
+              field,
+              Array.isArray(value) ? value[0] : String(value),
+            ])
+          )
+        );
+        setError("");
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -335,14 +363,6 @@ export function Register() {
   // ==========================================================
   // ERROR MESSAGE
   // ==========================================================
-
-  const errorMessage = error ? (
-    <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-      <X className="mt-0.5 h-5 w-5 flex-shrink-0" />
-
-      <span>{error}</span>
-    </div>
-  ) : null;
 
   // ==========================================================
   // MAIN REGISTER PAGE
@@ -385,12 +405,6 @@ export function Register() {
         </div>
 
         {/* ==================================================
-            ERROR
-        =================================================== */}
-
-        {errorMessage}
-
-        {/* ==================================================
             REGISTRATION FORM
         =================================================== */}
 
@@ -416,7 +430,11 @@ export function Register() {
               <SelectField
                 label="Register as"
                 value={accountType}
-                onChange={setAccountType}
+                onChange={(value) => {
+                  setAccountType(value);
+                  setFieldErrors((previous) => ({ ...previous, accountType: undefined }));
+                }}
+                error={fieldErrors.accountType}
                 required
               />
 
@@ -425,7 +443,11 @@ export function Register() {
               <InputField
                 label="Full Name"
                 value={name}
-                onChange={setName}
+                onChange={(value) => {
+                  setName(value);
+                  setFieldErrors((previous) => ({ ...previous, name: undefined }));
+                }}
+                error={fieldErrors.name}
                 placeholder="Enter your full name"
                 required
                 autoComplete="name"
@@ -440,7 +462,11 @@ export function Register() {
                 label="Email Address"
                 type="email"
                 value={email}
-                onChange={setEmail}
+                onChange={(value) => {
+                  setEmail(value);
+                  setFieldErrors((previous) => ({ ...previous, email: undefined }));
+                }}
+                error={fieldErrors.email}
                 placeholder="Enter your email address (optional)"
                 autoComplete="email"
                 icon={
@@ -454,7 +480,11 @@ export function Register() {
                 label="Phone Number"
                 type="tel"
                 value={phone}
-                onChange={setPhone}
+                onChange={(value) => {
+                  setPhone(value);
+                  setFieldErrors((previous) => ({ ...previous, phone: undefined }));
+                }}
+                error={fieldErrors.phone}
                 placeholder="+251 9XX XXX XXX"
                 required
                 autoComplete="tel"
@@ -468,7 +498,11 @@ export function Register() {
                   <InputField
                     label="Residential Address"
                     value={residentialAddress}
-                    onChange={setResidentialAddress}
+                    onChange={(value) => {
+                      setResidentialAddress(value);
+                      setFieldErrors((previous) => ({ ...previous, residentialAddress: undefined }));
+                    }}
+                    error={fieldErrors.residentialAddress}
                     placeholder="Enter your residential address"
                     required
                     autoComplete="street-address"
@@ -486,7 +520,12 @@ export function Register() {
 
                       <select
                         value={idType}
-                        onChange={(event) => setIdType(event.target.value)}
+                        onChange={(event) => {
+                          setIdType(event.target.value);
+                          setFieldErrors((previous) => ({ ...previous, idType: undefined }));
+                        }}
+                        aria-invalid={Boolean(fieldErrors.idType)}
+                        aria-describedby={fieldErrors.idType ? "register-idType-error" : undefined}
                         required
                         className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm text-[#082F49] outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
                       >
@@ -496,6 +535,7 @@ export function Register() {
                         <option value="Driver License">Driver License</option>
                       </select>
 
+
                       <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     </div>
                   </div>
@@ -503,7 +543,11 @@ export function Register() {
                   <InputField
                     label="ID Number"
                     value={idNumber}
-                    onChange={setIdNumber}
+                    onChange={(value) => {
+                      setIdNumber(value);
+                      setFieldErrors((previous) => ({ ...previous, idNumber: undefined }));
+                    }}
+                    error={fieldErrors.idNumber}
                     placeholder="Enter your ID number"
                     required
                     autoComplete="off"
@@ -517,7 +561,11 @@ export function Register() {
               <PasswordField
                 label="Password"
                 value={password}
-                onChange={setPassword}
+                onChange={(value) => {
+                  setPassword(value);
+                  setFieldErrors((previous) => ({ ...previous, password: undefined }));
+                }}
+                error={fieldErrors.password}
                 placeholder="Minimum 6 characters"
                 show={showPassword}
                 onToggle={() =>
@@ -534,7 +582,11 @@ export function Register() {
               <PasswordField
                 label="Confirm Password"
                 value={confirmPassword}
-                onChange={setConfirmPassword}
+                onChange={(value) => {
+                  setConfirmPassword(value);
+                  setFieldErrors((previous) => ({ ...previous, confirmPassword: undefined }));
+                }}
+                error={fieldErrors.confirmPassword}
                 placeholder="Re-enter your password"
                 show={showConfirmPassword}
                 onToggle={() =>
@@ -556,7 +608,11 @@ export function Register() {
 
           <TermsBox
             checked={agreedToTerms}
-            onChange={setAgreedToTerms}
+            onChange={(checked) => {
+              setAgreedToTerms(checked);
+              setFieldErrors((previous) => ({ ...previous, terms: undefined }));
+            }}
+            error={fieldErrors.terms}
           />
 
           {/* ==================================================
@@ -576,6 +632,14 @@ export function Register() {
             </SubmitButton>
 
           </div>
+
+          {(error || Object.values(fieldErrors).some(Boolean)) && (
+            <div ref={errorRef}>
+              <FieldError>
+              {error || Object.values(fieldErrors).find(Boolean)}
+              </FieldError>
+            </div>
+          )}
 
           {/* ==================================================
               LOGIN LINK
@@ -819,6 +883,7 @@ function InputField({
   label,
   value,
   onChange,
+  error,
   type = "text",
   placeholder = "",
   required = false,
@@ -863,7 +928,10 @@ function InputField({
           placeholder={placeholder}
           required={required}
           autoComplete={autoComplete}
-          className={`w-full rounded-xl border border-slate-200 bg-white py-3.5 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
+          aria-invalid={Boolean(error)}
+          className={`w-full rounded-xl border bg-white py-3.5 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
+            error ? "border-red-400" : "border-slate-200"
+          } ${
             icon
               ? "pl-11 pr-4"
               : "px-4"
@@ -884,6 +952,7 @@ function SelectField({
   label,
   value,
   onChange,
+  error,
   required = false,
 }) {
   return (
@@ -917,7 +986,10 @@ function SelectField({
             onChange(event.target.value)
           }
           required={required}
-          className={`w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
+          aria-invalid={Boolean(error)}
+          className={`w-full appearance-none rounded-xl border bg-white py-3.5 pl-11 pr-11 text-sm outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${
+            error ? "border-red-400" : "border-slate-200"
+          } ${
             value
               ? "text-[#082F49]"
               : "text-slate-400"
@@ -956,6 +1028,7 @@ function PasswordField({
   label,
   value,
   onChange,
+  error,
   placeholder,
   show,
   onToggle,
@@ -994,7 +1067,8 @@ function PasswordField({
           placeholder={placeholder}
           required={required}
           autoComplete={autoComplete}
-          className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-12 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
+          aria-invalid={Boolean(error)}
+          className={`w-full rounded-xl border bg-white py-3.5 pl-11 pr-12 text-sm text-[#082F49] outline-none transition placeholder:text-slate-400 focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10 ${error ? "border-red-400" : "border-slate-200"}`}
         />
 
         {/* SHOW / HIDE */}
@@ -1031,9 +1105,11 @@ function PasswordField({
 function TermsBox({
   checked,
   onChange,
+  error,
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300">
+    <div>
+      <label className={`flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 transition hover:border-slate-300 ${error ? "border-red-400" : "border-slate-200"}`}>
 
       <input
         type="checkbox"
@@ -1060,7 +1136,17 @@ function TermsBox({
 
       </span>
 
-    </label>
+      </label>
+    </div>
+  );
+}
+
+function FieldError({ children }) {
+  return (
+    <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+      <X className="mt-0.5 h-4 w-4 flex-shrink-0" />
+      <span>{children}</span>
+    </div>
   );
 }
 

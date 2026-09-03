@@ -1,15 +1,13 @@
 import { z } from "zod";
 
 export const guesthouseSchema = z.object({
-  name: z.string().min(3, "Name is required"),
+  name: z.string().min(2, "Name is required"),
 
-  address: z.string().min(3, "Address is required"),
+  address: z.string().min(2, "Address is required"),
 
   city: z.string().min(2, "City is required"),
 
-  description: z
-    .string()
-    .min(10, "Description is too short"),
+  description: z.string().optional().or(z.literal("")),
 
-  image: z.string().optional(),
+  image: z.any().optional(),
 });

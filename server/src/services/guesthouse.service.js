@@ -1,4 +1,3 @@
-
 import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
 
@@ -6,28 +5,67 @@ import { createNotification } from "./notification.service.js";
 // HELPERS
 // ============================================================
 
+/**
+ * Clean and normalize an image path.
+ *
+ * Prevents invalid values such as:
+ * - null
+ * - undefined
+ * - [object Object]
+ * - empty strings
+ */
+const cleanImagePath = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const cleaned = value.trim();
+
+  if (
+    !cleaned ||
+    cleaned === "[object Object]" ||
+    cleaned === "null" ||
+    cleaned === "undefined"
+  ) {
+    return null;
+  }
+
+  return cleaned;
+};
+
+/**
+ * Get the primary guesthouse image.
+ *
+ * Priority:
+ * 1. guesthouse.image
+ * 2. first valid photo from guesthouse.photos
+ */
 const getPrimaryGuesthouseImage = (guesthouse) => {
   if (!guesthouse) {
     return null;
   }
 
+  // ==========================================================
+  // MAIN IMAGE HAS PRIORITY
+  // ==========================================================
+
+  const mainImage = cleanImagePath(guesthouse.image);
+
+  if (mainImage) {
+    return mainImage;
+  }
+
+  // ==========================================================
+  // FALLBACK TO PHOTOS
+  // ==========================================================
+
   const photos = Array.isArray(guesthouse.photos)
-    ? guesthouse.photos.filter(
-        (photo) =>
-          typeof photo === "string" &&
-          photo.trim() &&
-          photo !== "[object Object]"
-      )
+    ? guesthouse.photos
+        .map(cleanImagePath)
+        .filter(Boolean)
     : [];
 
-  const image =
-    typeof guesthouse.image === "string"
-      ? guesthouse.image.trim()
-      : "";
-
-  return image && image !== "[object Object]"
-    ? image
-    : photos[0] || null;
+  return photos[0] || null;
 };
 
 // ============================================================
@@ -35,21 +73,29 @@ const getPrimaryGuesthouseImage = (guesthouse) => {
 // ============================================================
 
 export const createGuesthouse = async (data, ownerId) => {
+  const numericOwnerId = Number(ownerId);
+
+  if (!Number.isInteger(numericOwnerId) || numericOwnerId <= 0) {
+    throw new Error(`Invalid owner ID: ${ownerId}`);
+  }
+
   const photos = Array.isArray(data.photos)
-    ? data.photos.filter(
-        (photo) =>
-          typeof photo === "string" &&
-          photo.trim() &&
-          photo !== "[object Object]"
-      )
+    ? data.photos
+        .map(cleanImagePath)
+        .filter(Boolean)
     : [];
 
-  const firstPhoto =
-    photos[0] ||
-    (typeof data.image === "string"
-      ? data.image.trim()
-      : null) ||
-    null;
+  // ==========================================================
+  // IMPORTANT:
+  // data.image should already contain the uploaded image path
+  // created by the controller/Multer.
+  // ==========================================================
+
+  const mainImage = cleanImagePath(data.image);
+
+  // Main uploaded image has priority.
+  // If there is no main image, use the first additional photo.
+  const firstPhoto = mainImage || photos[0] || null;
 
   return await prisma.guesthouse.create({
     data: {
@@ -60,13 +106,20 @@ export const createGuesthouse = async (data, ownerId) => {
       subCity: data.subCity || null,
 
       city: data.city,
+
       description: data.description || null,
 
+      // ======================================================
+      // SAVE OWNER-UPLOADED MAIN IMAGE
+      // ======================================================
       image: firstPhoto,
+
+      // Additional guesthouse photos
       photos,
 
-      ownerId: Number(ownerId),
+      ownerId: numericOwnerId,
 
+      // New guesthouses require admin approval.
       status: "PENDING",
     },
 
@@ -113,6 +166,9 @@ export const getAllGuesthouses = async () => {
   return guesthouses.map((guesthouse) => ({
     ...guesthouse,
 
+    // ========================================================
+    // RETURN OWNER-UPLOADED IMAGE
+    // ========================================================
     image: getPrimaryGuesthouseImage(guesthouse),
 
     photos: Array.isArray(guesthouse.photos)
@@ -134,6 +190,10 @@ export const updateGuesthouse = async (id, data) => {
 
   const updateData = {};
 
+  // ==========================================================
+  // BASIC INFORMATION
+  // ==========================================================
+
   if (data.name !== undefined) {
     updateData.name = data.name;
   }
@@ -151,31 +211,60 @@ export const updateGuesthouse = async (id, data) => {
   }
 
   if (data.description !== undefined) {
-    updateData.description = data.description;
+    updateData.description = data.description || null;
   }
 
-  if (data.image !== undefined) {
-    updateData.image = data.image;
+  // ==========================================================
+  // MAIN IMAGE UPDATE
+  // ==========================================================
+
+  if (Object.prototype.hasOwnProperty.call(data, "image")) {
+    const image = cleanImagePath(data.image);
+
+    if (image) {
+      updateData.image = image;
+    }
+
+    // Do not overwrite the existing image with null/empty data.
   }
+
+  // ==========================================================
+  // ADDITIONAL PHOTOS UPDATE
+  // ==========================================================
 
   if (data.photos !== undefined) {
     updateData.photos = Array.isArray(data.photos)
-      ? data.photos.filter(
-          (photo) =>
-            typeof photo === "string" &&
-            photo.trim() &&
-            photo !== "[object Object]"
-        )
+      ? data.photos
+          .map(cleanImagePath)
+          .filter(Boolean)
       : [];
   }
+
+  // ==========================================================
+  // STATUS
+  // ==========================================================
 
   if (data.status !== undefined) {
     updateData.status = data.status;
   }
 
+  // ==========================================================
+  // OWNER
+  // ==========================================================
+
   if (data.ownerId !== undefined) {
-    updateData.ownerId = Number(data.ownerId);
+    const numericOwnerId = Number(data.ownerId);
+
+    if (!Number.isInteger(numericOwnerId) || numericOwnerId <= 0) {
+      throw new Error(`Invalid owner ID: ${data.ownerId}`);
+    }
+
+    updateData.ownerId = numericOwnerId;
   }
+
+  // ==========================================================
+  // UPDATE DATABASE
+  // ==========================================================
 
   const guesthouse = await prisma.guesthouse.update({
     where: {
@@ -189,6 +278,10 @@ export const updateGuesthouse = async (id, data) => {
       rooms: true,
     },
   });
+
+  // ==========================================================
+  // RETURN CLEAN IMAGE DATA
+  // ==========================================================
 
   return {
     ...guesthouse,
@@ -280,6 +373,9 @@ export const getGuesthouseByOwnerId = async (ownerId) => {
   return guesthouses.map((guesthouse) => ({
     ...guesthouse,
 
+    // ========================================================
+    // IMPORTANT FOR OWNER DASHBOARD
+    // ========================================================
     image: getPrimaryGuesthouseImage(guesthouse),
 
     photos: Array.isArray(guesthouse.photos)
@@ -311,7 +407,7 @@ export const deleteGuesthouse = async (id) => {
 // ============================================================
 
 export const getPendingGuesthouses = async () => {
-  return await prisma.guesthouse.findMany({
+  const guesthouses = await prisma.guesthouse.findMany({
     where: {
       status: "PENDING",
     },
@@ -338,6 +434,19 @@ export const getPendingGuesthouses = async () => {
       rooms: true,
     },
   });
+
+  return guesthouses.map((guesthouse) => ({
+    ...guesthouse,
+
+    // ========================================================
+    // ADMIN SHOULD ALSO SEE THE OWNER IMAGE BEFORE APPROVAL
+    // ========================================================
+    image: getPrimaryGuesthouseImage(guesthouse),
+
+    photos: Array.isArray(guesthouse.photos)
+      ? guesthouse.photos
+      : [],
+  }));
 };
 
 // ============================================================
@@ -345,7 +454,7 @@ export const getPendingGuesthouses = async () => {
 // ============================================================
 
 export const getAllGuesthousesAdmin = async () => {
-  return await prisma.guesthouse.findMany({
+  const guesthouses = await prisma.guesthouse.findMany({
     orderBy: {
       createdAt: "desc",
     },
@@ -368,6 +477,19 @@ export const getAllGuesthousesAdmin = async () => {
       rooms: true,
     },
   });
+
+  return guesthouses.map((guesthouse) => ({
+    ...guesthouse,
+
+    // ========================================================
+    // ADMIN GETS THE REAL SAVED IMAGE
+    // ========================================================
+    image: getPrimaryGuesthouseImage(guesthouse),
+
+    photos: Array.isArray(guesthouse.photos)
+      ? guesthouse.photos
+      : [],
+  }));
 };
 
 // ============================================================
@@ -391,25 +513,36 @@ export const approveGuesthouse = async (id) => {
     throw new Error("Guesthouse not found");
   }
 
-  const primaryImage =
-    getPrimaryGuesthouseImage(guesthouse) ||
-    guesthouse.image ||
-    null;
+  // ==========================================================
+  // IMPORTANT:
+  // DO NOT CREATE OR REPLACE THE IMAGE DURING APPROVAL.
+  //
+  // Keep the image that was uploaded during registration.
+  // ==========================================================
 
-  const updatedGuesthouse =
-    await prisma.guesthouse.update({
-      where: {
-        id: guesthouseId,
-      },
+  const primaryImage = getPrimaryGuesthouseImage(guesthouse);
 
-      data: {
-        image: primaryImage,
-        status: "APPROVED",
-        rejectionReason: null,
-      },
-    });
+  const updatedGuesthouse = await prisma.guesthouse.update({
+    where: {
+      id: guesthouseId,
+    },
 
-  // Notify owner after approval
+    data: {
+      // Preserve owner's uploaded image.
+      image: primaryImage,
+
+      // Only change approval status.
+      status: "APPROVED",
+
+      // Clear any previous rejection reason.
+      rejectionReason: null,
+    },
+  });
+
+  // ==========================================================
+  // NOTIFY OWNER
+  // ==========================================================
+
   await createNotification({
     title: "Guesthouse Approved",
 
@@ -423,7 +556,11 @@ export const approveGuesthouse = async (id) => {
     category: "guesthouse",
   });
 
-  return updatedGuesthouse;
+  return {
+    ...updatedGuesthouse,
+
+    image: getPrimaryGuesthouseImage(updatedGuesthouse),
+  };
 };
 
 // ============================================================
@@ -450,23 +587,36 @@ export const rejectGuesthouse = async (
     throw new Error("Guesthouse not found");
   }
 
-  const updatedGuesthouse =
-    await prisma.guesthouse.update({
-      where: {
-        id: guesthouseId,
-      },
+  const rejectionReason =
+    typeof reason === "string" && reason.trim()
+      ? reason.trim()
+      : "Does not meet platform standards";
 
-      data: {
-        status: "REJECTED",
-        rejectionReason: reason,
-      },
-    });
+  const updatedGuesthouse = await prisma.guesthouse.update({
+    where: {
+      id: guesthouseId,
+    },
 
-  // Notify owner after rejection
+    data: {
+      // ======================================================
+      // IMPORTANT:
+      // DO NOT REMOVE OR CHANGE THE IMAGE WHEN REJECTING.
+      // ======================================================
+
+      status: "REJECTED",
+
+      rejectionReason,
+    },
+  });
+
+  // ==========================================================
+  // NOTIFY OWNER
+  // ==========================================================
+
   await createNotification({
     title: "Guesthouse Rejected",
 
-    message: `Your guesthouse has been rejected by the administrator. Reason: ${reason}`,
+    message: `Your guesthouse has been rejected by the administrator. Reason: ${rejectionReason}`,
 
     userId: guesthouse.ownerId,
 
@@ -475,6 +625,9 @@ export const rejectGuesthouse = async (
     category: "guesthouse",
   });
 
-  return updatedGuesthouse;
-};
+  return {
+    ...updatedGuesthouse,
 
+    image: getPrimaryGuesthouseImage(updatedGuesthouse),
+  };
+};

@@ -14,7 +14,41 @@ import {
 import { ApiService } from '../../services/api.js';
 
 const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80';
+  '';
+
+const getBackendBaseUrl = () => {
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const apiUrl = /^https?:\/\//.test(configuredUrl)
+    ? configuredUrl
+    : 'http://localhost:5000/api';
+
+  return apiUrl
+    .replace(/\/api\/?$/, '')
+    .replace(/\/$/, '');
+};
+
+const resolveImageUrl = (image) => {
+  if (!image || typeof image !== 'string') return '';
+
+  const value = image.trim();
+
+  if (!value) return '';
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('data:') ||
+    value.startsWith('blob:')
+  ) {
+    return value;
+  }
+
+  const baseUrl = getBackendBaseUrl();
+
+  return value.startsWith('/')
+    ? `${baseUrl}${value}`
+    : `${baseUrl}/${value}`;
+};
 
 export function AllGuesthouses() {
   const navigate = useNavigate();
@@ -151,7 +185,7 @@ export function AllGuesthouses() {
 
     for (const candidate of candidates) {
       if (typeof candidate === 'string' && candidate.trim()) {
-        return candidate.trim();
+        return resolveImageUrl(candidate);
       }
 
       // Support image objects such as:
@@ -166,7 +200,7 @@ export function AllGuesthouses() {
           candidate?.src;
 
         if (typeof url === 'string' && url.trim()) {
-          return url.trim();
+          return resolveImageUrl(url);
         }
       }
     }
@@ -178,8 +212,10 @@ export function AllGuesthouses() {
   // IMAGE ERROR HANDLER
   // ---------------------------------------------------------
   const handleImageError = (event) => {
-    if (event.currentTarget.src !== FALLBACK_IMAGE) {
+    if (FALLBACK_IMAGE && event.currentTarget.src !== FALLBACK_IMAGE) {
       event.currentTarget.src = FALLBACK_IMAGE;
+    } else {
+      event.currentTarget.style.display = 'none';
     }
   };
 

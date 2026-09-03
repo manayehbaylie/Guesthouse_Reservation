@@ -21,6 +21,13 @@ export const getDashboardStats = async () => {
     },
   });
 
+  const commissionRate = Math.min(
+    100,
+    Math.max(0, Number(process.env.COMMISSION_RATE ?? 10))
+  );
+  const totalRevenue = revenue._sum.amount ?? 0;
+  const commissionRevenue = (totalRevenue * commissionRate) / 100;
+
   const availableRooms = await prisma.room.count({
     where: {
       available: true,
@@ -39,7 +46,12 @@ export const getDashboardStats = async () => {
     totalRooms,
     totalReservations,
     totalPayments,
-    totalRevenue: revenue._sum.amount ?? 0,
+    totalRevenue,
+    grossRevenue: totalRevenue,
+    commissionRate,
+    commissionRevenue,
+    platformCommission: commissionRevenue,
+    ownerPayouts: totalRevenue - commissionRevenue,
     availableRooms,
     reservedRooms,
   };
