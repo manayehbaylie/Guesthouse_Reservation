@@ -140,26 +140,10 @@ export function Navbar({ onToggleSidebar }) {
 
     // Before login - show public links.
     return [
-      {
-        path: '/',
-        label: 'Home',
-        icon: <Home className="w-4 h-4" />,
-      },
-      {
-        path: '/search',
-        label: 'Explore',
-        icon: <Search className="w-4 h-4" />,
-      },
-      {
-        path: '/about',
-        label: 'About Us',
-        icon: null,
-      },
-      {
-        path: '/contact',
-        label: 'Contact',
-        icon: null,
-      },
+      { path: '/', label: 'Home', icon: <Home className="w-4 h-4" /> },
+      { path: '/search', label: 'Explore', icon: <Search className="w-4 h-4" /> },
+      { path: '/about', label: 'About Us', icon: null },
+      { path: '/contact', label: 'Contact', icon: null },
     ];
   };
 
@@ -307,8 +291,6 @@ export function Navbar({ onToggleSidebar }) {
 
   /* ==========================================================
      RECEPTIONIST DASHBOARD NAVBAR
-
-     Receptionist dashboard gets a simplified navbar.
   ========================================================== */
 
   if (isReceptionistDashboard) {
@@ -471,12 +453,8 @@ export function Navbar({ onToggleSidebar }) {
 
             </div>
 
-            {/* ==================================================
-                DESKTOP NAVIGATION
-            ================================================== */}
-
+            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
-
               {!isAuthenticated() && (
                 <>
                   {navLinks.map((link) => (
@@ -493,7 +471,6 @@ export function Navbar({ onToggleSidebar }) {
               )}
 
               {/* Dashboard Link - Only show when authenticated as Guest */}
-
               {isAuthenticated() && isGuest() && (
                 <Link
                   to="/guest/dashboard"
@@ -502,233 +479,143 @@ export function Navbar({ onToggleSidebar }) {
                   Dashboard
                 </Link>
               )}
-
             </div>
 
-            {/* ==================================================
-                RIGHT SIDE - USER MENU
-            ================================================== */}
-
+            {/* Right Side - User Menu */}
             <div className="flex items-center gap-4">
-
-              {isAuthenticated() && (
-                <NotificationBell variant="navbar" />
-              )}
+              {isAuthenticated() && <NotificationBell variant="navbar" />}
 
               {isAuthenticated() ? (
                 <div className="relative">
-
                   <button
-                    type="button"
-                    onClick={() =>
-                      setProfileDropdownOpen(!profileDropdownOpen)
-                    }
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                     className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-stone-100 transition-colors"
                   >
                     <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
                       <User className="w-4 h-4 text-amber-600" />
                     </div>
-
                     <div className="hidden lg:block text-left">
-                      <p className="text-sm font-bold text-stone-900">
-                        {getDisplayName()}
-                      </p>
-
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}
-                      >
+                      <p className="text-sm font-bold text-stone-900">{getDisplayName()}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}>
                         {getRoleDisplay()}
                       </span>
                     </div>
-
                     <ChevronDown className="w-4 h-4 text-stone-400 hidden lg:block" />
                   </button>
 
                   {profileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-stone-200 shadow-lg py-2 z-50">
-
-                      {/* User Information */}
-
                       <div className="px-4 py-3 border-b border-stone-100">
-
-                        <p className="font-bold text-stone-900">
-                          {getDisplayName()}
-                        </p>
-
-                        <p className="text-sm text-stone-500">
-                          {user?.email}
-                        </p>
-
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()} mt-1 inline-block`}
-                        >
+                        <p className="font-bold text-stone-900">{getDisplayName()}</p>
+                        <p className="text-sm text-stone-500">{user?.email}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()} mt-1 inline-block`}>
                           {getRoleDisplay()}
                         </span>
 
                       </div>
 
-                      {/* Update Profile */}
+                      {isGuest() && (
+                        <Link to="/guest/dashboard" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                          <Home className="w-4 h-4" /> Dashboard
+                        </Link>
+                      )}
 
-                      <button
-                        type="button"
-                        onClick={openUpdateProfile}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-bold text-stone-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      >
+                      <Link to="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                        <User className="w-4 h-4" /> Profile
+                      </Link>
 
-                        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                          <Settings className="w-4 h-4 text-blue-600" />
-                        </div>
+                      <Link to="/reservations" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                        <Calendar className="w-4 h-4" /> My Bookings
+                      </Link>
 
-                        <span>
-                          Update Profile
-                        </span>
-
+                      <button onClick={openUpdateProfile} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                        <Settings className="w-4 h-4" /> Update Profile
                       </button>
 
-                      {/* Logout */}
-
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100 mt-1"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Logout
+                      <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100 mt-1">
+                        <LogOut className="w-4 h-4" /> Logout
                       </button>
-
                     </div>
                   )}
-
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors"
-                  >
-                    Login
-                  </Link>
-
-                  <Link
-                    to="/register"
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors"
-                  >
-                    Register
-                  </Link>
-
+                  <Link to="/login" className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors">Login</Link>
+                  <Link to="/register" className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors">Register</Link>
                 </div>
               )}
 
-              {/* Mobile Menu Button */}
-
               <button
-                type="button"
-                onClick={() =>
-                  setMobileMenuOpen(!mobileMenuOpen)
-                }
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 rounded-lg hover:bg-stone-100 transition-colors"
-                aria-label="Toggle menu"
               >
-                {mobileMenuOpen ? (
-                  <X className="w-6 h-6 text-stone-600" />
-                ) : (
-                  <Menu className="w-6 h-6 text-stone-600" />
-                )}
+                {mobileMenuOpen ? <X className="w-6 h-6 text-stone-600" /> : <Menu className="w-6 h-6 text-stone-600" />}
               </button>
-
             </div>
 
           </div>
+
+          {/* ======================================================
+              MOBILE MENU
+          ====================================================== */}
+
+          {mobileMenuOpen && (
+            <div className="md:hidden bg-white border-t border-stone-200 py-4 px-4">
+              <div className="flex flex-col gap-2">
+                {!isAuthenticated() && (
+                  <>
+                    {navLinks.map((link) => (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
+                      >
+                        {link.icon}
+                        <span className="font-semibold text-stone-700">{link.label}</span>
+                      </Link>
+                    ))}
+                  </>
+                )}
+
+                {isAuthenticated() && isGuest() && (
+                  <Link
+                    to="/guest/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
+                  >
+                    <Home className="w-4 h-4" />
+                    <span className="font-semibold text-amber-600">Dashboard</span>
+                  </Link>
+                )}
+
+                {isAuthenticated() && (
+                  <button
+                    type="button"
+                    onClick={openUpdateProfile}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-700"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="font-semibold">Update Profile</span>
+                  </button>
+                )}
+
+                {isAuthenticated() && (
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 transition-colors text-red-600"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="font-semibold">Logout</span>
+                  </button>
+                )}
+
+              </div>
+            </div>
+          )}
 
         </div>
-
-        {/* ======================================================
-            MOBILE MENU
-        ====================================================== */}
-
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-stone-200 py-4 px-4">
-
-            <div className="flex flex-col gap-2">
-
-              {/* Public Navigation */}
-
-              {!isAuthenticated() && (
-                <>
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      onClick={() =>
-                        setMobileMenuOpen(false)
-                      }
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
-                    >
-                      {link.icon}
-
-                      <span className="font-semibold text-stone-700">
-                        {link.label}
-                      </span>
-                    </Link>
-                  ))}
-                </>
-              )}
-
-              {/* Guest Dashboard */}
-
-              {isAuthenticated() && isGuest() && (
-                <Link
-                  to="/guest/dashboard"
-                  onClick={() =>
-                    setMobileMenuOpen(false)
-                  }
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-amber-50 transition-colors"
-                >
-                  <Home className="w-4 h-4 text-amber-600" />
-
-                  <span className="font-semibold text-amber-600">
-                    Dashboard
-                  </span>
-                </Link>
-              )}
-
-              {/* Mobile Update Profile */}
-
-              {isAuthenticated() && (
-                <button
-                  type="button"
-                  onClick={openUpdateProfile}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-blue-700"
-                >
-                  <Settings className="w-4 h-4" />
-
-                  <span className="font-semibold">
-                    Update Profile
-                  </span>
-                </button>
-              )}
-
-              {/* Mobile Logout */}
-
-              {isAuthenticated() && (
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 transition-colors text-red-600"
-                >
-                  <LogOut className="w-4 h-4" />
-
-                  <span className="font-semibold">
-                    Logout
-                  </span>
-                </button>
-              )}
-
-            </div>
-
-          </div>
-        )}
 
       </nav>
 
