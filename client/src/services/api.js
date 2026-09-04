@@ -69,6 +69,20 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // IMPORTANT:
+    // When sending FormData, do NOT force application/json.
+    // Axios/browser must automatically create:
+    // multipart/form-data; boundary=....
+    if (
+      typeof FormData !== 'undefined' &&
+      config.data instanceof FormData
+    ) {
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -2008,234 +2022,178 @@ export const ApiService = {
   // REGISTER GUESTHOUSE
   // ==========================================================
 
-  async registerGuesthouse(
-    data
-  ) {
-    if (!data) {
-      throw new Error(
-        'Guesthouse data is required.'
-      );
-    }
+  async registerGuesthouse(data) {
+  if (!data) {
+    throw new Error(
+      "Guesthouse data is required."
+    );
+  }
 
-    const payload = guesthouseFormData(
+  const payload =
+    guesthouseFormData(
       {
         ...data,
-        address: data.location || data.address,
+        address:
+          data.location ||
+          data.address,
       },
-      'PENDING'
+      "PENDING"
     );
 
-    try {
-      const response =
-        await api.post(
-          '/owner/guesthouse',
-          payload
-        );
-
-      return mapGuesthouseFromBackend(
-        unwrap(response)
-      );
-    } catch (ownerError) {
-      console.warn(
-        'POST /owner/guesthouse failed, trying /guesthouses:',
-        ownerError
+  try {
+    const response =
+      await api.post(
+        "/owner/guesthouse",
+        payload
       );
 
-      const response =
-        await api.post(
-          '/guesthouses',
-          payload
-        );
+    return mapGuesthouseFromBackend(
+      unwrap(response)
+    );
+  } catch (ownerError) {
+    console.warn(
+      "POST /owner/guesthouse failed, trying /guesthouses:",
+      ownerError
+    );
 
-      return mapGuesthouseFromBackend(
-        unwrap(response)
+    const response =
+      await api.post(
+        "/guesthouses",
+        payload
       );
-    }
-  },
 
+    return mapGuesthouseFromBackend(
+      unwrap(response)
+    );
+  }
+},
   // ==========================================================
   // SAVE GUESTHOUSE DRAFT
   // ==========================================================
 
-  async saveGuesthouseDraft(
-    data
-  ) {
-    if (!data) {
-      throw new Error(
-        'Guesthouse data is required.'
-      );
-    }
+  async saveGuesthouseDraft(data) {
+  if (!data) {
+    throw new Error(
+      "Guesthouse data is required."
+    );
+  }
 
-    const payload = guesthouseFormData(
+  const payload =
+    guesthouseFormData(
       {
         ...data,
-        address: data.location || data.address,
+        address:
+          data.location ||
+          data.address,
       },
-      'DRAFT'
+      "DRAFT"
     );
 
-    const response =
-      await api.put(
-        '/owner/guesthouse',
-        payload
-      );
+  const response =
+    await api.put(
+      "/owner/guesthouse",
+      payload
+    );
 
-    return unwrap(response);
-  },
+  return mapGuesthouseFromBackend(
+    unwrap(response)
+  );
+},
 
   // ==========================================================
   // SUBMIT GUESTHOUSE FOR REVIEW
   // ==========================================================
 
-  async submitGuesthouseForReview(
-    data
-  ) {
-    if (!data) {
-      throw new Error(
-        'Guesthouse data is required.'
-      );
-    }
+  async submitGuesthouseForReview(data) {
+  if (!data) {
+    throw new Error(
+      "Guesthouse data is required."
+    );
+  }
 
-    const payload = guesthouseFormData(
+  const payload =
+    guesthouseFormData(
       {
         ...data,
-        address: data.location || data.address,
+        address:
+          data.location ||
+          data.address,
       },
-      'PENDING'
+      "PENDING"
     );
 
-    const response =
-      await api.put(
-        '/owner/guesthouse/submit',
-        payload
-      );
+  const response =
+    await api.put(
+      "/owner/guesthouse/submit",
+      payload
+    );
 
-    return unwrap(response);
-  },
+  return mapGuesthouseFromBackend(
+    unwrap(response)
+  );
+},
 
   // ==========================================================
   // UPDATE MY GUESTHOUSE
   // ==========================================================
 
- async updateMyGuesthouse(data) {
+async updateMyGuesthouse(data) {
   if (!data) {
-    throw new Error('Guesthouse data is required.');
+    throw new Error(
+      "Guesthouse data is required."
+    );
   }
 
-  const payload = guesthouseFormData({
-    ...data,
-    address: data.location || data.address,
-  });
+  const payload =
+    guesthouseFormData({
+      ...data,
+      address:
+        data.location ||
+        data.address,
+    });
 
-  const response = await api.put(
-    '/owner/guesthouse',
-    payload
+  const response =
+    await api.put(
+      "/owner/guesthouse",
+      payload
+    );
+
+  return mapGuesthouseFromBackend(
+    unwrap(response)
   );
-
-  return mapGuesthouseFromBackend(unwrap(response));
 },
   // ==========================================================
   // RESUBMIT GUESTHOUSE
   // ==========================================================
 
-  async resubmitGuesthouse(
-    data
-  ) {
-    if (!data) {
-      throw new Error(
-        'Guesthouse data is required.'
-      );
-    }
+async resubmitGuesthouse(data) {
+  if (!data) {
+    throw new Error(
+      "Guesthouse data is required."
+    );
+  }
 
-    const response =
-      await api.put(
-        '/owner/guesthouse/resubmit',
-        guesthouseFormData(
-          {
-            ...data,
+  const payload =
+    guesthouseFormData(
+      {
+        ...data,
+        address:
+          data.location ||
+          data.address,
+      },
+      "PENDING"
+    );
 
-            address:
-              data.location ||
-              data.address,
-          },
-          'PENDING'
-        )
-      );
+  const response =
+    await api.put(
+      "/owner/guesthouse/resubmit",
+      payload
+    );
 
-    return unwrap(response);
-  },
-
-  // ==========================================================
-  // GET MY GUESTHOUSE
-  // ==========================================================
-
-  async getMyGuesthouse() {
-    try {
-      const response =
-        await api.get(
-          '/owner/guesthouse'
-        );
-
-      const data =
-        unwrap(response);
-
-      if (!data) {
-        return null;
-      }
-
-      if (
-        typeof data === 'object' &&
-        Object.keys(data).length === 0
-      ) {
-        return null;
-      }
-
-      if (!data.id) {
-        return null;
-      }
-
-      let rooms = [];
-
-      try {
-        const roomsResponse =
-          await api.get(
-            `/rooms/guesthouse/${data.id}`
-          );
-
-        rooms =
-          unwrap(
-            roomsResponse
-          ) || [];
-      } catch (error) {
-        console.warn(
-          '⚠️ Could not fetch owner guesthouse rooms:',
-          error
-        );
-
-        rooms = [];
-      }
-
-      return mapGuesthouseFromBackend(
-        data,
-        rooms
-      );
-    } catch (error) {
-      console.error(
-        '❌ Error in getMyGuesthouse:',
-        error
-      );
-
-      if (
-        error?.response?.status ===
-        404
-      ) {
-        return null;
-      }
-
-      return null;
-    }
-  },
-
+  return mapGuesthouseFromBackend(
+    unwrap(response)
+  );
+},
   // ==========================================================
   // ROOMS
   // ==========================================================
@@ -3459,109 +3417,111 @@ export const ApiService = {
   // OWNER
   // ==========================================================
 
-  async getMyGuesthouse() {
+  // ==========================================================
+// GET MY GUESTHOUSE
+// ==========================================================
+
+async getMyGuesthouse() {
+  try {
+    const response = await api.get(
+      "/owner/guesthouse"
+    );
+
+    const data = unwrap(response);
+
+    if (!data) {
+      return null;
+    }
+
+    // Backend may return either:
+    // 1. guesthouse object
+    // 2. array containing guesthouse
+    const guesthouse = Array.isArray(data)
+      ? data[0]
+      : data;
+
+    if (!guesthouse?.id) {
+      return null;
+    }
+
+    let rooms = [];
+
     try {
-      const response =
+      const roomsResponse = await api.get(
+        `/rooms/guesthouse/${guesthouse.id}`
+      );
+
+      rooms =
+        unwrap(roomsResponse) || [];
+    } catch (roomError) {
+      console.warn(
+        "⚠️ Could not load owner guesthouse rooms:",
+        roomError?.message || roomError
+      );
+
+      rooms = [];
+    }
+
+    return mapGuesthouseFromBackend(
+      guesthouse,
+      rooms
+    );
+  } catch (error) {
+    console.warn(
+      "⚠️ Primary owner guesthouse endpoint failed:",
+      error?.message || error
+    );
+
+    try {
+      const fallbackResponse =
         await api.get(
-          "/owner/guesthouse"
+          "/guesthouses/owner/me"
         );
 
-      const data =
-        unwrap(response);
+      const fallbackData =
+        unwrap(fallbackResponse);
 
-      if (!data || !data.id) {
+      if (!fallbackData) {
+        return null;
+      }
+
+      const guesthouse =
+        Array.isArray(fallbackData)
+          ? fallbackData[0]
+          : fallbackData;
+
+      if (!guesthouse?.id) {
         return null;
       }
 
       let rooms = [];
 
       try {
-        const roomsRes =
+        const roomsResponse =
           await api.get(
-            `/rooms/guesthouse/${data.id}`
+            `/rooms/guesthouse/${guesthouse.id}`
           );
 
         rooms =
-          unwrap(roomsRes) || [];
-      } catch (roomError) {
-        console.warn(
-          "⚠️ Could not load owner guesthouse rooms:",
-          roomError?.message ||
-            roomError
-        );
-
+          unwrap(roomsResponse) || [];
+      } catch {
         rooms = [];
       }
 
       return mapGuesthouseFromBackend(
-        data,
+        guesthouse,
         rooms
       );
-    } catch (error) {
-      console.warn(
-        "⚠️ Primary owner guesthouse endpoint failed:",
-        error?.message || error
+    } catch (fallbackError) {
+      console.error(
+        "❌ Could not load owner guesthouse:",
+        fallbackError
       );
 
-      try {
-        const fallbackRes =
-          await api.get(
-            "/guesthouses/owner/me"
-          );
-
-        const data =
-          unwrap(fallbackRes);
-
-        if (!data) {
-          return null;
-        }
-
-        return mapGuesthouseFromBackend(
-          data
-        );
-      } catch (fallbackError) {
-        console.error(
-          "❌ Could not load owner guesthouse:",
-          fallbackError
-        );
-
-        return null;
-      }
+      return null;
     }
-  },
-
-  async updateMyGuesthouse(
-    data
-  ) {
-    const response =
-      await api.put(
-        "/owner/guesthouse",
-        {
-          name:
-            data.name,
-
-          address:
-            data.location ||
-            data.address,
-
-          city:
-            data.city,
-
-          description:
-            data.description,
-
-          image:
-            data.images?.[0] ||
-            data.image ||
-            null,
-        }
-      );
-
-    return mapGuesthouseFromBackend(
-      unwrap(response)
-    );
-  },
-
+  }
+},
   async getOwnerReceptionists(
     guesthouseId
   ) {
