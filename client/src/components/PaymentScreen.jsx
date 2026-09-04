@@ -95,8 +95,9 @@ function PaymentScreen({
 
   const [paymentMethod, setPaymentMethod] =
     useState(
-      paymentData?.paymentMethod ||
-        "TELEBIRR"
+      paymentData?.paymentMethod === "CHAPA"
+        ? "TELEBIRR"
+        : paymentData?.paymentMethod || "TELEBIRR"
     );
 
   const [telebirrPhone, setTelebirrPhone] =
@@ -545,10 +546,7 @@ function PaymentScreen({
         paymentResult?.data?.checkoutUrl ||
         paymentResult?.data?.checkout_url;
 
-      if (
-        paymentMethod === "CHAPA" &&
-        checkoutUrl
-      ) {
+      if (checkoutUrl) {
         console.log(
           "Redirecting to Chapa:",
           checkoutUrl
@@ -665,7 +663,7 @@ function PaymentScreen({
           </h1>
 
           <p className="mt-2 text-stone-500">
-            Review your booking and select your payment method.
+                    Review your booking and choose how to pay securely through Chapa.
           </p>
 
         </div>
@@ -821,7 +819,7 @@ function PaymentScreen({
                   </h2>
 
                   <p className="text-sm text-stone-500">
-                    Select how you want to pay.
+                    Select a payment method. You will securely complete your payment through Chapa.
                   </p>
 
                 </div>
@@ -830,7 +828,7 @@ function PaymentScreen({
 
               {/* PAYMENT OPTIONS */}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                 <PaymentMethodButton
                   selected={
@@ -867,20 +865,11 @@ function PaymentScreen({
                 />
 
                 <PaymentMethodButton
-                  selected={
-                    paymentMethod ===
-                    "CHAPA"
-                  }
-                  onClick={() =>
-                    setPaymentMethod(
-                      "CHAPA"
-                    )
-                  }
-                  icon={
-                    <CreditCard className="w-6 h-6" />
-                  }
-                  title="Chapa"
-                  description="Online payment"
+                  selected={paymentMethod === "CARD"}
+                  onClick={() => setPaymentMethod("CARD")}
+                  icon={<CreditCard className="w-6 h-6" />}
+                  title="Card"
+                  description="Debit or credit card"
                 />
 
               </div>
@@ -1001,36 +990,6 @@ function PaymentScreen({
                       }
                       className="w-full px-4 py-4 rounded-xl border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                     />
-
-                  </div>
-
-                </div>
-              )}
-
-              {/* ==================================================
-                  CHAPA
-              ================================================== */}
-
-              {paymentMethod ===
-                "CHAPA" && (
-
-                <div className="mt-6 rounded-2xl bg-blue-50 border border-blue-200 p-5">
-
-                  <div className="flex items-start gap-3">
-
-                    <ShieldCheck className="w-6 h-6 text-blue-600 shrink-0" />
-
-                    <div>
-
-                      <h3 className="font-bold text-blue-900">
-                        Secure Chapa Payment
-                      </h3>
-
-                      <p className="mt-1 text-sm text-blue-800">
-                        You will be redirected to the secure Chapa checkout page to complete your payment.
-                      </p>
-
-                    </div>
 
                   </div>
 
@@ -1191,10 +1150,7 @@ function PaymentScreen({
                   <>
                     <CheckCircle2 className="w-5 h-5" />
 
-                    {paymentMethod ===
-                    "CHAPA"
-                      ? "Continue to Chapa"
-                      : "Pay & Confirm Booking"}
+                    Continue to Payment
                   </>
                 )}
 

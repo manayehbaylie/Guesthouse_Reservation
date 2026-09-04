@@ -1085,10 +1085,9 @@ function mapPaymentMethodToBackend(
   }
 
   if (
-    normalized === 'CHAPA' ||
     normalized === 'CARD'
   ) {
-    return 'CHAPA';
+    return 'CARD';
   }
 
   return 'TELEBIRR';
@@ -2949,6 +2948,27 @@ export const ApiService = {
         "Payment initialization failed."
       );
     }
+  },
+
+  async getPaymentHistory() {
+    const response = await api.get("/payments/history");
+    const payments = unwrap(response) || [];
+
+    return Array.isArray(payments)
+      ? payments.map(mapPaymentFromBackend).filter(Boolean)
+      : [];
+  },
+
+  async getChapaPaymentStatus(txRef) {
+    if (!txRef) {
+      throw new Error("Payment reference is required.");
+    }
+
+    const response = await api.get("/payments/chapa/status", {
+      params: { tx_ref: txRef },
+    });
+
+    return mapPaymentFromBackend(unwrap(response));
   },
 
   async initiatePayment(

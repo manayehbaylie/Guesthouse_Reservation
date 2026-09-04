@@ -12,7 +12,6 @@ import { ApiService } from '../services/api.js';
 import {
   Home,
   Search,
-  Calendar,
   User,
   LogOut,
   Menu,
@@ -471,13 +470,27 @@ export function Navbar({ onToggleSidebar }) {
                         {getRoleDisplay()}
                       </span>
 
-                    </div>
+                      </div>
 
-                    {isGuest() && (
-                      <Link to="/guest/dashboard" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
-                        <Home className="w-4 h-4" /> Dashboard
-                      </Link>
-                    )}
+                      {/* Update Profile */}
+
+                      <button
+                        type="button"
+                        onClick={openUpdateProfile}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-bold text-stone-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                      >
+
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+
+                          <Settings className="w-4 h-4 text-blue-600" />
+
+                        </div>
+
+                        <span>
+                          Update Profile
+                        </span>
+
+                      </button>
 
                     <Link to="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
                       <User className="w-4 h-4" /> Profile
@@ -534,16 +547,47 @@ export function Navbar({ onToggleSidebar }) {
               </>
             )}
 
-            {isAuthenticated() && isGuest() && (
-              <Link
-                to="/guest/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
-              >
-                <Home className="w-4 h-4" />
-                <span className="font-semibold text-amber-600">Dashboard</span>
-              </Link>
-            )}
+              {isAuthenticated() && isGuest() && (
+
+                <Link
+                  to="/guest/dashboard"
+                  onClick={() =>
+                    setMobileMenuOpen(false)
+                  }
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-amber-50 transition-colors"
+                >
+
+                  <Home className="w-4 h-4 text-amber-600" />
+
+                  <span className="font-semibold text-amber-600">
+                    Dashboard
+                  </span>
+
+                </Link>
+
+              )}
+
+              {/* Mobile Update Profile */}
+
+              {isAuthenticated() && (
+
+                <button
+                  type="button"
+                  onClick={openUpdateProfile}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-blue-700"
+                >
+
+                  <Settings className="w-4 h-4" />
+
+                  <span className="font-semibold">
+                    Update Profile
+                  </span>
+
+                </button>
+
+              )}
+
+              {/* Mobile Logout */}
 
               {isAuthenticated() && (
 

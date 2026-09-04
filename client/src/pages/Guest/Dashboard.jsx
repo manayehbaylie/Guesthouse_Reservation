@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiService } from '../../services/api.js';
 import { DashboardLayout } from '../../components/DashboardLayout.jsx';
@@ -16,15 +16,18 @@ import {
   Clock as ClockIcon,
   XCircle,
   Eye,
+  Receipt,
 } from 'lucide-react';
 
 export default function GuestDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [bookings, setBookings] = useState([]);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [recentGuesthouses, setRecentGuesthouses] = useState([]);
+  const [paymentHistory, setPaymentHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalBookings: 0,
@@ -42,6 +45,9 @@ export default function GuestDashboard() {
     try {
       const reservations = await ApiService.getReservations({ guestId: user?.id });
       setBookings(reservations);
+
+      const payments = await ApiService.getPaymentHistory();
+      setPaymentHistory(payments);
 
       const now = new Date();
       const upcoming = reservations.filter(
@@ -68,6 +74,10 @@ export default function GuestDashboard() {
       setLoading(false);
     }
   };
+
+  const paymentStatus = location.state?.paymentStatus;
+  const paymentMessage = location.state?.paymentMessage;
+  const verifiedPayment = location.state?.payment;
 
   const getStatusBadge = (status) => {
     const statusMap = {
@@ -117,6 +127,35 @@ export default function GuestDashboard() {
 
   return (
     <DashboardLayout showHeader={false}>
+      {paymentStatus && (
+        <div className={`mb-6 flex items-start gap-3 rounded-2xl border p-5 ${
+          paymentStatus === 'PAID'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : 'border-amber-200 bg-amber-50 text-amber-800'
+        }`}>
+          {paymentStatus === 'PAID' ? (
+            <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          ) : (
+            <Clock className="mt-0.5 h-5 w-5 shrink-0" />
+          )}
+          <div>
+            <p className="font-black">
+              {paymentStatus === 'PAID' ? 'Payment receipt confirmed' : 'Payment status update'}
+            </p>
+            <p className="mt-1 text-sm">
+              {paymentMessage ||
+                `Payment ${paymentStatus.toLowerCase()} for your reservation.`}
+            </p>
+            {verifiedPayment && (
+              <p className="mt-2 text-xs font-semibold">
+                Receipt #{verifiedPayment.referenceNumber || verifiedPayment.id} ·{' '}
+                {Number(verifiedPayment.amount || 0).toLocaleString()} ETB
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-[#043658]">
@@ -349,6 +388,64 @@ export default function GuestDashboard() {
                 <tr>
                   <td colSpan="6" className="px-6 py-8 text-center text-[#647b8a]">
                     No bookings found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Payment History */}
+      <div className="mt-8 overflow-hidden rounded-2xl border border-[#e5edf2] bg-white">
+        <div className="flex items-center justify-between border-b border-[#e5edf2] px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Receipt className="h-5 w-5 text-[#FFC107]" />
+            <h2 className="font-bold text-[#043658]">Payment History</h2>
+          </div>
+          <span className="text-xs font-semibold text-[#647b8a]">
+            {paymentHistory.length} payment{paymentHistory.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-[#f5f8fa]">
+              <tr className="text-left">
+                <th className="px-6 py-3 font-semibold text-[#647b8a]">Reference</th>
+                <th className="px-6 py-3 font-semibold text-[#647b8a]">Method</th>
+                <th className="px-6 py-3 font-semibold text-[#647b8a]">Amount</th>
+                <th className="px-6 py-3 font-semibold text-[#647b8a]">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paymentHistory.slice(0, 10).map((payment) => (
+                <tr key={payment.id} className="border-t border-[#e5edf2]">
+                  <td className="px-6 py-3 font-semibold text-[#043658]">
+                    {payment.referenceNumber || `REF-${payment.id}`}
+                  </td>
+                  <td className="px-6 py-3 uppercase text-[#647b8a]">
+                    {payment.method || payment.paymentMethod || 'N/A'}
+                  </td>
+                  <td className="px-6 py-3 font-semibold text-[#043658]">
+                    {Number(payment.amount || 0).toLocaleString()} ETB
+                  </td>
+                  <td className="px-6 py-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      payment.status === 'paid'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : payment.status === 'failed'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {String(payment.status || 'pending').toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {paymentHistory.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="px-6 py-8 text-center text-[#647b8a]">
+                    No payment history found
                   </td>
                 </tr>
               )}

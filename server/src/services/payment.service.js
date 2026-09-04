@@ -22,7 +22,7 @@ const FRONTEND_URL =
 const PAYMENT_METHODS = [
   "TELEBIRR",
   "BANK_TRANSFER",
-  "CHAPA",
+  "CARD",
 ];
 
 // ============================================================
@@ -1015,9 +1015,7 @@ export const initiatePayment = async ({
   // CHAPA
   // ==========================================================
 
-  if (
-    paymentMethod === "CHAPA"
-  ) {
+  {
     if (!CHAPA_SECRET_KEY) {
       throw new Error(
         "CHAPA_SECRET_KEY is not configured."
@@ -1058,7 +1056,7 @@ export const initiatePayment = async ({
 
         amount,
 
-        method: "CHAPA",
+        method: paymentMethod,
 
         status: "PENDING",
       });
@@ -1088,10 +1086,10 @@ export const initiatePayment = async ({
           txRef,
 
           callbackUrl:
-            `${BACKEND_URL}/payments/chapa/callback`,
+            `${BACKEND_URL.replace(/\/$/, '')}/api/payments/chapa/callback`,
 
           returnUrl:
-            `${FRONTEND_URL}/payment/chapa/return`,
+            `${FRONTEND_URL}/payment/chapa/return?tx_ref=${encodeURIComponent(txRef)}`,
         });
 
       // ------------------------------------------------------
@@ -1119,7 +1117,7 @@ export const initiatePayment = async ({
       return {
         status: "PENDING",
 
-        method: "CHAPA",
+        method: paymentMethod,
 
         reservationId:
           reservation.id,
@@ -1441,6 +1439,115 @@ export const markPaymentAsPaid =
         result.reservation,
     };
   };
+
+// ============================================================
+// VERIFY CHAPA TRANSACTION
+// ============================================================
+
+const getReservationIdFromTxRef = (txRef) => {
+  const match = /^GH-(\d+)-\d+$/.exec(String(txRef || '').trim());
+  return match ? Number(match[1]) : null;
+};
+
+const verifyChapaTransaction = async (txRef) => {
+  if (!CHAPA_SECRET_KEY) {
+    throw new Error('CHAPA_SECRET_KEY is not configured.');
+  }
+
+  const response = await axios.get(
+    `https://api.chapa.co/v1/transaction/verify/${encodeURIComponent(txRef)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
+        Accept: 'application/json',
+      },
+      timeout: 30000,
+    }
+  );
+
+  const verified = response.data?.status === 'success' &&
+    ['success', 'completed'].includes(
+      String(response.data?.data?.status || '').toLowerCase()
+    );
+
+  return {
+    verified,
+    status: String(response.data?.data?.status || '').toUpperCase(),
+    data: response.data,
+  };
+};
+
+export const processChapaCallback = async (payload = {}) => {
+  const txRef = String(
+    payload.tx_ref ||
+      payload.trx_ref ||
+      payload.txRef ||
+      payload.reference ||
+      ''
+  ).trim();
+
+  const reservationId = getReservationIdFromTxRef(txRef);
+
+  if (!txRef || !reservationId) {
+    throw new Error('Invalid Chapa transaction reference.');
+  }
+
+  const payment = await prisma.payment.findUnique({
+    where: { reservationId },
+  });
+
+  if (!payment) {
+    throw new Error('Payment not found for Chapa transaction.');
+  }
+
+  const verification = await verifyChapaTransaction(txRef);
+
+  if (verification.verified) {
+    return markPaymentAsPaid(payment.id);
+  }
+
+  const failed = ['failed', 'cancelled', 'canceled'].includes(
+    verification.status.toLowerCase()
+  );
+
+  if (failed && payment.status === 'PENDING') {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: 'FAILED' },
+    });
+  }
+
+  return prisma.payment.findUnique({
+    where: { id: payment.id },
+    include: { reservation: true },
+  });
+};
+
+export const getChapaPaymentStatus = async (guestId, txRef) => {
+  const reservationId = getReservationIdFromTxRef(txRef);
+
+  if (!reservationId) {
+    throw new Error('Invalid Chapa transaction reference.');
+  }
+
+  const payment = await prisma.payment.findFirst({
+    where: {
+      reservationId,
+      reservation: { guestId: Number(guestId) },
+    },
+    include: { reservation: true },
+  });
+
+  if (!payment) {
+    throw new Error('Payment not found.');
+  }
+
+  if (payment.status === 'PENDING') {
+    return processChapaCallback({ tx_ref: txRef });
+  }
+
+  return payment;
+};
 
 // ============================================================
 // UPDATE PAYMENT STATUS

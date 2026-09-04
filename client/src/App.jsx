@@ -30,6 +30,11 @@ import { GuestBookings } from "./pages/Guest/Reservations.jsx";
 import GuestDashboard from "./pages/Guest/Dashboard.jsx";
 import { BookingDetail } from "./pages/Guest/BookingDetail.jsx";
 import { WriteReview } from "./pages/Guest/WriteReview.jsx";
+import ChapaReturn from "./pages/Guest/ChapaReturn.jsx";
+
+// Payment pages
+// IMPORTANT: use lowercase "payment" consistently
+import CustomReceipt from "./pages/payment/CustomReceipt.jsx";
 
 // Owner pages
 import { OwnerDashboard } from "./pages/Owner/Dashboard.jsx";
@@ -44,6 +49,7 @@ import { ReceptionistDashboard } from "./pages/Receptionist/Dashboard.jsx";
 
 // Admin
 import AdminDashboard from "./pages/Admin/Dashboard.jsx";
+
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -63,6 +69,7 @@ export default function App() {
    * - Owner reviews
    * - Booking pages
    * - Review pages
+   * - Custom payment receipt
    */
 
   const isDashboard =
@@ -73,7 +80,8 @@ export default function App() {
     location.pathname === "/owner/reviews" ||
     location.pathname === "/booking" ||
     location.pathname.startsWith("/booking/") ||
-    location.pathname.startsWith("/reviews/");
+    location.pathname.startsWith("/reviews/") ||
+    location.pathname === "/guest/payment-receipt";
 
   const showNavbar =
     !isDashboard ||
@@ -186,6 +194,32 @@ export default function App() {
             <Route
               path="/booking"
               element={<Booking />}
+            />
+
+            {/* ===================================================
+                CHAPA PAYMENT RETURN
+            =================================================== */}
+
+            <Route
+              path="/payment/chapa/return"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST"]}>
+                  <ChapaReturn />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ===================================================
+                CUSTOM PAYMENT RECEIPT
+            =================================================== */}
+
+            <Route
+              path="/guest/payment-receipt"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST"]}>
+                  <CustomReceipt />
+                </ProtectedRoute>
+              }
             />
 
             {/* ===================================================

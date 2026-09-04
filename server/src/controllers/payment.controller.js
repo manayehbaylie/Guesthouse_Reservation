@@ -7,6 +7,8 @@ import {
   updatePaymentStatus,
   initiatePayment,
   getPaymentHistory,
+  processChapaCallback,
+  getChapaPaymentStatus,
 } from "../services/payment.service.js";
 
 import { successResponse } from "../utils/response.js";
@@ -97,6 +99,34 @@ export const updateStatus = async (req, res, next) => {
       payment,
       "Payment status updated successfully"
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const chapaCallback = async (req, res) => {
+  try {
+    const payment = await processChapaCallback({
+      ...(req.query || {}),
+      ...(req.body || {}),
+    });
+
+    return res.json({ success: true, data: payment });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message || "Chapa verification failed.",
+    });
+  }
+};
+
+export const chapaStatus = async (req, res, next) => {
+  try {
+    const payment = await getChapaPaymentStatus(
+      req.user.id,
+      req.query.tx_ref || req.query.txRef
+    );
+    return successResponse(res, payment, "Chapa payment status fetched successfully");
   } catch (error) {
     next(error);
   }

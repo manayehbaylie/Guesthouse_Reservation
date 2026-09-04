@@ -7,6 +7,8 @@ import {
   updateStatus,
   initiate,
   getHistory,
+    chapaCallback,
+    chapaStatus,
 } from "../controllers/payment.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -49,6 +51,10 @@ router.post(
   authenticate,
   initiate
 );
+
+router.get("/chapa/callback", chapaCallback);
+router.post("/chapa/callback", chapaCallback);
+router.get("/chapa/status", authenticate, chapaStatus);
 
 
 /*
