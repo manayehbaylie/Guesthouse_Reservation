@@ -499,7 +499,6 @@ export function OwnerDashboard() {
         location: propAddress,
         address: propAddress,
         description: propDesc,
-        images: [propImage],
         image: propImage,
         amenities: propAmenities,
       });
@@ -525,7 +524,7 @@ export function OwnerDashboard() {
         location: onboardingAddress,
         description: onboardingDesc,
         amenities: onboardingAmenities,
-        images: [onboardingImage],
+        image: onboardingImage,
         ownerId: user?.id,
       });
       showToast('🎉 Guesthouse created successfully! Pending Admin verification.');

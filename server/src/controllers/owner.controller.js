@@ -91,6 +91,11 @@ const ownerGuesthousePayload = (req) => {
         typeof photo === "string" &&
         photo.trim()
     );
+  } else if (
+    typeof req.body.photos === "string" &&
+    req.body.photos.trim()
+  ) {
+    payload.photos = [req.body.photos.trim()];
   }
 
   return payload;

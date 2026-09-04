@@ -385,42 +385,69 @@ function guesthouseFormData(
       'licenseDocument',
       data.licenseDocument
     );
-  }
-
-  if (
-    Array.isArray(data.photos)
+  } else if (
+    typeof data.licenseDocument === 'string' &&
+    data.licenseDocument.trim()
   ) {
-    data.photos.forEach((photo) => {
-      if (photo instanceof File) {
-        formData.append(
-          'photos',
-          photo
-        );
-      }
-    });
+    formData.append(
+      'licenseDocument',
+      data.licenseDocument.trim()
+    );
   }
 
-  if (data.image instanceof File) {
-  formData.append(
-    'image',
-    data.image
-  );
-}
-
-  if (
-    Array.isArray(data.images)
-  ) {
-    data.images.forEach((image) => {
-      if (image instanceof File) {
-        formData.append(
-          'images',
-          image
-        );
-      }
-    });
-  }
+  appendGuesthouseImages(formData, data);
 
   return formData;
+}
+
+function appendGuesthouseImages(formData, data = {}) {
+  const photoFiles = [];
+  const photoUrls = [];
+
+  const queuePhoto = (value) => {
+    if (value instanceof File) {
+      photoFiles.push(value);
+      return;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      photoUrls.push(value.trim());
+    }
+  };
+
+  if (data.image instanceof File) {
+    formData.append('image', data.image);
+  } else if (typeof data.image === 'string' && data.image.trim()) {
+    formData.append('image', data.image.trim());
+  }
+
+  if (Array.isArray(data.photos)) {
+    data.photos.forEach(queuePhoto);
+  }
+
+  if (Array.isArray(data.images)) {
+    data.images.forEach(queuePhoto);
+  }
+
+  const hasMainImageField = data.image instanceof File ||
+    (typeof data.image === 'string' && data.image.trim());
+
+  if (!hasMainImageField) {
+    if (photoFiles.length > 0) {
+      formData.append('image', photoFiles[0]);
+      photoFiles.slice(1).forEach((file) => {
+        formData.append('photos', file);
+      });
+    } else if (photoUrls.length > 0) {
+      formData.append('image', photoUrls[0]);
+      photoUrls.slice(1).forEach((url) => {
+        formData.append('photos', url);
+      });
+    }
+  } else if (photoFiles.length > 0 || photoUrls.length > 0) {
+    photoFiles.forEach((file) => formData.append('photos', file));
+    photoUrls.forEach((url) => formData.append('photos', url));
+  }
 }
 
 // ============================================================

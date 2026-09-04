@@ -236,7 +236,9 @@ export function GuesthouseManage() {
       image:
         mainImage instanceof File
           ? mainImage
-          : undefined,
+          : typeof mainImage === 'string' && mainImage.trim()
+            ? mainImage.trim()
+            : undefined,
 
       subCity: subCity.trim(),
       woreda: woreda.trim(),
