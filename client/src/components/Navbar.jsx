@@ -126,41 +126,22 @@ export function Navbar({ onToggleSidebar }) {
     return 'USER';
   };
 
-  /* ==========================================================
-     NAVIGATION LINKS
-     
-     Keep the remote behavior:
-     - Before login: Home, Explore, About Us, Contact
-     - Hide All Guesthouses and My Bookings from public navbar
-     - After login: normal navbar links are hidden
-  ========================================================== */
-
+  // ============================================================
+  // NAV LINKS - CONDITIONAL
+  // ============================================================
   const getNavLinks = () => {
+    // After login - show NOTHING (only Dashboard link separately)
     if (isAuthenticated()) {
       return [];
     }
 
+    // Before login - show public links
     return [
-      {
-        path: '/',
-        label: 'Home',
-        icon: <Home className="w-4 h-4" />,
-      },
-      {
-        path: '/search',
-        label: 'Explore',
-        icon: <Search className="w-4 h-4" />,
-      },
-      {
-        path: '/about',
-        label: 'About Us',
-        icon: null,
-      },
-      {
-        path: '/contact',
-        label: 'Contact',
-        icon: null,
-      },
+      { path: '/', label: 'Home', icon: <Home className="w-4 h-4" /> },
+      // ✅ "Explore" points to /search (GuesthouseSearch)
+      { path: '/search', label: 'Explore', icon: <Search className="w-4 h-4" /> },
+      { path: '/about', label: 'About Us', icon: null },
+      { path: '/contact', label: 'Contact', icon: null },
     ];
   };
 
@@ -324,154 +305,66 @@ export function Navbar({ onToggleSidebar }) {
 
   if (isReceptionistDashboard) {
     return (
-      <>
-        <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-end h-16">
+      <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-end h-16">
+            {isAuthenticated() ? (
+              <div className="relative">
+                <button
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-stone-100 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                    <User className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-stone-900">{getDisplayName()}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}>
+                      {getRoleDisplay()}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-stone-400" />
+                </button>
 
-              {isAuthenticated() ? (
-                <div className="relative">
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setProfileDropdownOpen(
-                        !profileDropdownOpen
-                      )
-                    }
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-stone-100 transition-colors"
-                    aria-expanded={profileDropdownOpen}
-                    aria-haspopup="true"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                      <User className="w-4 h-4 text-amber-600" />
-                    </div>
-
-                    <div className="text-left">
-                      <p className="text-sm font-bold text-stone-900">
-                        {getDisplayName()}
-                      </p>
-
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}
-                      >
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-stone-200 shadow-lg py-2 z-50">
+                    <div className="px-4 py-3 border-b border-stone-100">
+                      <p className="font-bold text-stone-900">{getDisplayName()}</p>
+                      <p className="text-sm text-stone-500">{user?.email}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()} mt-1 inline-block`}>
                         {getRoleDisplay()}
                       </span>
                     </div>
 
-                    <ChevronDown
-                      className={`w-4 h-4 text-stone-400 transition-transform ${
-                        profileDropdownOpen
-                          ? 'rotate-180'
-                          : ''
-                      }`}
-                    />
-                  </button>
+                    <Link to="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                      <User className="w-4 h-4" /> Profile
+                    </Link>
 
-                  {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-stone-200 shadow-2xl overflow-hidden z-[100]">
+                    <Link to="/reservations" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                      <Calendar className="w-4 h-4" /> My Bookings
+                    </Link>
 
-                      <div className="px-4 py-4 bg-stone-50 border-b border-stone-200">
-                        <p className="font-bold text-stone-900 text-sm">
-                          {getDisplayName()}
-                        </p>
-
-                        <p className="text-xs text-stone-500 mt-1 truncate">
-                          {user?.email || ''}
-                        </p>
-
-                        <span
-                          className={`inline-flex text-[10px] font-black px-2.5 py-1 rounded-full mt-2 ${getRoleBadgeColor()}`}
-                        >
-                          {getRoleDisplay()}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={openUpdateProfile}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-bold text-stone-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                          <Settings className="w-4 h-4 text-blue-600" />
-                        </div>
-
-                        <span>
-                          Update Profile
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-bold text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center">
-                          <LogOut className="w-4 h-4 text-red-600" />
-                        </div>
-
-                        <span>
-                          Logout
-                        </span>
-                      </button>
-
-                    </div>
-                  )}
-
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors"
-                  >
-                    Login
-                  </Link>
-
-                  <Link
-                    to="/register"
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors"
-                  >
-                    Register
-                  </Link>
-
-                </div>
-              )}
-
-            </div>
+                    <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100 mt-1">
+                      <LogOut className="w-4 h-4" /> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/login" className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors">Login</Link>
+                <Link to="/register" className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors">Register</Link>
+              </div>
+            )}
           </div>
-        </nav>
-
-        {/* =====================================================
-            UPDATE PROFILE MODAL
-        ===================================================== */}
-
-        {showProfileModal && (
-          <ProfileModal
-            profileName={profileName}
-            profileEmail={profileEmail}
-            profilePhone={profilePhone}
-            profilePassword={profilePassword}
-            savingProfile={savingProfile}
-            profileMessage={profileMessage}
-            profileError={profileError}
-            setProfileName={setProfileName}
-            setProfileEmail={setProfileEmail}
-            setProfilePhone={setProfilePhone}
-            setProfilePassword={setProfilePassword}
-            handleSaveProfile={handleSaveProfile}
-            closeUpdateProfile={closeUpdateProfile}
-          />
-        )}
-      </>
+        </div>
+      </nav>
     );
   }
 
-  /* ==========================================================
-     NORMAL NAVBAR
-  ========================================================== */
-
+  // ============================================================
+  // FULL NAVBAR FOR OTHER PAGES
+  // ============================================================
   return (
     <>
       <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
@@ -519,258 +412,100 @@ export function Navbar({ onToggleSidebar }) {
 
             </div>
 
-            {/* ==================================================
-                DESKTOP NAVIGATION
-            ================================================== */}
-
-            <div className="hidden md:flex items-center gap-6">
-
-              {!isAuthenticated() && (
-                <>
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors flex items-center gap-1.5"
-                    >
-                      {link.icon}
-                      {link.label}
-                    </Link>
-                  ))}
-                </>
-              )}
-
-              {/* Guest Dashboard */}
-
-              {isAuthenticated() && isGuest() && (
-                <Link
-                  to="/guest/dashboard"
-                  className="text-sm font-semibold text-amber-600 hover:text-amber-700 transition-colors"
-                >
-                  Dashboard
-                </Link>
-              )}
-
-            </div>
-
-            {/* ==================================================
-                RIGHT SIDE
-            ================================================== */}
-
-            <div className="flex items-center gap-3">
-
-              {/* Notifications */}
-
-              {isAuthenticated() && (
-                <NotificationBell variant="navbar" />
-              )}
-
-              {/* =================================================
-                  USER PROFILE
-              ================================================= */}
-
-              {isAuthenticated() ? (
-
-                <div className="relative">
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setProfileDropdownOpen(
-                        !profileDropdownOpen
-                      )
-                    }
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-stone-100 transition-all"
-                    aria-expanded={profileDropdownOpen}
-                    aria-haspopup="true"
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            {!isAuthenticated() && (
+              <>
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors flex items-center gap-1.5"
                   >
+                    {link.icon}
+                    {link.label}
+                  </Link>
+                ))}
+              </>
+            )}
 
-                    {/* Avatar */}
+            {/* Dashboard Link - Only show when authenticated as Guest */}
+            {isAuthenticated() && isGuest() && (
+              <Link
+                to="/guest/dashboard"
+                className="text-sm font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
+          </div>
 
-                    <div className="w-9 h-9 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
-                      <User className="w-4 h-4 text-amber-600" />
-                    </div>
+          {/* Right Side - User Menu */}
+          <div className="flex items-center gap-4">
+            {isAuthenticated() && <NotificationBell variant="navbar" />}
 
-                    {/* Name + Role */}
+            {isAuthenticated() ? (
+              <div className="relative">
+                <button
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-stone-100 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                    <User className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="hidden lg:block text-left">
+                    <p className="text-sm font-bold text-stone-900">{getDisplayName()}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}>
+                      {getRoleDisplay()}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-stone-400 hidden lg:block" />
+                </button>
 
-                    <div className="hidden lg:block text-left">
-
-                      <p className="text-sm font-bold text-stone-900 leading-tight">
-                        {getDisplayName()}
-                      </p>
-
-                      <span
-                        className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${getRoleBadgeColor()}`}
-                      >
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-stone-200 shadow-lg py-2 z-50">
+                    <div className="px-4 py-3 border-b border-stone-100">
+                      <p className="font-bold text-stone-900">{getDisplayName()}</p>
+                      <p className="text-sm text-stone-500">{user?.email}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()} mt-1 inline-block`}>
                         {getRoleDisplay()}
                       </span>
 
                     </div>
 
-                    <ChevronDown
-                      className={`w-4 h-4 text-stone-400 hidden lg:block transition-transform ${
-                        profileDropdownOpen
-                          ? 'rotate-180'
-                          : ''
-                      }`}
-                    />
+                    {isGuest() && (
+                      <Link to="/guest/dashboard" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                        <Home className="w-4 h-4" /> Dashboard
+                      </Link>
+                    )}
 
-                  </button>
+                    <Link to="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                      <User className="w-4 h-4" /> Profile
+                    </Link>
 
-                  {/* =================================================
-                      PROFILE DROPDOWN
-                  ================================================= */}
+                    <Link to="/reservations" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                      <Calendar className="w-4 h-4" /> My Bookings
+                    </Link>
 
-                  {profileDropdownOpen && (
-
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-stone-200 shadow-2xl overflow-hidden z-[100]">
-
-                      {/* User Information */}
-
-                      <div className="px-4 py-4 bg-stone-50 border-b border-stone-200">
-
-                        <p className="font-bold text-stone-900 text-sm">
-                          {getDisplayName()}
-                        </p>
-
-                        <p className="text-xs text-stone-500 mt-1 truncate">
-                          {user?.email || ''}
-                        </p>
-
-                        <span
-                          className={`inline-flex text-[10px] font-black px-2.5 py-1 rounded-full mt-2 ${getRoleBadgeColor()}`}
-                        >
-                          {getRoleDisplay()}
-                        </span>
-
-                      </div>
-
-                      {/* Update Profile */}
-
-                      <button
-                        type="button"
-                        onClick={openUpdateProfile}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-bold text-stone-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      >
-
-                        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-
-                          <Settings className="w-4 h-4 text-blue-600" />
-
-                        </div>
-
-                        <span>
-                          Update Profile
-                        </span>
-
-                      </button>
-
-                      {/* Guest Bookings */}
-
-                      {isGuest() && (
-                        <Link
-                          to="/reservations"
-                          onClick={() =>
-                            setProfileDropdownOpen(false)
-                          }
-                          className="flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-stone-700 hover:bg-stone-50 transition-colors border-t border-stone-100"
-                        >
-
-                          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-
-                            <Calendar className="w-4 h-4 text-amber-600" />
-
-                          </div>
-
-                          <span>
-                            My Bookings
-                          </span>
-
-                        </Link>
-                      )}
-
-                      {/* Logout */}
-
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm font-bold text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100"
-                      >
-
-                        <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center">
-
-                          <LogOut className="w-4 h-4 text-red-600" />
-
-                        </div>
-
-                        <span>
-                          Logout
-                        </span>
-
-                      </button>
-
-                    </div>
-
-                  )}
-
-                </div>
-
-              ) : (
-
-                /* =================================================
-                   NOT LOGGED IN
-                ================================================= */
-
-                <div className="flex items-center gap-2">
-
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors"
-                  >
-                    Login
-                  </Link>
-
-                  <Link
-                    to="/register"
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors"
-                  >
-                    Register
-                  </Link>
-
-                </div>
-
-              )}
-
-              {/* =================================================
-                  MOBILE MENU BUTTON
-              ================================================= */}
-
-              <button
-                type="button"
-                onClick={() =>
-                  setMobileMenuOpen(
-                    !mobileMenuOpen
-                  )
-                }
-                className="md:hidden p-2 rounded-lg hover:bg-stone-100 transition-colors"
-                aria-label={
-                  mobileMenuOpen
-                    ? 'Close menu'
-                    : 'Open menu'
-                }
-                aria-expanded={mobileMenuOpen}
-              >
-
-                {mobileMenuOpen ? (
-                  <X className="w-6 h-6 text-stone-600" />
-                ) : (
-                  <Menu className="w-6 h-6 text-stone-600" />
+                    <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100 mt-1">
+                      <LogOut className="w-4 h-4" /> Logout
+                    </button>
+                  </div>
                 )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/login" className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors">Login</Link>
+                <Link to="/register" className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors">Register</Link>
+              </div>
+            )}
 
-              </button>
-
-            </div>
-
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-stone-100 transition-colors"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6 text-stone-600" /> : <Menu className="w-6 h-6 text-stone-600" />}
+            </button>
           </div>
 
         </div>
@@ -779,100 +514,36 @@ export function Navbar({ onToggleSidebar }) {
             MOBILE MENU
         ====================================================== */}
 
-        {mobileMenuOpen && (
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-t border-stone-200 py-4 px-4">
+          <div className="flex flex-col gap-2">
+            {!isAuthenticated() && (
+              <>
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
+                  >
+                    {link.icon}
+                    <span className="font-semibold text-stone-700">{link.label}</span>
+                  </Link>
+                ))}
+              </>
+            )}
 
-          <div className="md:hidden bg-white border-t border-stone-200 py-4 px-4 shadow-lg">
-
-            <div className="flex flex-col gap-1">
-
-              {/* Public Navigation */}
-
-              {!isAuthenticated() && (
-                <>
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      onClick={() =>
-                        setMobileMenuOpen(false)
-                      }
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
-                    >
-                      {link.icon}
-
-                      <span className="font-semibold text-stone-700">
-                        {link.label}
-                      </span>
-                    </Link>
-                  ))}
-                </>
-              )}
-
-              {/* Guest Dashboard */}
-
-              {isAuthenticated() && isGuest() && (
-
-                <Link
-                  to="/guest/dashboard"
-                  onClick={() =>
-                    setMobileMenuOpen(false)
-                  }
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-amber-50 transition-colors"
-                >
-
-                  <Home className="w-4 h-4 text-amber-600" />
-
-                  <span className="font-semibold text-amber-600">
-                    Dashboard
-                  </span>
-
-                </Link>
-
-              )}
-
-              {/* Mobile Update Profile */}
-
-              {isAuthenticated() && (
-
-                <button
-                  type="button"
-                  onClick={openUpdateProfile}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-blue-700"
-                >
-
-                  <Settings className="w-4 h-4" />
-
-                  <span className="font-semibold">
-                    Update Profile
-                  </span>
-
-                </button>
-
-              )}
-
-              {/* Mobile Bookings */}
-
-              {isAuthenticated() && isGuest() && (
-
-                <Link
-                  to="/reservations"
-                  onClick={() =>
-                    setMobileMenuOpen(false)
-                  }
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-700"
-                >
-
-                  <Calendar className="w-4 h-4" />
-
-                  <span className="font-semibold">
-                    My Bookings
-                  </span>
-
-                </Link>
-
-              )}
-
-              {/* Mobile Logout */}
+            {isAuthenticated() && isGuest() && (
+              <Link
+                to="/guest/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
+              >
+                <Home className="w-4 h-4" />
+                <span className="font-semibold text-amber-600">Dashboard</span>
+              </Link>
+            )}
 
               {isAuthenticated() && (
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
@@ -8,6 +7,7 @@ import { Sidebar } from "./components/Sidebar.jsx";
 import { ArchitectureModal } from "./components/ArchitectureModal.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { NotificationToastContainer } from "./components/common/NotificationToastContainer.jsx";
+import { DashboardLayout } from "./components/DashboardLayout.jsx";
 
 // Authentication pages
 import { Login } from "./pages/Auth/Login.jsx";
@@ -22,6 +22,7 @@ import { Explore } from "./pages/Guest/Explore.jsx";
 import { AboutUs } from "./pages/Guest/AboutUs.jsx";
 import { Contact } from "./pages/Guest/Contact.jsx";
 import { GuesthouseSearch } from "./pages/Guest/Search.jsx";
+import { PublicSearch } from "./pages/Guest/PublicSearch.jsx";
 import AllGuesthouses from "./pages/Guest/AllGuesthouses.jsx";
 import { GuesthouseDetail } from "./pages/Guest/GuesthouseDetail.jsx";
 import { Booking } from "./pages/Guest/Booking.jsx";
@@ -142,16 +143,16 @@ export default function App() {
             />
 
             {/* ===================================================
-                PUBLIC SEARCH
+                ✅ PUBLIC SEARCH - NO SIDEBAR (Before Login)
             =================================================== */}
 
             <Route
               path="/search"
-              element={<GuesthouseSearch />}
+              element={<PublicSearch />}
             />
 
             {/* ===================================================
-                ALL GUESTHOUSES
+                ALL GUESTHOUSES - PUBLIC (NO SIDEBAR)
             =================================================== */}
 
             <Route
@@ -160,20 +161,7 @@ export default function App() {
             />
 
             {/* ===================================================
-                GUEST SEARCH - PROTECTED
-            =================================================== */}
-
-            <Route
-              path="/guest/search"
-              element={
-                <ProtectedRoute allowedRoles={["GUEST"]}>
-                  <GuesthouseSearch />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* ===================================================
-                GUESTHOUSE DETAILS
+                GUESTHOUSE DETAILS - PUBLIC (NO SIDEBAR)
             =================================================== */}
 
             <Route
@@ -187,7 +175,7 @@ export default function App() {
             />
 
             {/* ===================================================
-                BOOKING
+                BOOKING - STANDALONE ROUTES (NO LAYOUT)
             =================================================== */}
 
             <Route
@@ -215,7 +203,8 @@ export default function App() {
             />
 
             {/* ===================================================
-                GUEST DASHBOARD
+                ✅ GUEST ROUTES - DashboardLayout is INSIDE each page
+                DO NOT wrap with DashboardLayout here!
             =================================================== */}
 
             <Route
@@ -227,9 +216,15 @@ export default function App() {
               }
             />
 
-            {/* ===================================================
-                GUEST REVIEWS
-            =================================================== */}
+            {/* ✅ GUEST SEARCH - DashboardLayout is INSIDE GuesthouseSearch */}
+            <Route
+              path="/guest/search"
+              element={
+                <ProtectedRoute allowedRoles={["GUEST"]}>
+                  <GuesthouseSearch />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/guest/reviews"
@@ -240,43 +235,7 @@ export default function App() {
               }
             />
 
-            {/* ===================================================
-                REVIEW BY ID
-            =================================================== */}
-
-            <Route
-              path="/reviews/:id"
-              element={
-                <ProtectedRoute allowedRoles={["GUEST"]}>
-                  <WriteReview />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* ===================================================
-                PROFILE
-            =================================================== */}
-
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute
-                  allowedRoles={[
-                    "GUEST",
-                    "OWNER",
-                    "RECEPTIONIST",
-                    "ADMIN",
-                  ]}
-                >
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* ===================================================
-                GUEST RESERVATIONS
-            =================================================== */}
-
+            {/* ✅ RESERVATIONS - DashboardLayout is INSIDE GuestBookings */}
             <Route
               path="/reservations"
               element={
@@ -293,10 +252,6 @@ export default function App() {
               }
             />
 
-            {/* ===================================================
-                BOOKING DETAIL
-            =================================================== */}
-
             <Route
               path="/reservations/:id"
               element={
@@ -309,6 +264,23 @@ export default function App() {
                   ]}
                 >
                   <BookingDetail />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ✅ PROFILE - DashboardLayout is INSIDE Profile */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "GUEST",
+                    "OWNER",
+                    "RECEPTIONIST",
+                    "ADMIN",
+                  ]}
+                >
+                  <Profile />
                 </ProtectedRoute>
               }
             />
@@ -480,4 +452,3 @@ export default function App() {
     </div>
   );
 }
-
