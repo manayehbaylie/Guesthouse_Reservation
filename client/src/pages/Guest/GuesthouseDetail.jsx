@@ -41,13 +41,33 @@ export function GuesthouseDetail() {
       try {
         setLoading(true);
 
-        const gh = await ApiService.getGuesthouseById(id);
+        // Guesthouse IDs in the database are integers.
+        const guesthouseId = Number(id);
+
+        if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+          throw new Error(
+            `Invalid guesthouse ID: ${id}`
+          );
+        }
+
+        console.log(
+          "Loading guesthouse with ID:",
+          guesthouseId
+        );
+
+        const gh =
+          await ApiService.getGuesthouseById(
+            guesthouseId
+          );
 
         if (
           !gh ||
-          String(gh.status || "").toLowerCase() !== "approved"
+          String(gh.status || "").toLowerCase() !==
+            "approved"
         ) {
-          throw new Error("Guesthouse is not verified.");
+          throw new Error(
+            "Guesthouse is not verified."
+          );
         }
 
         if (!mounted) return;
@@ -61,7 +81,10 @@ export function GuesthouseDetail() {
         let roomList = [];
 
         try {
-          roomList = await ApiService.getRoomsForGuesthouse(gh.id);
+          roomList =
+            await ApiService.getRoomsForGuesthouse(
+              gh.id
+            );
         } catch (roomError) {
           console.warn(
             "Could not load rooms:",
@@ -107,7 +130,9 @@ export function GuesthouseDetail() {
           setReviewsLoading(true);
 
           reviewList =
-            await ApiService.getGuesthouseReviews(gh.id);
+            await ApiService.getGuesthouseReviews(
+              gh.id
+            );
 
           if (!Array.isArray(reviewList)) {
             reviewList = [];
@@ -179,6 +204,7 @@ export function GuesthouseDetail() {
     size = "w-4 h-4"
   ) => {
     const stars = [];
+
     const roundedRating = Math.round(
       Number(rating) || 0
     );
@@ -252,10 +278,8 @@ export function GuesthouseDetail() {
 
     if (
       room.available === false ||
-      (
-        availabilityStatus &&
-        availabilityStatus !== "available"
-      )
+      (availabilityStatus &&
+        availabilityStatus !== "available")
     ) {
       return "unavailable";
     }
@@ -1078,3 +1102,4 @@ export function GuesthouseDetail() {
 }
 
 export default GuesthouseDetail;
+

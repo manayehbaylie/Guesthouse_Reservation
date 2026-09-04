@@ -1,7 +1,7 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
+import { DashboardLayout } from "../../components/DashboardLayout.jsx";
 import {
   Search as SearchIcon,
   MapPin,
@@ -301,8 +301,8 @@ export function GuesthouseSearch() {
   // ============================================================
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <DashboardLayout>
+      <div className="space-y-8">
 
         {/* =====================================================
             HEADER
@@ -627,7 +627,7 @@ export function GuesthouseSearch() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 
@@ -982,4 +982,3 @@ function getMinimumRoomPrice(
 // ============================================================
 
 export default GuesthouseSearch;
-

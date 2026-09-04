@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { NotificationBell } from './common/NotificationBell.jsx';
 import {
@@ -17,8 +17,17 @@ import {
 export function Navbar({ onToggleSidebar }) {
   const { user, logout, isAuthenticated, isGuest, isOwner, isAdmin, isReceptionist } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  // ============================================================
+  // CHECK IF ON RECEPTIONIST DASHBOARD
+  // ============================================================
+  const isReceptionistDashboard = 
+    location.pathname === '/receptionist' ||
+    location.pathname === '/receptionist-dashboard' || 
+    location.pathname === '/dashboard/receptionist';
 
   const handleLogout = () => {
     logout();
@@ -47,15 +56,121 @@ export function Navbar({ onToggleSidebar }) {
     return 'User';
   };
 
-  const navLinks = [
-    { path: '/', label: 'Home', icon: <Home className="w-4 h-4" /> },
-    { path: '/guesthouses', label: 'All Guesthouses', icon: <Building2 className="w-4 h-4" /> },
-    { path: '/search', label: 'Explore', icon: <Search className="w-4 h-4" /> },
-    { path: '/reservations', label: 'My Bookings', icon: <Calendar className="w-4 h-4" /> },
-    { path: '/about', label: 'About Us', icon: null },
-    { path: '/contact', label: 'Contact', icon: null },
-  ];
+  // ============================================================
+  // NAV LINKS - CONDITIONAL
+  // ============================================================
+  // Before login: Show Home, Explore, About Us, Contact (hide All Guesthouses, My Bookings)
+  // After login: Show NOTHING (only Dashboard link separately)
+  const getNavLinks = () => {
+    // After login - show NOTHING
+    if (isAuthenticated()) {
+      return [];
+    }
 
+    // Before login - show everything EXCEPT All Guesthouses and My Bookings
+    return [
+      { path: '/', label: 'Home', icon: <Home className="w-4 h-4" /> },
+      // { path: '/guesthouses', label: 'All Guesthouses', icon: <Building2 className="w-4 h-4" /> }, // HIDDEN
+      // { path: '/reservations', label: 'My Bookings', icon: <Calendar className="w-4 h-4" /> }, // HIDDEN
+      { path: '/search', label: 'Explore', icon: <Search className="w-4 h-4" /> },
+      { path: '/about', label: 'About Us', icon: null },
+      { path: '/contact', label: 'Contact', icon: null },
+    ];
+  };
+
+  const navLinks = getNavLinks();
+
+  // ============================================================
+  // IF ON RECEPTIONIST DASHBOARD - SHOW ONLY PROFILE
+  // ============================================================
+  if (isReceptionistDashboard) {
+    return (
+      <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-end h-16">
+            {/* Only Profile - No logo, no nav links, no mobile menu */}
+            {isAuthenticated() ? (
+              <div className="relative">
+                <button
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-stone-100 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                    <User className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-stone-900">{getDisplayName()}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}>
+                      {getRoleDisplay()}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-stone-400" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-stone-200 shadow-lg py-2 z-50">
+                    <div className="px-4 py-3 border-b border-stone-100">
+                      <p className="font-bold text-stone-900">{getDisplayName()}</p>
+                      <p className="text-sm text-stone-500">{user?.email}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()} mt-1 inline-block`}>
+                        {getRoleDisplay()}
+                      </span>
+                    </div>
+
+                    <Link
+                      to="/profile"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      Profile
+                    </Link>
+
+                    <Link
+                      to="/reservations"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      My Bookings
+                    </Link>
+
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100 mt-1"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // ============================================================
+  // FULL NAVBAR FOR OTHER PAGES
+  // ============================================================
   return (
     <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -77,20 +192,25 @@ export function Navbar({ onToggleSidebar }) {
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - CONDITIONAL */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors flex items-center gap-1.5"
-              >
-                {link.icon}
-                {link.label}
-              </Link>
-            ))}
+            {/* Show nav links only when NOT authenticated (before login) */}
+            {!isAuthenticated() && (
+              <>
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors flex items-center gap-1.5"
+                  >
+                    {link.icon}
+                    {link.label}
+                  </Link>
+                ))}
+              </>
+            )}
 
-            {/* ✅ Dashboard Link for Guests */}
+            {/* ✅ Dashboard Link - Only show when authenticated as Guest */}
             {isAuthenticated() && isGuest() && (
               <Link
                 to="/guest/dashboard"
@@ -103,8 +223,8 @@ export function Navbar({ onToggleSidebar }) {
 
           {/* Right Side - User Menu */}
           <div className="flex items-center gap-4">
-            {/* Notifications */}
-            <NotificationBell variant="navbar" />
+            {/* Notifications - Only show when authenticated */}
+            {isAuthenticated() && <NotificationBell variant="navbar" />}
 
             {isAuthenticated() ? (
               <div className="relative">
@@ -135,7 +255,7 @@ export function Navbar({ onToggleSidebar }) {
                       </span>
                     </div>
 
-                    {/* ✅ Dashboard link in dropdown */}
+                    {/* Dashboard link in dropdown */}
                     {isGuest() && (
                       <Link
                         to="/guest/dashboard"
@@ -207,19 +327,24 @@ export function Navbar({ onToggleSidebar }) {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-stone-200 py-4 px-4">
           <div className="flex flex-col gap-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
-              >
-                {link.icon}
-                <span className="font-semibold text-stone-700">{link.label}</span>
-              </Link>
-            ))}
+            {/* Show nav links only when NOT authenticated (before login) */}
+            {!isAuthenticated() && (
+              <>
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
+                  >
+                    {link.icon}
+                    <span className="font-semibold text-stone-700">{link.label}</span>
+                  </Link>
+                ))}
+              </>
+            )}
 
-            {/* ✅ Dashboard link in mobile menu */}
+            {/* ✅ Dashboard link - Only show when authenticated */}
             {isAuthenticated() && isGuest() && (
               <Link
                 to="/guest/dashboard"

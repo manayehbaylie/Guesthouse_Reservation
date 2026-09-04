@@ -14,6 +14,6 @@ CREATE INDEX IF NOT EXISTS "Notification_type_idx"
   ON "Notification"("type");
 
 ALTER TABLE "Notification"
-  ADD CONSTRAINT IF NOT EXISTS "Notification_guesthouseId_fkey"
+  ADD CONSTRAINT "Notification_guesthouseId_fkey"
   FOREIGN KEY ("guesthouseId") REFERENCES "Guesthouse"("id")
   ON DELETE SET NULL ON UPDATE CASCADE;

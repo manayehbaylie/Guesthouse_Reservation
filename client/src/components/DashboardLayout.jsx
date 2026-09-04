@@ -35,7 +35,7 @@ export function DashboardLayout({ children }) {
     loadUpcomingBooking();
   }, [user?.id]);
 
-  // ✅ Load the most recent booking for the sidebar
+  // Load the most recent booking for the sidebar
   const loadUpcomingBooking = async () => {
     setLoading(true);
     try {
@@ -58,15 +58,15 @@ export function DashboardLayout({ children }) {
         return;
       }
       
-      // ✅ Sort by createdAt (newest first)
+      // Sort by createdAt (newest first)
       const sortedByDate = [...reservations].sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
       
-      // ✅ Get the most recent booking
+      // Get the most recent booking
       let booking = sortedByDate[0];
       
-      // ✅ Skip cancelled bookings
+      // Skip cancelled bookings
       if (booking && booking.status === 'cancelled') {
         booking = sortedByDate.find(b => b.status !== 'cancelled');
       }
@@ -131,6 +131,9 @@ export function DashboardLayout({ children }) {
     setProfileDropdownOpen(false);
   };
 
+  // ============================================================
+  // NAVIGATION ITEMS - REMOVED "Profile" from sidebar navigation
+  // ============================================================
   const navItems = [
     { 
       path: '/guest/dashboard', 
@@ -152,11 +155,6 @@ export function DashboardLayout({ children }) {
       icon: <MessageSquare className="w-5 h-5" />, 
       label: 'Reviews' 
     },
-    { 
-      path: '/profile', 
-      icon: <Settings className="w-5 h-5" />, 
-      label: 'Profile' 
-    },
   ];
 
   return (
@@ -170,7 +168,7 @@ export function DashboardLayout({ children }) {
         } lg:translate-x-0 lg:static lg:flex lg:flex-col lg:h-screen lg:sticky top-0`}
       >
         {/* =========================================================
-            HEADER - LOGO
+            1. HEADER - LOGO (FIRST)
         ========================================================= */}
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center justify-between">
@@ -193,46 +191,46 @@ export function DashboardLayout({ children }) {
         </div>
 
         {/* =========================================================
-            CURRENT STAY - GUESTHOUSE NAME APPEARS HERE
-            ========================================================= */}
-        {!loading && upcomingBooking && (
-          <div className="mx-3 mt-4 px-4 py-3 bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-xl">
-            <p className="text-[10px] text-[#FFC107] font-bold uppercase tracking-wider">
-              Current Stay
-            </p>
-            <p className="text-sm font-bold text-white mt-0.5 truncate flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-[#FFC107] shrink-0" />
-              {upcomingBooking.guesthouseName || 'Guesthouse'}
-            </p>
-            {upcomingBooking.guesthouseLocation && (
-              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-white/50">
-                <MapPin className="w-3 h-3" />
-                <span className="truncate">{upcomingBooking.guesthouseLocation}</span>
-              </div>
-            )}
-            <p className="text-[10px] text-white/40 mt-0.5">
-              {upcomingBooking.checkInDate} → {upcomingBooking.checkOutDate}
-            </p>
-          </div>
-        )}
-
-        {/* Show message when no booking */}
-        {!loading && !upcomingBooking && (
-          <div className="mx-3 mt-4 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
-            <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider">
-              No Active Stay
-            </p>
-            <p className="text-xs text-white/30 mt-0.5 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-white/20" />
-              Book a guesthouse to get started
-            </p>
-          </div>
-        )}
+            2. CURRENT STAY (SECOND)
+        ========================================================= */}
+        <div className="mx-3 mt-4 px-4 py-3 bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-xl">
+          <p className="text-[10px] text-[#FFC107] font-bold uppercase tracking-wider">
+            Current Stay
+          </p>
+          
+          {!loading && upcomingBooking ? (
+            <>
+              <p className="text-sm font-bold text-white mt-0.5 truncate flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#FFC107] shrink-0" />
+                {upcomingBooking.guesthouseName || 'Guesthouse'}
+              </p>
+              {upcomingBooking.guesthouseLocation && (
+                <div className="flex items-center gap-1 mt-0.5 text-[10px] text-white/50">
+                  <MapPin className="w-3 h-3" />
+                  <span className="truncate">{upcomingBooking.guesthouseLocation}</span>
+                </div>
+              )}
+              <p className="text-[10px] text-white/40 mt-0.5">
+                {upcomingBooking.checkInDate} → {upcomingBooking.checkOutDate}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-white/30 mt-0.5 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-white/20" />
+                No Active Stay
+              </p>
+              <p className="text-[10px] text-white/20 mt-0.5">
+                Book a guesthouse to get started
+              </p>
+            </>
+          )}
+        </div>
 
         {/* =========================================================
-            USER PROFILE
+            3. USER PROFILE (THIRD) - EMAIL AND PHONE REMOVED
         ========================================================= */}
-        <div className="px-6 py-5 border-b border-white/10 mt-2">
+        <div className="px-6 py-4 mx-3 mt-3 bg-white/5 border border-white/10 rounded-xl">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-[#FFC107]/20 flex items-center justify-center">
               <User className="w-6 h-6 text-[#FFC107]" />
@@ -242,17 +240,13 @@ export function DashboardLayout({ children }) {
               <p className="text-sm text-white/60">Guest</p>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-4 text-xs">
-            <span className="text-white/60 truncate">{user?.email}</span>
-            <span className="text-white/20">|</span>
-            <span className="text-white/60 truncate">{user?.phone}</span>
-          </div>
+          {/* ✅ EMAIL AND PHONE REMOVED */}
         </div>
 
         {/* =========================================================
             NAVIGATION MENU
         ========================================================= */}
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto mt-2">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -317,7 +311,7 @@ export function DashboardLayout({ children }) {
             </div>
 
             <div className="flex items-center gap-4 ml-auto">
-              {/* ✅ NOTIFICATION BELL - WITH REVIEW RESPONSE SUPPORT */}
+              {/* NOTIFICATION BELL */}
               <NotificationBell />
 
               {/* Profile Dropdown */}

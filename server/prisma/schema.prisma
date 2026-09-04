@@ -116,7 +116,7 @@ model Notification {
   id           Int      @id @default(autoincrement())
   title        String
   message      String
-  category     String   @default("system")
+  category     String   @default("general")
   type         String   @default("system")
   isRead       Boolean  @default(false)
   userId       Int

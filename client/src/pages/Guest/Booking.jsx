@@ -3,11 +3,11 @@ import {
   useNavigate,
   useSearchParams,
   useLocation,
+  useParams,
 } from "react-router-dom";
 
 import { ApiService } from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { DashboardLayout } from "../../components/DashboardLayout.jsx";
 import PaymentScreen from "../../components/PaymentScreen.jsx";
 
 import {
@@ -25,10 +25,18 @@ export function Booking() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { guesthouseId, roomId } = useParams();
+  const { guesthouseId: guesthouseIdFromParams, roomId: roomIdFromParams } = useParams();
 
-  const guesthouseId = searchParams.get("guesthouseId");
-  const roomIdFromUrl = searchParams.get("roomId");
+  const [searchParams] = useSearchParams();
+
+  const guesthouseId =
+    searchParams.get("guesthouseId") || guesthouseIdFromParams;
+
+  const roomIdFromUrl =
+    searchParams.get("roomId") || roomIdFromParams;
+
+  // Get booking data from location state
+  const bookingData = location.state?.bookingData || {};
 
   // ============================================================
   // BOOKING DATA
@@ -70,6 +78,35 @@ export function Booking() {
     location.state?.bookingData ||
     location.state?.reservationData ||
     null;
+
+  // ============================================================
+  // CHECK FOR SHOW PAYMENT FLAG FROM LOGIN
+  // ============================================================
+
+  useEffect(() => {
+    // If coming back from login with showPayment flag
+    if (location.state?.showPayment && user) {
+      // Make sure we have booking data
+      const data = location.state?.bookingData || bookingData;
+      if (data && data.guesthouseId && data.roomId) {
+        setStep("payment");
+      }
+    }
+    
+    // Also check if we have a pending reservation in sessionStorage
+    const pendingData = sessionStorage.getItem("pendingReservation");
+    if (pendingData && user) {
+      try {
+        const data = JSON.parse(pendingData);
+        if (data.guesthouseId && data.roomId) {
+          // If we have pending data and user is logged in, show payment
+          setStep("payment");
+        }
+      } catch (e) {
+        console.error("Error parsing pending reservation:", e);
+      }
+    }
+  }, [location.state, user]);
 
   // ============================================================
   // LOAD BOOKING DATA
@@ -387,82 +424,6 @@ export function Booking() {
   ]);
 
   // ============================================================
-  // DEBUG
-  // ============================================================
-
-  useEffect(() => {
-    if (!room) {
-      return;
-    }
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      "BOOKING PAGE - CURRENT DATA"
-    );
-
-    console.log(
-      "guesthouseId:",
-      guesthouse?.id
-    );
-
-    console.log(
-      "roomId:",
-      room?.id
-    );
-
-    console.log(
-      "checkInDate:",
-      checkInDate
-    );
-
-    console.log(
-      "checkOutDate:",
-      checkOutDate
-    );
-
-    console.log(
-      "numberOfGuests:",
-      numberOfGuests
-    );
-
-    console.log(
-      "nightsCount:",
-      nightsCount
-    );
-
-    console.log(
-      "pricePerNight:",
-      pricePerNight
-    );
-
-    console.log(
-      "totalPrice:",
-      totalPrice
-    );
-
-    console.log(
-      "room:",
-      room
-    );
-
-    console.log(
-      "========================================"
-    );
-  }, [
-    guesthouse,
-    room,
-    checkInDate,
-    checkOutDate,
-    numberOfGuests,
-    nightsCount,
-    pricePerNight,
-    totalPrice,
-  ]);
-
-  // ============================================================
   // DATE HELPERS
   // ============================================================
 
@@ -605,93 +566,49 @@ export function Booking() {
   };
 
   // ============================================================
-  // CONTINUE TO PAYMENT
+  // CONTINUE TO PAYMENT - FIXED REDIRECT TO LOGIN
   // ============================================================
 
   const handleContinueToPayment = () => {
     setError("");
 
-    const validationError =
-      validateBooking();
+    const validationError = validateBooking();
 
     if (validationError) {
       setError(validationError);
       return;
     }
 
-    const reservationData =
-      createReservationData();
+    const reservationData = createReservationData();
 
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      "BOOKING DATA BEFORE PAYMENT"
-    );
-
-    console.log(
-      reservationData
-    );
-
-    console.log(
-      "checkIn:",
-      reservationData.checkIn
-    );
-
-    console.log(
-      "checkOut:",
-      reservationData.checkOut
-    );
-
-    console.log(
-      "roomPrice:",
-      reservationData.roomPrice
-    );
-
-    console.log(
-      "amount:",
-      reservationData.amount
-    );
-
-    console.log(
-      "guesthouseId:",
-      reservationData.guesthouseId
-    );
-
-    console.log(
-      "roomId:",
-      reservationData.roomId
-    );
-
-    console.log(
-      "========================================"
-    );
+    console.log("========================================");
+    console.log("BOOKING DATA BEFORE PAYMENT");
+    console.log(reservationData);
+    console.log("========================================");
 
     // ========================================================
-    // USER NOT LOGGED IN
+    // USER NOT LOGGED IN - REDIRECT TO LOGIN
     // ========================================================
 
     if (!user) {
+      // Save booking data to sessionStorage
       sessionStorage.setItem(
         "pendingReservation",
-        JSON.stringify(
-          reservationData
-        )
+        JSON.stringify(reservationData)
       );
 
+      // Build the return URL with query parameters
+      const returnUrl = `/booking?guesthouseId=${guesthouse?.id}&roomId=${room?.id}`;
+
+      // Redirect to login with all necessary data
       navigate("/login", {
         state: {
-          from:
-            `/booking?guesthouseId=${guesthouse?.id}&roomId=${room?.id}`,
-
-          bookingData:
-            reservationData,
-
-          reservationData:
-            reservationData,
-
+          from: returnUrl,
+          bookingData: reservationData,
+          reservationData: reservationData,
           pendingReservation: true,
+          returnTo: "payment",
+          returnUrl: returnUrl,
         },
       });
 
@@ -699,7 +616,7 @@ export function Booking() {
     }
 
     // ========================================================
-    // USER LOGGED IN
+    // USER LOGGED IN - GO TO PAYMENT
     // ========================================================
 
     setStep("payment");
@@ -782,17 +699,14 @@ export function Booking() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="min-h-[70vh] flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
-
-            <p className="mt-4 text-base text-stone-500">
-              Loading booking details...
-            </p>
-          </div>
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-base text-stone-500">
+            Loading booking details...
+          </p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
@@ -802,32 +716,30 @@ export function Booking() {
 
   if (!guesthouse || !room) {
     return (
-      <DashboardLayout>
-        <div className="max-w-lg mx-auto px-4 py-20 text-center">
-          <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+        <div className="max-w-lg w-full bg-white border border-stone-200 rounded-3xl p-8 shadow-sm text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
 
-            <h2 className="mt-4 text-2xl font-black text-stone-900">
-              Booking unavailable
-            </h2>
+          <h2 className="mt-4 text-2xl font-black text-stone-900">
+            Booking unavailable
+          </h2>
 
-            <p className="mt-2 text-base text-stone-500">
-              {error ||
-                "The selected room could not be found."}
-            </p>
+          <p className="mt-2 text-base text-stone-500">
+            {error ||
+              "The selected room could not be found."}
+          </p>
 
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/search")
-              }
-              className="mt-6 px-6 py-4 rounded-xl bg-stone-900 text-white font-bold text-base"
-            >
-              Back to Guesthouses
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/search")
+            }
+            className="mt-6 px-6 py-4 rounded-xl bg-stone-900 text-white font-bold text-base hover:bg-stone-800 transition-colors"
+          >
+            Back to Guesthouses
+          </button>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
@@ -837,41 +749,54 @@ export function Booking() {
 
   if (step === "payment") {
     return (
-      <PaymentScreen
-        guesthouse={guesthouse}
-        room={room}
-        guesthouseId={Number(
-          guesthouse.id
-        )}
-        roomId={Number(room.id)}
-        checkInDate={checkInDate}
-        checkOutDate={checkOutDate}
-        numberOfGuests={Number(
-          numberOfGuests
-        )}
-        nightsCount={Number(
-          nightsCount
-        )}
-        pricePerNight={Number(
-          pricePerNight
-        )}
-        totalPrice={Number(
-          totalPrice
-        )}
-        paymentData={paymentData}
-        setPaymentData={
-          setPaymentData
-        }
-        onSuccess={
-          handlePaymentSuccess
-        }
-        onError={
-          handlePaymentError
-        }
-        onBack={() =>
-          setStep("checkout")
-        }
-      />
+      <div className="min-h-screen bg-stone-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <button
+            type="button"
+            onClick={() => setStep("checkout")}
+            className="flex items-center gap-2 text-stone-600 hover:text-stone-900 mb-6 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm font-semibold">Back to Details</span>
+          </button>
+          
+          <PaymentScreen
+            guesthouse={guesthouse}
+            room={room}
+            guesthouseId={Number(
+              guesthouse.id
+            )}
+            roomId={Number(room.id)}
+            checkInDate={checkInDate}
+            checkOutDate={checkOutDate}
+            numberOfGuests={Number(
+              numberOfGuests
+            )}
+            nightsCount={Number(
+              nightsCount
+            )}
+            pricePerNight={Number(
+              pricePerNight
+            )}
+            totalPrice={Number(
+              totalPrice
+            )}
+            paymentData={paymentData}
+            setPaymentData={
+              setPaymentData
+            }
+            onSuccess={
+              handlePaymentSuccess
+            }
+            onError={
+              handlePaymentError
+            }
+            onBack={() =>
+              setStep("checkout")
+            }
+          />
+        </div>
+      </div>
     );
   }
 
@@ -897,8 +822,8 @@ export function Booking() {
     );
 
     return (
-      <DashboardLayout>
-        <div className="max-w-3xl mx-auto">
+      <div className="min-h-screen bg-stone-50 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border border-emerald-200 rounded-3xl shadow-xl overflow-hidden">
             {/* SUCCESS HEADER */}
 
@@ -1088,26 +1013,25 @@ export function Booking() {
                 </button>
               </div>
             </div>
-            <span className="text-xs font-bold">Confirm</span>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   // ============================================================
-  // CHECKOUT
+  // CHECKOUT - STANDALONE (Single Column)
   // ============================================================
 
   return (
-    <DashboardLayout>
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-stone-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* BACK */}
 
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-base font-semibold text-stone-600 hover:text-stone-900 mb-8"
+          className="flex items-center gap-2 text-base font-semibold text-stone-600 hover:text-stone-900 mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back
@@ -1125,335 +1049,266 @@ export function Booking() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ====================================================
-              LEFT COLUMN
-          ==================================================== */}
+        {/* SINGLE COLUMN - Check Your Stay Box with Continue button inside */}
 
-          <div className="lg:col-span-2 space-y-8">
-            {/* STAY DETAILS */}
+        <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black text-stone-900 flex items-center gap-3">
+              <Calendar className="w-7 h-7 text-amber-500" />
+              Check Your Stay
+            </h2>
 
-            <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-stone-900 flex items-center gap-3">
-                  <Calendar className="w-7 h-7 text-amber-500" />
-                  Check Your Stay
-                </h2>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="text-2xl text-stone-400 hover:text-stone-600"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(-1)
-                  }
-                  className="text-2xl text-stone-400 hover:text-stone-600"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
+          <p className="text-sm text-stone-500 mb-6">
+            Select your dates and number of guests before continuing.
+          </p>
 
-              <p className="text-sm text-stone-500 mb-6">
-                Select your dates and number
-                of guests before continuing.
-              </p>
+          {/* SELECTED ROOM */}
 
-              {/* SELECTED ROOM */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <p className="text-sm text-stone-500 font-bold">
+                  SELECTED ROOM
+                </p>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <p className="text-sm text-stone-500 font-bold">
-                      SELECTED ROOM
-                    </p>
+                <h3 className="text-2xl font-black text-stone-900">
+                  Room{" "}
+                  {room.roomNumber ||
+                    room.id}
+                </h3>
 
-                    <h3 className="text-2xl font-black text-stone-900">
-                      Room{" "}
-                      {room.roomNumber ||
-                        room.id}
-                    </h3>
-
-                    <p className="text-base text-stone-600">
-                      {room.type ||
-                        room.roomType ||
-                        "Room"}{" "}
-                      · Maximum{" "}
-                      {maxGuests} guests
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-3xl font-black text-amber-600">
-                      {pricePerNight.toLocaleString()}{" "}
-                      ETB
-                    </p>
-
-                    <p className="text-sm text-stone-500">
-                      per night
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* DATES */}
-
-              <div className="grid sm:grid-cols-2 gap-6">
-                {/* CHECK-IN */}
-
-                <div>
-                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                    Check-in
-                  </label>
-
-                  <input
-                    type="date"
-                    required
-                    min={todayString}
-                    value={checkInDate}
-                    onChange={(e) => {
-                      const newCheckIn =
-                        e.target.value;
-
-                      setCheckInDate(
-                        newCheckIn
-                      );
-
-                      if (
-                        !checkOutDate ||
-                        checkOutDate <=
-                          newCheckIn
-                      ) {
-                        setCheckOutDate(
-                          getNextDate(
-                            newCheckIn
-                          )
-                        );
-                      }
-
-                      setError("");
-                    }}
-                    className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                </div>
-
-                {/* CHECK-OUT */}
-
-                <div>
-                  <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                    Check-out
-                  </label>
-
-                  <input
-                    type="date"
-                    required
-                    min={
-                      minimumCheckOutDate
-                    }
-                    value={checkOutDate}
-                    onChange={(e) => {
-                      setCheckOutDate(
-                        e.target.value
-                      );
-                      setError("");
-                    }}
-                    className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                </div>
-              </div>
-
-              {/* GUESTS */}
-
-              <div className="mt-6">
-                <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                  Number of Guests
-                </label>
-
-                <div className="relative">
-                  <select
-                    value={
-                      numberOfGuests
-                    }
-                    onChange={(e) =>
-                      setNumberOfGuests(
-                        Number(
-                          e.target.value
-                        )
-                      )
-                    }
-                    className="w-full px-5 py-4 rounded-xl border border-stone-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-amber-400 appearance-none"
-                  >
-                    {Array.from(
-                      {
-                        length: Math.min(
-                          maxGuests,
-                          10
-                        ),
-                      },
-                      (_, i) => (
-                        <option
-                          key={i + 1}
-                          value={i + 1}
-                        >
-                          {i + 1}{" "}
-                          {i === 0
-                            ? "guest"
-                            : "guests"}
-                        </option>
-                      )
-                    )}
-                  </select>
-
-                  <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-stone-400 pointer-events-none" />
-                </div>
-
-                <p className="text-sm text-stone-500 mt-2">
-                  Maximum {maxGuests} guests
-                  for this room.
+                <p className="text-base text-stone-600">
+                  {room.type ||
+                    room.roomType ||
+                    "Room"}{" "}
+                  · Maximum{" "}
+                  {maxGuests} guests
                 </p>
               </div>
 
-              {/* NIGHTS */}
+              <div className="text-right">
+                <p className="text-3xl font-black text-amber-600">
+                  {pricePerNight.toLocaleString()}{" "}
+                  ETB
+                </p>
 
-              {nightsCount > 0 && (
-                <div className="mt-4 bg-amber-50 rounded-xl px-5 py-4 text-base text-amber-800 font-semibold">
-                  {nightsCount} night
-                  {nightsCount !== 1
-                    ? "s"
-                    : ""}{" "}
-                  selected
-                </div>
-              )}
-            </div>
-
-            {/* SECURE PAYMENT */}
-
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="w-6 h-6 text-blue-600 shrink-0" />
-
-                <div>
-                  <h3 className="font-bold text-blue-900">
-                    Secure Payment
-                  </h3>
-
-                  <p className="mt-1 text-sm text-blue-800">
-                    After checking your stay
-                    details, continue to the
-                    payment screen to select
-                    Telebirr, Chapa, or Bank
-                    Transfer.
-                  </p>
-                </div>
+                <p className="text-sm text-stone-500">
+                  per night
+                </p>
               </div>
             </div>
           </div>
 
-          {/* ====================================================
-              RIGHT COLUMN
-          ==================================================== */}
+          {/* DATES */}
 
-          <div>
-            <div className="bg-stone-900 text-white rounded-3xl p-8 sticky top-24">
-              <h2 className="text-2xl font-black">
-                Booking Summary
-              </h2>
+          <div className="grid sm:grid-cols-2 gap-6">
+            {/* CHECK-IN */}
 
-              <div className="mt-8 space-y-5 text-base">
-                {/* ROOM */}
+            <div>
+              <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
+                Check-in
+              </label>
 
-                <div className="flex justify-between gap-4">
-                  <span className="text-stone-400">
-                    Room
-                  </span>
+              <input
+                type="date"
+                required
+                min={todayString}
+                value={checkInDate}
+                onChange={(e) => {
+                  const newCheckIn =
+                    e.target.value;
 
-                  <span className="font-bold text-right text-lg">
-                    {room.roomNumber ||
-                      room.id}
-                  </span>
-                </div>
+                  setCheckInDate(
+                    newCheckIn
+                  );
 
-                {/* PRICE */}
+                  if (
+                    !checkOutDate ||
+                    checkOutDate <=
+                      newCheckIn
+                  ) {
+                    setCheckOutDate(
+                      getNextDate(
+                        newCheckIn
+                      )
+                    );
+                  }
 
-                <div className="flex justify-between gap-4">
-                  <span className="text-stone-400">
-                    Price / night
-                  </span>
+                  setError("");
+                }}
+                className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
 
-                  <span className="font-bold text-lg">
-                    {pricePerNight.toLocaleString()}{" "}
-                    ETB
-                  </span>
-                </div>
+            {/* CHECK-OUT */}
 
-                {/* NIGHTS */}
+            <div>
+              <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
+                Check-out
+              </label>
 
-                <div className="flex justify-between gap-4">
-                  <span className="text-stone-400">
-                    Nights
-                  </span>
-
-                  <span className="font-bold text-lg">
-                    {nightsCount}
-                  </span>
-                </div>
-
-                {/* GUESTS */}
-
-                <div className="flex justify-between gap-4">
-                  <span className="text-stone-400">
-                    Guests
-                  </span>
-
-                  <span className="font-bold text-lg">
-                    {numberOfGuests}
-                  </span>
-                </div>
-
-                {/* TOTAL */}
-
-                <div className="border-t border-stone-700 pt-5 flex justify-between">
-                  <span className="text-xl font-bold">
-                    Total
-                  </span>
-
-                  <span className="text-3xl font-black text-amber-400">
-                    {totalPrice.toLocaleString()}{" "}
-                    ETB
-                  </span>
-                </div>
-              </div>
-
-              {/* CONTINUE */}
-
-              <button
-                type="button"
-                onClick={
-                  handleContinueToPayment
+              <input
+                type="date"
+                required
+                min={
+                  minimumCheckOutDate
                 }
-                disabled={
-                  nightsCount <= 0 ||
-                  pricePerNight <= 0 ||
-                  !room?.id ||
-                  !guesthouse?.id
+                value={checkOutDate}
+                onChange={(e) => {
+                  setCheckOutDate(
+                    e.target.value
+                  );
+                  setError("");
+                }}
+                className="w-full px-5 py-4 rounded-xl border border-stone-300 text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+          </div>
+
+          {/* GUESTS */}
+
+          <div className="mt-6">
+            <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
+              Number of Guests
+            </label>
+
+            <div className="relative">
+              <select
+                value={
+                  numberOfGuests
                 }
-                className="w-full mt-8 py-5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-600 disabled:text-stone-400 text-stone-950 font-black text-lg transition"
+                onChange={(e) =>
+                  setNumberOfGuests(
+                    Number(
+                      e.target.value
+                    )
+                  )
+                }
+                className="w-full px-5 py-4 rounded-xl border border-stone-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-amber-400 appearance-none"
               >
-                Continue to Payment
-              </button>
+                {Array.from(
+                  {
+                    length: Math.min(
+                      maxGuests,
+                      10
+                    ),
+                  },
+                  (_, i) => (
+                    <option
+                      key={i + 1}
+                      value={i + 1}
+                    >
+                      {i + 1}{" "}
+                      {i === 0
+                        ? "guest"
+                        : "guests"}
+                    </option>
+                  )
+                )}
+              </select>
 
-              <div className="mt-6 flex items-start gap-3 text-sm text-stone-400">
-                <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-400" />
+              <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-stone-400 pointer-events-none" />
+            </div>
 
-                <span>
-                  Your room is checked for
-                  availability before the
-                  reservation is confirmed.
-                </span>
+            <p className="text-sm text-stone-500 mt-2">
+              Maximum {maxGuests} guests
+              for this room.
+            </p>
+          </div>
+
+          {/* NIGHTS */}
+
+          {nightsCount > 0 && (
+            <div className="mt-4 bg-amber-50 rounded-xl px-5 py-4 text-base text-amber-800 font-semibold">
+              {nightsCount} night
+              {nightsCount !== 1
+                ? "s"
+                : ""}{" "}
+              selected
+            </div>
+          )}
+
+          {/* DIVIDER */}
+
+          <div className="border-t border-stone-200 my-8"></div>
+
+          {/* BOOKING SUMMARY INSIDE THE BOX */}
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold text-stone-900">Booking Summary</h3>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-stone-50 rounded-2xl p-4">
+              <div>
+                <p className="text-xs text-stone-500">Room</p>
+                <p className="text-base font-bold text-stone-900">
+                  {room.roomNumber || room.id}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-stone-500">Price / night</p>
+                <p className="text-base font-bold text-stone-900">
+                  {pricePerNight.toLocaleString()} ETB
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-stone-500">Nights</p>
+                <p className="text-base font-bold text-stone-900">
+                  {nightsCount}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-stone-500">Guests</p>
+                <p className="text-base font-bold text-stone-900">
+                  {numberOfGuests}
+                </p>
               </div>
             </div>
+
+            <div className="flex justify-between items-center bg-amber-50 rounded-2xl p-4 border border-amber-200">
+              <span className="text-lg font-bold text-stone-900">Total</span>
+              <span className="text-2xl font-black text-amber-600">
+                {totalPrice.toLocaleString()} ETB
+              </span>
+            </div>
+          </div>
+
+          {/* CONTINUE TO PAYMENT BUTTON - INSIDE THE BOX */}
+
+          <button
+            type="button"
+            onClick={
+              handleContinueToPayment
+            }
+            disabled={
+              nightsCount <= 0 ||
+              pricePerNight <= 0 ||
+              !room?.id ||
+              !guesthouse?.id
+            }
+            className="w-full mt-8 py-5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-300 disabled:text-stone-500 text-stone-950 font-black text-lg transition-all duration-200 transform hover:scale-[1.02]"
+          >
+            Continue to Payment
+          </button>
+
+          <div className="mt-4 flex items-start gap-3 text-sm text-stone-500">
+            <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-500" />
+            <span>
+              Your room is checked for availability before the reservation is confirmed.
+            </span>
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
 

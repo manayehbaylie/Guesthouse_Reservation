@@ -47,106 +47,15 @@ const HERO_IMAGES = [
   },
 ];
 
-const FALLBACK_GUESTHOUSES = [
-  {
-    id: "demo-addis-1",
-    name: "Bole Comfort Guesthouse",
-    address: "Bole, Addis Ababa",
-    city: "Addis Ababa",
-    description:
-      "A comfortable verified guesthouse located in Bole with clean rooms and modern facilities.",
-    image:
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1000&q=80",
-    status: "APPROVED",
-    verified: true,
-    rating: 4.8,
-    price: 1200,
-  },
-  {
-    id: "demo-addis-2",
-    name: "Addis Garden Guesthouse",
-    address: "Kazanchis, Addis Ababa",
-    city: "Addis Ababa",
-    description:
-      "A peaceful verified guesthouse offering comfortable accommodation in the heart of Addis Ababa.",
-    image:
-      "https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1000&q=80",
-    status: "APPROVED",
-    verified: true,
-    rating: 4.7,
-    price: 1400,
-  },
-  {
-    id: "demo-hawassa-1",
-    name: "Hawassa Lake View",
-    address: "Hawassa, Sidama",
-    city: "Hawassa",
-    description:
-      "A relaxing verified guesthouse close to Lake Hawassa with beautiful surroundings.",
-    image:
-      "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1000&q=80",
-    status: "APPROVED",
-    verified: true,
-    rating: 4.9,
-    price: 1300,
-  },
-  {
-    id: "demo-hawassa-2",
-    name: "Hawassa Green Stay",
-    address: "Central Hawassa",
-    city: "Hawassa",
-    description:
-      "A clean and comfortable verified guesthouse suitable for short and long stays.",
-    image:
-      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1000&q=80",
-    status: "APPROVED",
-    verified: true,
-    rating: 4.6,
-    price: 1100,
-  },
-  {
-    id: "demo-bishoftu-1",
-    name: "Bishoftu Lakeside Guesthouse",
-    address: "Bishoftu, Oromia",
-    city: "Bishoftu",
-    description:
-      "A verified guesthouse offering a peaceful stay near Bishoftu's beautiful lakes.",
-    image:
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1000&q=80",
-    status: "APPROVED",
-    verified: true,
-    rating: 4.8,
-    price: 1250,
-  },
-  {
-    id: "demo-bahir-1",
-    name: "Bahir Dar Lakeside Guesthouse",
-    address: "Bahir Dar",
-    city: "Bahir Dar",
-    description:
-      "A comfortable verified guesthouse close to Lake Tana and the city center.",
-    image:
-      "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=1000&q=80",
-    status: "APPROVED",
-    verified: true,
-    rating: 4.8,
-    price: 1300,
-  },
-  {
-    id: "demo-lalibela-1",
-    name: "Lalibela Heritage Guesthouse",
-    address: "Lalibela, Amhara",
-    city: "Lalibela",
-    description:
-      "A beautiful guesthouse located in the heart of Lalibela, offering stunning views and authentic Ethiopian hospitality.",
-    image:
-      "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1000&q=80",
-    status: "APPROVED",
-    verified: true,
-    rating: 4.9,
-    price: 1400,
-  },
-];
+/*
+ * IMPORTANT:
+ * Do not put fake guesthouse IDs such as:
+ * "demo-lalibela-1"
+ *
+ * Guesthouses should come from the database through the API.
+ * Lalibela Heritage Guesthouse should therefore use its real
+ * database ID: 14.
+ */
 
 const getBackendBaseUrl = () => {
   const configuredUrl = import.meta.env.VITE_API_BASE_URL || "";
@@ -298,9 +207,12 @@ const removeDuplicates = (guesthouses) => {
       .trim()
       .toLowerCase();
 
-    const id = guesthouse.id
-      ? String(guesthouse.id)
-      : "";
+    const id =
+      guesthouse.id !== undefined &&
+      guesthouse.id !== null &&
+      guesthouse.id !== ""
+        ? String(guesthouse.id)
+        : "";
 
     const key = id
       ? `id:${id}`
@@ -417,75 +329,95 @@ export function Home() {
         setLoading(true);
 
         console.log(
-          "🔍 Loading guesthouses for Home page..."
+          "🔍 Loading guesthouses from database..."
+        );
+
+        const response =
+          await ApiService.getGuesthouses({});
+
+        console.log(
+          "📦 Guesthouse API Response:",
+          response
         );
 
         let result = [];
 
-        try {
-          const response =
-            await ApiService.getGuesthouses({});
-
-          console.log(
-            "📦 API Response:",
-            response
-          );
-
-          if (Array.isArray(response)) {
-            result = response;
-          } else if (
-            Array.isArray(response?.data)
-          ) {
-            result = response.data;
-          } else if (
-            Array.isArray(response?.guesthouses)
-          ) {
-            result = response.guesthouses;
-          }
-        } catch (apiError) {
-          console.warn(
-            "Could not load guesthouses from API. Using fallback data.",
-            apiError
-          );
+        if (Array.isArray(response)) {
+          result = response;
+        } else if (
+          Array.isArray(response?.data)
+        ) {
+          result = response.data;
+        } else if (
+          Array.isArray(response?.guesthouses)
+        ) {
+          result = response.guesthouses;
+        } else if (
+          Array.isArray(response?.data?.guesthouses)
+        ) {
+          result = response.data.guesthouses;
         }
 
-        const normalizedApiGuesthouses =
-          result
-            .map(normalizeGuesthouse)
-            .filter(Boolean);
-
-        const normalizedFallbackGuesthouses =
-          FALLBACK_GUESTHOUSES
-            .map(normalizeGuesthouse)
-            .filter(Boolean);
-
-        const combined = removeDuplicates([
-          ...normalizedApiGuesthouses,
-          ...normalizedFallbackGuesthouses,
-        ]);
-
         console.log(
-          "📊 Total guesthouses after combining:",
-          combined.length
+          "🏠 Guesthouses received from database:",
+          result
         );
 
-        const lalibela = combined.find(
-          (guesthouse) =>
-            guesthouse.name
-              ?.toLowerCase()
-              .includes("lalibela")
-        );
+        const normalizedGuesthouses = result
+          .map(normalizeGuesthouse)
+          .filter(Boolean);
+
+        const uniqueGuesthouses =
+          removeDuplicates(
+            normalizedGuesthouses
+          );
+
+        /*
+         * Check Lalibela specifically.
+         *
+         * The correct database record should have:
+         * id: 14
+         * name: Lalibela Heritage Guesthouse
+         */
+        const lalibela =
+          uniqueGuesthouses.find(
+            (guesthouse) =>
+              guesthouse.name
+                ?.toLowerCase()
+                .includes("lalibela")
+          );
 
         if (lalibela) {
           console.log(
-            "🏠 Lalibela found:",
+            "✅ Lalibela found from DATABASE:",
             lalibela
+          );
+
+          console.log(
+            "🆔 Lalibela database ID:",
+            lalibela.id
+          );
+
+          if (Number(lalibela.id) === 14) {
+            console.log(
+              "✅ Correct Lalibela ID 14 detected."
+            );
+          } else {
+            console.warn(
+              "⚠️ Lalibela was found, but its ID is not 14:",
+              lalibela.id
+            );
+          }
+        } else {
+          console.warn(
+            "⚠️ Lalibela Heritage Guesthouse was NOT returned by the API."
           );
         }
 
-        const verified = combined.filter(
-          isVerifiedGuesthouse
-        );
+        const verified =
+          uniqueGuesthouses.filter(
+            isVerifiedGuesthouse
+          );
 
         console.log(
           "✅ Verified guesthouses:",
@@ -497,19 +429,20 @@ export function Home() {
         }
       } catch (error) {
         console.error(
-          "Failed to load guesthouses:",
+          "❌ Failed to load guesthouses from API:",
           error
         );
 
+        /*
+         * IMPORTANT:
+         * We no longer use fake fallback guesthouses.
+         *
+         * This prevents fake IDs such as
+         * "demo-lalibela-1" from being sent to
+         * GuesthouseDetail.jsx.
+         */
         if (mounted) {
-          const fallback =
-            removeDuplicates(
-              FALLBACK_GUESTHOUSES
-                .map(normalizeGuesthouse)
-                .filter(Boolean)
-            );
-
-          setGuesthouses(fallback);
+          setGuesthouses([]);
         }
       } finally {
         if (mounted) {
@@ -553,10 +486,14 @@ export function Home() {
 
     if (verifiedGuesthouses.length > 0) {
       console.log(
-        "📋 First guesthouses:",
-        verifiedGuesthouses
-          .slice(0, 5)
-          .map((guesthouse) => guesthouse.name)
+        "📋 Guesthouses:",
+        verifiedGuesthouses.map(
+          (guesthouse) => ({
+            id: guesthouse.id,
+            name: guesthouse.name,
+            city: guesthouse.city,
+          })
+        )
       );
 
       const lalibela =
@@ -569,7 +506,8 @@ export function Home() {
 
       if (lalibela) {
         console.log(
-          "✅ Lalibela Heritage Guesthouse is in the display list!"
+          "🏠 Lalibela in display list:",
+          lalibela
         );
       }
     }
@@ -578,15 +516,51 @@ export function Home() {
   const handleViewAndBook = (guesthouse) => {
     if (!guesthouse?.id) {
       console.error(
-        "Cannot open guesthouse because the guesthouse ID is missing."
+        "❌ Cannot open guesthouse because the ID is missing.",
+        guesthouse
       );
       return;
     }
 
+    /*
+     * GuesthouseDetail.jsx expects a numeric database ID.
+     *
+     * Example:
+     * Lalibela Heritage Guesthouse -> 14
+     *
+     * This prevents IDs such as:
+     * demo-lalibela-1
+     */
+    const guesthouseId = Number(
+      guesthouse.id
+    );
+
+    if (
+      !Number.isInteger(guesthouseId) ||
+      guesthouseId <= 0
+    ) {
+      console.error(
+        "❌ Cannot open guesthouse because the ID is not a valid database ID:",
+        guesthouse.id,
+        guesthouse
+      );
+
+      return;
+    }
+
+    console.log(
+      "➡️ Opening guesthouse:",
+      guesthouse.name,
+      "ID:",
+      guesthouseId
+    );
+
     navigate(
-      `/guesthouses/${guesthouse.id}`,
+      `/guesthouses/${guesthouseId}`,
       {
-        state: { guesthouse },
+        state: {
+          guesthouse,
+        },
       }
     );
   };
@@ -809,7 +783,6 @@ export function Home() {
           <div className="mt-16">
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
                   VERIFIED STAYS
@@ -853,13 +826,16 @@ export function Home() {
 
                     <div className="space-y-3 p-5">
                       <div className="h-5 animate-pulse rounded bg-slate-200" />
+
                       <div className="h-4 w-2/3 animate-pulse rounded bg-slate-200" />
+
                       <div className="h-4 w-full animate-pulse rounded bg-slate-200" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : verifiedGuesthouses.length > 0 ? (
+
               <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 
                 {verifiedGuesthouses.map(
@@ -967,13 +943,17 @@ export function Home() {
                             View & Book
                             <ArrowRight className="h-4 w-4" />
                           </button>
+
                         </div>
                       </div>
                     </article>
                   )
                 )}
+
               </div>
+
             ) : (
+
               <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
 
                 <Building2 className="mx-auto h-12 w-12 text-slate-300" />
@@ -985,11 +965,14 @@ export function Home() {
                 <p className="mt-2 text-sm text-slate-500">
                   Please check again later.
                 </p>
+
               </div>
             )}
+
           </div>
 
           <div className="mt-12 text-center">
+
             <button
               type="button"
               onClick={() =>
@@ -1000,6 +983,7 @@ export function Home() {
               Explore All Guesthouses
               <ArrowRight className="h-4 w-4" />
             </button>
+
           </div>
         </div>
       </section>
@@ -1013,6 +997,7 @@ export function Home() {
         <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-2">
 
           <div>
+
             <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
               ABOUT US
             </p>
@@ -1052,6 +1037,7 @@ export function Home() {
               Explore Guesthouses
               <ArrowRight className="h-4 w-4" />
             </button>
+
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
@@ -1109,6 +1095,7 @@ export function Home() {
                 reservations.
               </p>
             </div>
+
           </div>
         </div>
       </section>
@@ -1193,6 +1180,7 @@ export function Home() {
                   </p>
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -1261,14 +1249,17 @@ export function Home() {
                 Send Email
                 <Send className="h-4 w-4" />
               </button>
+
             </form>
           </div>
+
         </div>
       </section>
 
       {/* ================= FOOTER ================= */}
 
       <footer className="bg-[#032944] px-4 py-8 text-white sm:px-6 lg:px-8">
+
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
 
           <div>
@@ -1281,6 +1272,7 @@ export function Home() {
             © {new Date().getFullYear()} Guesthouse Platform.
             All rights reserved.
           </p>
+
         </div>
       </footer>
 

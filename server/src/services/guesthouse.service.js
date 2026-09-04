@@ -55,12 +55,24 @@ export const createGuesthouse = async (data, ownerId) => {
     data: {
       name: data.name,
       address: data.address,
+
+      // Sub-city
+      subCity: data.subCity || null,
+
       city: data.city,
-      description: data.description,
+      description: data.description || null,
+
       image: firstPhoto,
       photos,
-      ownerId,
+
+      ownerId: Number(ownerId),
+
       status: "PENDING",
+    },
+
+    include: {
+      owner: true,
+      rooms: true,
     },
   });
 };
@@ -114,13 +126,79 @@ export const getAllGuesthouses = async () => {
 // ============================================================
 
 export const updateGuesthouse = async (id, data) => {
-  return await prisma.guesthouse.update({
+  const guesthouseId = Number(id);
+
+  if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+    throw new Error(`Invalid guesthouse ID: ${id}`);
+  }
+
+  const updateData = {};
+
+  if (data.name !== undefined) {
+    updateData.name = data.name;
+  }
+
+  if (data.address !== undefined) {
+    updateData.address = data.address;
+  }
+
+  if (data.subCity !== undefined) {
+    updateData.subCity = data.subCity || null;
+  }
+
+  if (data.city !== undefined) {
+    updateData.city = data.city;
+  }
+
+  if (data.description !== undefined) {
+    updateData.description = data.description;
+  }
+
+  if (data.image !== undefined) {
+    updateData.image = data.image;
+  }
+
+  if (data.photos !== undefined) {
+    updateData.photos = Array.isArray(data.photos)
+      ? data.photos.filter(
+          (photo) =>
+            typeof photo === "string" &&
+            photo.trim() &&
+            photo !== "[object Object]"
+        )
+      : [];
+  }
+
+  if (data.status !== undefined) {
+    updateData.status = data.status;
+  }
+
+  if (data.ownerId !== undefined) {
+    updateData.ownerId = Number(data.ownerId);
+  }
+
+  const guesthouse = await prisma.guesthouse.update({
     where: {
-      id: Number(id),
+      id: guesthouseId,
     },
 
-    data,
+    data: updateData,
+
+    include: {
+      owner: true,
+      rooms: true,
+    },
   });
+
+  return {
+    ...guesthouse,
+
+    image: getPrimaryGuesthouseImage(guesthouse),
+
+    photos: Array.isArray(guesthouse.photos)
+      ? guesthouse.photos
+      : [],
+  };
 };
 
 // ============================================================
@@ -128,9 +206,15 @@ export const updateGuesthouse = async (id, data) => {
 // ============================================================
 
 export const getGuesthouseById = async (id) => {
+  const guesthouseId = Number(id);
+
+  if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+    throw new Error(`Invalid guesthouse ID: ${id}`);
+  }
+
   const guesthouse = await prisma.guesthouse.findFirst({
     where: {
-      id: Number(id),
+      id: guesthouseId,
       status: "APPROVED",
     },
 
@@ -170,21 +254,30 @@ export const getGuesthouseById = async (id) => {
 // ============================================================
 
 export const getGuesthouseByOwnerId = async (ownerId) => {
-  const guesthouse = await prisma.guesthouse.findFirst({
+  const numericOwnerId = Number(ownerId);
+
+  if (
+    !Number.isInteger(numericOwnerId) ||
+    numericOwnerId <= 0
+  ) {
+    throw new Error(`Invalid owner ID: ${ownerId}`);
+  }
+
+  const guesthouses = await prisma.guesthouse.findMany({
     where: {
-      ownerId: Number(ownerId),
+      ownerId: numericOwnerId,
     },
 
     include: {
       rooms: true,
     },
+
+    orderBy: {
+      id: "asc",
+    },
   });
 
-  if (!guesthouse) {
-    return null;
-  }
-
-  return {
+  return guesthouses.map((guesthouse) => ({
     ...guesthouse,
 
     image: getPrimaryGuesthouseImage(guesthouse),
@@ -192,7 +285,7 @@ export const getGuesthouseByOwnerId = async (ownerId) => {
     photos: Array.isArray(guesthouse.photos)
       ? guesthouse.photos
       : [],
-  };
+  }));
 };
 
 // ============================================================
@@ -200,9 +293,15 @@ export const getGuesthouseByOwnerId = async (ownerId) => {
 // ============================================================
 
 export const deleteGuesthouse = async (id) => {
+  const guesthouseId = Number(id);
+
+  if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+    throw new Error(`Invalid guesthouse ID: ${id}`);
+  }
+
   return await prisma.guesthouse.delete({
     where: {
-      id: Number(id),
+      id: guesthouseId,
     },
   });
 };
@@ -214,8 +313,6 @@ export const deleteGuesthouse = async (id) => {
 export const getPendingGuesthouses = async () => {
   return await prisma.guesthouse.findMany({
     where: {
-      // GuesthouseStatus only contains PENDING,
-      // APPROVED and REJECTED.
       status: "PENDING",
     },
 
@@ -233,6 +330,7 @@ export const getPendingGuesthouses = async () => {
           role: true,
           residentialAddress: true,
           idNumber: true,
+          idType: true,
           createdAt: true,
         },
       },
@@ -262,6 +360,7 @@ export const getAllGuesthousesAdmin = async () => {
           role: true,
           residentialAddress: true,
           idNumber: true,
+          idType: true,
           createdAt: true,
         },
       },
@@ -276,9 +375,15 @@ export const getAllGuesthousesAdmin = async () => {
 // ============================================================
 
 export const approveGuesthouse = async (id) => {
+  const guesthouseId = Number(id);
+
+  if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+    throw new Error(`Invalid guesthouse ID: ${id}`);
+  }
+
   const guesthouse = await prisma.guesthouse.findUnique({
     where: {
-      id: Number(id),
+      id: guesthouseId,
     },
   });
 
@@ -294,7 +399,7 @@ export const approveGuesthouse = async (id) => {
   const updatedGuesthouse =
     await prisma.guesthouse.update({
       where: {
-        id: Number(id),
+        id: guesthouseId,
       },
 
       data: {
@@ -304,7 +409,7 @@ export const approveGuesthouse = async (id) => {
       },
     });
 
-  // Notify the owner after approval.
+  // Notify owner after approval
   await createNotification({
     title: "Guesthouse Approved",
 
@@ -329,9 +434,15 @@ export const rejectGuesthouse = async (
   id,
   reason = "Does not meet platform standards"
 ) => {
+  const guesthouseId = Number(id);
+
+  if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+    throw new Error(`Invalid guesthouse ID: ${id}`);
+  }
+
   const guesthouse = await prisma.guesthouse.findUnique({
     where: {
-      id: Number(id),
+      id: guesthouseId,
     },
   });
 
@@ -342,7 +453,7 @@ export const rejectGuesthouse = async (
   const updatedGuesthouse =
     await prisma.guesthouse.update({
       where: {
-        id: Number(id),
+        id: guesthouseId,
       },
 
       data: {
@@ -351,7 +462,7 @@ export const rejectGuesthouse = async (
       },
     });
 
-  // Notify the owner after rejection.
+  // Notify owner after rejection
   await createNotification({
     title: "Guesthouse Rejected",
 

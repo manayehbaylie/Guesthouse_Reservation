@@ -52,6 +52,9 @@ export function Login() {
   const pendingReservation =
     location.state?.pendingReservation || false;
 
+  const returnTo = location.state?.returnTo || null;
+  const fromPath = location.state?.from || null;
+
   // ---------------------------------------------------------
   // CHECK PENDING BOOKING
   // ---------------------------------------------------------
@@ -219,160 +222,179 @@ export function Login() {
 
       // Normalize phone before sending
       if (loginMethod === "phone") {
-        loginIdentifier =
-          normalizePhoneNumber(loginIdentifier);
+        loginIdentifier = normalizePhoneNumber(loginIdentifier);
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * Your AuthContext login function should support:
-       *
-       * login(identifier, password, loginMethod)
-       *
-       * Example:
-       *
-       * login("+251912345678", "password", "phone")
-       *
-       * OR
-       *
-       * login("user@gmail.com", "password", "email")
-       */
-
-      const user = await login(
-        loginIdentifier,
-        password,
-        loginMethod
-      );
+      const user = await login(loginIdentifier, password, loginMethod);
 
       if (!user) {
-        throw new Error(
-          "Login failed. User information was not returned."
-        );
+        throw new Error("Login failed. User information was not returned.");
       }
 
-      // -----------------------------------------------------
-      // HANDLE PENDING RESERVATION FIRST
-      // -----------------------------------------------------
+      // ========================================================
+      // ✅ STEP 1: CHECK FOR PENDING RESERVATION IN SESSION STORAGE
+      // ========================================================
 
-      const pendingData =
-        sessionStorage.getItem("pendingReservation");
+      const pendingData = sessionStorage.getItem("pendingReservation");
 
       if (pendingData) {
         try {
           const data = JSON.parse(pendingData);
-
-          sessionStorage.removeItem(
-            "pendingReservation"
-          );
+          sessionStorage.removeItem("pendingReservation");
 
           if (!data.guesthouseId || !data.roomId) {
-            throw new Error(
-              "Invalid pending reservation data."
-            );
+            throw new Error("Invalid pending reservation data.");
           }
 
-          navigate(
-            `/booking?guesthouseId=${data.guesthouseId}&roomId=${data.roomId}`,
-            {
-              replace: true,
-              state: {
-                bookingData: data,
-                fromLogin: true,
-                user,
-                showConfirmation: true,
-              },
-            }
-          );
+          // ✅ Redirect to Guest Dashboard with booking data and showPayment flag
+          navigate("/guest/dashboard", {
+            replace: true,
+            state: {
+              bookingData: data,
+              fromLogin: true,
+              user,
+              showPayment: true,
+            },
+          });
 
           return;
         } catch (bookingError) {
-          console.error(
-            "Failed to process pending reservation:",
-            bookingError
-          );
+          console.error("Failed to process pending reservation:", bookingError);
+          sessionStorage.removeItem("pendingReservation");
         }
       }
 
-      // -----------------------------------------------------
-      // HANDLE BOOKING STATE
-      // -----------------------------------------------------
+      // ========================================================
+      // ✅ STEP 2: CHECK FOR RETURN TO PAYMENT FLAG
+      // ========================================================
 
-      if (reservationData || bookingData) {
-        const data =
-          reservationData || bookingData;
+      const returnTo = location.state?.returnTo;
+      const fromPath = location.state?.from;
 
-        const guesthouseId =
-          data.guesthouseId ||
-          data.guesthouse?.id;
-
-        const roomId =
-          data.roomId ||
-          data.room?.id;
-
-        if (guesthouseId && roomId) {
-          navigate(
-            `/booking?guesthouseId=${guesthouseId}&roomId=${roomId}`,
-            {
+      if (returnTo === "payment" && fromPath) {
+        // Check if there's data in sessionStorage again
+        const storedData = sessionStorage.getItem("pendingReservation");
+        
+        if (storedData) {
+          try {
+            const data = JSON.parse(storedData);
+            sessionStorage.removeItem("pendingReservation");
+            
+            // Navigate to Guest Dashboard with payment flag
+            navigate("/guest/dashboard", {
               replace: true,
               state: {
                 bookingData: data,
                 fromLogin: true,
                 user,
-                showConfirmation: true,
+                showPayment: true,
               },
-            }
-          );
+            });
+            return;
+          } catch (e) {
+            console.error("Error parsing stored booking:", e);
+          }
+        }
+        
+        // If no stored data, try to use bookingData from state
+        const bookingDataFromState = location.state?.bookingData || location.state?.reservationData;
+        if (bookingDataFromState) {
+          navigate("/guest/dashboard", {
+            replace: true,
+            state: {
+              bookingData: bookingDataFromState,
+              fromLogin: true,
+              user,
+              showPayment: true,
+            },
+          });
+          return;
+        }
+        
+        // Fallback: go to dashboard
+        navigate("/guest/dashboard", {
+          replace: true,
+          state: {
+            fromLogin: true,
+            user,
+          },
+        });
+        return;
+      }
+
+      // ========================================================
+      // ✅ STEP 3: CHECK FOR BOOKING DATA IN STATE
+      // ========================================================
+
+      if (reservationData || bookingData) {
+        const data = reservationData || bookingData;
+
+        const guesthouseId = data.guesthouseId || data.guesthouse?.id;
+        const roomId = data.roomId || data.room?.id;
+
+        if (guesthouseId && roomId) {
+          // ✅ Redirect to Guest Dashboard with booking data
+          navigate("/guest/dashboard", {
+            replace: true,
+            state: {
+              bookingData: data,
+              fromLogin: true,
+              user,
+              showPayment: true,
+            },
+          });
 
           return;
         }
       }
 
-      // -----------------------------------------------------
-      // BOOKING REDIRECT
-      // -----------------------------------------------------
+      // ========================================================
+      // ✅ STEP 4: CHECK IF COMING FROM BOOKING
+      // ========================================================
 
       if (isComingFromBooking()) {
-        navigate("/guest/search", {
+        navigate("/guest/dashboard", {
           replace: true,
+          state: {
+            fromLogin: true,
+            user,
+            showPayment: true,
+          },
         });
-
         return;
       }
 
-      // -----------------------------------------------------
-      // ROLE BASED REDIRECTION
-      // -----------------------------------------------------
+      // ========================================================
+      // ✅ STEP 5: ROLE BASED REDIRECTION
+      // ========================================================
 
       switch (String(user.role || "").toUpperCase()) {
         case "ADMIN":
-          navigate("/admin", {
-            replace: true,
-          });
+          navigate("/admin", { replace: true });
           break;
 
         case "OWNER":
-          navigate("/owner", {
-            replace: true,
-          });
+          navigate("/owner", { replace: true });
           break;
 
         case "RECEPTIONIST":
-          navigate("/receptionist", {
-            replace: true,
-          });
+          navigate("/receptionist", { replace: true });
           break;
 
         case "GUEST":
+          // ✅ Redirect to Guest Dashboard with showPayment flag
           navigate("/guest/dashboard", {
             replace: true,
+            state: {
+              fromLogin: true,
+              user,
+              showPayment: true,
+            },
           });
           break;
 
         default:
-          navigate(from, {
-            replace: true,
-          });
+          navigate(from, { replace: true });
       }
     } catch (err) {
       console.error("Login error:", err);
