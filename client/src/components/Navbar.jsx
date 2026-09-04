@@ -23,7 +23,6 @@ import {
   Save,
   XCircle,
   Loader2,
-  Calendar,
 } from 'lucide-react';
 
 /* ============================================================
@@ -347,27 +346,14 @@ export function Navbar({ onToggleSidebar }) {
                       </span>
                     </div>
 
-                    <Link
-                      to="/profile"
-                      onClick={() =>
-                        setProfileDropdownOpen(false)
-                      }
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                    <button
+                      type="button"
+                      onClick={openUpdateProfile}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                     >
-                      <User className="w-4 h-4" />
-                      Profile
-                    </Link>
-
-                    <Link
-                      to="/reservations"
-                      onClick={() =>
-                        setProfileDropdownOpen(false)
-                      }
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
-                    >
-                      <Calendar className="w-4 h-4" />
-                      My Bookings
-                    </Link>
+                      <Settings className="w-4 h-4" />
+                      Update Profile
+                    </button>
 
                     <button
                       type="button"
@@ -513,20 +499,6 @@ export function Navbar({ onToggleSidebar }) {
                         </span>
 
                       </div>
-
-                      {isGuest() && (
-                        <Link to="/guest/dashboard" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
-                          <Home className="w-4 h-4" /> Dashboard
-                        </Link>
-                      )}
-
-                      <Link to="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
-                        <User className="w-4 h-4" /> Profile
-                      </Link>
-
-                      <Link to="/reservations" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
-                        <Calendar className="w-4 h-4" /> My Bookings
-                      </Link>
 
                       <button onClick={openUpdateProfile} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
                         <Settings className="w-4 h-4" /> Update Profile
