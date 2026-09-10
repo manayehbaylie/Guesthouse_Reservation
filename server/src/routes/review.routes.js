@@ -6,6 +6,9 @@ import {
   getByGuest,
   getOwnerReviews,
   respond,
+  remove,
+  removeOwnerReview,
+  removeOwnerResponse,
 } from '../controllers/review.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -32,5 +35,14 @@ router.get('/owner-reviews', authenticate, getOwnerReviews);
 
 // Respond to a review (Owner only)
 router.put('/:reviewId/respond', authenticate, respond);
+
+// Delete a guest review from the owning guesthouse dashboard
+router.delete('/owner/:reviewId', authenticate, removeOwnerReview);
+
+// Delete the owner's response without deleting the guest review
+router.delete('/owner/:reviewId/response', authenticate, removeOwnerResponse);
+
+// Delete the current guest's own review
+router.delete('/:reviewId', authenticate, remove);
 
 export default router;

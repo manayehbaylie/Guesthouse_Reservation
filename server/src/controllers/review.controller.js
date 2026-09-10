@@ -57,8 +57,9 @@ export const create = async (req, res, next) => {
     if (!rating || rating < 1 || rating > 5) {
       throw new Error('Rating must be between 1 and 5.');
     }
-    if (!comment || !String(comment).trim()) {
-      throw new Error('Review comment is required.');
+    const reviewComment = String(comment || '').trim();
+    if (reviewComment.length < 1 || reviewComment.length > 1000) {
+      throw new Error('Review comment must be 1 to 1000 characters.');
     }
 
     // Check if review already exists for this reservation
@@ -75,11 +76,41 @@ export const create = async (req, res, next) => {
       });
     }
 
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: Number(reservationId) },
+      select: {
+        guestId: true,
+        status: true,
+        room: {
+          select: {
+            guesthouseId: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new Error('Reservation not found.');
+    }
+
+    const reviewStatus = String(reservation.status || '').toUpperCase();
+    if (reviewStatus !== 'CHECKED_IN' && reviewStatus !== 'CHECKED_OUT') {
+      throw new Error('You can only review after checking in.');
+    }
+
+    if (Number(reservation.guestId) !== Number(guestId)) {
+      throw new Error('You can only review your own reservation.');
+    }
+
+    if (Number(reservation.room?.guesthouseId) !== Number(guesthouseId)) {
+      throw new Error('The reservation does not belong to this guesthouse.');
+    }
+
     // Create the review
     const review = await prisma.review.create({
       data: {
         rating: Number(rating),
-        comment: String(comment).trim(),
+        comment: reviewComment,
         guestId: Number(guestId),
         guesthouseId: Number(guesthouseId),
         reservationId: Number(reservationId),
@@ -307,17 +338,11 @@ export const respond = async (req, res, next) => {
       });
     }
     
-    if (!response || !String(response).trim()) {
+    const responseText = String(response || '').trim();
+    if (responseText.length < 1 || responseText.length > 1000) {
       return res.status(400).json({
         success: false,
-        message: 'Response text is required.',
-      });
-    }
-
-    if (String(response).trim().length < 10) {
-      return res.status(400).json({
-        success: false,
-        message: 'Response must be at least 10 characters long.',
+        message: 'Response must be 1 to 1000 characters long.',
       });
     }
 
@@ -365,7 +390,7 @@ export const respond = async (req, res, next) => {
         id: Number(reviewId),
       },
       data: {
-        ownerResponse: String(response).trim(),
+        ownerResponse: responseText,
         updatedAt: new Date(),
       },
       include: {
@@ -409,6 +434,158 @@ export const respond = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Error in respond to review:', error);
+    next(error);
+  }
+};
+
+// ============================================================
+// DELETE GUEST'S OWN REVIEW
+// ============================================================
+
+export const remove = async (req, res, next) => {
+  try {
+    const reviewId = Number(req.params.reviewId);
+    const guestId = Number(req.user?.id);
+
+    if (!reviewId || !guestId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Review ID is required.',
+      });
+    }
+
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { id: true, guestId: true },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found.',
+      });
+    }
+
+    if (Number(review.guestId) !== guestId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete your own review.',
+      });
+    }
+
+    await prisma.review.delete({ where: { id: reviewId } });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Review deleted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// DELETE GUEST REVIEW BY OWNER
+// ============================================================
+
+export const removeOwnerReview = async (req, res, next) => {
+  try {
+    const reviewId = Number(req.params.reviewId);
+    const ownerId = Number(req.user?.id);
+
+    if (!reviewId || !ownerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Review ID is required.',
+      });
+    }
+
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        guesthouse: {
+          select: { ownerId: true },
+        },
+      },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found.',
+      });
+    }
+
+    if (Number(review.guesthouse.ownerId) !== ownerId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete reviews from your guesthouse.',
+      });
+    }
+
+    await prisma.review.delete({ where: { id: reviewId } });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Guest review deleted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// DELETE OWNER RESPONSE
+// ============================================================
+
+export const removeOwnerResponse = async (req, res, next) => {
+  try {
+    const reviewId = Number(req.params.reviewId);
+    const ownerId = Number(req.user?.id);
+
+    if (!reviewId || !ownerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Review ID is required.',
+      });
+    }
+
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        guesthouse: {
+          select: { ownerId: true },
+        },
+      },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found.',
+      });
+    }
+
+    if (Number(review.guesthouse.ownerId) !== ownerId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete responses from your guesthouse.',
+      });
+    }
+
+    await prisma.review.update({
+      where: { id: reviewId },
+      data: {
+        ownerResponse: null,
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Owner response deleted successfully.',
+    });
+  } catch (error) {
     next(error);
   }
 };

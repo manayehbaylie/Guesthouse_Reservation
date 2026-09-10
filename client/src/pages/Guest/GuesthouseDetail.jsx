@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
 
 import {
@@ -18,6 +18,7 @@ import {
 export function GuesthouseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [guesthouse, setGuesthouse] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -26,8 +27,27 @@ export function GuesthouseDetail() {
 
   const [loading, setLoading] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [checkInDate, setCheckInDate] = useState(
+    searchParams.get("checkIn") || ""
+  );
+  const [checkOutDate, setCheckOutDate] = useState(
+    searchParams.get("checkOut") || ""
+  );
+  const [dateError, setDateError] = useState("");
+  const datesRef = useRef(null);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const selectGuesthouse = () => {
+    if (!guesthouse?.id) return;
+
+    const currentUser = ApiService.getCurrentUser();
+    const selectionKey = currentUser?.id
+      ? `selectedGuesthouseId:${currentUser.id}`
+      : 'selectedGuesthouseId';
+    localStorage.setItem(selectionKey, String(guesthouse.id));
+    navigate(`/guest/dashboard?guesthouseId=${guesthouse.id}`);
+  };
 
   // ============================================================
   // IMAGE URL HELPER
@@ -85,8 +105,12 @@ export function GuesthouseDetail() {
     let mounted = true;
 
     const loadGuesthouseData = async () => {
+      const isInitialLoad = !guesthouse;
+
       try {
-        setLoading(true);
+        if (isInitialLoad) {
+          setLoading(true);
+        }
 
         // --------------------------------------------------------
         // VALIDATE GUESTHOUSE ID
@@ -186,7 +210,9 @@ export function GuesthouseDetail() {
         try {
           roomList =
             await ApiService.getRoomsForGuesthouse(
-              gh.id
+              gh.id,
+              checkInDate,
+              checkOutDate
             );
 
           if (!Array.isArray(roomList)) {
@@ -303,14 +329,14 @@ export function GuesthouseDetail() {
           error
         );
 
-        if (mounted) {
+        if (mounted && isInitialLoad) {
           setGuesthouse(null);
           setRooms([]);
           setReservations([]);
           setReviews([]);
         }
       } finally {
-        if (mounted) {
+        if (mounted && isInitialLoad) {
           setLoading(false);
         }
       }
@@ -321,7 +347,7 @@ export function GuesthouseDetail() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, checkInDate, checkOutDate]);
 
   // ============================================================
   // RENDER STARS
@@ -367,6 +393,10 @@ export function GuesthouseDetail() {
     }
 
     const roomId = String(room.id);
+    const hasValidDateRange =
+      Boolean(checkInDate && checkOutDate) &&
+      new Date(`${checkOutDate}T12:00:00`) >
+        new Date(`${checkInDate}T12:00:00`);
 
     // ----------------------------------------------------------
     // Check active reservations when available
@@ -387,7 +417,17 @@ export function GuesthouseDetail() {
           .trim()
           .toLowerCase();
 
-        return [
+        if (!hasValidDateRange) {
+          return false;
+        }
+
+        const overlapsSelectedDates =
+          new Date(reservation.checkIn) <
+            new Date(`${checkOutDate}T12:00:00`) &&
+          new Date(reservation.checkOut) >
+            new Date(`${checkInDate}T12:00:00`);
+
+        return overlapsSelectedDates && [
           "pending",
           "confirmed",
           "checked_in",
@@ -484,6 +524,14 @@ export function GuesthouseDetail() {
       return;
     }
 
+    if (!checkInDate || !checkOutDate || checkOutDate <= checkInDate) {
+      setDateError("Select a check-in and check-out date before choosing a room.");
+      datesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    setDateError("");
+
     const roomPrice = Number(
       room.pricePerNight ??
         room.price ??
@@ -492,6 +540,12 @@ export function GuesthouseDetail() {
         room.amount ??
         0
     );
+
+      const nightsCount = Math.ceil(
+        (new Date(`${checkOutDate}T12:00:00`) -
+          new Date(`${checkInDate}T12:00:00`)) /
+          (1000 * 60 * 60 * 24)
+      );
 
     if (!roomPrice || roomPrice <= 0) {
       console.error(
@@ -513,16 +567,16 @@ export function GuesthouseDetail() {
       room,
       roomPrice,
       pricePerNight: roomPrice,
-      checkIn: null,
-      checkOut: null,
-      checkInDate: "",
-      checkOutDate: "",
-      nights: 0,
-      nightsCount: 0,
-      amount: 0,
-      totalPrice: 0,
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+      checkInDate,
+      checkOutDate,
+      nights: nightsCount,
+      nightsCount,
+      amount: roomPrice * nightsCount,
+      totalPrice: roomPrice * nightsCount,
       numberOfGuests: 1,
-      paymentMethod: "TELEBIRR",
+      paymentMethod: "CARD",
       telebirrPhone: "",
       selectedBank: "",
       accountNumber: "",
@@ -541,7 +595,7 @@ export function GuesthouseDetail() {
     // ========================================================
 
     const token = localStorage.getItem("token");
-    const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    const currentUser = ApiService.getCurrentUser();
 
     if (!token || !currentUser) {
       // Save booking data to sessionStorage
@@ -565,7 +619,7 @@ export function GuesthouseDetail() {
       return;
     }
 
-    // ✅ USER LOGGED IN - GO TO BOOKING PAGE
+    // ✅ USER LOGGED IN - OPEN PAYMENT IN THE GUEST DASHBOARD
     try {
       sessionStorage.setItem(
         "selectedBooking",
@@ -578,14 +632,18 @@ export function GuesthouseDetail() {
       );
     }
 
-    navigate(
-      `/booking?guesthouseId=${guesthouse.id}&roomId=${room.id}`,
-      {
-        state: {
-          bookingData,
-        },
-      }
+    localStorage.setItem(
+      `selectedGuesthouseId:${currentUser.id}`,
+      String(guesthouse.id)
     );
+
+    navigate(`/guest/dashboard?guesthouseId=${guesthouse.id}`, {
+      replace: true,
+      state: {
+        bookingData,
+        showPayment: true,
+      },
+    });
   };
 
   // ============================================================
@@ -808,6 +866,15 @@ export function GuesthouseDetail() {
             {guesthouseCity}
           </p>
         )}
+
+        <button
+          type="button"
+          onClick={selectGuesthouse}
+          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-stone-950 transition-colors hover:bg-amber-400"
+        >
+          <Building2 className="h-4 w-4" />
+          Use this guesthouse
+        </button>
       </div>
 
       {/* ======================================================
@@ -958,6 +1025,44 @@ export function GuesthouseDetail() {
               </div>
 
             </div>
+
+            <div
+              ref={datesRef}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+            >
+              <label className="text-sm font-semibold text-stone-700">
+                Check-in date
+                <input
+                  type="date"
+                  min={new Date().toISOString().slice(0, 10)}
+                  value={checkInDate}
+                  onChange={(event) => {
+                    setCheckInDate(event.target.value);
+                    setDateError("");
+                  }}
+                  className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm"
+                />
+              </label>
+              <label className="text-sm font-semibold text-stone-700">
+                Check-out date
+                <input
+                  type="date"
+                  min={checkInDate || new Date().toISOString().slice(0, 10)}
+                  value={checkOutDate}
+                  onChange={(event) => {
+                    setCheckOutDate(event.target.value);
+                    setDateError("");
+                  }}
+                  className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm"
+                />
+              </label>
+            </div>
+
+            {dateError && (
+              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {dateError}
+              </p>
+            )}
 
             {rooms.length === 0 ? (
               <p className="text-xs text-stone-500 bg-white p-6 rounded-2xl border">

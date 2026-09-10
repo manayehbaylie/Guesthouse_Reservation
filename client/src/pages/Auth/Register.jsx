@@ -278,13 +278,13 @@ export function Register() {
       // We send both "name" and "fullName" for compatibility
       // with different backend registration implementations.
       //
-      // Email is optional. When empty, we send an empty string.
+      // Email is optional. Omit it when empty so the backend stores NULL.
       // ------------------------------------------------------
 
       const registrationData = {
         name: name.trim(),
         fullName: name.trim(),
-        email: email.trim(),
+        ...(email.trim() ? { email: email.trim() } : {}),
         phone: phone.trim(),
         residentialAddress:
           accountType === "Owner"

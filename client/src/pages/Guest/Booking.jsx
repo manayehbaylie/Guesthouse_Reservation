@@ -64,7 +64,7 @@ export function Booking() {
   const [resultData, setResultData] = useState(null);
 
   const [paymentData, setPaymentData] = useState({
-    paymentMethod: "TELEBIRR",
+    paymentMethod: "CARD",
     telebirrPhone: "",
     selectedBank: "",
     accountNumber: "",
@@ -186,7 +186,7 @@ export function Booking() {
             setPaymentData({
               paymentMethod:
                 savedData.paymentMethod ||
-                "TELEBIRR",
+                "CARD",
 
               telebirrPhone:
                 savedData.telebirrPhone ||
@@ -549,7 +549,7 @@ export function Booking() {
       // Payment
       paymentMethod:
         paymentData?.paymentMethod ||
-        "TELEBIRR",
+        "CARD",
 
       telebirrPhone:
         paymentData?.telebirrPhone ||

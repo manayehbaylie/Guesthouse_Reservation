@@ -320,6 +320,10 @@ function PaymentScreen({
       if (!accountNumber.trim()) {
         return "Please enter your bank account number.";
       }
+
+      if (!/^\d{6,20}$/.test(accountNumber.trim())) {
+        return "Bank account number must contain 6 to 20 digits.";
+      }
     }
 
     return null;
@@ -558,6 +562,12 @@ function PaymentScreen({
         return;
       }
 
+      if (paymentMethod === "CARD" || paymentMethod === "TELEBIRR" || paymentMethod === "BANK_TRANSFER") {
+        throw new Error(
+          "The payment gateway did not return a checkout page. Please try again."
+        );
+      }
+
       // ========================================================
       // FINAL SUCCESS RESULT
       // ========================================================
@@ -621,13 +631,13 @@ function PaymentScreen({
         "function"
       ) {
         onError(error);
-      } else {
-        setLocalError(
-          getApiErrorMessage(
-            error
-          )
-        );
       }
+
+      setLocalError(
+        getApiErrorMessage(
+          error
+        )
+      );
     } finally {
       setProcessing(false);
     }
@@ -667,28 +677,6 @@ function PaymentScreen({
           </p>
 
         </div>
-
-        {/* ======================================================
-            ERROR
-        ====================================================== */}
-
-        {localError && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 flex items-start gap-3">
-
-            <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
-
-            <div>
-              <p className="font-bold text-red-800">
-                Payment Error
-              </p>
-
-              <p className="mt-1 text-sm text-red-700">
-                {localError}
-              </p>
-            </div>
-
-          </div>
-        )}
 
         {/* ======================================================
             MAIN GRID
@@ -1155,6 +1143,23 @@ function PaymentScreen({
                 )}
 
               </button>
+
+              {localError && (
+                <div
+                  role="alert"
+                  className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3"
+                >
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                  <div>
+                    <p className="font-bold text-red-800">
+                      Payment could not be submitted
+                    </p>
+                    <p className="mt-1 text-sm text-red-700">
+                      {localError}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6 flex items-start gap-3 text-sm text-stone-400">
 

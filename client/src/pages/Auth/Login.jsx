@@ -389,13 +389,13 @@ export function Login() {
           break;
 
         case "GUEST":
-          // ✅ Redirect to Guest Dashboard with showPayment flag
+          // Normal login opens the regular dashboard. Payment is opened only
+          // by the room-selection booking flow above.
           navigate("/guest/dashboard", {
             replace: true,
             state: {
               fromLogin: true,
               user,
-              showPayment: true,
             },
           });
           break;

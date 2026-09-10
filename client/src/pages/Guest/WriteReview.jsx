@@ -12,6 +12,7 @@ import {
   CheckCircle,
   AlertCircle,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 
 export function WriteReview() {
@@ -43,15 +44,15 @@ export function WriteReview() {
       
       console.log('All reservations:', reservations);
       
-      // Filter for checked_out status only
+      // Guests may review once they have checked in.
       const completed = reservations.filter(
         (booking) => {
           const status = String(booking.status || '').toLowerCase();
-          return status === 'checked_out';
+          return status === 'checked_in' || status === 'checked_out';
         }
       );
       
-      console.log('Completed bookings (checked_out):', completed);
+      console.log('Review-eligible bookings (checked_in or checked_out):', completed);
       setCompletedBookings(completed);
       
       // Check which bookings already have reviews and get the review data
@@ -166,6 +167,21 @@ export function WriteReview() {
     }
   };
 
+  const handleDeleteReview = async (review) => {
+    if (!review?.id || !window.confirm('Delete your review?')) return;
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await ApiService.deleteReview(review.id);
+      setSuccess('Your review was deleted successfully.');
+      await loadCompletedBookings();
+    } catch (deleteError) {
+      setError(deleteError?.message || 'Failed to delete your review.');
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusMap = {
       checked_out: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -232,12 +248,12 @@ export function WriteReview() {
         {completedBookings.length === 0 && (
           <div className="bg-white rounded-2xl border border-[#e5edf2] p-12 text-center">
             <Building2 className="w-16 h-16 text-[#94a8b5] mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-[#043658]">No Completed Stays</h3>
+            <h3 className="text-lg font-bold text-[#043658]">No Review-Eligible Stays</h3>
             <p className="text-[#647b8a] mt-2">
-              You can only review guesthouses after completing your stay.
+              You can write a review after checking in to your guesthouse.
             </p>
             <p className="text-xs text-[#647b8a] mt-1">
-              Once your stay is checked out, you'll be able to share your experience here.
+              Your review can be submitted during your stay or after checkout.
             </p>
             <Link
               to="/guest/search"
@@ -294,6 +310,38 @@ export function WriteReview() {
                       <p className="text-xs text-[#647b8a] mt-0.5">
                         Room {booking.roomNumber} • {booking.roomType || 'Standard'}
                       </p>
+                    )}
+
+                    {reviewed && review && (
+                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-amber-800">Your Review</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-amber-600">
+                              {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReview(review)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 transition hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex items-center gap-1" aria-label={`${review.rating} out of 5 stars`}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`h-4 w-4 ${star <= Number(review.rating || 0) ? 'fill-amber-400 text-amber-400' : 'text-amber-200'}`}
+                            />
+                          ))}
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-amber-950">
+                          {review.comment || 'No review text was provided.'}
+                        </p>
+                      </div>
                     )}
 
                     {/* ✅ SHOW OWNER RESPONSE IF REVIEW EXISTS */}
@@ -382,9 +430,9 @@ export function WriteReview() {
                           maxLength={1000}
                         />
                         <div className="flex justify-between text-xs text-[#647b8a] mt-1">
-                          <span>{comment.length > 0 ? `${comment.length}/1000 characters` : 'Write at least 10 characters'}</span>
-                          {comment.length > 0 && comment.length < 10 && (
-                            <span className="text-red-500">Please write more (minimum 10 characters)</span>
+                          <span>{comment.length > 0 ? `${comment.length}/1000 characters` : 'Write 1-1000 characters'}</span>
+                          {comment.length === 0 && (
+                            <span className="text-red-500">Please write at least 1 character</span>
                           )}
                         </div>
                       </div>
@@ -392,7 +440,7 @@ export function WriteReview() {
                       <div className="flex flex-wrap gap-3">
                         <button
                           type="submit"
-                          disabled={submitting || rating === 0 || comment.trim().length < 10}
+                          disabled={submitting || rating === 0 || comment.trim().length < 1 || comment.trim().length > 1000}
                           className="px-6 py-2.5 bg-[#FFC107] hover:bg-[#ffb300] text-[#043658] font-bold rounded-xl flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {submitting ? (
@@ -424,8 +472,8 @@ export function WriteReview() {
                       {rating === 0 && (
                         <p className="text-xs text-red-500">⚠️ Please select a rating</p>
                       )}
-                      {comment.trim().length > 0 && comment.trim().length < 10 && (
-                        <p className="text-xs text-red-500">⚠️ Please write at least 10 characters</p>
+                      {comment.trim().length > 1000 && (
+                        <p className="text-xs text-red-500">Please keep your review within 1000 characters</p>
                       )}
                     </form>
                   </div>

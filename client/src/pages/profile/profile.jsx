@@ -8,6 +8,19 @@ export function Profile() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const role = String(user?.role || "USER").toUpperCase();
+  const roleLabel = role.charAt(0) + role.slice(1).toLowerCase();
+  const dashboardPath =
+    role === "GUEST"
+      ? "/guest/dashboard"
+      : role === "OWNER"
+        ? "/owner"
+        : role === "ADMIN"
+          ? "/admin"
+          : role === "RECEPTIONIST"
+            ? "/receptionist"
+            : "/";
+
   const [name, setName] = useState(
     user?.name || user?.fullName || ""
   );
@@ -59,7 +72,7 @@ export function Profile() {
 
         <button
           type="button"
-          onClick={() => navigate("/receptionist")}
+          onClick={() => navigate(dashboardPath)}
           className="flex items-center gap-2 px-4 py-2 mb-5
                      bg-stone-700 hover:bg-stone-800
                      text-white rounded-xl text-sm font-semibold
@@ -74,7 +87,7 @@ export function Profile() {
         </h1>
 
         <p className="text-sm text-stone-500 mt-1">
-          Update your receptionist account information.
+          Update your {roleLabel.toLowerCase()} account information.
         </p>
       </div>
 
@@ -96,7 +109,7 @@ export function Profile() {
 
             <div>
               <h2 className="text-xl font-bold text-white">
-                {name || "Receptionist"}
+                {name || roleLabel}
               </h2>
 
               <p className="text-blue-100 text-sm">
@@ -106,7 +119,7 @@ export function Profile() {
               <div className="flex items-center gap-1 mt-2
                               text-xs text-blue-100">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                RECEPTIONIST
+                {role}
               </div>
             </div>
 
@@ -156,7 +169,6 @@ export function Profile() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                required
                 className="w-full pl-10 pr-4 py-3
                            border border-stone-300
                            rounded-xl text-sm
@@ -215,7 +227,7 @@ export function Profile() {
 
               <span className="text-sm font-bold
                                text-stone-700">
-                RECEPTIONIST
+                {role}
               </span>
 
             </div>

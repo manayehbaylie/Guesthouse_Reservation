@@ -429,6 +429,60 @@ export const getPayments = async (
 };
 
 // ============================================================
+// DELETE OWNER PAYMENT
+// ============================================================
+
+export const deletePayment = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const paymentId = Number(req.params.paymentId);
+    const ownerId = Number(req.user?.id);
+
+    if (!paymentId || !ownerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment ID is required.",
+      });
+    }
+
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        reservation: {
+          room: {
+            guesthouse: {
+              ownerId,
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found for your guesthouse.",
+      });
+    }
+
+    await prisma.payment.delete({
+      where: { id: paymentId },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment deleted successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
 // SUBMIT GUESTHOUSE FOR REVIEW
 // ============================================================
 // PUT /owner/guesthouse/submit

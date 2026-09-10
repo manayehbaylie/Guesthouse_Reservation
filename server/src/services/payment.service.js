@@ -886,20 +886,6 @@ export const createPayment = async (
       status: "PENDING",
     });
 
-  await sendNotification({
-    title:
-      "Payment Request Created",
-
-    message:
-      `Payment request for Reservation #${reservation.id} ` +
-      `has been created. Please complete your payment.`,
-
-    userId:
-      reservation.guestId,
-
-    category: "payment",
-  });
-
   return {
     ...payment,
 
@@ -1015,7 +1001,11 @@ export const initiatePayment = async ({
   // CHAPA
   // ==========================================================
 
-  {
+  if (
+    ["CARD", "TELEBIRR", "BANK_TRANSFER"].includes(
+      paymentMethod
+    )
+  ) {
     if (!CHAPA_SECRET_KEY) {
       throw new Error(
         "CHAPA_SECRET_KEY is not configured."
@@ -1034,13 +1024,14 @@ export const initiatePayment = async ({
       );
     }
 
-    if (
-      !reservation.guest?.email
-    ) {
-      throw new Error(
-        "Guest email is required for Chapa payment."
-      );
-    }
+    const guestEmail = String(
+      reservation.guest?.email || ""
+    ).trim().toLowerCase();
+
+    const chapaEmail =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)
+        ? guestEmail
+        : `guest${reservation.guestId}@example.com`;
 
     const txRef =
       `GH-${reservation.id}-${Date.now()}`;
@@ -1070,8 +1061,7 @@ export const initiatePayment = async ({
         await initializeChapaPayment({
           amount,
 
-          email:
-            reservation.guest.email,
+          email: chapaEmail,
 
           fullName:
             reservation.guest.fullName,
@@ -1091,24 +1081,6 @@ export const initiatePayment = async ({
           returnUrl:
             `${FRONTEND_URL}/payment/chapa/return?tx_ref=${encodeURIComponent(txRef)}`,
         });
-
-      // ------------------------------------------------------
-      // NOTIFICATION
-      // ------------------------------------------------------
-
-      await sendNotification({
-        title:
-          "Chapa Payment Started",
-
-        message:
-          `Chapa payment has been initialized for ` +
-          `Reservation #${reservation.id}.`,
-
-        userId:
-          reservation.guestId,
-
-        category: "payment",
-      });
 
       // ------------------------------------------------------
       // RETURN CHECKOUT URL
@@ -1193,20 +1165,6 @@ export const initiatePayment = async ({
 
       status: "PENDING",
     });
-
-  await sendNotification({
-    title:
-      "Payment Submitted",
-
-    message:
-      `Your ${paymentMethod} payment request for ` +
-      `Reservation #${reservation.id} is pending verification.`,
-
-    userId:
-      reservation.guestId,
-
-    category: "payment",
-  });
 
   return {
     ...payment,

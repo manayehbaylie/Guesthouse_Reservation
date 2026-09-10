@@ -65,9 +65,6 @@ export const getNotifications = async (userId) => {
     return [];
   }
 
-  // Repair missing approval notifications.
-  await ensureApprovalNotifications(uid);
-
   return await prisma.notification.findMany({
     where: {
       userId: uid,

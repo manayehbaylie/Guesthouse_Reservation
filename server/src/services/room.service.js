@@ -26,7 +26,11 @@ export const createRoom = async (data, guesthouseId) => {
    GET ALL ROOMS
 ============================================================ */
 
-export const getAllRooms = async (guesthouseId = null) => {
+export const getAllRooms = async (
+  guesthouseId = null,
+  checkIn = null,
+  checkOut = null
+) => {
   const parsedId = Number(guesthouseId);
   const where =
     guesthouseId && !isNaN(parsedId) && parsedId > 0
@@ -34,6 +38,29 @@ export const getAllRooms = async (guesthouseId = null) => {
           guesthouseId: parsedId,
         }
       : {};
+
+  const startDate = checkIn ? new Date(checkIn) : null;
+  const endDate = checkOut ? new Date(checkOut) : null;
+  const hasDateRange =
+    checkIn &&
+    checkOut &&
+    startDate &&
+    endDate &&
+    !Number.isNaN(startDate.getTime()) &&
+    !Number.isNaN(endDate.getTime()) &&
+    endDate > startDate;
+
+  const reservationWhere = hasDateRange
+    ? {
+        status: {
+          in: ["CONFIRMED", "CHECKED_IN"],
+        },
+        checkIn: { lt: endDate },
+        checkOut: { gt: startDate },
+      }
+    : {
+        id: -1,
+      };
 
   const rooms = await prisma.room.findMany({
     where,
@@ -48,13 +75,7 @@ export const getAllRooms = async (guesthouseId = null) => {
       },
 
       reservations: {
-        where: {
-          status: {
-            in: ["PENDING", "CONFIRMED", "CHECKED_IN"],
-          },
-          checkIn: { lt: new Date() },
-          checkOut: { gt: new Date() },
-        },
+        where: reservationWhere,
         select: {
           id: true,
           status: true,

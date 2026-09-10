@@ -12,6 +12,7 @@ import {
   removeReceptionist,
   updateOwnerProfile,
   getPayments,
+  deletePayment,
 } from "../controllers/owner.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -375,6 +376,13 @@ router.get(
   authenticate,
   authorize("OWNER"),
   getPayments
+);
+
+router.delete(
+  "/payments/:paymentId",
+  authenticate,
+  authorize("OWNER"),
+  deletePayment
 );
 
 export default router;

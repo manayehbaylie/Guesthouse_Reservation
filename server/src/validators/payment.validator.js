@@ -7,6 +7,9 @@ const ETHIOPIAN_BANKS = [
   "Zemen Bank",
   "Dashen Bank",
   "PRIDE Microfinance",
+  "Hibret Bank",
+  "Oromia Bank",
+  "Wegagen Bank",
 ];
 
 export const paymentSchema = z
@@ -21,11 +24,11 @@ export const paymentSchema = z
       .positive("Payment amount must be greater than 0"),
 
     paymentMethod: z.enum(
-      ["TELEBIRR", "BANK_TRANSFER"],
+      ["TELEBIRR", "CARD", "BANK_TRANSFER"],
       {
         errorMap: () => ({
           message:
-            "Payment method must be TELEBIRR or BANK_TRANSFER",
+            "Payment method must be TELEBIRR, CARD, or BANK_TRANSFER",
         }),
       }
     ),

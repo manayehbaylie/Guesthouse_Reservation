@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiService } from '../../services/api.js';
 import { DashboardLayout } from '../../components/DashboardLayout.jsx';
@@ -28,10 +28,13 @@ export default function GuestDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const selectedGuesthouseId = searchParams.get('guesthouseId') || localStorage.getItem(`selectedGuesthouseId:${user?.id}`);
   
   const [bookings, setBookings] = useState([]);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
-  const [recentGuesthouses, setRecentGuesthouses] = useState([]);
+  const [selectedGuesthouse, setSelectedGuesthouse] = useState(null);
+  const [myReviews, setMyReviews] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -44,7 +47,7 @@ export default function GuestDashboard() {
   // Payment States
   const [showPayment, setShowPayment] = useState(false);
   const [pendingBooking, setPendingBooking] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('telebirr');
+  const [paymentMethod, setPaymentMethod] = useState('card');
   const [phone, setPhone] = useState(user?.phone || '');
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -57,55 +60,54 @@ export default function GuestDashboard() {
   // ============================================================
 
   useEffect(() => {
-    // Check location state for showPayment flag
-    if (location.state?.showPayment) {
-      setShowPayment(true);
-      
-      // If there's booking data in state, use it
-      if (location.state?.bookingData) {
-        setPendingBooking(location.state.bookingData);
-      }
-    }
+    const bookingData = location.state?.bookingData;
+    const hasValidBooking = Boolean(
+      bookingData?.guesthouseId && bookingData?.roomId
+    );
 
-    // Check for pending booking from sessionStorage
-    const pendingData = sessionStorage.getItem('pendingReservation');
-    if (pendingData) {
-      try {
-        const data = JSON.parse(pendingData);
-        setPendingBooking(data);
-        setShowPayment(true);
-      } catch (error) {
-        console.error('Error parsing pending booking:', error);
-        sessionStorage.removeItem('pendingReservation');
-      }
-    }
-    
-    // Check location state for payment
-    if (location.state?.showPayment && location.state?.bookingData) {
-      setPendingBooking(location.state.bookingData);
+    // Payment is available only when room selection supplied booking data.
+    if (location.state?.showPayment && hasValidBooking) {
       setShowPayment(true);
+      setPendingBooking(bookingData);
+    } else {
+      setShowPayment(false);
+      setPendingBooking(null);
     }
     
     loadDashboardData();
-  }, [location.state]);
+  }, [location.state, selectedGuesthouseId]);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
       const reservations = await ApiService.getReservations({ guestId: user?.id });
-      setBookings(reservations);
+      const propertyBookings = selectedGuesthouseId
+        ? reservations.filter((booking) => String(booking.guesthouseId) === String(selectedGuesthouseId))
+        : reservations;
+      setBookings(propertyBookings);
+
+      if (selectedGuesthouseId) {
+        const guesthouse = await ApiService.getGuesthouseById(Number(selectedGuesthouseId));
+        setSelectedGuesthouse(guesthouse || null);
+        localStorage.setItem(`selectedGuesthouseId:${user.id}`, String(selectedGuesthouseId));
+      } else {
+        setSelectedGuesthouse(null);
+      }
 
       const payments = await ApiService.getPaymentHistory();
       setPaymentHistory(payments);
 
+      const reviews = await ApiService.getMyReviews();
+      setMyReviews(reviews);
+
       const now = new Date();
-      const upcoming = reservations.filter(
+      const upcoming = propertyBookings.filter(
         (booking) => new Date(booking.checkInDate) >= now
       );
       setUpcomingBookings(upcoming);
 
-      const totalSpent = reservations.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
-      const totalNights = reservations.reduce((sum, b) => sum + (b.nightsCount || 0), 0);
+      const totalSpent = propertyBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+      const totalNights = propertyBookings.reduce((sum, b) => sum + (b.nightsCount || 0), 0);
 
       setStats({
         totalBookings: reservations.length,
@@ -114,8 +116,6 @@ export default function GuestDashboard() {
         totalNights,
       });
 
-      const guesthouses = await ApiService.getGuesthouses({ limit: 6 });
-      setRecentGuesthouses(guesthouses.slice(0, 4));
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -149,6 +149,24 @@ export default function GuestDashboard() {
       return;
     }
 
+    if (paymentMethod === 'bank_transfer') {
+      if (!bankName) {
+        setPaymentError('Please select your bank.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!/^\d{6,20}$/.test(accountNumber.trim())) {
+        setPaymentError(
+          accountNumber.trim()
+            ? 'Account number must contain 6 to 20 digits.'
+            : 'Please enter your bank account number.'
+        );
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const result = await ApiService.createBookingAndPay({
         guesthouseId: pendingBooking.guesthouseId || pendingBooking.guesthouse?.id,
@@ -163,7 +181,13 @@ export default function GuestDashboard() {
         accountNumber: accountNumber,
       });
 
-      setPaymentSuccess('✅ Your booking has been confirmed!');
+      if (result?.checkoutUrl) {
+        sessionStorage.removeItem('pendingReservation');
+        window.location.href = result.checkoutUrl;
+        return;
+      }
+
+      setPaymentSuccess('Payment checkout is ready. Please complete payment to confirm your booking.');
       sessionStorage.removeItem('pendingReservation');
       
       setTimeout(() => {
@@ -296,13 +320,6 @@ export default function GuestDashboard() {
               </div>
             </div>
 
-            {paymentError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {paymentError}
-              </div>
-            )}
-
             {paymentSuccess && (
               <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
@@ -321,7 +338,10 @@ export default function GuestDashboard() {
                     ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/20'
                     : 'border-stone-200 hover:border-amber-500 hover:bg-stone-50'
                 }`}
-                onClick={() => setPaymentMethod('telebirr')}
+                onClick={() => {
+                  setPaymentMethod('telebirr');
+                  setPaymentError('');
+                }}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -341,29 +361,32 @@ export default function GuestDashboard() {
                 </div>
               </div>
 
-              {/* Chapa */}
+              {/* Card via Chapa */}
               <div
                 className={`border rounded-xl p-4 cursor-pointer transition ${
-                  paymentMethod === 'chapa'
+                  paymentMethod === 'card'
                     ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/20'
                     : 'border-stone-200 hover:border-amber-500 hover:bg-stone-50'
                 }`}
-                onClick={() => setPaymentMethod('chapa')}
+                onClick={() => {
+                  setPaymentMethod('card');
+                  setPaymentError('');
+                }}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    paymentMethod === 'chapa' ? 'bg-amber-500 text-stone-950' : 'bg-purple-50 text-purple-600'
+                    paymentMethod === 'card' ? 'bg-amber-500 text-stone-950' : 'bg-purple-50 text-purple-600'
                   }`}>
                     <CreditCard className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="font-bold text-stone-900">Chapa</p>
-                    <p className="text-xs text-stone-500">Pay using Chapa payment gateway</p>
+                    <p className="font-bold text-stone-900">Card</p>
+                    <p className="text-xs text-stone-500">Pay securely by card</p>
                   </div>
                   <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    paymentMethod === 'chapa' ? 'border-amber-500 bg-amber-500' : 'border-stone-300'
+                    paymentMethod === 'card' ? 'border-amber-500 bg-amber-500' : 'border-stone-300'
                   }`}>
-                    {paymentMethod === 'chapa' && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                    {paymentMethod === 'card' && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                   </div>
                 </div>
               </div>
@@ -375,7 +398,10 @@ export default function GuestDashboard() {
                     ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/20'
                     : 'border-stone-200 hover:border-amber-500 hover:bg-stone-50'
                 }`}
-                onClick={() => setPaymentMethod('bank_transfer')}
+                onClick={() => {
+                  setPaymentMethod('bank_transfer');
+                  setPaymentError('');
+                }}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -405,7 +431,10 @@ export default function GuestDashboard() {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setPaymentError('');
+                  }}
                   placeholder="+251 9000000000"
                   className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm bg-white"
                 />
@@ -423,18 +452,21 @@ export default function GuestDashboard() {
                   </label>
                   <select
                     value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
+                    onChange={(e) => {
+                      setBankName(e.target.value);
+                      setPaymentError('');
+                    }}
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm bg-white"
                   >
                     <option value="">Select Bank</option>
                     <option value="CBE">Commercial Bank of Ethiopia (CBE)</option>
-                    <option value="Awash">Awash Bank</option>
-                    <option value="Dashen">Dashen Bank</option>
-                    <option value="Hibret">Hibret Bank</option>
-                    <option value="Oromia">Oromia Bank</option>
-                    <option value="Wegagen">Wegagen Bank</option>
-                    <option value="Zemen">Zemen Bank</option>
-                    <option value="Abyssinia">Abyssinia Bank</option>
+                    <option value="Awash Bank">Awash Bank</option>
+                    <option value="Dashen Bank">Dashen Bank</option>
+                    <option value="Hibret Bank">Hibret Bank</option>
+                    <option value="Oromia Bank">Oromia Bank</option>
+                    <option value="Wegagen Bank">Wegagen Bank</option>
+                    <option value="Zemen Bank">Zemen Bank</option>
+                    <option value="Bank of Abyssinia">Bank of Abyssinia</option>
                   </select>
                 </div>
                 <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
@@ -444,7 +476,10 @@ export default function GuestDashboard() {
                   <input
                     type="text"
                     value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
+                    onChange={(e) => {
+                      setAccountNumber(e.target.value);
+                      setPaymentError('');
+                    }}
                     placeholder="Enter your bank account number"
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm bg-white"
                   />
@@ -471,6 +506,16 @@ export default function GuestDashboard() {
                   </>
                 )}
               </button>
+
+              {paymentError && (
+                <div
+                  role="alert"
+                  className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{paymentError}</span>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 flex items-start gap-3 text-sm text-stone-500">
@@ -626,59 +671,80 @@ export default function GuestDashboard() {
               )}
             </div>
 
-            {/* RECENT GUESTHOUSES */}
+            {/* SELECTED GUESTHOUSE */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-black text-stone-900">Recent Guesthouses</h2>
+                <h2 className="text-xl font-black text-stone-900">Your Guesthouse</h2>
                 <Link to="/guest/search" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                  Explore More →
+                  Change guesthouse →
                 </Link>
               </div>
 
-              {recentGuesthouses.length === 0 ? (
+              {!selectedGuesthouse ? (
                 <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center shadow-sm">
                   <Building2 className="w-12 h-12 text-stone-400 mx-auto mb-3" />
-                  <p className="text-stone-500">No guesthouses available</p>
+                  <p className="font-semibold text-stone-700">No guesthouse selected</p>
+                  <p className="mt-1 text-sm text-stone-500">Choose a guesthouse to personalize your dashboard.</p>
+                  <Link
+                    to="/guest/search"
+                    className="mt-4 inline-block rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-400"
+                  >
+                    Find a guesthouse
+                  </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {recentGuesthouses.map((guesthouse) => (
-                    <Link
-                      key={guesthouse.id}
-                      to={`/guesthouse/${guesthouse.id}`}
-                      className="bg-white rounded-2xl border border-stone-200 overflow-hidden hover:shadow-md transition group shadow-sm"
-                    >
-                      <div className="h-40 bg-stone-200 relative">
-                        <img
-                          src={guesthouse.image || guesthouse.images?.[0] || guesthouse.photos?.[0] || ''}
-                          alt={guesthouse.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.src = '';
-                            e.target.className = 'w-full h-full bg-stone-200 flex items-center justify-center text-stone-400';
-                          }}
-                        />
-                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-bold flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                          {guesthouse.rating?.toFixed(1) || 'New'}
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <h4 className="font-bold text-stone-900 group-hover:text-amber-600 transition">
-                          {guesthouse.name}
-                        </h4>
-                        <p className="text-sm text-stone-500 flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" />
-                          {guesthouse.city || guesthouse.location || 'Ethiopia'}
-                        </p>
-                        <p className="mt-2 text-sm font-bold text-amber-600">
-                          From {guesthouse.priceRange?.min?.toLocaleString() || '0'} ETB/night
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
+                <div className="bg-white rounded-2xl border border-amber-200 p-6 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+                      <Building2 className="h-6 w-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-stone-900">{selectedGuesthouse.name}</h3>
+                      <p className="flex items-center gap-1 text-sm text-stone-500">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {selectedGuesthouse.city || selectedGuesthouse.location || 'Ethiopia'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
+            </div>
+
+            {/* RECENT BOOKINGS HISTORY */}
+            <div className="mb-8 rounded-2xl border border-stone-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-amber-500" />
+                  <h2 className="font-bold text-stone-900">Your Reviews</h2>
+                </div>
+                <Link to="/guest/reviews" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
+                  Write a Review
+                </Link>
+              </div>
+              <div className="space-y-3 p-6">
+                {myReviews.length === 0 ? (
+                  <p className="text-sm text-stone-500">You have not submitted a review yet.</p>
+                ) : (
+                  myReviews.slice(0, 3).map((review) => (
+                    <div key={review.id} className="rounded-xl border border-stone-100 bg-stone-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-bold text-stone-900">
+                          {review.guesthouse?.name || 'Guesthouse'}
+                        </p>
+                        <div className="flex items-center gap-1 text-amber-500" aria-label={`${review.rating} out of 5 stars`}>
+                          {Array.from({ length: 5 }, (_, index) => (
+                            <Star key={index} className={`h-4 w-4 ${index < review.rating ? 'fill-amber-400 text-amber-400' : 'text-stone-300'}`} />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-stone-600">{review.comment}</p>
+                      <p className="mt-2 text-xs text-stone-400">
+                        {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             {/* RECENT BOOKINGS HISTORY */}

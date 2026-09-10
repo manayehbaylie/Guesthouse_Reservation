@@ -1,13 +1,14 @@
 // src/components/DashboardLayout.jsx
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ApiService } from '../services/api.js';
+import { ProfileModal } from './Navbar.jsx';
 import { NotificationBell } from './common/NotificationBell.jsx';
 import {
   LayoutDashboard,
-  Calendar,
+  ClipboardList,
   Search,
   User,
   LogOut,
@@ -25,15 +26,25 @@ export function DashboardLayout({ children, showHeader = true }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const selectedGuesthouseId = searchParams.get('guesthouseId') || localStorage.getItem(`selectedGuesthouseId:${user?.id}`);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileError, setProfileError] = useState('');
   const [upcomingBooking, setUpcomingBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const currentPath = location.pathname;
 
   useEffect(() => {
     loadUpcomingBooking();
-  }, [user?.id]);
+  }, [user?.id, selectedGuesthouseId]);
 
   // Load the most recent booking for the sidebar
   const loadUpcomingBooking = async () => {
@@ -46,20 +57,33 @@ export function DashboardLayout({ children, showHeader = true }) {
         return;
       }
 
+      if (!selectedGuesthouseId) {
+        setUpcomingBooking(null);
+        setLoading(false);
+        return;
+      }
+
       console.log('🔍 Fetching reservations for user:', user.id);
       
       const reservations = await ApiService.getReservations({ guestId: user.id });
+      const selectedReservations = reservations.filter(
+        (reservation) => String(reservation.guesthouseId) === String(selectedGuesthouseId)
+      );
       console.log('📋 All reservations from API:', reservations);
       
-      if (!reservations || reservations.length === 0) {
+      if (!selectedReservations || selectedReservations.length === 0) {
+        const guesthouse = await ApiService.getGuesthouseById(Number(selectedGuesthouseId));
+        setUpcomingBooking(guesthouse ? {
+          guesthouseName: guesthouse.name,
+          guesthouseLocation: guesthouse.city || guesthouse.location || 'Ethiopia',
+        } : null);
         console.log('ℹ️ No reservations found');
-        setUpcomingBooking(null);
         setLoading(false);
         return;
       }
       
       // Sort by createdAt (newest first)
-      const sortedByDate = [...reservations].sort((a, b) => {
+      const sortedByDate = [...selectedReservations].sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
       
@@ -131,6 +155,64 @@ export function DashboardLayout({ children, showHeader = true }) {
     setProfileDropdownOpen(false);
   };
 
+  const openUpdateProfile = () => {
+    setProfileName(user?.name || user?.fullName || '');
+    setProfileEmail(user?.email || '');
+    setProfilePhone(user?.phone || '');
+    setProfilePassword('');
+    setProfileMessage('');
+    setProfileError('');
+    setProfileDropdownOpen(false);
+    setShowProfileModal(true);
+  };
+
+  const closeUpdateProfile = () => {
+    if (savingProfile) return;
+    setShowProfileModal(false);
+    setProfilePassword('');
+    setProfileMessage('');
+    setProfileError('');
+  };
+
+  const handleSaveProfile = async () => {
+    setProfileMessage('');
+    setProfileError('');
+
+    if (!profileName.trim()) {
+      setProfileError('Full name is required.');
+      return;
+    }
+
+    if (!profilePhone.trim()) {
+      setProfileError('Phone number is required.');
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+      await ApiService.updateProfile({
+        name: profileName.trim(),
+        email: profileEmail.trim(),
+        phone: profilePhone.trim(),
+        password: profilePassword,
+      });
+      setProfileMessage('Profile updated successfully.');
+      setProfilePassword('');
+      setTimeout(() => {
+        setShowProfileModal(false);
+        window.location.reload();
+      }, 800);
+    } catch (error) {
+      setProfileError(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to update profile.'
+      );
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   // ============================================================
   // NAVIGATION ITEMS - REMOVED "Profile" from sidebar navigation
   // ============================================================
@@ -142,7 +224,7 @@ export function DashboardLayout({ children, showHeader = true }) {
     },
     { 
       path: '/reservations', 
-      icon: <Calendar className="w-5 h-5" />, 
+      icon: <ClipboardList className="w-5 h-5" />, 
       label: 'My Bookings' 
     },
     { 
@@ -163,14 +245,14 @@ export function DashboardLayout({ children, showHeader = true }) {
           SIDEBAR
       ========================================================= */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#043658] border-r border-white/10 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#043658] border border-white/10 transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 lg:static lg:flex lg:flex-col lg:h-screen lg:sticky top-0`}
+        } lg:translate-x-0 lg:static lg:flex lg:flex-col lg:h-[calc(100vh-2rem)] lg:sticky lg:top-4 lg:my-4 lg:ml-4 lg:rounded-3xl lg:shadow-2xl overflow-hidden`}
       >
         {/* =========================================================
             1. HEADER - LOGO (FIRST)
         ========================================================= */}
-        <div className="px-6 py-5 border-b border-white/10">
+        <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             <Link to="/guest/dashboard" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-[#FFC107] flex items-center justify-center">
@@ -193,7 +275,7 @@ export function DashboardLayout({ children, showHeader = true }) {
         {/* =========================================================
             2. CURRENT STAY (SECOND)
         ========================================================= */}
-        <div className="mx-3 mt-4 px-4 py-3 bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-xl">
+        <div className="mx-3 mt-3 px-4 py-2.5 bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-xl">
           <p className="text-[10px] text-[#FFC107] font-bold uppercase tracking-wider">
             Current Stay
           </p>
@@ -228,58 +310,43 @@ export function DashboardLayout({ children, showHeader = true }) {
         </div>
 
         {/* =========================================================
-            3. USER PROFILE (THIRD) - EMAIL AND PHONE REMOVED
-        ========================================================= */}
-        <div className="px-6 py-4 mx-3 mt-3 bg-white/5 border border-white/10 rounded-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-[#FFC107]/20 flex items-center justify-center">
-              <User className="w-6 h-6 text-[#FFC107]" />
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-white truncate">{user?.name || 'Guest'}</p>
-              <p className="text-sm text-white/60">Guest</p>
-            </div>
-          </div>
-          {/* ✅ EMAIL AND PHONE REMOVED */}
-        </div>
-
-        {/* =========================================================
             NAVIGATION MENU
         ========================================================= */}
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto mt-2">
+        <nav className="flex-none px-5 py-4 space-y-1.5 mt-1">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 ${
                 currentPath === item.path
-                  ? 'bg-[#FFC107]/15 text-[#FFC107] font-bold'
-                  : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  ? 'bg-[#FFC107] text-[#043658] font-black shadow-lg shadow-[#FFC107]/20'
+                  : 'text-white/70 hover:bg-black/20 hover:text-white'
               }`}
             >
-              <span className={currentPath === item.path ? 'text-[#FFC107]' : 'text-white/40'}>
+              <span className={currentPath === item.path ? 'text-[#043658]' : 'text-white/55'}>
                 {item.icon}
               </span>
-              <span>{item.label}</span>
+              <span className="text-xs font-bold">{item.label}</span>
             </Link>
           ))}
         </nav>
 
         {/* =========================================================
-            LOGOUT
+            USER PROFILE - PRESERVED CONTENT, ANCHORED AT THE BOTTOM
         ========================================================= */}
-        {showHeader && (
-        <div className="px-4 py-4 border-t border-white/10">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-white/60 hover:bg-red-500/15 hover:text-red-400 transition-all duration-200"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-semibold">Logout</span>
-          </button>
+        <div className="mt-auto border-t border-white/10 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFC107]">
+              <User className="h-6 w-6 text-[#043658]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-black text-white">{user?.name || 'Guest'}</p>
+              <p className="text-sm text-white/60">Guest</p>
+            </div>
+          </div>
         </div>
-        )}
+
       </aside>
 
       {/* =========================================================
@@ -345,20 +412,10 @@ export function DashboardLayout({ children, showHeader = true }) {
                       </span>
                     </div>
 
-                    <Link to="/guest/dashboard" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
-                      <LayoutDashboard className="w-4 h-4" />
-                      Dashboard
-                    </Link>
-
-                    <Link to="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
+                    <button type="button" onClick={openUpdateProfile} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
                       <User className="w-4 h-4" />
-                      My Profile
-                    </Link>
-
-                    <Link to="/reservations" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
-                      <Calendar className="w-4 h-4" />
-                      My Bookings
-                    </Link>
+                      Update Profile
+                    </button>
 
                     <div className="border-t border-[#e5edf2] mt-1">
                       <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition">
@@ -387,6 +444,24 @@ export function DashboardLayout({ children, showHeader = true }) {
             </p>
           </div>
         </footer>
+
+        {showProfileModal && (
+          <ProfileModal
+            profileName={profileName}
+            profileEmail={profileEmail}
+            profilePhone={profilePhone}
+            profilePassword={profilePassword}
+            savingProfile={savingProfile}
+            profileMessage={profileMessage}
+            profileError={profileError}
+            setProfileName={setProfileName}
+            setProfileEmail={setProfileEmail}
+            setProfilePhone={setProfilePhone}
+            setProfilePassword={setProfilePassword}
+            handleSaveProfile={handleSaveProfile}
+            closeUpdateProfile={closeUpdateProfile}
+          />
+        )}
       </main>
     </div>
   );

@@ -696,350 +696,132 @@ export default function AdminDashboard() {
   // ==========================================================
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa]">
-
-      {/* ======================================================
-          MOBILE OVERLAY
-      ====================================================== */}
+    <div className="max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 py-6">
 
       {mobileSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() =>
-            setMobileSidebarOpen(false)
-          }
+          onClick={() => setMobileSidebarOpen(false)}
         />
       )}
 
-      {/* ======================================================
-          SIDEBAR
-      ====================================================== */}
-
-      <AdminSidebar
-        activePage={activePage}
-        onPageChange={handlePageChange}
-        mobileOpen={
-          mobileSidebarOpen
-        }
-        user={user}
-        onLogout={handleLogout}
-        pendingCount={pendingGuesthouses.length}
-      />
-
-      {/* ======================================================
-          MAIN AREA
-      ====================================================== */}
-
-      <div className="lg:ml-[280px] min-h-screen">
-
-        {/* ====================================================
-            TOP HEADER
-        ==================================================== */}
-
-        <header className="sticky top-0 z-30 h-[76px] bg-white border-b border-slate-200">
-
-          <div className="h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-
-            <div className="flex items-center gap-3">
-
-              <button
-                type="button"
-                onClick={() =>
-                  setMobileSidebarOpen(
-                    true
-                  )
-                }
-                className="lg:hidden w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-
-              <div>
-                <h1 className="text-lg sm:text-xl font-black text-[#0b3553]">
-                  {getPageTitle(
-                    activePage
-                  )}
-                </h1>
-
-                <p className="hidden sm:block text-xs text-slate-500 mt-0.5">
-                  Guesthouse Reservation Platform
-                </p>
-              </div>
-
-            </div>
-
-            {/* PROFILE */}
-
-            <div className="relative hidden">
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowProfileMenu(
-                    (previous) =>
-                      !previous
-                  )
-                }
-                className="flex items-center gap-3 px-2 sm:px-3 py-2 rounded-xl hover:bg-slate-50 transition"
-              >
-
-                <div className="hidden sm:block text-right">
-
-                  <div className="text-sm font-black text-[#0b3553]">
-                    {user?.name ||
-                      user?.fullName ||
-                      'Administrator'}
-                  </div>
-
-                  <div className="text-[10px] font-black uppercase tracking-wider text-amber-600">
-                    Administrator
-                  </div>
-
-                </div>
-
-                <div className="w-10 h-10 rounded-full bg-amber-400 text-[#0b3553] flex items-center justify-center font-black">
-                  {(
-                    user?.name ||
-                    user?.fullName ||
-                    user?.email ||
-                    'A'
-                  )
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-
-                <ChevronDown
-                  className={`w-4 h-4 text-slate-500 transition-transform ${
-                    showProfileMenu
-                      ? 'rotate-180'
-                      : ''
-                  }`}
-                />
-
-              </button>
-
-              {showProfileMenu && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-
-                  <div className="p-4 border-b border-slate-100">
-
-                    <div className="flex items-center gap-3">
-
-                      <div className="w-11 h-11 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black">
-                        {(
-                          user?.name ||
-                          user?.fullName ||
-                          user?.email ||
-                          'A'
-                        )
-                          .charAt(0)
-                          .toUpperCase()}
-                      </div>
-
-                      <div className="min-w-0">
-
-                        <div className="font-black text-[#0b3553]">
-                          {user?.name ||
-                            user?.fullName ||
-                            'Administrator'}
-                        </div>
-
-                        <div className="text-xs text-slate-500 truncate">
-                          {user?.email || ''}
-                        </div>
-
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black uppercase">
-                          Admin
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  <div className="p-2">
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowProfileMenu(
-                          false
-                        );
-                        setShowProfileModal(
-                          true
-                        );
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Update Profile
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={
-                        handleLogout
-                      }
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </button>
-
-                  </div>
-
-                </div>
-              )}
-
-            </div>
-
+      <div className="lg:hidden flex items-center justify-between bg-stone-950 text-white p-4 rounded-2xl mb-4 border border-stone-800 shadow-md">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center text-stone-950 font-black">
+            <Building2 className="w-4 h-4" />
           </div>
+          <div>
+            <div className="font-bold text-xs line-clamp-1">Guesthouse Platform</div>
+            <div className="text-[10px] text-amber-400 uppercase tracking-wider">Administrator</div>
+          </div>
+        </div>
+        <button
+          onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          className="p-2 rounded-xl bg-stone-800 text-amber-400 hover:bg-stone-700"
+        >
+          {mobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
 
-        </header>
+      <div className="flex gap-6 items-start">
+        <AdminSidebar
+          activePage={activePage}
+          onPageChange={handlePageChange}
+          mobileOpen={mobileSidebarOpen}
+          user={user}
+          onLogout={handleLogout}
+          pendingCount={pendingGuesthouses.length}
+        />
 
-        {/* ====================================================
-            CONTENT
-        ==================================================== */}
+        <main className="flex-1 min-w-0 space-y-6">
+          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Administration Console</span>
+              </div>
+              <h1 className="text-2xl font-black text-stone-900 tracking-tight">
+                {getPageTitle(activePage)}
+              </h1>
+              <p className="text-xs text-stone-500">
+                Guesthouse Reservation Platform
+              </p>
+            </div>
 
-        <main className="p-4 sm:p-6 lg:p-8">
-
-          {/* ERROR */}
+            <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2">
+              <div className="w-9 h-9 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center font-black text-sm">
+                {(user?.name || user?.fullName || user?.email || 'A').charAt(0).toUpperCase()}
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-black text-stone-900">
+                  {user?.name || user?.fullName || 'Administrator'}
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-amber-600">
+                  Admin
+                </div>
+              </div>
+            </div>
+          </div>
 
           {error && (
             <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-start justify-between gap-4">
-
               <div className="flex gap-3">
-
                 <AlertCircle className="w-5 h-5 shrink-0" />
-
-                <span className="text-sm">
-                  {error}
-                </span>
-
+                <span className="text-sm">{error}</span>
               </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setError('')
-                }
-              >
+              <button type="button" onClick={() => setError('')}>
                 <X className="w-4 h-4" />
               </button>
-
             </div>
           )}
 
-          {/* ==================================================
-              DASHBOARD
-          ================================================== */}
-
-          {activePage ===
-            'dashboard' && (
+          {activePage === 'dashboard' && (
             <AdminDashboardHome
               stats={stats}
               loading={loading}
-              onRefresh={
-                loadAdminData
-              }
-              onNavigate={
-                handlePageChange
-              }
-              pendingGuesthouses={
-                pendingGuesthouses
-              }
-              guesthouses={
-                allGuesthouses
-              }
+              onRefresh={loadAdminData}
+              onNavigate={handlePageChange}
+              pendingGuesthouses={pendingGuesthouses}
+              guesthouses={allGuesthouses}
             />
           )}
 
-          {/* ==================================================
-              GUESTHOUSES
-          ================================================== */}
-
-          {activePage ===
-            'guesthouses' && (
+          {activePage === 'guesthouses' && (
             <GuesthousePage
-              guesthouses={
-                filteredGuesthouses
-              }
-              search={
-                guesthouseSearch
-              }
-              setSearch={
-                setGuesthouseSearch
-              }
+              guesthouses={filteredGuesthouses}
+              search={guesthouseSearch}
+              setSearch={setGuesthouseSearch}
               loading={loading}
-              onApprove={
-                handleApproveGuesthouse
-              }
-              onDelete={
-                handleDeleteGuesthouse
-              }
+              onApprove={handleApproveGuesthouse}
+              onDelete={handleDeleteGuesthouse}
             />
           )}
 
-          {/* ==================================================
-              PENDING
-          ================================================== */}
-
-          {activePage ===
-            'pending' && (
+          {activePage === 'pending' && (
             <PendingPage
-              pendingGuesthouses={
-                pendingGuesthouses
-              }
+              pendingGuesthouses={pendingGuesthouses}
               loading={loading}
-              onApprove={
-                handleApproveGuesthouse
-              }
-              onReject={
-                (id) =>
-                  setRejectingGuesthouseId(id)
-              }
+              onApprove={handleApproveGuesthouse}
+              onReject={(id) => setRejectingGuesthouseId(id)}
             />
           )}
 
-          {/* ==================================================
-              OWNERS
-          ================================================== */}
-
-          {activePage ===
-            'owners' && (
+          {activePage === 'owners' && (
             <OwnersPage
-              owners={
-                filteredOwners
-              }
-              totalOwners={
-                owners.length
-              }
-              search={
-                ownerSearch
-              }
-              setSearch={
-                setOwnerSearch
-              }
+              owners={filteredOwners}
+              totalOwners={owners.length}
+              search={ownerSearch}
+              setSearch={setOwnerSearch}
               loading={loading}
-              onDelete={
-                handleDeleteOwner
-              }
+              onDelete={handleDeleteOwner}
             />
           )}
 
-          {/* ==================================================
-              COMMISSION
-          ================================================== */}
-
-          {activePage ===
-            'commission' && (
+          {activePage === 'commission' && (
             <CommissionPage
               stats={stats}
               loading={loading}
-              onRefresh={
-                loadAdminData
-              }
+              onRefresh={loadAdminData}
               onRateChange={(commissionRate) => {
                 localStorage.setItem(COMMISSION_RATE_KEY, String(commissionRate));
                 setStats((previous) => ({
@@ -1052,66 +834,35 @@ export default function AdminDashboard() {
             />
           )}
 
-          {/* ==================================================
-              BACKUP
-          ================================================== */}
-
-          {activePage ===
-            'backup' && (
+          {activePage === 'backup' && (
             <BackupPage
-              onBackup={
-                handleSystemBackup
-              }
+              onBackup={handleSystemBackup}
               onRestore={handleRestoreBackup}
               backupMessage={backupMessage}
               loading={loading}
-              guesthousesCount={
-                allGuesthouses.length
-              }
-              ownersCount={
-                owners.length
-              }
-              usersCount={
-                usersList.length
-              }
+              guesthousesCount={allGuesthouses.length}
+              ownersCount={owners.length}
+              usersCount={usersList.length}
             />
           )}
-
         </main>
-
       </div>
-
-      {/* ======================================================
-          PROFILE MODAL
-      ====================================================== */}
 
       {showProfileModal && (
         <UpdateProfileModal
           user={user}
-          onClose={() =>
-            setShowProfileModal(false)
-          }
-          onSaved={
-            handleProfileSaved
-          }
+          onClose={() => setShowProfileModal(false)}
+          onSaved={handleProfileSaved}
         />
       )}
 
       {rejectingGuesthouseId && (
         <RejectionReasonModal
           loading={loading}
-          onClose={() =>
-            setRejectingGuesthouseId(null)
-          }
-          onSubmit={(reason) =>
-            handleRejectGuesthouse(
-              rejectingGuesthouseId,
-              reason
-            )
-          }
+          onClose={() => setRejectingGuesthouseId(null)}
+          onSubmit={(reason) => handleRejectGuesthouse(rejectingGuesthouseId, reason)}
         />
       )}
-
     </div>
   );
 }
@@ -1281,187 +1032,87 @@ function AdminSidebar({
   pendingCount,
 }) {
   const items = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-    },
-    {
-      id: 'guesthouses',
-      label: 'Guesthouses',
-      icon: Building2,
-    },
-    {
-      id: 'pending',
-      label: 'Pending Verification',
-      icon: Clock3,
-    },
-    {
-      id: 'owners',
-      label: 'Manage Owners',
-      icon: UserCog,
-    },
-    {
-      id: 'commission',
-      label: 'Commission',
-      icon: Percent,
-    },
-    {
-      id: 'backup',
-      label: 'System Backup',
-      icon: DatabaseBackup,
-    },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'guesthouses', label: 'Guesthouses', icon: Building2 },
+    { id: 'pending', label: 'Pending Verification', icon: Clock3 },
+    { id: 'owners', label: 'Manage Owners', icon: UserCog },
+    { id: 'commission', label: 'Commission', icon: Percent },
+    { id: 'backup', label: 'System Backup', icon: DatabaseBackup },
   ];
 
   return (
     <aside
-      className={`
-        fixed z-50 left-0 top-0 bottom-0
-        w-[280px]
-        bg-[#073957]
-        text-white
-        flex flex-col
-        shadow-2xl
-        transition-transform duration-300
-        lg:translate-x-0
-        ${
-          mobileOpen
-            ? 'translate-x-0'
-            : '-translate-x-full'
-        }
-      `}
+      className={`${
+        mobileOpen ? 'block fixed inset-y-0 left-0 z-50 w-72 p-4 bg-stone-950 shadow-2xl' : 'hidden'
+      } lg:block lg:sticky lg:top-20 shrink-0 w-72 bg-stone-950 text-stone-200 rounded-3xl border border-stone-800/80 shadow-2xl p-5 space-y-6 transition-all`}
     >
-
-      {/* ====================================================
-          BRAND
-      ==================================================== */}
-
-      <div className="px-6 pt-7 pb-6">
-
-        <div className="flex items-center gap-3">
-
-          <div className="w-11 h-11 rounded-xl bg-amber-400 text-[#073957] flex items-center justify-center shadow-lg">
-            <Building2 className="w-6 h-6" />
-          </div>
-
-          <div>
-
-            <div className="text-lg font-black tracking-tight">
-              Guesthouse
-            </div>
-
-            <div className="text-lg font-black tracking-tight -mt-1">
-              Platform
-            </div>
-
-          </div>
-
+      <div className="bg-stone-900/90 border border-stone-800 p-4 rounded-2xl space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1">
+            <ShieldCheck className="w-3 h-3" />
+            <span>Administration</span>
+          </span>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            Active
+          </span>
         </div>
-
-        <div className="mt-5">
-
-          <div className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-300">
-            Administration
-          </div>
-
-          <div className="text-xs text-slate-400 mt-1">
-            Platform control center
-          </div>
-
+        <h2 className="text-sm font-black text-white line-clamp-1">Guesthouse Platform</h2>
+        <div className="text-[11px] text-stone-400 flex items-center gap-1">
+          <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+          <span>Platform control center</span>
         </div>
-
       </div>
 
-      {/* ====================================================
-          NAVIGATION
-      ==================================================== */}
-
-      <nav className="flex-1 px-4 overflow-y-auto">
-
+      <nav className="space-y-1.5 text-xs font-bold">
         {items.map((item) => {
-          const Icon =
-            item.icon;
-
-          const active =
-            activePage === item.id;
+          const Icon = item.icon;
+          const active = activePage === item.id;
 
           return (
             <button
               key={item.id}
               type="button"
-              onClick={() =>
-                onPageChange(
-                  item.id
-                )
-              }
-              className={`
-                w-full
-                flex
-                items-center
-                justify-between
-                gap-3
-                px-4
-                py-3.5
-                mb-1.5
-                rounded-xl
-                text-sm
-                font-black
-                transition-all
-                ${
-                  active
-                      ? 'bg-amber-400 text-[#073957] shadow-lg shadow-black/10 ring-2 ring-white'
-                    : 'text-slate-200 hover:bg-white/10 hover:text-white'
-                }
-              `}
+              onClick={() => onPageChange(item.id)}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
+                active
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
+                  : 'text-stone-300 hover:bg-stone-900 hover:text-white'
+              }`}
             >
-
-              <span className="flex items-center gap-3">
-
-                <Icon className="w-5 h-5" />
-
-                {item.label}
-
-              </span>
-
-              {item.id ===
-                'pending' && (
-                <span
-                  className={`
-                    min-w-6 h-6 px-1.5 rounded-full
-                    flex items-center justify-center
-                    text-[10px]
-                    ${
-                      active
-                        ? 'bg-[#073957] text-white'
-                        : 'bg-white/10 text-slate-200'
-                    }
-                  `}
-                >
+              <div className="flex items-center gap-3">
+                <Icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </div>
+              {item.id === 'pending' && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${active ? 'bg-stone-950 text-white' : 'bg-stone-800 text-amber-400'}`}>
                   {pendingCount}
                 </span>
               )}
-
             </button>
           );
         })}
-
       </nav>
 
-      <div className="p-4">
-        <div className="border-t border-white/10 pt-4">
-          <button
-            type="button"
-            onClick={onLogout}
-            className="hidden w-full mt-2 flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-red-500/10 hover:text-red-300 transition"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
-
+      <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-sm">
+            {(user?.name || user?.fullName || user?.email || 'A').charAt(0).toUpperCase()}
+          </div>
+          <div className="overflow-hidden">
+            <div className="text-xs font-black text-white truncate">{user?.name || user?.fullName || 'Administrator'}</div>
+            <div className="text-[10px] text-stone-400 uppercase tracking-wider truncate">Admin</div>
+          </div>
         </div>
 
+        <button
+          type="button"
+          onClick={onLogout}
+          className="p-2 rounded-xl bg-stone-900 text-stone-300 hover:bg-red-500/10 hover:text-red-300 transition"
+          aria-label="Logout"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
-
     </aside>
   );
 }
@@ -1470,6 +1121,53 @@ function AdminSidebar({
 // ============================================================
 // ADMIN DASHBOARD HOME
 // ============================================================
+
+function MetricSparkBar({ color, values, idPrefix }) {
+  const width = 160;
+  const height = 48;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+
+  const points = values.map((value, index) => {
+    const x = (index / (values.length - 1)) * width;
+    const y = height - ((value - min) / (max - min || 1)) * (height - 12) - 6;
+    return [x, y];
+  });
+
+  const linePath = points
+    .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`)
+    .join(' ');
+
+  const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
+  const gradientId = `spark-${idPrefix}`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-12 w-full" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.45" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+
+      <rect x="0" y="0" width={width} height={height} rx="12" fill="rgba(255,255,255,0.02)" />
+      <path d={areaPath} fill={`url(#${gradientId})`} opacity="1" />
+      <path d={linePath} fill="none" stroke={color} strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
+
+      {points.map(([x, y], index) => (
+        <circle
+          key={`${idPrefix}-${index}`}
+          cx={x}
+          cy={y}
+          r="2.3"
+          fill="#ffffff"
+          stroke={color}
+          strokeWidth="1.4"
+        />
+      ))}
+    </svg>
+  );
+}
 
 function AdminDashboardHome({
   stats,
@@ -1482,11 +1180,7 @@ function AdminDashboardHome({
   return (
     <div className="space-y-6">
 
-      {/* ====================================================
-          4-CARD ADMIN SIDEBAR
-      ==================================================== */}
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
             label: 'Total Guesthouses',
@@ -1494,9 +1188,14 @@ function AdminDashboardHome({
             detail: `${stats.approvedGuesthouses} approved`,
             icon: Building2,
             page: 'guesthouses',
-            className: 'bg-[#073957] text-white',
+            cardClass: 'bg-[#073957] text-white',
             valueClass: 'text-amber-300',
             iconClass: 'text-amber-300',
+            color: '#fbbf24',
+            spark: [18, 22, 20, 30, 46, 58, 52],
+            chartId: 'total-guesthouses',
+            trend: '+12.4%',
+            trendLabel: 'vs last week',
           },
           {
             label: 'Owner Accounts',
@@ -1504,9 +1203,14 @@ function AdminDashboardHome({
             detail: 'active owners',
             icon: Users,
             page: 'owners',
-            className: 'bg-[#073957] text-white',
+            cardClass: 'bg-[#073957] text-white',
             valueClass: 'text-sky-200',
             iconClass: 'text-sky-200',
+            color: '#38bdf8',
+            spark: [14, 18, 26, 22, 36, 42, 48],
+            chartId: 'owner-accounts',
+            trend: '+8.1%',
+            trendLabel: 'new signups',
           },
           {
             label: 'Pending Verification',
@@ -1514,9 +1218,14 @@ function AdminDashboardHome({
             detail: 'awaiting approval',
             icon: Clock3,
             page: 'pending',
-            className: 'bg-[#073957] text-white',
+            cardClass: 'bg-[#073957] text-white',
             valueClass: 'text-amber-300',
             iconClass: 'text-amber-300',
+            color: '#f59e0b',
+            spark: [10, 12, 16, 18, 24, 22, 30],
+            chartId: 'pending-verification',
+            trend: '-3.2%',
+            trendLabel: 'this week',
           },
           {
             label: 'Platform Commission',
@@ -1524,151 +1233,43 @@ function AdminDashboardHome({
             detail: 'current rate',
             icon: Percent,
             page: 'commission',
-            className: 'bg-[#073957] text-white',
+            cardClass: 'bg-[#073957] text-white',
             valueClass: 'text-emerald-200',
             iconClass: 'text-emerald-200',
+            color: '#34d399',
+            spark: [8, 14, 18, 26, 28, 34, 42],
+            chartId: 'platform-commission',
+            trend: '+5.8%',
+            trendLabel: 'earnings',
           },
         ].map((card) => {
           const Icon = card.icon;
+
           return (
-            <button
-              key={card.label}
-              type="button"
-              onClick={() => onNavigate(card.page)}
-              className={`min-h-[124px] rounded-2xl border border-white/15 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${card.className}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-[10px] font-black uppercase tracking-[0.12em] opacity-85">{card.label}</span>
-                <Icon className={`h-5 w-5 shrink-0 ${card.iconClass}`} />
+            <div key={card.label} className="space-y-3">
+              <button
+                type="button"
+                onClick={() => onNavigate(card.page)}
+                className={`w-full min-h-[128px] rounded-2xl border border-white/15 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${card.cardClass}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.12em] opacity-85">{card.label}</span>
+                  <Icon className={`h-5 w-5 shrink-0 ${card.iconClass}`} />
+                </div>
+                <div className={`mt-3 text-3xl font-black leading-none ${card.valueClass}`}>{card.value}</div>
+                <p className="mt-2 text-[11px] font-semibold opacity-75">{card.detail}</p>
+              </button>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  <span>{card.label}</span>
+                  <span className={card.trend.startsWith('-') ? 'text-red-500' : 'text-emerald-500'}>{card.trend}</span>
+                </div>
+                <MetricSparkBar color={card.color} values={card.spark} idPrefix={card.chartId} />
               </div>
-              <div className={`mt-3 text-3xl font-black leading-none ${card.valueClass}`}>{card.value}</div>
-              <p className="mt-2 text-[11px] font-semibold opacity-75">{card.detail}</p>
-            </button>
+            </div>
           );
         })}
-      </div>
-
-      {/* ====================================================
-          COMMISSION ACTIVITY SECTION
-      ==================================================== */}
-
-      <div className="bg-gradient-to-r from-[#043658]/5 to-[#FFC107]/5 rounded-xl p-6 border border-[#043658]/10">
-        <div className="flex items-center gap-2 mb-4">
-          <DollarSign className="w-5 h-5 text-[#043658]" />
-          <h2 className="text-lg font-bold text-[#043658]">Commission Activity</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-[#073957] p-4 rounded-lg border border-[#0b5277] shadow-sm text-white">
-            <span className="text-xs font-semibold text-white block mb-1">Total Commission Collected</span>
-            <div className="text-2xl font-bold text-amber-300 font-mono">{formatMoney(stats.commissionRevenue)} ETB</div>
-            <div className="flex items-center gap-1 mt-2">
-              <TrendingUp className="w-4 h-4 text-green-600" />
-              <span className="text-xs text-green-600 font-semibold">+12% this month</span>
-            </div>
-          </div>
-          
-          <div className="bg-[#073957] p-4 rounded-lg border border-[#0b5277] shadow-sm text-white">
-            <span className="text-xs font-semibold text-white block mb-1">Owner Payouts</span>
-            <div className="text-2xl font-bold text-[#FFC107] font-mono">{formatMoney(stats.ownerPayouts)} ETB</div>
-            <p className="text-xs text-white mt-2">paid to owners</p>
-          </div>
-
-          <div className="bg-[#073957] p-4 rounded-lg border border-[#0b5277] shadow-sm text-white">
-            <span className="text-xs font-semibold text-white block mb-1">Gross Revenue</span>
-            <div className="text-2xl font-bold text-sky-200 font-mono">{formatMoney(stats.totalRevenue)} ETB</div>
-            <p className="text-xs text-white mt-2">platform revenue</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ====================================================
-          PENDING APPLICATIONS
-      ==================================================== */}
-
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-
-          <div>
-
-            <h3 className="font-black text-[#043658]">
-              Pending Applications
-            </h3>
-
-            <p className="text-xs text-slate-500 mt-1">
-              Guesthouses waiting for approval
-            </p>
-
-          </div>
-
-          <button
-            type="button"
-            onClick={() =>
-              onNavigate(
-                'pending'
-              )
-            }
-            className="text-xs font-black text-[#043658] hover:text-[#0a4f7e]"
-          >
-            View all
-            <ArrowRight className="inline w-3.5 h-3.5 ml-1" />
-          </button>
-
-        </div>
-
-        <div className="p-5">
-
-          {pendingGuesthouses.length ===
-          0 ? (
-            <EmptyState
-              title="No pending applications"
-              text="All guesthouses have been reviewed."
-            />
-          ) : (
-            <div className="space-y-3">
-
-              {pendingGuesthouses
-                .slice(0, 5)
-                .map((gh) => (
-                  <div
-                    key={gh.id}
-                    className="flex items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition"
-                  >
-
-                    <div className="flex items-center gap-3 min-w-0">
-
-                      <div className="w-10 h-10 rounded-lg bg-[#FFC107]/20 text-[#043658] flex items-center justify-center shrink-0">
-                        <Building2 className="w-5 h-5" />
-                      </div>
-
-                      <div className="min-w-0">
-
-                        <div className="font-black text-sm text-[#043658] truncate">
-                          {gh.name ||
-                            'Unnamed Guesthouse'}
-                        </div>
-
-                        <div className="text-xs text-slate-500 truncate">
-                          {gh.city ||
-                            'Unknown city'}
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                    <span className="px-2.5 py-1 rounded-lg bg-[#FFC107]/20 text-[#043658] text-[9px] font-black uppercase shrink-0">
-                      Pending
-                    </span>
-
-                  </div>
-                ))}
-
-            </div>
-          )}
-
-        </div>
-
       </div>
 
     </div>

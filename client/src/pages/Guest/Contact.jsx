@@ -40,7 +40,7 @@ export function Contact() {
               </div>
               <p className="mt-4 text-sm text-white/60">Email</p>
               <p className="mt-1 font-bold text-white">
-                guesthouseplatform@gmail.com
+                manayeh@gmail.com
               </p>
             </div>
 
@@ -50,7 +50,7 @@ export function Contact() {
               </div>
               <p className="mt-4 text-sm text-white/60">Phone</p>
               <p className="mt-1 font-bold text-white">
-                +251 9XX XXX XXX
+                +251 924392994
               </p>
             </div>
 

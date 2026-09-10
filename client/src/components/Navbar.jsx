@@ -294,9 +294,10 @@ export function Navbar({ onToggleSidebar }) {
 
   if (isReceptionistDashboard) {
     return (
-      <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-end h-16">
+      <>
+        <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-end h-16">
 
             {isAuthenticated() ? (
               <div className="relative">
@@ -388,9 +389,28 @@ export function Navbar({ onToggleSidebar }) {
               </div>
             )}
 
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+
+        {showProfileModal && (
+          <ProfileModal
+            profileName={profileName}
+            profileEmail={profileEmail}
+            profilePhone={profilePhone}
+            profilePassword={profilePassword}
+            savingProfile={savingProfile}
+            profileMessage={profileMessage}
+            profileError={profileError}
+            setProfileName={setProfileName}
+            setProfileEmail={setProfileEmail}
+            setProfilePhone={setProfilePhone}
+            setProfilePassword={setProfilePassword}
+            handleSaveProfile={handleSaveProfile}
+            closeUpdateProfile={closeUpdateProfile}
+          />
+        )}
+      </>
     );
   }
 
@@ -621,7 +641,7 @@ export function Navbar({ onToggleSidebar }) {
    PROFILE MODAL
 ============================================================== */
 
-function ProfileModal({
+export function ProfileModal({
   profileName,
   profileEmail,
   profilePhone,

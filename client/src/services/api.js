@@ -1047,7 +1047,14 @@ function mapPaymentFromBackend(
       payment.guesthouseId ??
       payment.reservation?.room
         ?.guesthouseId ??
+      payment.reservation?.room
+        ?.guesthouse?.id ??
       null,
+
+    roomNumber:
+      payment.roomNumber ||
+      payment.reservation?.room?.roomNumber ||
+      '',
 
     guestName:
       payment.guestName ||
@@ -1373,25 +1380,31 @@ export const ApiService = {
   // ==========================================================
 
   async loginUser(
-    email,
-    password
+    identifier,
+    password,
+    loginMethod = 'email'
   ) {
-    if (!email || !password) {
+    if (!identifier || !password) {
       throw new Error(
-        'Email and password are required.'
+        'Email/Phone and password are required.'
       );
     }
 
     try {
+      const loginPayload = {
+        password,
+      };
+
+      if (loginMethod === 'phone') {
+        loginPayload.phone = formatEthiopianPhone(identifier);
+      } else {
+        loginPayload.email = String(identifier).trim();
+      }
+
       const response =
         await api.post(
           '/auth/login',
-          {
-            email:
-              String(email).trim(),
-
-            password,
-          }
+          loginPayload
         );
 
       const payload =
@@ -1468,10 +1481,6 @@ export const ApiService = {
           payload.fullName ||
           '',
 
-        email:
-          payload.email ||
-          '',
-
         phone:
           formatEthiopianPhone(
             payload.phone ||
@@ -1502,6 +1511,10 @@ export const ApiService = {
 
         role,
       };
+
+      if (payload.email?.trim()) {
+        body.email = payload.email.trim();
+      }
 
       if (role === 'OWNER') {
         if (
@@ -2226,7 +2239,9 @@ async resubmitGuesthouse(data) {
   // ==========================================================
 
   async getRoomsForGuesthouse(
-    guesthouseId
+    guesthouseId,
+    checkIn,
+    checkOut
   ) {
     if (!guesthouseId) {
       throw new Error(
@@ -2236,9 +2251,12 @@ async resubmitGuesthouse(data) {
 
     try {
       const response =
-        await api.get(
-          '/rooms'
-        );
+        await api.get(`/rooms/guesthouse/${guesthouseId}`, {
+          params: {
+            ...(checkIn ? { checkIn } : {}),
+            ...(checkOut ? { checkOut } : {}),
+          },
+        });
 
       const rooms =
         unwrap(response) || [];
@@ -3847,7 +3865,7 @@ async getMyGuesthouse() {
     try {
       const response =
         await api.get(
-          "/dashboard/owner/recent-payments"
+          "/owner/payments"
         );
 
       const payments =
@@ -3860,19 +3878,13 @@ async getMyGuesthouse() {
             )
           : [];
 
-      if (!guesthouseId) {
-        return mapped;
-      }
-
-      return mapped.filter(
-        (payment) =>
-          String(
-            payment.guesthouseId
-          ) ===
-          String(
-            guesthouseId
+      return guesthouseId
+        ? mapped.filter(
+            (payment) =>
+              !payment.guesthouseId ||
+              String(payment.guesthouseId) === String(guesthouseId)
           )
-      );
+        : mapped;
     } catch (error) {
       console.error(
         "❌ Error fetching owner payments:",
@@ -3880,6 +3892,24 @@ async getMyGuesthouse() {
       );
 
       return [];
+    }
+  },
+
+  async deleteOwnerPayment(paymentId) {
+    if (!paymentId) {
+      throw new Error('Payment ID is required.');
+    }
+
+    try {
+      const response = await api.delete(`/owner/payments/${paymentId}`);
+      return unwrap(response);
+    } catch (error) {
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to delete payment.'
+      );
     }
   },
 
@@ -3898,7 +3928,6 @@ async getMyGuesthouse() {
 
         paymentMethodBreakdown: {
           telebirr: 0,
-          chapa: 0,
           bank_transfer: 0,
           card: 0,
         },
@@ -3940,16 +3969,14 @@ async getMyGuesthouse() {
             )
         );
 
-      const chapa =
+      const card =
         Number(
-          data.breakdown?.chapa ??
+          data.breakdown?.card ??
           payments
             .filter(
               (p) =>
-                p.method ===
-                  "chapa" ||
-                p.method ===
-                  "card"
+                p.method === "card" ||
+                p.method === "chapa"
             )
             .reduce(
               (sum, p) =>
@@ -3984,8 +4011,8 @@ async getMyGuesthouse() {
 
       const calculatedRevenue =
         telebirr +
-        chapa +
-        bankTransfer;
+        bankTransfer +
+        card;
 
       return {
         totalRevenue:
@@ -4000,13 +4027,11 @@ async getMyGuesthouse() {
         paymentMethodBreakdown: {
           telebirr,
 
-          chapa,
-
           bank_transfer:
             bankTransfer,
 
           card:
-            chapa,
+            card,
         },
 
         occupancyRate:
@@ -4027,7 +4052,6 @@ async getMyGuesthouse() {
 
         paymentMethodBreakdown: {
           telebirr: 0,
-          chapa: 0,
           bank_transfer: 0,
           card: 0,
         },
@@ -4281,6 +4305,17 @@ async getMyGuesthouse() {
     }
   },
 
+  async getMyReviews() {
+    try {
+      const response = await api.get('/reviews/guest');
+      const data = unwrap(response);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching guest reviews:', error);
+      return [];
+    }
+  },
+
   async updateReview(
     reviewId,
     {
@@ -4371,6 +4406,42 @@ async getMyGuesthouse() {
     }
   },
 
+  async deleteOwnerReview(reviewId) {
+    if (!reviewId) {
+      throw new Error('Review ID is required.');
+    }
+
+    try {
+      const response = await api.delete(`/reviews/owner/${reviewId}`);
+      return unwrap(response);
+    } catch (error) {
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to delete guest review.'
+      );
+    }
+  },
+
+  async deleteOwnerResponse(reviewId) {
+    if (!reviewId) {
+      throw new Error('Review ID is required.');
+    }
+
+    try {
+      const response = await api.delete(`/reviews/owner/${reviewId}/response`);
+      return unwrap(response);
+    } catch (error) {
+      throw new Error(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to delete owner response.'
+      );
+    }
+  },
+
   async respondToReview(
     reviewId,
     responseText
@@ -4390,13 +4461,14 @@ async getMyGuesthouse() {
       );
     }
 
+    const normalizedResponse = String(responseText).trim();
+
     if (
-      String(
-        responseText
-      ).trim().length < 10
+      normalizedResponse.length < 1 ||
+      normalizedResponse.length > 1000
     ) {
       throw new Error(
-        "Response must be at least 10 characters long."
+        "Response must be 1 to 1000 characters long."
       );
     }
 
@@ -4410,10 +4482,7 @@ async getMyGuesthouse() {
         await api.put(
           `/reviews/${reviewId}/respond`,
           {
-            response:
-              String(
-                responseText
-              ).trim(),
+            response: normalizedResponse,
           }
         );
 

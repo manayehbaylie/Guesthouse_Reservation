@@ -13,10 +13,11 @@ import {
   Calendar,
   User,
   Building2,
-  Clock
+  Clock,
+  Trash2
 } from 'lucide-react';
 
-export function GuestReviews() {
+export function GuestReviews({ embedded = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
@@ -87,8 +88,8 @@ export function GuestReviews() {
       return;
     }
     
-    if (responseText.trim().length < 10) {
-      setError('Response must be at least 10 characters long.');
+    if (responseText.trim().length > 1000) {
+      setError('Response must be 1 to 1000 characters long.');
       return;
     }
     
@@ -120,6 +121,46 @@ export function GuestReviews() {
     setRespondingTo(null);
     setResponseText('');
     setError('');
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!reviewId || !window.confirm('Delete this guest review?')) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await ApiService.deleteOwnerReview(reviewId);
+      setSuccess('Guest review deleted successfully.');
+      await loadReviews(true);
+    } catch (err) {
+      setError(err.message || 'Failed to delete guest review.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteResponse = async (reviewId) => {
+    if (!reviewId || !window.confirm('Delete your response to this review?')) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await ApiService.deleteOwnerResponse(reviewId);
+      setSuccess('Owner response deleted successfully.');
+      await loadReviews(true);
+    } catch (err) {
+      setError(err.message || 'Failed to delete owner response.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderStars = (rating) => {
@@ -178,15 +219,17 @@ export function GuestReviews() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className={embedded ? 'space-y-6' : 'max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6'}>
       {/* Back Button */}
-      <button
-        onClick={() => navigate('/owner')}
-        className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900 transition-colors"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        <span>Back to Owner Dashboard</span>
-      </button>
+      {!embedded && (
+        <button
+          onClick={() => navigate('/owner')}
+          className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Back to Owner Dashboard</span>
+        </button>
+      )}
 
       {/* Main Card */}
       <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-6">
@@ -328,6 +371,18 @@ export function GuestReviews() {
                   )}
                 </div>
 
+                <div className="flex justify-end border-t border-stone-100 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteReview(review.id)}
+                    disabled={submitting}
+                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Guest Review
+                  </button>
+                </div>
+
                 {/* Owner Response */}
                 {review.ownerResponse ? (
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
@@ -341,6 +396,17 @@ export function GuestReviews() {
                     <p className="text-sm text-blue-900 leading-relaxed">
                       {review.ownerResponse}
                     </p>
+                    <div className="mt-3 flex justify-end border-t border-blue-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteResponse(review.id)}
+                        disabled={submitting}
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete Owner Response
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -356,16 +422,16 @@ export function GuestReviews() {
                             placeholder="Write your professional response to this guest..."
                             className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none resize-none"
                             rows={3}
-                            maxLength={500}
+                            maxLength={1000}
                           />
                           <div className="text-right text-[10px] text-stone-400 mt-1">
-                            {responseText.length}/500 characters
+                            {responseText.length}/1000 characters
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => handleRespond(review.id)}
-                            disabled={submitting || responseText.trim().length < 10}
+                            disabled={submitting || responseText.trim().length < 1 || responseText.trim().length > 1000}
                             className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {submitting ? (
@@ -386,9 +452,9 @@ export function GuestReviews() {
                           >
                             Cancel
                           </button>
-                          {responseText.trim().length > 0 && responseText.trim().length < 10 && (
+                          {responseText.trim().length === 0 && (
                             <span className="text-[10px] text-red-500 flex items-center">
-                              Minimum 10 characters
+                              Enter 1-1000 characters
                             </span>
                           )}
                         </div>

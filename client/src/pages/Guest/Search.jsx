@@ -5,7 +5,6 @@ import { DashboardLayout } from "../../components/DashboardLayout.jsx";
 import {
   Search as SearchIcon,
   MapPin,
-  Calendar,
   Star,
   ShieldCheck,
   ChevronRight,
@@ -31,13 +30,6 @@ export function GuesthouseSearch() {
   const [city, setCity] = useState(
     params.get("city") || "All Cities"
   );
-  const [checkIn, setCheckIn] = useState(
-    params.get("checkIn") || ""
-  );
-  const [checkOut, setCheckOut] = useState(
-    params.get("checkOut") || ""
-  );
-
   const [maxPrice, setMaxPrice] = useState(
     Number(
       params.get("maxPrice") || DEFAULT_MAX_PRICE
@@ -68,9 +60,6 @@ export function GuesthouseSearch() {
                 : city,
 
             keyword: keyword.trim(),
-
-            checkIn,
-            checkOut,
 
             maxPrice,
           });
@@ -115,8 +104,6 @@ export function GuesthouseSearch() {
   }, [
     city,
     keyword,
-    checkIn,
-    checkOut,
     maxPrice,
   ]);
 
@@ -249,20 +236,6 @@ export function GuesthouseSearch() {
       );
     }
 
-    if (checkIn) {
-      next.set(
-        "checkIn",
-        checkIn
-      );
-    }
-
-    if (checkOut) {
-      next.set(
-        "checkOut",
-        checkOut
-      );
-    }
-
     next.set(
       "maxPrice",
       String(maxPrice)
@@ -278,23 +251,12 @@ export function GuesthouseSearch() {
   const clearFilters = () => {
     setKeyword("");
     setCity("All Cities");
-    setCheckIn("");
-    setCheckOut("");
     setMaxPrice(
       DEFAULT_MAX_PRICE
     );
 
     setParams({});
   };
-
-  // ============================================================
-  // TODAY
-  // ============================================================
-
-  const today =
-    new Date()
-      .toISOString()
-      .split("T")[0];
 
   // ============================================================
   // UI
@@ -386,53 +348,6 @@ export function GuesthouseSearch() {
                     )
                   )}
                 </select>
-              </div>
-            </Field>
-
-            {/* -------------------------------------------------
-                CHECK IN
-            -------------------------------------------------- */}
-
-            <Field label="Check-In Date">
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 w-4 h-4 text-amber-600" />
-
-                <input
-                  type="date"
-                  value={checkIn}
-                  min={today}
-                  onChange={(e) =>
-                    setCheckIn(
-                      e.target.value
-                    )
-                  }
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 text-xs outline-none"
-                />
-              </div>
-            </Field>
-
-            {/* -------------------------------------------------
-                CHECK OUT
-            -------------------------------------------------- */}
-
-            <Field label="Check-Out Date">
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 w-4 h-4 text-amber-600" />
-
-                <input
-                  type="date"
-                  value={checkOut}
-                  min={
-                    checkIn ||
-                    today
-                  }
-                  onChange={(e) =>
-                    setCheckOut(
-                      e.target.value
-                    )
-                  }
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 text-xs outline-none"
-                />
               </div>
             </Field>
 

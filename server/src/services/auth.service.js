@@ -20,24 +20,27 @@ function removePassword(user) {
 // ==========================
 export const registerUser = async (data) => {
   requireField(data.fullName, "Full name");
-  requireField(data.email, "Email");
   requireField(data.password, "Password");
   requireField(data.phone, "Phone");
   requireField(data.role, "Role");
 
-  const email = String(data.email).trim().toLowerCase();
+  const email = data.email
+    ? String(data.email).trim().toLowerCase()
+    : null;
   const phone = String(data.phone).trim();
   const role = String(data.role).toUpperCase();
 
   // ==========================
   // Check email
   // ==========================
-  const existingEmail = await prisma.user.findUnique({
-    where: { email },
-  });
+  if (email) {
+    const existingEmail = await prisma.user.findUnique({
+      where: { email },
+    });
 
-  if (existingEmail) {
-    throw new Error("Email already exists");
+    if (existingEmail) {
+      throw new Error("Email already exists");
+    }
   }
 
   // ==========================
@@ -74,7 +77,7 @@ export const registerUser = async (data) => {
     const user = await prisma.user.create({
       data: {
         fullName: String(data.fullName).trim(),
-        email,
+        ...(email ? { email } : {}),
         password: hashedPassword,
         phone,
         role: "GUEST",
@@ -114,7 +117,7 @@ export const registerUser = async (data) => {
     const owner = await prisma.user.create({
       data: {
         fullName: String(data.fullName).trim(),
-        email,
+        ...(email ? { email } : {}),
         password: hashedPassword,
         phone,
         role: "OWNER",

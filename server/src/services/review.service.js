@@ -42,6 +42,11 @@ export const getReviewByReservationId = async (reservationId) => {
 
 export const createReview = async (data) => {
   const { guesthouseId, reservationId, rating, comment } = data;
+  const reviewComment = String(comment || '').trim();
+
+  if (reviewComment.length < 1 || reviewComment.length > 1000) {
+    throw new Error('Review comment must be 1 to 1000 characters.');
+  }
 
   // Check if review already exists
   const existing = await prisma.review.findFirst({
@@ -62,15 +67,24 @@ export const createReview = async (data) => {
     throw new Error('Reservation not found.');
   }
 
-  if (reservation.status !== 'CHECKED_OUT' && reservation.status !== 'checked_out') {
-    throw new Error('You can only review after completing your stay.');
+  if (
+    reservation.status !== 'CHECKED_IN' &&
+    reservation.status !== 'checked_in' &&
+    reservation.status !== 'CHECKED_OUT' &&
+    reservation.status !== 'checked_out'
+  ) {
+    throw new Error('You can only review after checking in.');
+  }
+
+  if (Number(reservation.room?.guesthouseId) !== Number(guesthouseId)) {
+    throw new Error('The reservation does not belong to this guesthouse.');
   }
 
   // Create review
   const review = await prisma.review.create({
     data: {
       rating: Number(rating),
-      comment: String(comment).trim(),
+      comment: reviewComment,
       guestId: reservation.guestId,
       guesthouseId: Number(guesthouseId),
       reservationId: Number(reservationId),
@@ -217,14 +231,15 @@ export const respondToReview = async (reviewId, responseText) => {
     throw new Error('Review ID is required.');
   }
 
-  if (!responseText || !String(responseText).trim()) {
-    throw new Error('Response text is required.');
+  const normalizedResponse = String(responseText || '').trim();
+  if (normalizedResponse.length < 1 || normalizedResponse.length > 1000) {
+    throw new Error('Response must be 1 to 1000 characters long.');
   }
 
   const review = await prisma.review.update({
     where: { id: Number(reviewId) },
     data: {
-      ownerResponse: String(responseText).trim(),
+      ownerResponse: normalizedResponse,
     },
     include: {
       guest: {

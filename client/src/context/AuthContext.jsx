@@ -70,6 +70,15 @@ export function AuthProvider({ children }) {
         throw new Error("Login failed - no user data returned");
       }
 
+      const pendingGuesthouseId = localStorage.getItem("selectedGuesthouseId");
+      if (pendingGuesthouseId && loggedUser.id) {
+        localStorage.setItem(
+          `selectedGuesthouseId:${loggedUser.id}`,
+          pendingGuesthouseId
+        );
+        localStorage.removeItem("selectedGuesthouseId");
+      }
+
       setUser(loggedUser);
       
       // Dispatch custom event for login

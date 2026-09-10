@@ -42,7 +42,6 @@ import { GuesthouseManage } from "./pages/Owner/GuesthouseManage.jsx";
 import { RoomManage } from "./pages/Owner/RoomManage.jsx";
 import { StaffManage } from "./pages/Owner/StaffManage.jsx";
 import { RevenueReports } from "./pages/Owner/RevenueReports.jsx";
-import { GuestReviews } from "./pages/Owner/GuestReviews.jsx";
 
 // Receptionist
 import { ReceptionistDashboard } from "./pages/Receptionist/Dashboard.jsx";
@@ -77,15 +76,13 @@ export default function App() {
     location.pathname === "/guest/search" ||
     location.pathname === "/reservations" ||
     location.pathname === "/guest/reviews" ||
-    location.pathname === "/owner/reviews" ||
     location.pathname === "/booking" ||
     location.pathname.startsWith("/booking/") ||
     location.pathname.startsWith("/reviews/") ||
     location.pathname === "/guest/payment-receipt";
 
   const showNavbar =
-    !isDashboard ||
-    location.pathname === "/guest/dashboard";
+    !isDashboard;
 
   return (
     <div className="min-h-screen bg-white text-stone-900 flex flex-col font-sans">
@@ -338,11 +335,7 @@ export default function App() {
 
             <Route
               path="/owner/reviews"
-              element={
-                <ProtectedRoute allowedRoles={["OWNER"]}>
-                  <GuestReviews />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/owner?tab=reviews" replace />}
             />
 
             {/* ===================================================

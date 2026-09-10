@@ -769,10 +769,7 @@ export function Home() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 text-center sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-3xl flex-col items-center">
 
-            <div className="mb-6 flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur-md">
-              <Building2 className="h-4 w-4 text-[#FFC107]" />
-              Verified Guesthouse Reservation Platform
-            </div>
+            
 
             <h1
               className="text-5xl font-normal leading-tight text-white sm:text-6xl lg:text-7xl"
@@ -1293,7 +1290,7 @@ export function Home() {
               </div>
               <p className="mt-4 text-sm text-white/60">Email</p>
               <p className="mt-1 font-bold text-white">
-                guesthouseplatform@gmail.com
+                manayehbaylie1921@gmail.com
               </p>
             </div>
 
@@ -1303,7 +1300,7 @@ export function Home() {
               </div>
               <p className="mt-4 text-sm text-white/60">Phone</p>
               <p className="mt-1 font-bold text-white">
-                +251 9XX XXX XXX
+                +251 9 24392994
               </p>
             </div>
 

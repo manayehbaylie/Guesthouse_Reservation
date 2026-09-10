@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import {
   BedDouble,
+  CalendarDays,
   Search,
   CheckCircle,
   CreditCard,
@@ -43,14 +44,6 @@ export function ReceptionistDashboard() {
   // ============================================================
 
   const handleDeleteReservation = async (reservation) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to permanently delete reservation #res_${reservation.id}?`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setActionLoadingId(reservation.id);
     setError(null);
 
@@ -61,7 +54,6 @@ export function ReceptionistDashboard() {
           (item) => item.id !== reservation.id
         )
       );
-      window.alert('Reservation deleted successfully.');
     } catch (err) {
       console.error('Failed to delete reservation:', err);
       setError(err?.message || 'Failed to delete reservation.');
@@ -225,8 +217,10 @@ export function ReceptionistDashboard() {
   // LOAD DASHBOARD
   // ============================================================
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async ({ showLoading = true } = {}) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -285,7 +279,7 @@ export function ReceptionistDashboard() {
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
-      await loadData();
+      await loadData({ showLoading: false });
       return;
     }
 
@@ -315,40 +309,10 @@ export function ReceptionistDashboard() {
 
     try {
       await ApiService.checkInGuest(reservationId);
-      await loadData();
+      await loadData({ showLoading: false });
     } catch (err) {
       console.error('Check-in error:', err);
       setError(err?.message || 'Check-in error');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const handleConfirmReservation = async (reservationId) => {
-    setActionLoadingId(reservationId);
-    setError(null);
-
-    try {
-      await ApiService.confirmReceptionistReservation(reservationId);
-      await loadData();
-    } catch (err) {
-      console.error('Reservation confirmation error:', err);
-      setError(err?.message || 'Reservation confirmation error');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const handleCancelReservation = async (reservationId) => {
-    setActionLoadingId(reservationId);
-    setError(null);
-
-    try {
-      await ApiService.cancelReceptionistReservation(reservationId);
-      await loadData();
-    } catch (err) {
-      console.error('Reservation cancellation error:', err);
-      setError(err?.message || 'Reservation cancellation error');
     } finally {
       setActionLoadingId(null);
     }
@@ -364,7 +328,7 @@ export function ReceptionistDashboard() {
 
     try {
       await ApiService.checkOutGuest(reservationId);
-      await loadData();
+      await loadData({ showLoading: false });
     } catch (err) {
       console.error('Check-out error:', err);
       setError(err?.message || 'Check-out error');
@@ -383,7 +347,7 @@ export function ReceptionistDashboard() {
 
     try {
       await ApiService.updateReceptionistRoomAvailability(roomId, maintenanceStatus);
-      await loadData();
+      await loadData({ showLoading: false });
     } catch (err) {
       console.error('Room status update error:', err);
       setError(err?.message || 'Room status update error');
@@ -628,43 +592,64 @@ export function ReceptionistDashboard() {
             KPI CARDS - BRAND COLORS
         ==================================================== */}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
+
+          {/* ALL RESERVATIONS */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('all');
+              setSearchTerm('');
+            }}
+            className="w-full min-h-16 text-left bg-white p-2.5 rounded-lg border border-sky-200 shadow-sm flex items-center justify-between transition-colors duration-200 hover:bg-sky-50"
+          >
+            <div>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-sky-700 block">All Reservations</span>
+              <span className="text-base font-mono font-extrabold text-stone-900">{allReservations.length}</span>
+              <span className="text-[10px] text-sky-700 block">Total bookings</span>
+            </div>
+            <div className="p-1.5 bg-sky-600 text-white rounded-md">
+              <CalendarDays className="w-3.5 h-3.5" />
+            </div>
+          </button>
 
           {/* IN HOUSE - Amber/Gold */}
           <button
+            type="button"
             onClick={() => {
               setActiveTab('inhouse');
               setSearchTerm('');
             }}
-            className="text-left bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-2xl border-2 border-amber-200 shadow-lg shadow-amber-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
+            className="w-full min-h-16 text-left bg-white p-2.5 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between transition-colors duration-200 hover:bg-amber-50"
           >
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-700 block">In-House Guests</span>
-              <span className="text-2xl font-mono font-extrabold text-stone-900">{dashboardStats?.inHouse ?? 0}</span>
-              <span className="text-xs text-amber-700 block mt-1">Rooms occupied</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 block">In-House Guests</span>
+              <span className="text-base font-mono font-extrabold text-stone-900">{dashboardStats?.inHouse ?? 0}</span>
+              <span className="text-[10px] text-amber-700 block">Rooms occupied</span>
             </div>
-            <div className="p-3 bg-amber-500 text-stone-900 rounded-xl shadow-lg">
-              <BedDouble className="w-6 h-6" />
+            <div className="p-1.5 bg-amber-500 text-stone-900 rounded-md">
+              <BedDouble className="w-3.5 h-3.5" />
             </div>
           </button>
 
           {/* AVAILABLE ROOMS - Stone/Dark */}
           <button
+            type="button"
             onClick={() => {
               setActiveTab('rooms');
               setSearchTerm('');
             }}
-            className="text-left bg-gradient-to-br from-stone-100 to-stone-200 p-5 rounded-2xl border-2 border-stone-300 shadow-lg shadow-stone-500/20 flex items-center justify-between transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
+            className="w-full min-h-16 text-left bg-white p-2.5 rounded-lg border border-stone-300 shadow-sm flex items-center justify-between transition-colors duration-200 hover:bg-stone-50"
           >
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block">Available Rooms</span>
-              <span className="text-2xl font-mono font-extrabold text-stone-900">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-stone-700 block">Available Rooms</span>
+              <span className="text-base font-mono font-extrabold text-stone-900">
                 {dashboardStats?.availableRooms ?? 0} / {dashboardStats?.totalRooms ?? 0}
               </span>
-              <span className="text-xs text-stone-700 block mt-1">Ready for guests</span>
+              <span className="text-[10px] text-stone-700 block">Ready for guests</span>
             </div>
-            <div className="p-3 bg-stone-700 text-white rounded-xl shadow-lg">
-              <SlidersHorizontal className="w-6 h-6" />
+            <div className="p-1.5 bg-stone-700 text-white rounded-md">
+              <SlidersHorizontal className="w-3.5 h-3.5" />
             </div>
           </button>
 
@@ -736,7 +721,7 @@ export function ReceptionistDashboard() {
                       <button
                         onClick={() => handleCheckOut(res.id)}
                         disabled={actionLoadingId === res.id}
-                        className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-200 transform hover:scale-105 flex items-center gap-1.5 border-2 border-amber-500"
+                        className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-colors duration-200 flex items-center gap-1.5 border-2 border-amber-500"
                       >
                         <span>{actionLoadingId === res.id ? 'Checking Out...' : 'Check Out Now'}</span>
                       </button>
@@ -788,26 +773,6 @@ export function ReceptionistDashboard() {
                         <td className="p-3.5 font-mono">ETB {Number(r.totalPrice || 0).toLocaleString()}</td>
                         <td className="p-3.5">
                           <div className="flex gap-2 flex-wrap">
-                            {String(r.status || '').toUpperCase() === 'PENDING' && (
-                              <button
-                                onClick={() => handleConfirmReservation(r.id)}
-                                disabled={actionLoadingId === r.id}
-                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-lg font-bold"
-                              >
-                                {actionLoadingId === r.id ? 'Updating...' : 'Confirm'}
-                              </button>
-                            )}
-
-                            {['PENDING', 'CONFIRMED'].includes(String(r.status || '').toUpperCase()) && (
-                              <button
-                                onClick={() => handleCancelReservation(r.id)}
-                                disabled={actionLoadingId === r.id}
-                                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs rounded-lg font-bold"
-                              >
-                                {actionLoadingId === r.id ? 'Updating...' : 'Cancel'}
-                              </button>
-                            )}
-
                             {String(r.status || '').toUpperCase() === 'CONFIRMED' && (
                               <button
                                 onClick={() => handleCheckIn(r.id)}
@@ -864,79 +829,73 @@ export function ReceptionistDashboard() {
           <div className="space-y-4">
             <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 text-xs text-stone-500 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-stone-700 shrink-0" />
-              <span>Receptionists can update room status: Available, Unavailable, Cleaning, and Maintenance.</span>
+              <span>Receptionists can update room status: Available, Unavailable, and Maintenance.</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
               {rooms.length === 0 ? (
-                <div className="col-span-full bg-white p-8 rounded-2xl border border-stone-200 text-center text-stone-500">
-                  No rooms found for this guesthouse.
-                </div>
+                <div className="p-8 text-center text-stone-500">No rooms found for this guesthouse.</div>
               ) : (
-                rooms.map((rm) => {
-                  const status = String(rm.maintenanceStatus || 'AVAILABLE').toUpperCase();
-                  const isAvailable = status === 'AVAILABLE';
-                  const isRoomActionLoading = actionLoadingId === `room-${rm.id}`;
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase font-semibold text-[10px]">
+                      <tr>
+                        <th className="p-3.5">ROOM</th>
+                        <th className="p-3.5">CAPACITY</th>
+                        <th className="p-3.5">RATE</th>
+                        <th className="p-3.5">OCCUPANCY</th>
+                        <th className="p-3.5">STATUS</th>
+                        <th className="p-3.5">ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 font-medium text-stone-900">
+                      {rooms.map((rm) => {
+                        const status = String(rm.maintenanceStatus || 'AVAILABLE').toUpperCase();
+                        const isOccupied = rm.availabilityStatus === 'occupied' || rm.available === false;
+                        const isRoomActionLoading = actionLoadingId === `room-${rm.id}`;
 
-                  return (
-                    <div key={rm.id} className="bg-white p-5 rounded-2xl border border-stone-200 space-y-3 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-mono text-xs font-bold text-stone-900 bg-stone-100 px-2 py-0.5 rounded">
-                            Room {rm.roomNumber}
-                          </span>
-                          <h3 className="font-bold text-stone-900 text-base mt-1">{rm.roomType}</h3>
-                        </div>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${getMaintenanceStatusColor(status)}`}>
-                          {status}
-                        </span>
-                      </div>
-
-                      <div className="text-xs text-stone-500 font-mono">
-                        {rm.capacity ?? 0} Guests &bull; Rate ETB {Number(rm.price ?? rm.pricePerNight ?? 0).toLocaleString()}
-                      </div>
-
-                      <div className="text-xs text-stone-500">
-                        Occupancy:{' '}
-                        <span className={`font-bold ${rm.available ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {rm.available ? 'Vacant' : 'Occupied'}
-                        </span>
-                      </div>
-
-                      <div className="flex gap-2">
-                        {!isAvailable && (
-                          <button
-                            onClick={() => handleUpdateRoomAvailability(rm.id, 'AVAILABLE')}
-                            disabled={isRoomActionLoading}
-                            className="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2 bg-stone-900 text-white border-2 border-stone-900 shadow-lg shadow-stone-900/30 hover:bg-stone-800 disabled:opacity-60"
-                          >
-                            {isRoomActionLoading ? 'Updating...' : 'Mark Available'}
-                          </button>
-                        )}
-
-                        {isAvailable && (
-                          <>
-                            <button
-                              onClick={() => handleUpdateRoomAvailability(rm.id, 'CLEANING')}
-                              disabled={isRoomActionLoading}
-                              className="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-900 border-2 border-amber-300 shadow-lg shadow-amber-500/30 hover:from-amber-500 hover:to-amber-600 disabled:opacity-60"
-                            >
-                              {isRoomActionLoading ? 'Updating...' : 'Cleaning'}
-                            </button>
-
-                            <button
-                              onClick={() => handleUpdateRoomAvailability(rm.id, 'MAINTENANCE')}
-                              disabled={isRoomActionLoading}
-                              className="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-400 to-orange-500 text-white border-2 border-orange-300 shadow-lg shadow-orange-500/30 hover:from-orange-500 hover:to-orange-600 disabled:opacity-60"
-                            >
-                              {isRoomActionLoading ? 'Updating...' : 'Maintenance'}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+                        return (
+                          <tr key={rm.id}>
+                            <td className="p-3.5">
+                              <div className="font-mono font-bold">Room {rm.roomNumber}</div>
+                              <div className="text-stone-500">{rm.roomType}</div>
+                            </td>
+                            <td className="p-3.5">{rm.capacity ?? 0} guests</td>
+                            <td className="p-3.5 font-mono">ETB {Number(rm.price ?? rm.pricePerNight ?? 0).toLocaleString()}</td>
+                            <td className="p-3.5">
+                              <span className={`font-bold ${rm.available ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {rm.available ? 'Vacant' : 'Occupied'}
+                              </span>
+                            </td>
+                            <td className="p-3.5">
+                              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${getMaintenanceStatusColor(isOccupied ? 'UNAVAILABLE' : status)}`}>
+                                {isOccupied ? 'UNAVAILABLE' : status}
+                              </span>
+                            </td>
+                            <td className="p-3.5">
+                              <div className="flex gap-2 flex-wrap">
+                                <button
+                                  onClick={() => handleUpdateRoomAvailability(rm.id, 'AVAILABLE')}
+                                  disabled={isRoomActionLoading}
+                                  className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-stone-900 text-xs rounded-lg font-bold disabled:opacity-60"
+                                >
+                                  {isRoomActionLoading ? 'Updating...' : 'Available'}
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateRoomAvailability(rm.id, 'MAINTENANCE')}
+                                  disabled={isRoomActionLoading}
+                                  className="px-3 py-1 bg-orange-500 hover:bg-orange-400 text-white text-xs rounded-lg font-bold disabled:opacity-60"
+                                >
+                                  {isRoomActionLoading ? 'Updating...' : 'Maintenance'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>

@@ -40,74 +40,6 @@ function saveStoredNotifications(user, list) {
   }
 }
 
-function buildDemoNotifications(user) {
-  if (!user) return [];
-
-  const userName = user.name || user.fullName || 'Guest';
-  const role = String(user.role || 'GUEST').toUpperCase();
-
-  const demoList = [
-    {
-      id: 'demo-welcome',
-      title: 'Welcome back',
-      message: `Hello ${userName}! Your guesthouse account is ready and the notification center is active.`,
-      isRead: false,
-      category: 'system',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'demo-reminder',
-      title: 'Booking reminder',
-      message: 'A recent reservation update is waiting for your review in the dashboard.',
-      isRead: false,
-      category: role === 'OWNER' ? 'guesthouse' : 'reservation',
-      createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    },
-  ];
-
-  if (role === 'OWNER') {
-    demoList.push({
-      id: 'demo-owner',
-      title: 'New reservation received',
-      message: 'A guest has booked a room in your guesthouse and payment is awaiting confirmation.',
-      isRead: false,
-      category: 'reservation',
-      createdAt: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
-    });
-
-    demoList.push({
-      id: 'demo-owner-payment',
-      title: 'Payment received',
-      message: 'A guest payment was successfully received and the reservation has been confirmed.',
-      isRead: true,
-      category: 'payment',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    });
-  }
-
-  if (role === 'GUEST') {
-    demoList.push({
-      id: 'demo-guest',
-      title: 'Reservation created',
-      message: 'Your reservation request has been created successfully and is waiting for payment confirmation.',
-      isRead: false,
-      category: 'reservation',
-      createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    });
-
-    demoList.push({
-      id: 'demo-payment',
-      title: 'Payment successful',
-      message: 'Your payment was processed successfully and your reservation is now confirmed.',
-      isRead: false,
-      category: 'payment',
-      createdAt: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-    });
-  }
-
-  return demoList;
-}
-
 export function NotificationProvider({ children }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
@@ -169,25 +101,24 @@ export function NotificationProvider({ children }) {
     try {
       setError('');
       const hasAuthToken = Boolean(localStorage.getItem('token'));
-      const stored = getStoredNotifications(user);
+      const stored = getStoredNotifications(user).filter(
+        (notification) => !String(notification.id).startsWith('demo-')
+      );
 
       if (!hasAuthToken) {
-        const fallback = stored.length > 0 ? stored : buildDemoNotifications(user);
-        const count = fallback.filter((n) => !n.isRead).length;
-        knownIdsRef.current = new Set(fallback.map((n) => n.id));
+        const count = stored.filter((n) => !n.isRead).length;
+        knownIdsRef.current = new Set(stored.map((n) => n.id));
         isFirstLoadRef.current = false;
-        setNotifications(fallback);
+        setNotifications(stored);
         setUnreadCount(count);
-        saveStoredNotifications(user, fallback);
+        saveStoredNotifications(user, stored);
         return;
       }
 
       const data = await ApiService.getNotifications();
-      let list = Array.isArray(data) ? data : [];
-
-      if (list.length === 0) {
-        list = stored.length > 0 ? stored : buildDemoNotifications(user);
-      }
+      const list = (Array.isArray(data) ? data : []).filter(
+        (notification) => !String(notification.id).startsWith('demo-')
+      );
 
       const count = list.filter((n) => !n.isRead).length;
 
@@ -211,9 +142,9 @@ export function NotificationProvider({ children }) {
       setUnreadCount(count);
       saveStoredNotifications(user, list);
     } catch (error) {
-      const fallback = getStoredNotifications(user).length > 0
-        ? getStoredNotifications(user)
-        : buildDemoNotifications(user);
+      const fallback = getStoredNotifications(user).filter(
+        (notification) => !String(notification.id).startsWith('demo-')
+      );
       const count = fallback.filter((n) => !n.isRead).length;
 
       knownIdsRef.current = new Set(fallback.map((n) => n.id));

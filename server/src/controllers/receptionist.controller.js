@@ -310,13 +310,9 @@ export const deleteReceptionReservation = async (
 };
 export async function updateReceptionistProfile(req, res) {
   try {
-    console.log("PROFILE UPDATE REQUEST");
-    console.log("User:", req.user);
-    console.log("Body:", req.body);
+    const userId = Number(req.user?.id);
 
-    const userId = req.user?.id;
-
-    if (!userId) {
+    if (!Number.isInteger(userId)) {
       return res.status(401).json({
         success: false,
         message: "User ID not found in authentication token",
@@ -343,12 +339,6 @@ export async function updateReceptionistProfile(req, res) {
       );
     }
 
-    console.log("Updating user:", userId);
-    console.log("Update data:", {
-      ...data,
-      password: password ? "***" : undefined,
-    });
-
     const updatedUser = await prisma.user.update({
       where: {
         id: userId,
@@ -356,11 +346,17 @@ export async function updateReceptionistProfile(req, res) {
       data,
     });
 
-    console.log("Updated user:", updatedUser);
-
     return res.status(200).json({
       success: true,
-      data: updatedUser,
+      data: {
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        guesthouseId: updatedUser.guesthouseId,
+        createdAt: updatedUser.createdAt,
+      },
     });
 
   } catch (error) {

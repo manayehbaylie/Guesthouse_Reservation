@@ -26,7 +26,6 @@ const router = express.Router();
  *             type: object
  *             required:
  *               - fullName
- *               - email
  *               - password
  *               - phone
  *               - role
@@ -37,6 +36,8 @@ const router = express.Router();
  *               email:
  *                 type: string
  *                 format: email
+ *                 nullable: true
+ *                 description: Optional email address.
  *                 example: manayeh@gmail.com
  *               password:
  *                 type: string

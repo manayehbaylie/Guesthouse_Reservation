@@ -178,12 +178,10 @@ export function GuestBookings() {
       return;
     }
 
-    if (
-      selectedReviewRes.status !==
-      'checked_out'
-    ) {
+    const reviewStatus = String(selectedReviewRes.status || '').toLowerCase();
+    if (reviewStatus !== 'checked_in' && reviewStatus !== 'checked_out') {
       setReviewError(
-        'You can only review a guesthouse after completing your stay.'
+        'You can review a guesthouse after checking in.'
       );
 
       return;

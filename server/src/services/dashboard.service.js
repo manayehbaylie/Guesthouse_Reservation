@@ -240,7 +240,9 @@ export const getOwnerRevenue = async (ownerId) => {
   const card = await prisma.payment.aggregate({
     where: {
       status: "PAID",
-      method: "CARD",
+      method: {
+        in: ["CARD", "CHAPA"],
+      },
       reservation: {
         room: {
           guesthouse: {
@@ -258,8 +260,8 @@ export const getOwnerRevenue = async (ownerId) => {
     totalRevenue: revenue._sum.amount ?? 0,
     breakdown: {
       telebirr: telebirr._sum.amount ?? 0,
-      chapa: (chapa._sum.amount ?? 0) + (card._sum.amount ?? 0),
-      cbe_birr: cbe._sum.amount ?? 0,
+      bank_transfer: cbe._sum.amount ?? 0,
+      card: (card._sum.amount ?? 0) + (chapa._sum.amount ?? 0),
     },
   };
 };

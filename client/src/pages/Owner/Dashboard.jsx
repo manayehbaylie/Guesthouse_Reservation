@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { GuestReviews } from './GuestReviews.jsx';
 import {
   Building2,
   DoorOpen,
@@ -104,7 +105,7 @@ export function OwnerDashboard() {
   const [revenueReport, setRevenueReport] = useState({
     totalRevenue: 0,
     totalTransactions: 0,
-    paymentMethodBreakdown: { telebirr: 0, chapa: 0, bank_transfer: 0, card: 0 },
+    paymentMethodBreakdown: { telebirr: 0, bank_transfer: 0, card: 0 },
     occupancyRate: 0,
   });
   const [reservations, setReservations] = useState([]);
@@ -117,6 +118,7 @@ export function OwnerDashboard() {
   const [roomFilterStatus, setRoomFilterStatus] = useState('ALL');
   const [roomSearchQuery, setRoomSearchQuery] = useState('');
   const [paymentFilterMethod, setPaymentFilterMethod] = useState('ALL');
+  const [paymentFilterPeriod, setPaymentFilterPeriod] = useState('ALL');
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
 
   // Modal States
@@ -231,7 +233,6 @@ export function OwnerDashboard() {
               totalTransactions: rev.totalTransactions || 0,
               paymentMethodBreakdown: {
                 telebirr: rev.paymentMethodBreakdown?.telebirr || 0,
-                chapa: rev.paymentMethodBreakdown?.chapa || 0,
                 bank_transfer: rev.paymentMethodBreakdown?.bank_transfer || 0,
                 card: rev.paymentMethodBreakdown?.card || 0,
               },
@@ -243,7 +244,7 @@ export function OwnerDashboard() {
           setRevenueReport({
             totalRevenue: 0,
             totalTransactions: 0,
-            paymentMethodBreakdown: { telebirr: 0, chapa: 0, bank_transfer: 0, card: 0 },
+            paymentMethodBreakdown: { telebirr: 0, bank_transfer: 0, card: 0 },
             occupancyRate: 0,
           });
         }
@@ -290,7 +291,7 @@ export function OwnerDashboard() {
         setRevenueReport({
           totalRevenue: 0,
           totalTransactions: 0,
-          paymentMethodBreakdown: { telebirr: 0, chapa: 0, bank_transfer: 0, card: 0 },
+          paymentMethodBreakdown: { telebirr: 0, bank_transfer: 0, card: 0 },
           occupancyRate: 0,
         });
         setReservations([]);
@@ -558,19 +559,79 @@ export function OwnerDashboard() {
     return matchesStatus && matchesSearch;
   });
 
+  const getPeriodStart = (period) => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    if (period === 'week') {
+      const day = start.getDay();
+      const daysSinceMonday = day === 0 ? 6 : day - 1;
+      start.setDate(start.getDate() - daysSinceMonday);
+    } else if (period === 'month') {
+      start.setDate(1);
+    } else if (period === 'year') {
+      start.setMonth(0, 1);
+    }
+
+    return start;
+  };
+
+  const formatPaymentDate = (dateString) => {
+    if (!dateString) return '-';
+
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   const filteredPayments = payments.filter((p) => {
     const matchesMethod =
       paymentFilterMethod === 'ALL'
         ? true
-        : p.method && p.method.toLowerCase() === paymentFilterMethod.toLowerCase();
+        : p.method && (
+          p.method.toLowerCase() === paymentFilterMethod.toLowerCase() ||
+          (paymentFilterMethod === 'card' && p.method.toLowerCase() === 'chapa')
+        );
 
     const matchesSearch =
       !paymentSearchQuery ||
       (p.referenceNumber && p.referenceNumber.toLowerCase().includes(paymentSearchQuery.toLowerCase())) ||
       (p.guestName && p.guestName.toLowerCase().includes(paymentSearchQuery.toLowerCase()));
 
-    return matchesMethod && matchesSearch;
+    const matchesPeriod =
+      paymentFilterPeriod === 'ALL' ||
+      new Date(p.createdAt) >= getPeriodStart(paymentFilterPeriod);
+
+    return matchesMethod && matchesSearch && matchesPeriod;
   });
+
+  const paidRevenueByPeriod = ['day', 'week', 'month', 'year'].reduce((totals, period) => {
+    const periodStart = getPeriodStart(period);
+    totals[period] = payments.reduce((total, payment) => {
+      const paymentDate = new Date(payment.createdAt);
+      return paymentDate >= periodStart ? total + Number(payment.amount || 0) : total;
+    }, 0);
+    return totals;
+  }, {});
+
+  const handleDeletePayment = async (payment) => {
+    if (!payment?.id || !window.confirm('Delete this guest payment record?')) {
+      return;
+    }
+
+    try {
+      await ApiService.deleteOwnerPayment(payment.id);
+      showToast('Guest payment deleted successfully.');
+      await loadOwnerDashboard(true);
+    } catch (error) {
+      showToast(error.message || 'Failed to delete guest payment.', 'error');
+    }
+  };
 
   // Calculate Metrics
   const totalRoomsCount = rooms.length;
@@ -782,9 +843,9 @@ export function OwnerDashboard() {
             </button>
 
             <button
-              onClick={() => navigate('/owner/reviews')}
+              onClick={() => handleTabChange('reviews')}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
-                location.pathname === '/owner/reviews'
+                activeTab === 'reviews'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
                   : 'text-stone-300 hover:bg-stone-900 hover:text-white'
               }`}
@@ -825,6 +886,7 @@ export function OwnerDashboard() {
                 {activeTab === 'staff' && 'Front-Desk Receptionist Console'}
                 {activeTab === 'revenue' && 'Verified Revenue & Payment Audit'}
                 {activeTab === 'edit_property' && 'Edit Guesthouse Profile Details'}
+                {activeTab === 'reviews' && 'Guest Reviews & Feedback'}
               </h1>
               <p className="text-xs text-stone-500">
                 Operating property: <strong className="text-stone-800">{ghDisplay.name}</strong> • City: <strong className="text-stone-800">{ghDisplay.city}</strong>
@@ -918,7 +980,7 @@ export function OwnerDashboard() {
                   </div>
                   <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
                     <ArrowUpRight className="w-3.5 h-3.5" />
-                    <span>Telebirr & Chapa Online</span>
+                    <span>Total Revenue</span>
                   </div>
                 </div>
 
@@ -1189,27 +1251,37 @@ export function OwnerDashboard() {
                   <button onClick={handleOpenStaffModal} className="mt-4 px-4 py-2 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl">+ Register First Receptionist</button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {staff.map((st) => (
-                    <div key={st.id} className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700 font-black text-base">
-                            {(st.name || st.fullName || 'R').charAt(0)}
-                          </div>
-                          <div>
-                            <div className="font-bold text-stone-900 text-sm">{st.name || st.fullName}</div>
-                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold uppercase">Receptionist</span>
-                          </div>
-                        </div>
-                        <button onClick={() => handleRemoveStaff(st)} className="p-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                      <div className="pt-2 border-t border-stone-100 space-y-1.5 text-xs text-stone-600">
-                        <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-stone-400" /><span>{st.email}</span></div>
-                        <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-stone-400" /><span>{st.phone}</span></div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[640px] text-left text-xs">
+                      <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider">
+                        <tr>
+                          <th className="px-5 py-3 font-bold">Name</th>
+                          <th className="px-5 py-3 font-bold">Role</th>
+                          <th className="px-5 py-3 font-bold">Email</th>
+                          <th className="px-5 py-3 font-bold">Phone</th>
+                          <th className="px-5 py-3 text-right font-bold">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {staff.map((st) => (
+                          <tr key={st.id} className="hover:bg-stone-50/70">
+                            <td className="px-5 py-4 font-bold text-stone-900">{st.name || st.fullName || 'Receptionist'}</td>
+                            <td className="px-5 py-4">
+                              <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-bold uppercase">Receptionist</span>
+                            </td>
+                            <td className="px-5 py-4 text-stone-600">{st.email || '-'}</td>
+                            <td className="px-5 py-4 text-stone-600">{st.phone || '-'}</td>
+                            <td className="px-5 py-4 text-right">
+                              <button onClick={() => handleRemoveStaff(st)} aria-label={`Remove ${st.name || st.fullName || 'receptionist'}`} className="p-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -1218,24 +1290,98 @@ export function OwnerDashboard() {
           {/* TAB 4: REVENUE */}
           {activeTab === 'revenue' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2">
-                  <div className="flex items-center gap-2 text-blue-600 font-bold text-xs"><Smartphone className="w-4 h-4" /><span>Telebirr</span></div>
-                  <div className="text-2xl font-black text-stone-900">{revenueReport?.paymentMethodBreakdown?.telebirr?.toLocaleString() || '0'} ETB</div>
+              <div className="grid w-full max-w-4xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {[
+                  { key: 'day', label: 'Paid Today', icon: Calendar, colorClass: 'text-blue-600', hoverClass: 'hover:border-blue-300 hover:bg-blue-50/60' },
+                  { key: 'week', label: 'Paid This Week', icon: Calendar, colorClass: 'text-emerald-600', hoverClass: 'hover:border-emerald-300 hover:bg-emerald-50/60' },
+                  { key: 'month', label: 'Paid This Month', icon: Calendar, colorClass: 'text-violet-600', hoverClass: 'hover:border-violet-300 hover:bg-violet-50/60' },
+                  { key: 'year', label: 'Paid This Year', icon: Calendar, colorClass: 'text-amber-600', hoverClass: 'hover:border-amber-300 hover:bg-amber-50/60' },
+                ].map(({ key, label, icon: PeriodIcon, colorClass, hoverClass }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={paymentFilterPeriod === key}
+                    onClick={() => setPaymentFilterPeriod((current) => current === key ? 'ALL' : key)}
+                    className={`group min-w-0 rounded-xl border p-3 text-left shadow-sm space-y-1 transition-colors focus:outline-none focus:ring-2 focus:ring-stone-950/30 ${paymentFilterPeriod === key ? 'border-stone-950 bg-stone-950 text-white' : `border-stone-200 bg-white ${hoverClass}`}`}
+                  >
+                    <div className={`flex min-w-0 items-center gap-1.5 font-bold text-[10px] ${paymentFilterPeriod === key ? 'text-amber-400' : colorClass}`}>
+                      <PeriodIcon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </div>
+                    <div className={`truncate text-lg font-black ${paymentFilterPeriod === key ? 'text-white' : 'text-stone-900'}`}>
+                      {paidRevenueByPeriod[key].toLocaleString()} ETB
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-stone-100 flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-black text-stone-900">Payment Activity</h3>
+                    <p className="text-xs text-stone-500 mt-1">Verified transactions from your guesthouse reservations.</p>
+                  </div>
+                  <span className="text-xs font-bold text-stone-500">{filteredPayments.length} records</span>
                 </div>
-                <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs"><CreditCard className="w-4 h-4" /><span>Chapa</span></div>
-                  <div className="text-2xl font-black text-stone-900">{revenueReport?.paymentMethodBreakdown?.chapa?.toLocaleString() || '0'} ETB</div>
-                </div>
-                <div className="bg-stone-950 text-white p-5 rounded-3xl shadow-xl space-y-2">
-                  <div className="flex items-center gap-2 text-amber-400 font-bold text-xs"><DollarSign className="w-4 h-4" /><span>Total Revenue</span></div>
-                  <div className="text-2xl font-black text-amber-400">{revenueReport?.totalRevenue?.toLocaleString() || '0'} ETB</div>
-                </div>
+
+                {payments.length === 0 ? (
+                  <div className="p-10 text-center">
+                    <Receipt className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+                    <p className="text-sm font-bold text-stone-700">No payment activity yet</p>
+                    <p className="text-xs text-stone-500 mt-1">Completed guest payments will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider">
+                        <tr>
+                          <th className="px-5 py-3 font-bold">Guest</th>
+                          <th className="px-5 py-3 font-bold">Room</th>
+                          <th className="px-5 py-3 font-bold">Method</th>
+                          <th className="px-5 py-3 font-bold">Status</th>
+                          <th className="px-5 py-3 font-bold">Paid Date</th>
+                          <th className="px-5 py-3 font-bold text-right">Amount</th>
+                          <th className="px-5 py-3 font-bold text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {filteredPayments.map((payment) => (
+                          <tr key={payment.id} className="hover:bg-stone-50/70">
+                            <td className="px-5 py-4 font-bold text-stone-900">{payment.guestName || 'Guest'}</td>
+                            <td className="px-5 py-4 text-stone-600">{payment.roomNumber ? `Room ${payment.roomNumber}` : '-'}</td>
+                            <td className="px-5 py-4 uppercase text-stone-600">{payment.method || '-'}</td>
+                            <td className="px-5 py-4">
+                              <span className={`px-2 py-1 rounded-full font-bold uppercase ${payment.status === 'paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                {payment.status || 'pending'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-stone-600">{formatPaymentDate(payment.createdAt)}</td>
+                            <td className="px-5 py-4 text-right font-black text-stone-900">{Number(payment.amount || 0).toLocaleString()} ETB</td>
+                            <td className="px-5 py-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePayment(payment)}
+                                aria-label={`Delete payment for ${payment.guestName || 'guest'}`}
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* TAB 5: EDIT PROPERTY */}
+          {/* TAB 5: GUEST REVIEWS */}
+          {activeTab === 'reviews' && <GuestReviews embedded />}
+
+          {/* TAB 6: EDIT PROPERTY */}
           {activeTab === 'edit_property' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <form onSubmit={handleUpdatePropertySubmit} className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-5 text-xs font-semibold">

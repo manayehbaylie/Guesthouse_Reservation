@@ -1,6 +1,11 @@
 import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
 
+const ACTIVE_RESERVATION_STATUSES = [
+  "CONFIRMED",
+  "CHECKED_IN",
+];
+
 // Helper function to get receptionist's assigned guesthouse
 export const getReceptionistGuesthouse = async (receptionistId) => {
   const assignment = await prisma.staffAssignment.findFirst({
@@ -29,6 +34,9 @@ export const getReceptionReservations = async (receptionistId) => {
     where: {
       room: {
         guesthouseId: guesthouse.id,
+      },
+      status: {
+        not: "PENDING",
       },
     },
     orderBy: {
@@ -122,7 +130,9 @@ export const getDashboardStats = async (receptionistId) => {
       maintenanceStatus: "AVAILABLE",
       reservations: {
         none: {
-          status: "CHECKED_IN",
+          status: {
+            in: ACTIVE_RESERVATION_STATUSES,
+          },
         },
       },
     },
@@ -156,7 +166,9 @@ export const getReceptionistRooms = async (receptionistId) => {
     include: {
       reservations: {
         where: {
-          status: "CHECKED_IN",
+          status: {
+            in: ACTIVE_RESERVATION_STATUSES,
+          },
         },
         select: {
           id: true,
@@ -171,6 +183,10 @@ export const getReceptionistRooms = async (receptionistId) => {
 
   return roomList.map((room) => ({
     ...room,
+    availabilityStatus:
+      room.reservations.length > 0
+        ? "OCCUPIED"
+        : room.maintenanceStatus,
     available:
       room.available &&
       room.maintenanceStatus === "AVAILABLE" &&
