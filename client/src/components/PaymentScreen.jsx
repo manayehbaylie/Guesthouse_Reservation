@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { ApiService } from "../services/api.js";
+import { useLanguage } from "../context/LanguageContext.jsx";
 
 function PaymentScreen({
   guesthouse,
@@ -38,6 +39,7 @@ function PaymentScreen({
   onError,
   onBack,
 }) {
+  const { t } = useLanguage();
   // ============================================================
   // NORMALIZE BOOKING DATA
   // ============================================================
@@ -222,6 +224,9 @@ function PaymentScreen({
       "Zemen Bank",
       "Dashen Bank",
       "PRIDE Microfinance",
+      "Hibret Bank",
+      "Oromia Bank",
+      "Wegagen Bank",
     ],
     []
   );
@@ -246,41 +251,41 @@ function PaymentScreen({
 
   const validatePayment = () => {
     if (!normalizedGuesthouseId) {
-      return "Guesthouse information is missing.";
+      return t("Guesthouse information is missing.");
     }
 
     if (!normalizedRoomId) {
-      return "Room information is missing.";
+      return t("Room information is missing.");
     }
 
     if (!normalizedCheckIn) {
-      return "Check-in date is missing.";
+      return t("Check-in date is missing.");
     }
 
     if (!normalizedCheckOut) {
-      return "Check-out date is missing.";
+      return t("Check-out date is missing.");
     }
 
     if (normalizedNights <= 0) {
-      return "Invalid number of nights.";
+      return t("Invalid number of nights.");
     }
 
     if (
       !normalizedPricePerNight ||
       normalizedPricePerNight <= 0
     ) {
-      return "The room price is invalid.";
+      return t("The room price is invalid.");
     }
 
     if (
       !normalizedTotalPrice ||
       normalizedTotalPrice <= 0
     ) {
-      return "The total booking amount is invalid.";
+      return t("The total booking amount is invalid.");
     }
 
     if (!paymentMethod) {
-      return "Please select a payment method.";
+      return t("Please select a payment method.");
     }
 
     // ----------------------------------------------------------
@@ -294,14 +299,14 @@ function PaymentScreen({
         telebirrPhone.trim();
 
       if (!phone) {
-        return "Please enter your Telebirr phone number.";
+        return t("Please enter your Telebirr phone number.");
       }
 
       const normalizedPhone =
         normalizeEthiopianPhone(phone);
 
       if (!normalizedPhone) {
-        return "Please enter a valid Ethiopian phone number.";
+        return t("Please enter a valid Ethiopian phone number.");
       }
     }
 
@@ -314,15 +319,15 @@ function PaymentScreen({
       "BANK_TRANSFER"
     ) {
       if (!selectedBank) {
-        return "Please select your bank.";
+        return t("Please select your bank.");
       }
 
       if (!accountNumber.trim()) {
-        return "Please enter your bank account number.";
+        return t("Please enter your bank account number.");
       }
 
       if (!/^\d{6,20}$/.test(accountNumber.trim())) {
-        return "Bank account number must contain 6 to 20 digits.";
+        return t("Bank account number must contain 6 to 20 digits.");
       }
     }
 
@@ -665,15 +670,15 @@ function PaymentScreen({
             className="flex items-center gap-2 text-sm font-semibold text-stone-600 hover:text-stone-900 disabled:opacity-50 mb-6"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Booking
+            {t('Back to Booking')}
           </button>
 
           <h1 className="text-3xl sm:text-4xl font-black text-stone-900">
-            Complete Payment
+            {t('Complete Payment')}
           </h1>
 
           <p className="mt-2 text-stone-500">
-                    Review your booking and choose how to pay securely through Chapa.
+                      {t('Review your booking and choose how to pay securely through Chapa.')}
           </p>
 
         </div>
@@ -705,11 +710,11 @@ function PaymentScreen({
                 <div>
 
                   <h2 className="text-xl font-black text-stone-900">
-                    Booking Information
+                    {t('Booking Information')}
                   </h2>
 
                   <p className="text-sm text-stone-500">
-                    Review your selected room and dates.
+                    {t('Review your selected room and dates.')}
                   </p>
 
                 </div>
@@ -722,7 +727,7 @@ function PaymentScreen({
                   icon={
                     <Building2 className="w-5 h-5" />
                   }
-                  label="Guesthouse"
+                  label={t('Guesthouse')}
                   value={
                     guesthouse?.name ||
                     "Guesthouse"
@@ -733,7 +738,7 @@ function PaymentScreen({
                   icon={
                     <Building2 className="w-5 h-5" />
                   }
-                  label="Room"
+                  label={t('Room')}
                   value={`Room ${
                     room?.roomNumber ||
                     room?.number ||
@@ -746,7 +751,7 @@ function PaymentScreen({
                   icon={
                     <Calendar className="w-5 h-5" />
                   }
-                  label="Check-in"
+                  label={t('Check-in')}
                   value={
                     normalizedCheckIn ||
                     "-"
@@ -757,7 +762,7 @@ function PaymentScreen({
                   icon={
                     <Calendar className="w-5 h-5" />
                   }
-                  label="Check-out"
+                  label={t('Check-out')}
                   value={
                     normalizedCheckOut ||
                     "-"
@@ -768,19 +773,15 @@ function PaymentScreen({
                   icon={
                     <Calendar className="w-5 h-5" />
                   }
-                  label="Nights"
-                  value={`${normalizedNights} ${
-                    normalizedNights === 1
-                      ? "night"
-                      : "nights"
-                  }`}
+                  label={t('Nights')}
+                  value={`${normalizedNights} ${t('Nights')}`}
                 />
 
                 <InfoCard
                   icon={
                     <Smartphone className="w-5 h-5" />
                   }
-                  label="Guests"
+                  label={t('Guests')}
                   value={`${numberOfGuests}`}
                 />
 
@@ -803,11 +804,11 @@ function PaymentScreen({
                 <div>
 
                   <h2 className="text-xl font-black text-stone-900">
-                    Payment Method
+                    {t('Payment Method')}
                   </h2>
 
                   <p className="text-sm text-stone-500">
-                    Select a payment method. You will securely complete your payment through Chapa.
+                    {t('Select a payment method. You will securely complete your payment through Chapa.')}
                   </p>
 
                 </div>
@@ -832,7 +833,7 @@ function PaymentScreen({
                     <Smartphone className="w-6 h-6" />
                   }
                   title="Telebirr"
-                  description="Mobile payment"
+                  description={t('Mobile payment')}
                 />
 
                 <PaymentMethodButton
@@ -848,16 +849,16 @@ function PaymentScreen({
                   icon={
                     <Landmark className="w-6 h-6" />
                   }
-                  title="Bank Transfer"
-                  description="Pay from your bank"
+                  title={t('Bank Transfer')}
+                  description={t('Pay from your bank')}
                 />
 
                 <PaymentMethodButton
                   selected={paymentMethod === "CARD"}
                   onClick={() => setPaymentMethod("CARD")}
                   icon={<CreditCard className="w-6 h-6" />}
-                  title="Card"
-                  description="Debit or credit card"
+                  title={t('Card')}
+                  description={t('Debit or credit card')}
                 />
 
               </div>
@@ -873,7 +874,7 @@ function PaymentScreen({
 
                   <label className="block text-sm font-bold text-stone-700 mb-2">
 
-                    Telebirr Phone Number
+                    {t('Telebirr Phone Number')}
 
                   </label>
 
@@ -901,7 +902,7 @@ function PaymentScreen({
                   </div>
 
                   <p className="mt-2 text-xs text-stone-500">
-                    Enter the Ethiopian phone number registered with Telebirr.
+                    {t('Enter the Ethiopian phone number registered with Telebirr.')}
                   </p>
 
                 </div>
@@ -919,7 +920,7 @@ function PaymentScreen({
                   <div>
 
                     <label className="block text-sm font-bold text-stone-700 mb-2">
-                      Select Bank
+                      {t('Select Bank')}
                     </label>
 
                     <select
@@ -938,7 +939,7 @@ function PaymentScreen({
                     >
 
                       <option value="">
-                        Select your bank
+                        {t('Select your bank')}
                       </option>
 
                       {banks.map(
@@ -959,7 +960,7 @@ function PaymentScreen({
                   <div>
 
                     <label className="block text-sm font-bold text-stone-700 mb-2">
-                      Account Number
+                      {t('Account Number')}
                     </label>
 
                     <input
@@ -972,7 +973,7 @@ function PaymentScreen({
                           e.target.value
                         )
                       }
-                      placeholder="Enter your bank account number"
+                      placeholder={t('Enter your bank account number')}
                       disabled={
                         processing
                       }
@@ -997,11 +998,11 @@ function PaymentScreen({
                 <div>
 
                   <h3 className="font-bold text-emerald-900">
-                    Secure Payment
+                    {t('Secure Payment')}
                   </h3>
 
                   <p className="mt-1 text-sm text-emerald-800">
-                    Your payment is processed securely. The reservation is checked before it is confirmed.
+                    {t('Your payment is processed securely. The reservation is checked before it is confirmed.')}
                   </p>
 
                 </div>
@@ -1021,7 +1022,7 @@ function PaymentScreen({
             <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 sticky top-24">
 
               <h2 className="text-2xl font-black">
-                Payment Summary
+                {t('Payment Summary')}
               </h2>
 
               <div className="mt-7 space-y-5">
@@ -1029,7 +1030,7 @@ function PaymentScreen({
                 <div className="flex justify-between gap-4">
 
                   <span className="text-stone-400">
-                    Guesthouse
+                    {t('Guesthouse')}
                   </span>
 
                   <span className="font-bold text-right">
@@ -1042,7 +1043,7 @@ function PaymentScreen({
                 <div className="flex justify-between gap-4">
 
                   <span className="text-stone-400">
-                    Room
+                    {t('Room')}
                   </span>
 
                   <span className="font-bold">
@@ -1057,7 +1058,7 @@ function PaymentScreen({
                 <div className="flex justify-between gap-4">
 
                   <span className="text-stone-400">
-                    Price / Night
+                    {t('Price / Night')}
                   </span>
 
                   <span className="font-bold">
@@ -1069,7 +1070,7 @@ function PaymentScreen({
                 <div className="flex justify-between gap-4">
 
                   <span className="text-stone-400">
-                    Nights
+                    {t('Nights')}
                   </span>
 
                   <span className="font-bold">
@@ -1081,7 +1082,7 @@ function PaymentScreen({
                 <div className="flex justify-between gap-4">
 
                   <span className="text-stone-400">
-                    Guests
+                    {t('Guests')}
                   </span>
 
                   <span className="font-bold">
@@ -1095,7 +1096,7 @@ function PaymentScreen({
                   <div className="flex justify-between items-center gap-4">
 
                     <span className="text-xl font-bold">
-                      Total
+                      {t('Total')}
                     </span>
 
                     <span className="text-2xl sm:text-3xl font-black text-amber-400 text-right">
@@ -1132,13 +1133,13 @@ function PaymentScreen({
                 {processing ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
+                    {t('Processing...')}
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-5 h-5" />
 
-                    Continue to Payment
+                    {t('Continue to Payment')}
                   </>
                 )}
 
@@ -1152,7 +1153,7 @@ function PaymentScreen({
                   <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
                   <div>
                     <p className="font-bold text-red-800">
-                      Payment could not be submitted
+                      {t('Payment could not be submitted')}
                     </p>
                     <p className="mt-1 text-sm text-red-700">
                       {localError}
@@ -1166,7 +1167,7 @@ function PaymentScreen({
                 <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
 
                 <span>
-                  Your booking information is securely processed and the room availability is checked before confirmation.
+                  {t('Your booking information is securely processed and the room availability is checked before confirmation.')}
                 </span>
 
               </div>

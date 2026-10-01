@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useLanguage } from '../context/LanguageContext.jsx';
 import { ApiService } from '../services/api.js';
 import { ProfileModal } from './Navbar.jsx';
 import { NotificationBell } from './common/NotificationBell.jsx';
+import { LanguageSelector } from './common/LanguageSelector.jsx';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -24,6 +26,7 @@ import {
 
 export function DashboardLayout({ children, showHeader = true }) {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -220,22 +223,22 @@ export function DashboardLayout({ children, showHeader = true }) {
     { 
       path: '/guest/dashboard', 
       icon: <LayoutDashboard className="w-5 h-5" />, 
-      label: 'Overview' 
+      label: t('Overview')
     },
     { 
       path: '/reservations', 
       icon: <ClipboardList className="w-5 h-5" />, 
-      label: 'My Bookings' 
+      label: t('My Bookings')
     },
     { 
       path: '/guest/search', 
       icon: <Search className="w-5 h-5" />, 
-      label: 'Find Guesthouses' 
+      label: t('Find Guesthouses')
     },
     { 
       path: '/guest/reviews', 
       icon: <MessageSquare className="w-5 h-5" />, 
-      label: 'Reviews' 
+      label: t('Reviews')
     },
   ];
 
@@ -259,8 +262,8 @@ export function DashboardLayout({ children, showHeader = true }) {
                 <Building2 className="w-5 h-5 text-[#043658]" />
               </div>
               <div>
-                <span className="text-lg font-black text-white">Guesthouse</span>
-                <span className="text-lg font-black text-[#FFC107]"> Platform</span>
+                <span className="text-lg font-black text-white">{t('Guesthouse')}</span>
+                <span className="text-lg font-black text-[#FFC107]"> {t('Platform')}</span>
               </div>
             </Link>
             <button
@@ -277,14 +280,14 @@ export function DashboardLayout({ children, showHeader = true }) {
         ========================================================= */}
         <div className="mx-3 mt-3 px-4 py-2.5 bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-xl">
           <p className="text-[10px] text-[#FFC107] font-bold uppercase tracking-wider">
-            Current Stay
+            {t('Current Stay')}
           </p>
           
           {!loading && upcomingBooking ? (
             <>
               <p className="text-sm font-bold text-white mt-0.5 truncate flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-[#FFC107] shrink-0" />
-                {upcomingBooking.guesthouseName || 'Guesthouse'}
+                {upcomingBooking.guesthouseName || t('Guesthouse')}
               </p>
               {upcomingBooking.guesthouseLocation && (
                 <div className="flex items-center gap-1 mt-0.5 text-[10px] text-white/50">
@@ -300,10 +303,10 @@ export function DashboardLayout({ children, showHeader = true }) {
             <>
               <p className="text-xs text-white/30 mt-0.5 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-white/20" />
-                No Active Stay
+                {t('No Active Stay')}
               </p>
               <p className="text-[10px] text-white/20 mt-0.5">
-                Book a guesthouse to get started
+                {t('Book a guesthouse to get started')}
               </p>
             </>
           )}
@@ -341,8 +344,8 @@ export function DashboardLayout({ children, showHeader = true }) {
               <User className="h-6 w-6 text-[#043658]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-black text-white">{user?.name || 'Guest'}</p>
-              <p className="text-sm text-white/60">Guest</p>
+              <p className="truncate text-base font-black text-white">{user?.name || t('Guest')}</p>
+              <p className="text-sm text-white/60">{t('Guest')}</p>
             </div>
           </div>
         </div>
@@ -372,15 +375,16 @@ export function DashboardLayout({ children, showHeader = true }) {
             {/* Page Title */}
             <div className="hidden md:block">
               <h1 className="text-lg font-black text-[#043658]">
-                {currentPath === '/guest/dashboard' && 'Dashboard'}
-                {currentPath === '/reservations' && 'My Bookings'}
-                {currentPath === '/guest/search' && 'Find Guesthouses'}
-                {currentPath === '/guest/reviews' && 'Reviews'}
-                {currentPath === '/profile' && 'Profile'}
+                {currentPath === '/guest/dashboard' && t('Dashboard')}
+                {currentPath === '/reservations' && t('My Bookings')}
+                {currentPath === '/guest/search' && t('Find Guesthouses')}
+                {currentPath === '/guest/reviews' && t('Reviews')}
+                {currentPath === '/profile' && t('Profile')}
               </h1>
             </div>
 
             <div className="flex items-center gap-4 ml-auto">
+              <LanguageSelector />
               {/* NOTIFICATION BELL */}
               <NotificationBell />
 
@@ -395,9 +399,9 @@ export function DashboardLayout({ children, showHeader = true }) {
                   </div>
                   <div className="hidden sm:block text-left">
                     <p className="text-sm font-bold text-[#043658] truncate max-w-[100px]">
-                      {user?.name || 'Guest'}
+                      {user?.name || t('Guest')}
                     </p>
-                    <span className="text-xs text-[#647b8a]">Guest</span>
+                    <span className="text-xs text-[#647b8a]">{t('Guest')}</span>
                   </div>
                   <ChevronDown className={`w-4 h-4 text-[#647b8a] transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -408,19 +412,19 @@ export function DashboardLayout({ children, showHeader = true }) {
                       <p className="font-bold text-[#043658] truncate">{user?.name || 'Guest'}</p>
                       <p className="text-sm text-[#647b8a] truncate">{user?.email}</p>
                       <span className="inline-block mt-1 px-2 py-0.5 bg-[#FFC107]/20 text-[#FFC107] text-xs font-bold rounded-full">
-                        Guest
+                        {t('Guest')}
                       </span>
                     </div>
 
                     <button type="button" onClick={openUpdateProfile} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
                       <User className="w-4 h-4" />
-                      Update Profile
+                      {t('Update Profile')}
                     </button>
 
                     <div className="border-t border-[#e5edf2] mt-1">
                       <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition">
                         <LogOut className="w-4 h-4" />
-                        Logout
+                        {t('Logout')}
                       </button>
                     </div>
                   </div>
@@ -440,7 +444,7 @@ export function DashboardLayout({ children, showHeader = true }) {
         <footer className="px-4 sm:px-6 lg:px-8 pb-6">
           <div className="pt-6 border-t border-[#e5edf2] text-center">
             <p className="text-sm text-[#647b8a]">
-              © 2026 Guesthouse Platform. All rights reserved.
+              © 2026 {t('Guesthouse Platform')}. {t('All rights reserved.')}
             </p>
           </div>
         </footer>

@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
+import { useLanguage } from "../../context/LanguageContext.jsx";
+import {
+  calculateCalendarNights,
+} from "../../utils/date.utils.js";
 
 import {
   MapPin,
@@ -17,12 +21,12 @@ import {
 
 export function GuesthouseDetail() {
   const { id } = useParams();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [guesthouse, setGuesthouse] = useState(null);
   const [rooms, setRooms] = useState([]);
-  const [reservations, setReservations] = useState([]);
   const [reviews, setReviews] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -35,6 +39,7 @@ export function GuesthouseDetail() {
   );
   const [dateError, setDateError] = useState("");
   const datesRef = useRef(null);
+  const loadRequestRef = useRef(0);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -103,6 +108,9 @@ export function GuesthouseDetail() {
 
   useEffect(() => {
     let mounted = true;
+    const requestId = ++loadRequestRef.current;
+    const isCurrentRequest = () =>
+      mounted && requestId === loadRequestRef.current;
 
     const loadGuesthouseData = async () => {
       const isInitialLoad = !guesthouse;
@@ -195,7 +203,7 @@ export function GuesthouseDetail() {
           );
         }
 
-        if (!mounted) {
+        if (!isCurrentRequest()) {
           return;
         }
 
@@ -212,7 +220,8 @@ export function GuesthouseDetail() {
             await ApiService.getRoomsForGuesthouse(
               gh.id,
               checkInDate,
-              checkOutDate
+              checkOutDate,
+              true
             );
 
           if (!Array.isArray(roomList)) {
@@ -233,59 +242,13 @@ export function GuesthouseDetail() {
         }
 
         // --------------------------------------------------------
-        // LOAD RESERVATIONS
-        // --------------------------------------------------------
-        //
-        // Reservations are protected in many systems.
-        // Only request them when a token exists.
-        //
-        // If the request returns 401/403, the guesthouse
-        // page continues working and room availability
-        // falls back to the room's own availability data.
-        // --------------------------------------------------------
-
-        let reservationList = [];
-
-        const token =
-          localStorage.getItem("token");
-
-        if (token) {
-          try {
-            reservationList =
-              await ApiService.getReservations({
-                guesthouseId: gh.id,
-              });
-
-            if (
-              !Array.isArray(
-                reservationList
-              )
-            ) {
-              reservationList = [];
-            }
-
-            console.log(
-              "Guesthouse reservations:",
-              reservationList
-            );
-          } catch (reservationError) {
-            console.warn(
-              "Could not load reservations:",
-              reservationError
-            );
-
-            reservationList = [];
-          }
-        }
-
-        // --------------------------------------------------------
         // LOAD REVIEWS
         // --------------------------------------------------------
 
         let reviewList = [];
 
         try {
-          if (mounted) {
+          if (isCurrentRequest()) {
             setReviewsLoading(true);
           }
 
@@ -310,17 +273,16 @@ export function GuesthouseDetail() {
 
           reviewList = [];
         } finally {
-          if (mounted) {
+          if (isCurrentRequest()) {
             setReviewsLoading(false);
           }
         }
 
-        if (!mounted) {
+        if (!isCurrentRequest()) {
           return;
         }
 
         setRooms(roomList);
-        setReservations(reservationList);
         setReviews(reviewList);
         setActiveImageIndex(0);
       } catch (error) {
@@ -329,14 +291,13 @@ export function GuesthouseDetail() {
           error
         );
 
-        if (mounted && isInitialLoad) {
+        if (isCurrentRequest() && isInitialLoad) {
           setGuesthouse(null);
           setRooms([]);
-          setReservations([]);
           setReviews([]);
         }
       } finally {
-        if (mounted && isInitialLoad) {
+        if (isCurrentRequest() && isInitialLoad) {
           setLoading(false);
         }
       }
@@ -392,77 +353,6 @@ export function GuesthouseDetail() {
       return "unavailable";
     }
 
-    const roomId = String(room.id);
-    const hasValidDateRange =
-      Boolean(checkInDate && checkOutDate) &&
-      new Date(`${checkOutDate}T12:00:00`) >
-        new Date(`${checkInDate}T12:00:00`);
-
-    // ----------------------------------------------------------
-    // Check active reservations when available
-    // ----------------------------------------------------------
-
-    const activeReservation =
-      reservations.find((reservation) => {
-        if (
-          String(reservation.roomId) !==
-          roomId
-        ) {
-          return false;
-        }
-
-        const status = String(
-          reservation.status || ""
-        )
-          .trim()
-          .toLowerCase();
-
-        if (!hasValidDateRange) {
-          return false;
-        }
-
-        const overlapsSelectedDates =
-          new Date(reservation.checkIn) <
-            new Date(`${checkOutDate}T12:00:00`) &&
-          new Date(reservation.checkOut) >
-            new Date(`${checkInDate}T12:00:00`);
-
-        return overlapsSelectedDates && [
-          "pending",
-          "confirmed",
-          "checked_in",
-        ].includes(status);
-      });
-
-    if (activeReservation) {
-      const reservationStatus =
-        String(
-          activeReservation.status || ""
-        )
-          .trim()
-          .toLowerCase();
-
-      if (
-        reservationStatus ===
-        "checked_in"
-      ) {
-        return "occupied";
-      }
-
-      if (
-        reservationStatus ===
-          "confirmed" ||
-        reservationStatus ===
-          "pending"
-      ) {
-        return "unavailable";
-      }
-    }
-
-    // ----------------------------------------------------------
-    // Check room's own availability information
-    // ----------------------------------------------------------
-
     const availabilityStatus =
       String(
         room.availabilityStatus ||
@@ -472,12 +362,6 @@ export function GuesthouseDetail() {
         .trim()
         .toLowerCase();
 
-    // Explicit room availability flag
-    if (room.available === false) {
-      return "unavailable";
-    }
-
-    // Occupied takes priority over other unavailable states
     if (
       availabilityStatus ===
       "occupied"
@@ -490,15 +374,16 @@ export function GuesthouseDetail() {
       availabilityStatus ===
         "unavailable" ||
       availabilityStatus ===
+        "reserved" ||
+      availabilityStatus ===
         "booked" ||
       availabilityStatus ===
-        "maintenance"
+        "maintenance" ||
+      room.available === false
     ) {
       return "unavailable";
     }
 
-    // If the backend explicitly provides a status
-    // and it is not available, treat it as unavailable.
     if (
       availabilityStatus &&
       availabilityStatus !== "available"
@@ -541,11 +426,10 @@ export function GuesthouseDetail() {
         0
     );
 
-      const nightsCount = Math.ceil(
-        (new Date(`${checkOutDate}T12:00:00`) -
-          new Date(`${checkInDate}T12:00:00`)) /
-          (1000 * 60 * 60 * 24)
-      );
+    const nightsCount = calculateCalendarNights(
+      checkInDate,
+      checkOutDate
+    );
 
     if (!roomPrice || roomPrice <= 0) {
       console.error(
@@ -749,13 +633,11 @@ export function GuesthouseDetail() {
           <Building2 className="w-12 h-12 text-stone-300 mx-auto" />
 
           <h2 className="mt-4 text-2xl font-bold">
-            Verified guesthouse not found
+            {t('Verified guesthouse not found')}
           </h2>
 
           <p className="mt-2 text-sm text-stone-500">
-            This guesthouse may not be
-            approved or may no longer
-            exist.
+            {t('This guesthouse may not be approved or may no longer exist.')}
           </p>
 
           <button
@@ -765,7 +647,7 @@ export function GuesthouseDetail() {
             }
             className="mt-6 px-6 py-3 bg-amber-500 rounded-xl text-sm font-bold"
           >
-            Back to Search
+            {t('Back to Search')}
           </button>
         </div>
       </div>
@@ -816,7 +698,7 @@ export function GuesthouseDetail() {
         className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900"
       >
         <ChevronLeft className="w-4 h-4" />
-        Back to listings
+        {t('Back to listings')}
       </button>
 
       {/* ======================================================
@@ -828,7 +710,7 @@ export function GuesthouseDetail() {
 
           <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" />
-            Verified
+            {t('Verified')}
           </span>
 
           <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
@@ -840,15 +722,15 @@ export function GuesthouseDetail() {
           <span className="text-xs text-stone-400">
             ({reviews.length}{" "}
             {reviews.length === 1
-              ? "review"
-              : "reviews"})
+              ? t("review")
+              : t("reviews")})
           </span>
 
         </div>
 
         <h1 className="text-3xl font-black mt-2">
           {guesthouse.name ||
-            "Guesthouse"}
+            t('Guesthouse')}
         </h1>
 
         {(guesthouseAddress ||
@@ -856,14 +738,16 @@ export function GuesthouseDetail() {
           <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5" />
 
-            {guesthouseAddress}
-
-            {guesthouseAddress &&
-            guesthouseCity
-              ? ", "
-              : ""}
-
-            {guesthouseCity}
+            {[
+              guesthouseCity,
+              guesthouse.subCity,
+              guesthouseAddress,
+              guesthouse.woreda,
+            ]
+              .map((part) => String(part || '').trim())
+              .filter(Boolean)
+              .filter((part, index, parts) => parts.indexOf(part) === index)
+              .join(", ")}
           </p>
         )}
 
@@ -873,7 +757,7 @@ export function GuesthouseDetail() {
           className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-stone-950 transition-colors hover:bg-amber-400"
         >
           <Building2 className="h-4 w-4" />
-          Use this guesthouse
+          {t('Use this guesthouse')}
         </button>
       </div>
 
@@ -911,7 +795,7 @@ export function GuesthouseDetail() {
                 <Building2 className="h-16 w-16 text-stone-300 mx-auto" />
 
                 <p className="text-xs text-stone-400 mt-3">
-                  No guesthouse image available
+                  {t('No guesthouse image available')}
                 </p>
               </div>
             </div>
@@ -985,12 +869,12 @@ export function GuesthouseDetail() {
           <div className="bg-white p-6 rounded-3xl border space-y-3">
 
             <h3 className="text-lg font-bold">
-              About this Guesthouse
+              {t('About this Guesthouse')}
             </h3>
 
             <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
               {guesthouseDescription ||
-                "No description is available for this guesthouse."}
+                t('No description is available for this guesthouse.')}
             </p>
 
           </div>
@@ -1014,12 +898,11 @@ export function GuesthouseDetail() {
               <div>
 
                 <h2 className="text-xl font-bold">
-                  Rooms
+                  {t('Rooms')}
                 </h2>
 
                 <p className="text-xs text-stone-500 mt-1">
-                  Room availability is updated
-                  from the reservation system.
+                  {t('Room availability is updated from the reservation system.')}
                 </p>
 
               </div>
@@ -1031,23 +914,31 @@ export function GuesthouseDetail() {
               className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"
             >
               <label className="text-sm font-semibold text-stone-700">
-                Check-in date
+                {t('Check-in date')}
                 <input
                   type="date"
                   min={new Date().toISOString().slice(0, 10)}
                   value={checkInDate}
                   onChange={(event) => {
-                    setCheckInDate(event.target.value);
+                    const nextCheckIn = event.target.value;
+                    setCheckInDate(nextCheckIn);
+                    if (checkOutDate && checkOutDate <= nextCheckIn) {
+                      setCheckOutDate("");
+                    }
                     setDateError("");
                   }}
                   className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm"
                 />
               </label>
               <label className="text-sm font-semibold text-stone-700">
-                Check-out date
+                {t('Check-out date')}
                 <input
                   type="date"
-                  min={checkInDate || new Date().toISOString().slice(0, 10)}
+                  min={checkInDate
+                    ? new Date(Date.parse(`${checkInDate}T00:00:00Z`) + 86400000)
+                        .toISOString()
+                        .slice(0, 10)
+                    : new Date().toISOString().slice(0, 10)}
                   value={checkOutDate}
                   onChange={(event) => {
                     setCheckOutDate(event.target.value);
@@ -1066,9 +957,7 @@ export function GuesthouseDetail() {
 
             {rooms.length === 0 ? (
               <p className="text-xs text-stone-500 bg-white p-6 rounded-2xl border">
-                No rooms have been
-                registered for this
-                guesthouse.
+                {t('No rooms have been registered for this guesthouse.')}
               </p>
             ) : (
               <div className="space-y-4">
@@ -1087,6 +976,10 @@ export function GuesthouseDetail() {
                   const isUnavailable =
                     status ===
                     "unavailable";
+
+                  const isBookedForDates =
+                    String(room.availabilityStatus || "").toLowerCase() ===
+                    "reserved";
 
                   const roomPrice = Number(
                     room.pricePerNight ??
@@ -1107,7 +1000,7 @@ export function GuesthouseDetail() {
                   const roomType =
                     room.type ||
                     room.roomType ||
-                    "Room";
+                            t('Room');
 
                   return (
                     <div
@@ -1133,19 +1026,19 @@ export function GuesthouseDetail() {
 
                           {isAvailable && (
                             <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
-                              Available
+                              {t('Available')}
                             </span>
                           )}
 
                           {isUnavailable && (
                             <span className="px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
-                              Unavailable
+                              {t('Unavailable')}
                             </span>
                           )}
 
                           {isOccupied && (
                             <span className="px-2.5 py-1 rounded-full bg-stone-200 text-stone-700 text-[10px] font-bold">
-                              Occupied
+                              {t('Occupied')}
                             </span>
                           )}
 
@@ -1157,7 +1050,7 @@ export function GuesthouseDetail() {
                             <Users className="inline w-3.5 h-3.5" />
 
                             {" "}
-                            Max{" "}
+                            {t('Max')}{" "}
                             {roomCapacity}
                           </span>
 
@@ -1170,22 +1063,15 @@ export function GuesthouseDetail() {
 
                         </div>
 
-                        {isUnavailable && (
+                        {isUnavailable && isBookedForDates && (
                           <p className="text-[10px] text-red-600 mt-2 font-medium">
-                            This room has
-                            already been
-                            booked and
-                            cannot be
-                            selected.
+                            {t('This room has already been booked and cannot be selected.')}
                           </p>
                         )}
 
                         {isOccupied && (
                           <p className="text-[10px] text-stone-600 mt-2 font-medium">
-                            This room is
-                            currently
-                            occupied by a
-                            guest.
+                            {t('This room is currently occupied by a guest.')}
                           </p>
                         )}
 
@@ -1201,7 +1087,7 @@ export function GuesthouseDetail() {
                           </b>
 
                           <div className="text-[10px] text-stone-400">
-                            per night
+                            {t('per night')}
                           </div>
 
                         </div>
@@ -1216,7 +1102,7 @@ export function GuesthouseDetail() {
                             }
                             className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-colors"
                           >
-                            Select & Book
+                            {t('Select & Book')}
                           </button>
                         )}
 
@@ -1263,14 +1149,11 @@ export function GuesthouseDetail() {
 
             <h3 className="font-bold flex gap-2">
               <ShieldCheck className="w-5 h-5 text-amber-400" />
-              Verified Guarantee
+              {t('Verified Guarantee')}
             </h3>
 
             <p className="text-xs text-stone-300">
-              Only administrator-approved
-              properties appear in guest
-              search. Room availability is
-              checked before booking.
+              {t('Only administrator-approved properties appear in guest search. Room availability is checked before booking.')}
             </p>
 
             <div className="pt-3 border-t border-stone-800 space-y-2">
@@ -1279,7 +1162,7 @@ export function GuesthouseDetail() {
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
 
                 <span className="text-stone-300">
-                  Available
+                  {t('Available')}
                 </span>
               </div>
 
@@ -1287,7 +1170,7 @@ export function GuesthouseDetail() {
                 <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
 
                 <span className="text-stone-300">
-                  Unavailable / Booked
+                  {t('Unavailable / Booked')}
                 </span>
               </div>
 
@@ -1295,7 +1178,7 @@ export function GuesthouseDetail() {
                 <span className="w-2.5 h-2.5 rounded-full bg-stone-400" />
 
                 <span className="text-stone-300">
-                  Occupied
+                  {t('Occupied')}
                 </span>
               </div>
 

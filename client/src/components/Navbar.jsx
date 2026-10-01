@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Link,
   useNavigate,
@@ -7,7 +7,9 @@ import {
 } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext.jsx';
+import { useLanguage } from '../context/LanguageContext.jsx';
 import { NotificationBell } from './common/NotificationBell.jsx';
+import { LanguageSelector } from './common/LanguageSelector.jsx';
 import { ApiService } from '../services/api.js';
 
 import {
@@ -23,6 +25,8 @@ import {
   Save,
   XCircle,
   Loader2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 /* ============================================================
@@ -42,6 +46,7 @@ export function Navbar({ onToggleSidebar }) {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
 
   /* ==========================================================
      STATE
@@ -49,6 +54,36 @@ export function Navbar({ onToggleSidebar }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [navIndicator, setNavIndicator] = useState(null);
+  const navRowRef = useRef(null);
+
+  const setNavIndicatorForItem = (item) => {
+    const row = navRowRef.current;
+    if (!row || !item) return;
+
+    const rowBounds = row.getBoundingClientRect();
+    const itemBounds = item.getBoundingClientRect();
+
+    setNavIndicator({
+      left: itemBounds.left - rowBounds.left,
+      top: itemBounds.top - rowBounds.top,
+      width: itemBounds.width,
+      height: itemBounds.height,
+    });
+  };
+
+  const moveNavIndicator = (event) => {
+    setNavIndicatorForItem(event.currentTarget);
+  };
+
+  const restoreActiveNavIndicator = () => {
+    const activeItem = navRowRef.current?.querySelector('[aria-current="page"]');
+    if (activeItem) {
+      setNavIndicatorForItem(activeItem);
+    } else {
+      setNavIndicator(null);
+    }
+  };
 
   /* ==========================================================
      UPDATE PROFILE STATE
@@ -79,13 +114,13 @@ export function Navbar({ onToggleSidebar }) {
   ========================================================== */
 
   const getDisplayName = () => {
-    if (!user) return 'Guest';
+    if (!user) return t('Guest');
 
     return (
       user.name ||
       user.fullName ||
       user.email ||
-      'User'
+      t('User')
     );
   };
 
@@ -139,10 +174,10 @@ export function Navbar({ onToggleSidebar }) {
 
     // Before login - show public links.
     return [
-      { path: '/', label: 'Home', icon: <Home className="w-4 h-4" /> },
-      { path: '/search', label: 'Explore', icon: <Search className="w-4 h-4" /> },
-      { path: '/about', label: 'About Us', icon: null },
-      { path: '/contact', label: 'Contact', icon: null },
+      { path: '/', label: t('Home'), icon: <Home className="w-4 h-4" /> },
+      { path: '/search', label: t('Explore'), icon: <Search className="w-4 h-4" /> },
+      { path: '/about', label: t('About Us'), icon: null },
+      { path: '/contact', label: t('Contact'), icon: null },
     ];
   };
 
@@ -207,7 +242,7 @@ export function Navbar({ onToggleSidebar }) {
     }
 
     if (!profileEmail.trim()) {
-      setProfileError('Email is required.');
+      setProfileError(t('Email is required.'));
       return;
     }
 
@@ -286,6 +321,7 @@ export function Navbar({ onToggleSidebar }) {
   useEffect(() => {
     setMobileMenuOpen(false);
     setProfileDropdownOpen(false);
+    restoreActiveNavIndicator();
   }, [location.pathname]);
 
   /* ==========================================================
@@ -297,7 +333,9 @@ export function Navbar({ onToggleSidebar }) {
       <>
         <nav className="bg-white border-b border-stone-200 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-end h-16">
+            <div className="flex items-center justify-end gap-3 h-16">
+
+            <LanguageSelector />
 
             {isAuthenticated() ? (
               <div className="relative">
@@ -321,7 +359,7 @@ export function Navbar({ onToggleSidebar }) {
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}
                     >
-                      {getRoleDisplay()}
+                      {t(getRoleDisplay())}
                     </span>
                   </div>
 
@@ -343,7 +381,7 @@ export function Navbar({ onToggleSidebar }) {
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()} mt-1 inline-block`}
                       >
-                        {getRoleDisplay()}
+                        {t(getRoleDisplay())}
                       </span>
                     </div>
 
@@ -353,7 +391,7 @@ export function Navbar({ onToggleSidebar }) {
                       className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                     >
                       <Settings className="w-4 h-4" />
-                      Update Profile
+                      {t('Update Profile')}
                     </button>
 
                     <button
@@ -362,7 +400,7 @@ export function Navbar({ onToggleSidebar }) {
                       className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100 mt-1"
                     >
                       <LogOut className="w-4 h-4" />
-                      Logout
+                      {t('Logout')}
                     </button>
 
                   </div>
@@ -374,16 +412,18 @@ export function Navbar({ onToggleSidebar }) {
 
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors"
+                  aria-current={location.pathname === '/login' ? 'page' : undefined}
+                  className={`relative z-10 cursor-pointer rounded-xl px-4 py-2 text-sm font-bold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 ${location.pathname === '/login' ? 'bg-stone-100 text-stone-900' : 'text-stone-700 hover:bg-stone-100 hover:text-stone-900 active:bg-stone-200'}`}
                 >
-                  Login
+                  {t('Login')}
                 </Link>
 
                 <Link
                   to="/register"
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors"
+                  aria-current={location.pathname === '/register' ? 'page' : undefined}
+                  className={`relative z-10 cursor-pointer rounded-xl px-4 py-2 text-sm font-bold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 ${location.pathname === '/register' ? 'bg-amber-600 text-stone-950 shadow-sm' : 'bg-amber-500 text-stone-950 hover:-translate-y-0.5 hover:bg-amber-600 hover:shadow-sm active:translate-y-0 active:bg-amber-700'}`}
                 >
-                  Register
+                  {t('Register')}
                 </Link>
 
               </div>
@@ -424,17 +464,36 @@ export function Navbar({ onToggleSidebar }) {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          <div className="flex items-center justify-between h-16">
+          <div
+            ref={navRowRef}
+            className="relative isolate flex items-center justify-between h-16"
+            onPointerLeave={restoreActiveNavIndicator}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                restoreActiveNavIndicator();
+              }
+            }}
+          >
+
+            {navIndicator && (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute z-0 rounded-xl bg-amber-500 shadow-sm transition-[left,top,width,height] duration-300 ease-out motion-reduce:transition-none"
+                style={navIndicator}
+              />
+            )}
 
             {/* ==================================================
                 LOGO
             ================================================== */}
 
-            <div className="flex items-center gap-2">
+            <div className="relative z-10 flex items-center gap-2">
 
               <Link
                 to="/"
-                className="flex items-center gap-2"
+                onPointerEnter={moveNavIndicator}
+                onFocus={moveNavIndicator}
+                className="flex items-center gap-2 rounded-xl p-1"
               >
                 <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center shadow-sm">
                   <Building2 className="w-5 h-5 text-stone-950" />
@@ -442,12 +501,9 @@ export function Navbar({ onToggleSidebar }) {
 
                 <div className="hidden sm:block">
                   <span className="text-xl font-black text-stone-900">
-                    Guesthouse
+                    {t('Guesthouse Platform')}
                   </span>
 
-                  <span className="text-xl font-black text-stone-900">
-                    {' '}Platform
-                  </span>
                 </div>
 
                 <div className="sm:hidden">
@@ -460,14 +516,17 @@ export function Navbar({ onToggleSidebar }) {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-6">
+            <div className="relative z-10 hidden md:flex items-center gap-2">
               {!isAuthenticated() && (
                 <>
                   {navLinks.map((link) => (
                     <Link
                       key={link.path}
                       to={link.path}
-                      className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors flex items-center gap-1.5"
+                      aria-current={location.pathname === link.path ? 'page' : undefined}
+                      onPointerEnter={moveNavIndicator}
+                      onFocus={moveNavIndicator}
+                      className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-stone-600 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
                     >
                       {link.icon}
                       {link.label}
@@ -480,15 +539,19 @@ export function Navbar({ onToggleSidebar }) {
               {isAuthenticated() && isGuest() && (
                 <Link
                   to="/guest/dashboard"
-                  className="text-sm font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+                  aria-current={location.pathname === '/guest/dashboard' ? 'page' : undefined}
+                  onPointerEnter={moveNavIndicator}
+                  onFocus={moveNavIndicator}
+                  className="rounded-xl px-3 py-2 text-sm font-semibold text-amber-600 transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
                 >
-                  Dashboard
+                    {t('Dashboard')}
                 </Link>
               )}
             </div>
 
             {/* Right Side - User Menu */}
-            <div className="flex items-center gap-4">
+            <div className="relative z-10 flex items-center gap-4">
+              <LanguageSelector />
               {isAuthenticated() && <NotificationBell variant="navbar" />}
 
               {isAuthenticated() ? (
@@ -503,7 +566,7 @@ export function Navbar({ onToggleSidebar }) {
                     <div className="hidden lg:block text-left">
                       <p className="text-sm font-bold text-stone-900">{getDisplayName()}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()}`}>
-                        {getRoleDisplay()}
+                        {t(getRoleDisplay())}
                       </span>
                     </div>
                     <ChevronDown className="w-4 h-4 text-stone-400 hidden lg:block" />
@@ -515,25 +578,41 @@ export function Navbar({ onToggleSidebar }) {
                         <p className="font-bold text-stone-900">{getDisplayName()}</p>
                         <p className="text-sm text-stone-500">{user?.email}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor()} mt-1 inline-block`}>
-                          {getRoleDisplay()}
+                          {t(getRoleDisplay())}
                         </span>
 
                       </div>
 
                       <button onClick={openUpdateProfile} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
-                        <Settings className="w-4 h-4" /> Update Profile
+                        <Settings className="w-4 h-4" /> {t('Update Profile')}
                       </button>
 
                       <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-stone-100 mt-1">
-                        <LogOut className="w-4 h-4" /> Logout
+                        <LogOut className="w-4 h-4" /> {t('Logout')}
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Link to="/login" className="px-4 py-2 text-sm font-bold text-stone-700 hover:text-stone-900 transition-colors">Login</Link>
-                  <Link to="/register" className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm rounded-xl transition-colors">Register</Link>
+                  <Link
+                    to="/login"
+                    aria-current={location.pathname === '/login' ? 'page' : undefined}
+                    onPointerEnter={moveNavIndicator}
+                    onFocus={moveNavIndicator}
+                    className="cursor-pointer rounded-xl px-4 py-2 text-sm font-bold text-stone-700 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+                  >
+                    {t('Login')}
+                  </Link>
+                  <Link
+                    to="/register"
+                    aria-current={location.pathname === '/register' ? 'page' : undefined}
+                    onPointerEnter={moveNavIndicator}
+                    onFocus={moveNavIndicator}
+                    className="cursor-pointer rounded-xl px-4 py-2 text-sm font-bold text-stone-900 transition-colors hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+                  >
+                    {t('Register')}
+                  </Link>
                 </div>
               )}
 
@@ -577,7 +656,7 @@ export function Navbar({ onToggleSidebar }) {
                     className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors"
                   >
                     <Home className="w-4 h-4" />
-                    <span className="font-semibold text-amber-600">Dashboard</span>
+                    <span className="font-semibold text-amber-600">{t('Dashboard')}</span>
                   </Link>
                 )}
 
@@ -588,7 +667,7 @@ export function Navbar({ onToggleSidebar }) {
                     className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-700"
                   >
                     <Settings className="w-4 h-4" />
-                    <span className="font-semibold">Update Profile</span>
+                    <span className="font-semibold">{t('Update Profile')}</span>
                   </button>
                 )}
 
@@ -599,7 +678,7 @@ export function Navbar({ onToggleSidebar }) {
                     className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 transition-colors text-red-600"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span className="font-semibold">Logout</span>
+                    <span className="font-semibold">{t('Logout')}</span>
                   </button>
                 )}
 
@@ -656,6 +735,9 @@ export function ProfileModal({
   handleSaveProfile,
   closeUpdateProfile,
 }) {
+  const { t } = useLanguage();
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
+
   return (
     <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto p-4 sm:items-center">
 
@@ -663,7 +745,7 @@ export function ProfileModal({
 
       <button
         type="button"
-        aria-label="Close profile modal"
+        aria-label={t('Close profile modal')}
         onClick={closeUpdateProfile}
         className="absolute inset-0 bg-black/50 backdrop-blur-sm cursor-default"
       />
@@ -691,11 +773,11 @@ export function ProfileModal({
                 <div>
 
                   <h2 className="text-xl sm:text-2xl font-black text-stone-900">
-                    Update Profile
+                    {t('Update Profile')}
                   </h2>
 
                   <p className="text-sm text-stone-500">
-                    Update your account information
+                    {t('Update your account information')}
                   </p>
 
                 </div>
@@ -709,7 +791,7 @@ export function ProfileModal({
               onClick={closeUpdateProfile}
               disabled={savingProfile}
               className="w-10 h-10 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors disabled:opacity-50"
-              aria-label="Close"
+              aria-label={t('Close')}
             >
               <XCircle className="w-5 h-5 text-stone-600" />
             </button>
@@ -730,7 +812,7 @@ export function ProfileModal({
 
             {profileMessage && (
               <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold">
-                {profileMessage}
+                {t(profileMessage)}
               </div>
             )}
 
@@ -738,7 +820,7 @@ export function ProfileModal({
 
             {profileError && (
               <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-semibold">
-                {profileError}
+                {t(profileError)}
               </div>
             )}
 
@@ -750,7 +832,7 @@ export function ProfileModal({
                 htmlFor="profile-name"
                 className="block text-sm font-black text-stone-700 mb-2"
               >
-                Full Name
+                {t('Full Name')}
               </label>
 
               <input
@@ -760,7 +842,7 @@ export function ProfileModal({
                 onChange={(e) =>
                   setProfileName(e.target.value)
                 }
-                placeholder="Enter your full name"
+                placeholder={t('Enter your full name')}
                 autoComplete="name"
                 className="w-full px-4 py-3.5 rounded-xl border border-stone-200 bg-white text-stone-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
               />
@@ -775,7 +857,7 @@ export function ProfileModal({
                 htmlFor="profile-email"
                 className="block text-sm font-black text-stone-700 mb-2"
               >
-                Email
+                {t('Email')}
               </label>
 
               <input
@@ -785,7 +867,7 @@ export function ProfileModal({
                 onChange={(e) =>
                   setProfileEmail(e.target.value)
                 }
-                placeholder="Enter your email"
+                placeholder={t('Enter your email')}
                 autoComplete="email"
                 className="w-full px-4 py-3.5 rounded-xl border border-stone-200 bg-white text-stone-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
               />
@@ -800,7 +882,7 @@ export function ProfileModal({
                 htmlFor="profile-phone"
                 className="block text-sm font-black text-stone-700 mb-2"
               >
-                Phone
+                {t('Phone')}
               </label>
 
               <input
@@ -825,24 +907,34 @@ export function ProfileModal({
                 htmlFor="profile-password"
                 className="block text-sm font-black text-stone-700 mb-2"
               >
-                New Password
+                {t('New Password')}
               </label>
 
-              <input
-                id="profile-password"
-                type="password"
-                value={profilePassword}
-                onChange={(e) =>
-                  setProfilePassword(e.target.value)
-                }
-                placeholder="Leave blank to keep current password"
-                autoComplete="new-password"
-                className="w-full px-4 py-3.5 rounded-xl border border-stone-200 bg-white text-stone-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
-              />
+              <div className="relative">
+                <input
+                  id="profile-password"
+                  type={showProfilePassword ? 'text' : 'password'}
+                  value={profilePassword}
+                  onChange={(e) =>
+                    setProfilePassword(e.target.value)
+                  }
+                  placeholder={t('Leave blank to keep current password')}
+                  autoComplete="new-password"
+                  className="w-full px-4 py-3.5 pr-12 rounded-xl border border-stone-200 bg-white text-stone-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowProfilePassword((visible) => !visible)}
+                  aria-label={t(showProfilePassword ? 'Hide password' : 'Show password')}
+                  title={t(showProfilePassword ? 'Hide password' : 'Show password')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                >
+                  {showProfilePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
 
               <p className="text-xs text-stone-400 mt-2">
-                Leave blank if you do not want to change
-                your password.
+                {t('Leave blank if you do not want to change your password.')}
               </p>
 
             </div>
@@ -865,7 +957,7 @@ export function ProfileModal({
               disabled={savingProfile}
               className="px-5 py-3 rounded-xl bg-white border border-stone-200 text-stone-700 font-bold text-sm hover:bg-stone-100 transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t('Cancel')}
             </button>
 
             <button
@@ -878,12 +970,12 @@ export function ProfileModal({
               {savingProfile ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  {t('Saving...')}
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Save Changes
+                  {t('Save Changes')}
                 </>
               )}
 

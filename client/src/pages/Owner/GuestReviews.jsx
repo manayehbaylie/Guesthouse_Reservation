@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { 
   Star, 
   MessageSquare, 
@@ -19,6 +20,7 @@ import {
 
 export function GuestReviews({ embedded = false }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -211,8 +213,8 @@ export function GuestReviews({ embedded = false }) {
       <div className="min-h-[80vh] flex items-center justify-center bg-stone-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto mb-4"></div>
-          <p className="text-stone-600 font-medium">Loading Reviews...</p>
-          <p className="text-xs text-stone-400 mt-1">Fetching guest feedback</p>
+          <p className="text-stone-600 font-medium">{t('Loading Reviews...')}</p>
+          <p className="text-xs text-stone-400 mt-1">{t('Fetching guest feedback')}</p>
         </div>
       </div>
     );
@@ -227,7 +229,7 @@ export function GuestReviews({ embedded = false }) {
           className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Back to Owner Dashboard</span>
+          <span>{t('Back to Owner Dashboard')}</span>
         </button>
       )}
 
@@ -237,10 +239,10 @@ export function GuestReviews({ embedded = false }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-              Guest Reviews & Feedback
+              {t('Guest Reviews & Feedback')}
             </h1>
             <p className="text-xs text-stone-500">
-              View guest feedback and respond to reviews
+              {t('View guest feedback and respond to reviews')}
             </p>
           </div>
           
@@ -251,7 +253,7 @@ export function GuestReviews({ embedded = false }) {
             className="px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            <span>{refreshing ? t('Refreshing...') : t('Refresh')}</span>
           </button>
         </div>
 
@@ -259,22 +261,22 @@ export function GuestReviews({ embedded = false }) {
         {reviews.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-              <p className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Total Reviews</p>
+              <p className="text-[10px] font-black uppercase text-amber-700 tracking-wider">{t('Total Reviews')}</p>
               <p className="text-2xl font-black text-amber-900">{stats.total}</p>
             </div>
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-              <p className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Average Rating</p>
+              <p className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">{t('Average Rating')}</p>
               <p className="text-2xl font-black text-emerald-900 flex items-center gap-1">
                 {stats.average.toFixed(1)}
                 <Star className="w-4 h-4 fill-emerald-500 text-emerald-500" />
               </p>
             </div>
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-              <p className="text-[10px] font-black uppercase text-blue-700 tracking-wider">Responded</p>
+              <p className="text-[10px] font-black uppercase text-blue-700 tracking-wider">{t('Responded')}</p>
               <p className="text-2xl font-black text-blue-900">{stats.withResponses}</p>
             </div>
             <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
-              <p className="text-[10px] font-black uppercase text-stone-600 tracking-wider">Pending Response</p>
+              <p className="text-[10px] font-black uppercase text-stone-600 tracking-wider">{t('Pending Response')}</p>
               <p className="text-2xl font-black text-stone-900">{stats.withoutResponses}</p>
             </div>
           </div>
@@ -299,15 +301,15 @@ export function GuestReviews({ embedded = false }) {
         {reviews.length === 0 ? (
           <div className="text-center py-16">
             <MessageSquare className="w-16 h-16 text-stone-300 mx-auto mb-4" />
-            <p className="text-stone-500 font-medium">No Reviews Yet</p>
+            <p className="text-stone-500 font-medium">{t('No Reviews Yet')}</p>
             <p className="text-stone-400 text-xs max-w-sm mx-auto mt-1">
-              Guest reviews will appear here once guests submit feedback after their stay.
+              {t('Guest reviews will appear here once guests submit feedback after their stay.')}
             </p>
             <button
               onClick={() => navigate('/owner')}
               className="mt-4 px-4 py-2 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl hover:bg-amber-400 transition"
             >
-              Return to Dashboard
+              {t('Return to Dashboard')}
             </button>
           </div>
         ) : (
@@ -329,10 +331,10 @@ export function GuestReviews({ embedded = false }) {
                     </div>
                     <div>
                       <div className="font-bold text-stone-900 text-sm">
-                        {review.guest?.fullName || review.guest?.name || 'Guest'}
+                        {review.guest?.fullName || review.guest?.name || t('Guest')}
                       </div>
                       <div className="text-xs text-stone-500">
-                        {review.guest?.email || 'No email provided'}
+                        {review.guest?.email || t('No email provided')}
                       </div>
                     </div>
                   </div>
@@ -349,7 +351,7 @@ export function GuestReviews({ embedded = false }) {
                 {/* Review Content */}
                 <div className="bg-white p-4 rounded-xl border border-stone-100">
                   <p className="text-sm text-stone-700 leading-relaxed">
-                    "{review.comment || 'No comment provided.'}"
+                    "{review.comment || t('No comment provided.')}"
                   </p>
                 </div>
 
@@ -357,16 +359,16 @@ export function GuestReviews({ embedded = false }) {
                 <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>Stay: {formatDate(review.reservation?.checkIn)} - {formatDate(review.reservation?.checkOut)}</span>
+                    <span>{t('Stay')}: {formatDate(review.reservation?.checkIn)} - {formatDate(review.reservation?.checkOut)}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Reviewed: {formatDate(review.createdAt)}</span>
+                    <span>{t('Reviewed')}: {formatDate(review.createdAt)}</span>
                   </div>
                   {review.reservation?.roomNumber && (
                     <div className="flex items-center gap-1">
                       <Building2 className="w-3.5 h-3.5" />
-                      <span>Room {review.reservation.roomNumber}</span>
+                      <span>{t('Room')} {review.reservation.roomNumber}</span>
                     </div>
                   )}
                 </div>
@@ -379,7 +381,7 @@ export function GuestReviews({ embedded = false }) {
                     className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete Guest Review
+                    {t('Delete Guest Review')}
                   </button>
                 </div>
 
@@ -388,7 +390,7 @@ export function GuestReviews({ embedded = false }) {
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                     <div className="flex items-center gap-2 text-blue-800 font-bold text-xs mb-2">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Your Response</span>
+                      <span>{t('Your Response')}</span>
                       <span className="text-[10px] font-normal text-blue-500 ml-auto">
                         {formatDate(review.updatedAt)}
                       </span>
@@ -404,7 +406,7 @@ export function GuestReviews({ embedded = false }) {
                         className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        Delete Owner Response
+                        {t('Delete Owner Response')}
                       </button>
                     </div>
                   </div>
@@ -414,12 +416,12 @@ export function GuestReviews({ embedded = false }) {
                       <div className="space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-200">
                         <div>
                           <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                            Your Response
+                            {t('Your Response')}
                           </label>
                           <textarea
                             value={responseText}
                             onChange={(e) => setResponseText(e.target.value)}
-                            placeholder="Write your professional response to this guest..."
+                            placeholder={t('Write your professional response to this guest...')}
                             className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none resize-none"
                             rows={3}
                             maxLength={1000}
@@ -437,12 +439,12 @@ export function GuestReviews({ embedded = false }) {
                             {submitting ? (
                               <>
                                 <div className="w-3.5 h-3.5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
-                                <span>Submitting...</span>
+                                <span>{t('Submitting...')}</span>
                               </>
                             ) : (
                               <>
                                 <Send className="w-3.5 h-3.5" />
-                                <span>Submit Response</span>
+                                <span>{t('Submit Response')}</span>
                               </>
                             )}
                           </button>
@@ -450,11 +452,11 @@ export function GuestReviews({ embedded = false }) {
                             onClick={handleCancelResponse}
                             className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-xs rounded-xl transition"
                           >
-                            Cancel
+                            {t('Cancel')}
                           </button>
                           {responseText.trim().length === 0 && (
                             <span className="text-[10px] text-red-500 flex items-center">
-                              Enter 1-1000 characters
+                              {t('Enter 1-1000 characters')}
                             </span>
                           )}
                         </div>
@@ -469,7 +471,7 @@ export function GuestReviews({ embedded = false }) {
                         className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl flex items-center gap-2 transition"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Respond to Review</span>
+                        <span>{t('Respond to Review')}</span>
                       </button>
                     )}
                   </div>
@@ -484,14 +486,14 @@ export function GuestReviews({ embedded = false }) {
       {reviews.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
           <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider mb-2">
-            💡 Best Practices for Responding to Reviews
+            💡 {t('Best Practices for Responding to Reviews')}
           </h4>
           <ul className="space-y-1 text-xs text-amber-700">
-            <li>• <span className="font-bold">Be grateful:</span> Thank the guest for their feedback</li>
-            <li>• <span className="font-bold">Be professional:</span> Keep responses courteous and constructive</li>
-            <li>• <span className="font-bold">Address concerns:</span> If there were issues, explain how you're addressing them</li>
-            <li>• <span className="font-bold">Be timely:</span> Respond to reviews within 24-48 hours</li>
-            <li>• <span className="font-bold">Keep it concise:</span> Be clear and to the point</li>
+            <li>• <span className="font-bold">{t('Be grateful:')}</span> {t('Thank the guest for their feedback')}</li>
+            <li>• <span className="font-bold">{t('Be professional:')}</span> {t('Keep responses courteous and constructive')}</li>
+            <li>• <span className="font-bold">{t('Address concerns:')}</span> {t("If there were issues, explain how you're addressing them")}</li>
+            <li>• <span className="font-bold">{t('Be timely:')}</span> {t('Respond to reviews within 24-48 hours')}</li>
+            <li>• <span className="font-bold">{t('Keep it concise:')}</span> {t('Be clear and to the point')}</li>
           </ul>
         </div>
       )}

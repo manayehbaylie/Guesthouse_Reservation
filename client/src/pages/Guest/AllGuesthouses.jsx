@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import {
   ArrowRight,
   MapPin,
@@ -52,6 +53,7 @@ const resolveImageUrl = (image) => {
 
 export function AllGuesthouses() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [guesthouses, setGuesthouses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -258,12 +260,15 @@ export function AllGuesthouses() {
   // GET LOCATION
   // ---------------------------------------------------------
   const getLocation = (guesthouse) => {
-    return (
-      guesthouse?.location ||
-      guesthouse?.address ||
-      guesthouse?.city ||
-      'Ethiopia'
-    );
+    return [
+      guesthouse?.subCity,
+      guesthouse?.location || guesthouse?.address,
+      guesthouse?.woreda,
+    ]
+      .map((part) => String(part || '').trim())
+      .filter(Boolean)
+      .filter((part, index, parts) => parts.indexOf(part) === index)
+      .join(', ') || 'Location unavailable';
   };
 
   // ---------------------------------------------------------
@@ -308,16 +313,15 @@ export function AllGuesthouses() {
         <div className="relative mx-auto max-w-6xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
             <Sparkles className="h-3.5 w-3.5" />
-            All Verified Guesthouses
+            {t('All Verified Guesthouses')}
           </div>
 
           <h1 className="mt-5 font-serif text-4xl font-black tracking-tight sm:text-5xl">
-            Discover Every Public Guesthouse
+            {t('Discover Every Public Guesthouse')}
           </h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-sm text-stone-200 sm:text-base">
-            Explore all approved guesthouses and find the right place for your
-            next stay.
+            {t('Explore all approved guesthouses and find the right place for your next stay.')}
           </p>
         </div>
       </section>
@@ -330,12 +334,11 @@ export function AllGuesthouses() {
         <div className="mb-8 flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-black text-stone-900">
-              Guesthouse Directory
+              {t('Guesthouse Directory')}
             </h2>
 
             <p className="mt-1 text-sm text-stone-600">
-              Showing {guesthouses.length} approved guesthouse
-              {guesthouses.length === 1 ? '' : 's'}
+              {t('Showing {{count}} approved guesthouses', { count: guesthouses.length })}
             </p>
           </div>
 
@@ -345,7 +348,7 @@ export function AllGuesthouses() {
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-100"
           >
             <Home className="h-4 w-4" />
-            Back Home
+            {t('Back Home')}
           </button>
         </div>
 
@@ -357,7 +360,7 @@ export function AllGuesthouses() {
             <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-amber-700 border-t-transparent" />
 
             <p className="text-sm font-medium text-stone-600">
-              Loading guesthouses...
+              {t('Loading guesthouses...')}
             </p>
           </div>
         )}
@@ -368,7 +371,7 @@ export function AllGuesthouses() {
         {!loading && error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
             <h3 className="text-lg font-bold text-red-800">
-              Unable to load guesthouses
+              {t('Unable to load guesthouses')}
             </h3>
 
             <p className="mt-2 text-sm text-red-700">
@@ -380,7 +383,7 @@ export function AllGuesthouses() {
               onClick={() => window.location.reload()}
               className="mt-5 rounded-xl bg-red-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-800"
             >
-              Try Again
+              {t('Try Again')}
             </button>
           </div>
         )}
@@ -395,12 +398,11 @@ export function AllGuesthouses() {
             </div>
 
             <h3 className="mt-4 text-xl font-bold text-stone-900">
-              No Guesthouses Available
+              {t('No Guesthouses Available')}
             </h3>
 
             <p className="mx-auto mt-2 max-w-md text-sm text-stone-600">
-              No approved public guesthouses are available right now.
-              Please check again later.
+              {t('No approved public guesthouses are available right now. Please check again later.')}
             </p>
           </div>
         )}
@@ -435,10 +437,6 @@ export function AllGuesthouses() {
                       {getRating(guesthouse)}
                     </div>
 
-                    {/* VERIFIED */}
-                    <div className="absolute right-3 top-3 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                      Verified
-                    </div>
                   </div>
 
                   {/* CONTENT */}
@@ -450,13 +448,13 @@ export function AllGuesthouses() {
                       </span>
 
                       <span className="shrink-0 text-xs font-medium text-stone-500">
-                        {getRoomCount(guesthouse)} rooms
+                        {getRoomCount(guesthouse)} {t('rooms')}
                       </span>
                     </div>
 
                     {/* NAME */}
                     <h3 className="line-clamp-2 text-xl font-black text-stone-900">
-                      {guesthouse?.name || 'Unnamed Guesthouse'}
+                      {guesthouse?.name || t('Unnamed Guesthouse')}
                     </h3>
 
                     {/* LOCATION */}
@@ -507,7 +505,7 @@ export function AllGuesthouses() {
                       }
                       className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-900 disabled:cursor-not-allowed disabled:bg-stone-400"
                     >
-                      View Details
+                      {t('View Details')}
 
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </button>
@@ -531,7 +529,7 @@ export function AllGuesthouses() {
                 </div>
 
                 <div className="mt-1 text-xs uppercase tracking-[0.2em] text-stone-500">
-                  Approved
+                  {t('Approved')}
                 </div>
               </div>
 
@@ -542,7 +540,7 @@ export function AllGuesthouses() {
                 </div>
 
                 <div className="mt-1 text-xs uppercase tracking-[0.2em] text-stone-500">
-                  Verified
+                  {t('Verified')}
                 </div>
               </div>
 
@@ -553,7 +551,7 @@ export function AllGuesthouses() {
                 </div>
 
                 <div className="mt-1 text-xs uppercase tracking-[0.2em] text-stone-500">
-                  Cities
+                  {t('Cities')}
                 </div>
               </div>
 
@@ -564,7 +562,7 @@ export function AllGuesthouses() {
                 </div>
 
                 <div className="mt-1 text-xs uppercase tracking-[0.2em] text-stone-500">
-                  Booking
+                  {t('Booking')}
                 </div>
               </div>
             </div>

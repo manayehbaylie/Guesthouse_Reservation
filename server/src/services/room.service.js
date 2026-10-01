@@ -1,4 +1,6 @@
 import prisma from "../config/prisma.js";
+import { parseDateOnly } from "../utils/date.utils.js";
+import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
 
 /* ============================================================
    CREATE ROOM
@@ -14,6 +16,10 @@ export const createRoom = async (data, guesthouseId) => {
 
       // ONLY TWO ROOM STATES
       available: data.available ?? true,
+      maintenanceStatus:
+        data.available === false
+          ? "UNAVAILABLE"
+          : "AVAILABLE",
 
       guesthouseId: Number(guesthouseId),
     },
@@ -29,7 +35,8 @@ export const createRoom = async (data, guesthouseId) => {
 export const getAllRooms = async (
   guesthouseId = null,
   checkIn = null,
-  checkOut = null
+  checkOut = null,
+  forBooking = false
 ) => {
   const parsedId = Number(guesthouseId);
   const where =
@@ -39,8 +46,8 @@ export const getAllRooms = async (
         }
       : {};
 
-  const startDate = checkIn ? new Date(checkIn) : null;
-  const endDate = checkOut ? new Date(checkOut) : null;
+  const startDate = checkIn ? parseDateOnly(checkIn) : null;
+  const endDate = checkOut ? parseDateOnly(checkOut) : null;
   const hasDateRange =
     checkIn &&
     checkOut &&
@@ -51,13 +58,7 @@ export const getAllRooms = async (
     endDate > startDate;
 
   const reservationWhere = hasDateRange
-    ? {
-        status: {
-          in: ["CONFIRMED", "CHECKED_IN"],
-        },
-        checkIn: { lt: endDate },
-        checkOut: { gt: startDate },
-      }
+    ? reservationOverlapWhere(null, startDate, endDate)
     : {
         id: -1,
       };
@@ -93,15 +94,21 @@ export const getAllRooms = async (
 
   return rooms.map((room) => {
     const isReserved = room.reservations.length > 0;
+    const isMaintenanceBlocked = room.maintenanceStatus !== "AVAILABLE";
+    const availabilityStatus = isMaintenanceBlocked
+      ? "unavailable"
+      : hasDateRange
+        ? isReserved
+          ? "reserved"
+          : "available"
+        : forBooking || room.available
+          ? "available"
+          : "unavailable";
 
     return {
       ...room,
-      available: room.available && !isReserved,
-      availabilityStatus: isReserved
-        ? "reserved"
-        : room.available
-          ? "available"
-          : "unavailable",
+      available: availabilityStatus === "available",
+      availabilityStatus,
       reservations: undefined,
     };
   });
@@ -167,8 +174,8 @@ export const checkRoomAvailability = async (
     throw new Error("Invalid room ID.");
   }
 
-  const startDate = new Date(checkIn);
-  const endDate = new Date(checkOut);
+  const startDate = parseDateOnly(checkIn);
+  const endDate = parseDateOnly(checkOut);
 
   if (
     Number.isNaN(startDate.getTime()) ||
@@ -198,7 +205,7 @@ export const checkRoomAvailability = async (
     select: {
       id: true,
       roomNumber: true,
-      available: true,
+      maintenanceStatus: true,
     },
   });
 
@@ -218,12 +225,12 @@ export const checkRoomAvailability = async (
      This is different from reservation dates.
   ---------------------------------------------------------- */
 
-  if (room.available === false) {
-  return {
-    available: false,
-    reason: "ROOM_UNAVAILABLE",
-  };
-}
+  if (room.maintenanceStatus !== "AVAILABLE") {
+    return {
+      available: false,
+      reason: "ROOM_UNAVAILABLE",
+    };
+  }
 
 
   /* ----------------------------------------------------------
@@ -247,30 +254,9 @@ export const checkRoomAvailability = async (
      => unavailable
   ---------------------------------------------------------- */
 
-  const overlappingReservation =
-    await prisma.reservation.findFirst({
-
-      where: {
-
-        roomId: id,
-
-        status: {
-          in: [
-            "PENDING",
-            "CONFIRMED",
-            "CHECKED_IN",
-          ],
-        },
-
-        checkIn: {
-          lt: endDate,
-        },
-
-        checkOut: {
-          gt: startDate,
-        },
-      },
-    });
+  const overlappingReservation = await prisma.reservation.findFirst({
+    where: reservationOverlapWhere(id, startDate, endDate),
+  });
 
 
   if (overlappingReservation) {
@@ -338,6 +324,9 @@ export const updateRoom = async (id, data) => {
   // ONLY TWO ROOM STATES
   if (data.available !== undefined) {
     updateData.available = Boolean(data.available);
+    updateData.maintenanceStatus = data.available
+      ? "AVAILABLE"
+      : "UNAVAILABLE";
   }
 
   return await prisma.room.update({

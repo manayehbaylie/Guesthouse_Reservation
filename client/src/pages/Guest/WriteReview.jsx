@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiService } from '../../services/api.js';
 import { DashboardLayout } from '../../components/DashboardLayout.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import {
   Star,
   Send,
@@ -17,8 +18,9 @@ import {
 
 export function WriteReview() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
-  
+
   const [completedBookings, setCompletedBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -39,56 +41,39 @@ export function WriteReview() {
     setLoading(true);
     setError('');
     try {
-      // Get all reservations for the current guest
       const reservations = await ApiService.getReservations({ guestId: user?.id });
-      
-      console.log('All reservations:', reservations);
-      
-      // Guests may review once they have checked in.
-      const completed = reservations.filter(
-        (booking) => {
-          const status = String(booking.status || '').toLowerCase();
-          return status === 'checked_in' || status === 'checked_out';
-        }
-      );
-      
-      console.log('Review-eligible bookings (checked_in or checked_out):', completed);
+      const completed = reservations.filter((booking) => {
+        const status = String(booking.status || '').toLowerCase();
+        return status === 'checked_in' || status === 'checked_out';
+      });
       setCompletedBookings(completed);
-      
-      // Check which bookings already have reviews and get the review data
+
       const reviewed = [];
       const reviewData = {};
       for (const booking of completed) {
         try {
           const review = await ApiService.getReviewForReservation(booking.id);
-          if (review && review.id) {
+          if (review?.id) {
             reviewed.push(String(booking.id));
             reviewData[booking.id] = review;
-            console.log(`Booking ${booking.id} already has review:`, review);
           }
-        } catch (e) {
-          // No review found - that's fine, user can write one
-          console.log(`No review found for booking: ${booking.id}`);
+        } catch (reviewError) {
+          console.log(`No review found for booking: ${booking.id}`, reviewError);
         }
       }
       setSubmittedReviews(reviewed);
       setReviewWithResponse(reviewData);
-      
-    } catch (error) {
-      console.error('Failed to load completed bookings:', error);
-      setError('Failed to load your completed stays. Please refresh the page.');
+    } catch (loadError) {
+      console.error('Failed to load completed bookings:', loadError);
+      setError(t('Failed to load your completed stays. Please refresh the page.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const hasReviewed = (bookingId) => {
-    return submittedReviews.includes(String(bookingId));
-  };
+  const hasReviewed = (bookingId) => submittedReviews.includes(String(bookingId));
 
-  const getReview = (bookingId) => {
-    return reviewWithResponse[bookingId] || null;
-  };
+  const getReview = (bookingId) => reviewWithResponse[bookingId] || null;
 
   const renderStars = (rating, size = 'w-4 h-4') => {
     const stars = [];
@@ -139,29 +124,23 @@ export function WriteReview() {
       await ApiService.createReview({
         guesthouseId: selectedBooking.guesthouseId,
         reservationId: selectedBooking.id,
-        rating: rating,
+        rating,
         comment: comment.trim(),
       });
-      
-      setSuccess('✅ Your review has been submitted successfully! Thank you for your feedback.');
-      
-      // Add to reviewed list
+
+      setSuccess('Your review has been submitted successfully. Thank you for your feedback.');
       setSubmittedReviews([...submittedReviews, String(selectedBooking.id)]);
-      
-      // Reset form
       setRating(0);
       setComment('');
       setSelectedBooking(null);
-      
-      // Reload bookings to update status
+
       setTimeout(() => {
         setSuccess('');
         loadCompletedBookings();
       }, 3000);
-      
-    } catch (error) {
-      console.error('Review submission error:', error);
-      setError(error?.message || 'Failed to submit review. Please try again.');
+    } catch (submitError) {
+      console.error('Review submission error:', submitError);
+      setError(submitError?.message || 'Failed to submit review. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -195,7 +174,7 @@ export function WriteReview() {
 
   const getStatusText = (status) => {
     const statusMap = {
-      checked_out: 'Completed Stay ✅',
+      checked_out: 'Completed Stay',
       confirmed: 'Confirmed',
       checked_in: 'Checked In',
       cancelled: 'Cancelled',
@@ -210,7 +189,7 @@ export function WriteReview() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
-            <p className="mt-4 text-[#647b8a]">Loading your stays...</p>
+            <p className="mt-4 text-[#647b8a]">{t('Loading your stays...')}</p>
           </div>
         </div>
       </DashboardLayout>
@@ -223,9 +202,9 @@ export function WriteReview() {
         
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-black text-[#043658]">Write a Review</h1>
+          <h1 className="text-2xl font-black text-[#043658]">{t('Write a Review')}</h1>
           <p className="text-sm text-[#647b8a]">
-            Share your Metsafiya experience and help other travelers make better decisions
+            {t('Share your Metsafiya experience and help other travelers make better decisions')}
           </p>
         </div>
 
@@ -248,18 +227,18 @@ export function WriteReview() {
         {completedBookings.length === 0 && (
           <div className="bg-white rounded-2xl border border-[#e5edf2] p-12 text-center">
             <Building2 className="w-16 h-16 text-[#94a8b5] mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-[#043658]">No Review-Eligible Stays</h3>
+            <h3 className="text-lg font-bold text-[#043658]">{t('No Review-Eligible Stays')}</h3>
             <p className="text-[#647b8a] mt-2">
-              You can write a review after checking in to your guesthouse.
+              {t('You can write a review after checking in to your guesthouse.')}
             </p>
             <p className="text-xs text-[#647b8a] mt-1">
-              Your review can be submitted during your stay or after checkout.
+              {t('Your review can be submitted during your stay or after checkout.')}
             </p>
             <Link
               to="/guest/search"
               className="mt-4 inline-block px-6 py-2.5 bg-[#FFC107] hover:bg-[#ffb300] text-[#043658] font-bold rounded-xl text-sm transition"
             >
-              Book a Stay
+              {t('Book a Stay')}
             </Link>
           </div>
         )}
@@ -291,7 +270,7 @@ export function WriteReview() {
                       {reviewed && (
                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 flex items-center gap-1">
                           <CheckCircle className="w-3 h-3" />
-                          Reviewed
+                          {t('Reviewed')}
                         </span>
                       )}
                     </div>
@@ -315,7 +294,7 @@ export function WriteReview() {
                     {reviewed && review && (
                       <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-amber-800">Your Review</span>
+                          <span className="text-xs font-bold text-amber-800">{t('Your Review')}</span>
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] text-amber-600">
                               {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
@@ -326,7 +305,7 @@ export function WriteReview() {
                               className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 transition hover:bg-red-50"
                             >
                               <Trash2 className="h-3 w-3" />
-                              Delete
+                              {t('Delete')}
                             </button>
                           </div>
                         </div>
@@ -339,7 +318,7 @@ export function WriteReview() {
                           ))}
                         </div>
                         <p className="mt-2 text-sm leading-relaxed text-amber-950">
-                          {review.comment || 'No review text was provided.'}
+                          {review.comment || t('No review text was provided.')}
                         </p>
                       </div>
                     )}
@@ -349,7 +328,7 @@ export function WriteReview() {
                       <div className="mt-3 bg-purple-50 border border-purple-200 p-3 rounded-xl">
                         <div className="flex items-center gap-2 mb-1">
                           <Building2 className="w-4 h-4 text-purple-600" />
-                          <span className="text-xs font-bold text-purple-800">Owner Response</span>
+                          <span className="text-xs font-bold text-purple-800">{t('Owner Response')}</span>
                           <span className="text-[10px] text-purple-500 ml-auto">
                             {review.updatedAt ? new Date(review.updatedAt).toLocaleDateString() : ''}
                           </span>
@@ -357,7 +336,7 @@ export function WriteReview() {
                         <p className="text-sm text-purple-900">{review.ownerResponse}</p>
                         <div className="mt-2 flex items-center gap-1 text-[10px] text-emerald-600">
                           <CheckCircle2 className="w-3 h-3" />
-                          <span>Response received</span>
+                          <span>{t('Response received')}</span>
                         </div>
                       </div>
                     )}

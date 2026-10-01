@@ -8,6 +8,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 import {
   LayoutDashboard,
@@ -46,6 +47,8 @@ import {
   CircleDollarSign,
   FileCheck2,
   Ban,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 const COMMISSION_RATE_KEY = 'gh_admin_commission_rate';
@@ -57,6 +60,7 @@ const COMMISSION_RATE_KEY = 'gh_admin_commission_rate';
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   // ----------------------------------------------------------
   // ACTIVE SIDEBAR PAGE
@@ -734,32 +738,18 @@ export default function AdminDashboard() {
         />
 
         <main className="flex-1 min-w-0 space-y-6">
-          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
             <div>
               <div className="text-[11px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Administration Console</span>
+                <span>{t('Administration Console')}</span>
               </div>
               <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-                {getPageTitle(activePage)}
+                {t(getPageTitle(activePage))}
               </h1>
               <p className="text-xs text-stone-500">
-                Guesthouse Reservation Platform
+                {t('Guesthouse Reservation Platform')}
               </p>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2">
-              <div className="w-9 h-9 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center font-black text-sm">
-                {(user?.name || user?.fullName || user?.email || 'A').charAt(0).toUpperCase()}
-              </div>
-              <div className="text-left">
-                <div className="text-xs font-black text-stone-900">
-                  {user?.name || user?.fullName || 'Administrator'}
-                </div>
-                <div className="text-[10px] font-black uppercase tracking-wider text-amber-600">
-                  Admin
-                </div>
-              </div>
             </div>
           </div>
 
@@ -877,6 +867,7 @@ function RejectionReasonModal({
   onClose,
   onSubmit,
 }) {
+  const { t } = useLanguage();
   const [reason, setReason] =
     useState('');
   const [validationError, setValidationError] =
@@ -913,10 +904,10 @@ function RejectionReasonModal({
               id="reject-guesthouse-title"
               className="text-xl font-black text-[#073957]"
             >
-              Reject guesthouse application
+              {t('Reject guesthouse application')}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Add a clear reason that the owner can act on.
+              {t('Add a clear reason that the owner can act on.')}
             </p>
           </div>
 
@@ -924,7 +915,7 @@ function RejectionReasonModal({
             type="button"
             onClick={onClose}
             disabled={loading}
-            aria-label="Close rejection dialog"
+            aria-label={t('Close rejection dialog')}
             className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#073957] disabled:opacity-50"
           >
             <X className="h-5 w-5" />
@@ -937,7 +928,7 @@ function RejectionReasonModal({
               htmlFor="rejection-reason"
               className="mb-2 block text-sm font-black text-[#073957]"
             >
-              Rejection reason
+              {t('Rejection reason')}
             </label>
             <textarea
               id="rejection-reason"
@@ -949,7 +940,7 @@ function RejectionReasonModal({
               autoFocus
               rows={5}
               maxLength={500}
-              placeholder="Explain what needs to be corrected before approval..."
+              placeholder={t('Explain what needs to be corrected before approval...')}
               className="w-full resize-y rounded-2xl border border-slate-300 px-4 py-3 text-sm text-[#073957] outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
             />
             <div className="mt-2 flex items-start justify-between gap-4 text-xs">
@@ -969,7 +960,7 @@ function RejectionReasonModal({
               disabled={loading}
               className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-[#073957] transition hover:bg-slate-50 disabled:opacity-50"
             >
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="submit"
@@ -977,7 +968,7 @@ function RejectionReasonModal({
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <XCircle className="h-4 w-4" />
-              {loading ? 'Rejecting...' : 'Reject application'}
+              {loading ? t('Rejecting...') : t('Reject application')}
             </button>
           </div>
         </form>
@@ -1031,6 +1022,7 @@ function AdminSidebar({
   onLogout,
   pendingCount,
 }) {
+  const { t } = useLanguage();
   const items = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'guesthouses', label: 'Guesthouses', icon: Building2 },
@@ -1050,16 +1042,16 @@ function AdminSidebar({
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" />
-            <span>Administration</span>
+            <span>{t('Administration')}</span>
           </span>
           <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            Active
+            {t('Active')}
           </span>
         </div>
         <h2 className="text-sm font-black text-white line-clamp-1">Guesthouse Platform</h2>
         <div className="text-[11px] text-stone-400 flex items-center gap-1">
           <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
-          <span>Platform control center</span>
+          <span>{t('Platform control center')}</span>
         </div>
       </div>
 
@@ -1081,7 +1073,7 @@ function AdminSidebar({
             >
               <div className="flex items-center gap-3">
                 <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </div>
               {item.id === 'pending' && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${active ? 'bg-stone-950 text-white' : 'bg-stone-800 text-amber-400'}`}>
@@ -1100,7 +1092,7 @@ function AdminSidebar({
           </div>
           <div className="overflow-hidden">
             <div className="text-xs font-black text-white truncate">{user?.name || user?.fullName || 'Administrator'}</div>
-            <div className="text-[10px] text-stone-400 uppercase tracking-wider truncate">Admin</div>
+            <div className="text-[10px] text-stone-400 uppercase tracking-wider truncate">{t('ADMIN')}</div>
           </div>
         </div>
 
@@ -1108,7 +1100,7 @@ function AdminSidebar({
           type="button"
           onClick={onLogout}
           className="p-2 rounded-xl bg-stone-900 text-stone-300 hover:bg-red-500/10 hover:text-red-300 transition"
-          aria-label="Logout"
+          aria-label={t('Logout')}
         >
           <LogOut className="w-4 h-4" />
         </button>
@@ -1122,15 +1114,20 @@ function AdminSidebar({
 // ADMIN DASHBOARD HOME
 // ============================================================
 
-function MetricSparkBar({ color, values, idPrefix }) {
-  const width = 160;
-  const height = 48;
+function MetricSparkBar({ color, values, idPrefix, positive = true }) {
+  const width = 180;
+  const height = 82;
+  const padX = 16;
+  const padY = 8;
+  const xAxisY = height - 18;
+  const yAxisX = 18;
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
+  const chartColor = color || (positive ? '#22c55e' : '#ef4444');
 
   const points = values.map((value, index) => {
-    const x = (index / (values.length - 1)) * width;
-    const y = height - ((value - min) / (max - min || 1)) * (height - 12) - 6;
+    const x = padX + (index / (values.length - 1)) * (width - padX * 2);
+    const y = xAxisY - ((value - min) / (max - min || 1)) * (xAxisY - padY - 10);
     return [x, y];
   });
 
@@ -1138,33 +1135,95 @@ function MetricSparkBar({ color, values, idPrefix }) {
     .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`)
     .join(' ');
 
-  const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
+  const areaPath = `${linePath} L ${points[points.length - 1][0]} ${xAxisY} L ${points[0][0]} ${xAxisY} Z`;
   const gradientId = `spark-${idPrefix}`;
+  const yTicks = [0, 0.25, 0.5, 0.75, 1];
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-12 w-full" preserveAspectRatio="none" aria-hidden="true">
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-14 w-full" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.45" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          <stop offset="0%" stopColor={chartColor} stopOpacity="0.38" />
+          <stop offset="52%" stopColor={chartColor} stopOpacity="0.16" />
+          <stop offset="100%" stopColor={chartColor} stopOpacity="0.02" />
         </linearGradient>
+        <filter id={`glow-${idPrefix}`} x="-25%" y="-25%" width="150%" height="150%">
+          <feGaussianBlur stdDeviation="1.8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
-      <rect x="0" y="0" width={width} height={height} rx="12" fill="rgba(255,255,255,0.02)" />
+      <g opacity="0.9">
+        <line x1={yAxisX} y1={padY} x2={yAxisX} y2={xAxisY} stroke="#cbd5e1" strokeWidth="0.9" strokeLinecap="round" />
+        <line x1={yAxisX} y1={xAxisY} x2={width - 4} y2={xAxisY} stroke="#cbd5e1" strokeWidth="0.9" strokeLinecap="round" />
+        {yTicks.map((tick) => {
+          const yPos = padY + (xAxisY - padY) * tick;
+          return (
+            <g key={`${idPrefix}-y-${tick}`}>
+              <line
+                x1={yAxisX}
+                y1={yPos}
+                x2={width - 4}
+                y2={yPos}
+                stroke="#e2e8f0"
+                strokeWidth="0.7"
+                strokeDasharray="3 4"
+              />
+              <text
+                x={4}
+                y={yPos + 3}
+                fontSize="6"
+                fill="#64748b"
+                fontWeight="700"
+              >
+                {Math.round((max - (max - min) * tick) * 10) / 10}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+
       <path d={areaPath} fill={`url(#${gradientId})`} opacity="1" />
-      <path d={linePath} fill="none" stroke={color} strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d={linePath}
+        fill="none"
+        stroke={chartColor}
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        filter={`url(#glow-${idPrefix})`}
+      />
 
       {points.map(([x, y], index) => (
         <circle
           key={`${idPrefix}-${index}`}
           cx={x}
           cy={y}
-          r="2.3"
+          r="2.8"
           fill="#ffffff"
-          stroke={color}
-          strokeWidth="1.4"
+          stroke={chartColor}
+          strokeWidth="1.6"
         />
       ))}
+
+      <g>
+        {points.map(([x], index) => (
+          <text
+            key={`${idPrefix}-x-${index}`}
+            x={x}
+            y={height - 4}
+            textAnchor="middle"
+            fontSize="5.5"
+            fill="#64748b"
+            fontWeight="700"
+          >
+            {index + 1}
+          </text>
+        ))}
+      </g>
     </svg>
   );
 }
@@ -1177,6 +1236,8 @@ function AdminDashboardHome({
   pendingGuesthouses,
   guesthouses,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-6">
 
@@ -1188,14 +1249,14 @@ function AdminDashboardHome({
             detail: `${stats.approvedGuesthouses} approved`,
             icon: Building2,
             page: 'guesthouses',
-            cardClass: 'bg-[#073957] text-white',
-            valueClass: 'text-amber-300',
-            iconClass: 'text-amber-300',
-            color: '#fbbf24',
-            spark: [18, 22, 20, 30, 46, 58, 52],
+            valueClass: 'text-[#073957]',
+            iconClass: 'text-[#073957]',
+            tagClass: 'text-[#073957]',
+            color: '#22c55e',
+            spark: [16, 20, 18, 24, 28, 31, 34],
             chartId: 'total-guesthouses',
             trend: '+12.4%',
-            trendLabel: 'vs last week',
+            positive: true,
           },
           {
             label: 'Owner Accounts',
@@ -1203,14 +1264,14 @@ function AdminDashboardHome({
             detail: 'active owners',
             icon: Users,
             page: 'owners',
-            cardClass: 'bg-[#073957] text-white',
-            valueClass: 'text-sky-200',
-            iconClass: 'text-sky-200',
-            color: '#38bdf8',
-            spark: [14, 18, 26, 22, 36, 42, 48],
+            valueClass: 'text-[#073957]',
+            iconClass: 'text-[#073957]',
+            tagClass: 'text-[#073957]',
+            color: '#22c55e',
+            spark: [12, 15, 18, 24, 29, 34, 38],
             chartId: 'owner-accounts',
             trend: '+8.1%',
-            trendLabel: 'new signups',
+            positive: true,
           },
           {
             label: 'Pending Verification',
@@ -1218,14 +1279,14 @@ function AdminDashboardHome({
             detail: 'awaiting approval',
             icon: Clock3,
             page: 'pending',
-            cardClass: 'bg-[#073957] text-white',
-            valueClass: 'text-amber-300',
-            iconClass: 'text-amber-300',
-            color: '#f59e0b',
-            spark: [10, 12, 16, 18, 24, 22, 30],
+            valueClass: 'text-[#073957]',
+            iconClass: 'text-[#073957]',
+            tagClass: 'text-[#073957]',
+            color: '#ef4444',
+            spark: [32, 30, 28, 24, 20, 18, 15],
             chartId: 'pending-verification',
             trend: '-3.2%',
-            trendLabel: 'this week',
+            positive: false,
           },
           {
             label: 'Platform Commission',
@@ -1233,39 +1294,39 @@ function AdminDashboardHome({
             detail: 'current rate',
             icon: Percent,
             page: 'commission',
-            cardClass: 'bg-[#073957] text-white',
-            valueClass: 'text-emerald-200',
-            iconClass: 'text-emerald-200',
-            color: '#34d399',
-            spark: [8, 14, 18, 26, 28, 34, 42],
+            valueClass: 'text-[#073957]',
+            iconClass: 'text-[#073957]',
+            tagClass: 'text-[#073957]',
+            color: '#22c55e',
+            spark: [10, 14, 18, 23, 27, 31, 36],
             chartId: 'platform-commission',
             trend: '+5.8%',
-            trendLabel: 'earnings',
+            positive: true,
           },
         ].map((card) => {
           const Icon = card.icon;
 
           return (
-            <div key={card.label} className="space-y-3">
+            <div key={card.label} className="space-y-6">
               <button
                 type="button"
                 onClick={() => onNavigate(card.page)}
-                className={`w-full min-h-[128px] rounded-2xl border border-white/15 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${card.cardClass}`}
+                className="w-full min-h-[118px] rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:bg-[#073957] hover:text-white group"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-[10px] font-black uppercase tracking-[0.12em] opacity-85">{card.label}</span>
-                  <Icon className={`h-5 w-5 shrink-0 ${card.iconClass}`} />
+                <div className="flex items-start justify-between gap-2">
+                  <span className={`text-[9px] font-black uppercase tracking-[0.12em] transition-colors group-hover:text-white ${card.tagClass}`}>{t(card.label)}</span>
+                  <Icon className={`h-4 w-4 shrink-0 transition-colors group-hover:text-white ${card.iconClass}`} />
                 </div>
-                <div className={`mt-3 text-3xl font-black leading-none ${card.valueClass}`}>{card.value}</div>
-                <p className="mt-2 text-[11px] font-semibold opacity-75">{card.detail}</p>
+                <div className={`mt-2.5 text-[1.8rem] font-black leading-none transition-colors group-hover:text-white ${card.valueClass}`}>{card.value}</div>
+                <p className={`mt-1.5 text-[10px] font-semibold transition-colors group-hover:text-white/90 ${card.tagClass}`}>{t(card.detail)}</p>
               </button>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  <span>{card.label}</span>
-                  <span className={card.trend.startsWith('-') ? 'text-red-500' : 'text-emerald-500'}>{card.trend}</span>
+                <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  <span>{t(card.label)}</span>
+                  <span className={card.positive ? 'text-emerald-500' : 'text-red-500'}>{card.trend}</span>
                 </div>
-                <MetricSparkBar color={card.color} values={card.spark} idPrefix={card.chartId} />
+                <MetricSparkBar color={card.color} values={card.spark} idPrefix={card.chartId} positive={card.positive} />
               </div>
             </div>
           );
@@ -1289,6 +1350,8 @@ function AdminStatCard({
   warning,
   onClick,
 }) {
+  const { t } = useLanguage();
+
   return (
     <button
       type="button"
@@ -1319,7 +1382,7 @@ function AdminStatCard({
       <div className="mt-5">
 
         <div className="text-xs font-black uppercase tracking-wider text-slate-400">
-          {title}
+          {t(title)}
         </div>
 
         <div className="mt-2 text-2xl sm:text-3xl font-black text-[#073957]">
@@ -1327,7 +1390,7 @@ function AdminStatCard({
         </div>
 
         <div className="mt-2 text-xs text-slate-500">
-          {description}
+          {t(description)}
         </div>
 
       </div>
@@ -1477,6 +1540,8 @@ function GuesthousePage({
   onApprove,
   onDelete,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-5">
 
@@ -1496,14 +1561,14 @@ function GuesthousePage({
                   event.target.value
                 )
               }
-              placeholder="Search guesthouse, city or location..."
+              placeholder={t('Search guesthouse, city or location...')}
               className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
             />
 
           </div>
 
           <div className="px-4 py-2 rounded-xl bg-slate-100 text-[#073957] text-sm font-black">
-            {guesthouses.length} shown
+            {t('{{count}} shown', { count: guesthouses.length })}
           </div>
 
         </div>
@@ -1524,23 +1589,23 @@ function GuesthousePage({
                 <tr>
 
                   <TableHeader>
-                    Guesthouse
+                    {t('Guesthouse')}
                   </TableHeader>
 
                   <TableHeader>
-                    Location
+                    {t('Location')}
                   </TableHeader>
 
                   <TableHeader>
-                    Rating
+                    {t('Rating')}
                   </TableHeader>
 
                   <TableHeader>
-                    Status
+                    {t('Status')}
                   </TableHeader>
 
                   <TableHeader align="right">
-                    Actions
+                    {t('Actions')}
                   </TableHeader>
 
                 </tr>
@@ -1560,7 +1625,7 @@ function GuesthousePage({
 
                         <div className="font-black text-[#073957]">
                           {gh.name ||
-                            'Unnamed Guesthouse'}
+                            t('Unnamed Guesthouse')}
                         </div>
 
                         <div className="text-xs text-slate-400 mt-1">
@@ -1635,7 +1700,7 @@ function GuesthousePage({
                               }
                               className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50"
                             >
-                              Approve
+                              {t('Approve')}
                             </button>
                           )}
 
@@ -1652,7 +1717,7 @@ function GuesthousePage({
                             className="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                           >
                             <Trash2 className="w-3 h-3" />
-                            Delete
+                            {t('Delete')}
                           </button>
 
                         </div>
@@ -1687,6 +1752,7 @@ function PendingPage({
   onApprove,
   onReject,
 }) {
+  const { t } = useLanguage();
   const [expandedId, setExpandedId] =
     useState(null);
 
@@ -1748,11 +1814,11 @@ function PendingPage({
 
                         <p className="text-sm text-slate-500 mt-1">
                           {gh.city ||
-                            'Unknown city'}
+                            t('Unknown city')}
                           {' • '}
                           {gh.location ||
                             gh.address ||
-                            'No location'}
+                            t('No location')}
                         </p>
 
                       </div>
@@ -1766,7 +1832,7 @@ function PendingPage({
                     )}
 
                     <div className="text-xs text-slate-400 mt-3">
-                      Application ID: {gh.id}
+                      {t('Application ID')}: {gh.id}
                     </div>
 
                     <button
@@ -1783,8 +1849,8 @@ function PendingPage({
                     >
                       {expandedId ===
                       gh.id
-                        ? 'Hide full application'
-                        : 'View full application'}
+                        ? t('Hide full application')
+                        : t('View full application')}
                     </button>
 
                     {expandedId ===
@@ -1794,42 +1860,42 @@ function PendingPage({
                         <div className="space-y-2">
 
                           <h4 className="font-black text-[#073957]">
-                            Owner information
+                            {t('Owner information')}
                           </h4>
 
                           <p>
-                            <strong>Name:</strong>{' '}
+                            <strong>{t('Name:')}</strong>{' '}
                             {gh.owner?.name ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Email:</strong>{' '}
+                            <strong>{t('Email:')}</strong>{' '}
                             {gh.owner?.email ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Phone:</strong>{' '}
+                            <strong>{t('Phone:')}</strong>{' '}
                             {gh.owner?.phone ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Owner ID:</strong>{' '}
+                            <strong>{t('Owner ID:')}</strong>{' '}
                             {gh.owner?.id ||
                               gh.ownerId ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Role:</strong>{' '}
+                            <strong>{t('Role:')}</strong>{' '}
                             {gh.owner?.role ||
                               'OWNER'}
                           </p>
 
                           <p>
-                            <strong>Address:</strong>{' '}
+                            <strong>{t('Address:')}</strong>{' '}
                             {gh.owner?.residentialAddress ||
                               'Not provided'}
                           </p>
@@ -1839,48 +1905,48 @@ function PendingPage({
                         <div className="space-y-2">
 
                           <h4 className="font-black text-[#073957]">
-                            Guesthouse information
+                            {t('Guesthouse information')}
                           </h4>
 
                           <p>
-                            <strong>Address:</strong>{' '}
+                            <strong>{t('Address:')}</strong>{' '}
                             {gh.address ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Sub-city:</strong>{' '}
+                            <strong>{t('Sub-city:')}</strong>{' '}
                             {gh.subCity ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Woreda:</strong>{' '}
+                            <strong>{t('Woreda:')}</strong>{' '}
                             {gh.woreda ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Phone:</strong>{' '}
+                            <strong>{t('Phone:')}</strong>{' '}
                             {gh.phone ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Email:</strong>{' '}
+                            <strong>{t('Email:')}</strong>{' '}
                             {gh.email ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>Rooms:</strong>{' '}
+                            <strong>{t('Rooms:')}</strong>{' '}
                             {gh.numberOfRooms ||
                               gh.rooms?.length ||
                               'Not provided'}
                           </p>
 
                           <p>
-                            <strong>License:</strong>{' '}
+                            <strong>{t('License:')}</strong>{' '}
                             {gh.licenseNumber ||
                               'Not provided'}
                           </p>
@@ -1890,7 +1956,7 @@ function PendingPage({
                         <div className="space-y-2">
 
                           <h4 className="font-black text-[#073957]">
-                            License document
+                            {t('License document')}
                           </h4>
 
                           {gh.licenseDocument ? (
@@ -1902,11 +1968,11 @@ function PendingPage({
                               rel="noreferrer"
                               className="text-amber-700 font-bold hover:underline"
                             >
-                              Open license document
+                              {t('Open license document')}
                             </a>
                           ) : (
                             <p className="text-slate-500">
-                              No license document
+                              {t('No license document')}
                             </p>
                           )}
 
@@ -1928,19 +1994,19 @@ function PendingPage({
                                   <tr className="border-b border-slate-200">
 
                                     <th className="py-2 pr-3">
-                                      Room
+                                      {t('Room')}
                                     </th>
 
                                     <th className="py-2 pr-3">
-                                      Type
+                                      {t('Type')}
                                     </th>
 
                                     <th className="py-2 pr-3">
-                                      Capacity
+                                      {t('Capacity')}
                                     </th>
 
                                     <th className="py-2">
-                                      Price
+                                      {t('Price')}
                                     </th>
 
                                   </tr>
@@ -1989,7 +2055,7 @@ function PendingPage({
                             </div>
                           ) : (
                             <p className="text-slate-500">
-                              No rooms submitted
+                              {t('No rooms submitted')}
                             </p>
                           )}
 
@@ -1998,7 +2064,7 @@ function PendingPage({
                         <div className="space-y-2 md:col-span-2">
 
                           <h4 className="font-black text-[#073957]">
-                            Guesthouse photos
+                            {t('Guesthouse photos')}
                           </h4>
 
                           {gh.image ||
@@ -2029,10 +2095,7 @@ function PendingPage({
                                       src={fileUrl(
                                         photo
                                       )}
-                                      alt={`Guesthouse photo ${
-                                        index +
-                                        1
-                                      }`}
+                                      alt={t('Guesthouse photo {{count}}', { count: index + 1 })}
                                       className="w-28 h-20 object-cover rounded-xl border border-slate-200"
                                     />
                                   </a>
@@ -2042,7 +2105,7 @@ function PendingPage({
                             </div>
                           ) : (
                             <p className="text-slate-500">
-                              No photos submitted
+                              {t('No photos submitted')}
                             </p>
                           )}
 
@@ -2066,7 +2129,7 @@ function PendingPage({
                       className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black flex items-center gap-2 disabled:opacity-50"
                     >
                       <XCircle className="w-4 h-4" />
-                      Reject
+                      {t('Reject')}
                     </button>
 
                     <button
@@ -2080,7 +2143,7 @@ function PendingPage({
                       className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-2 disabled:opacity-50"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      Approve
+                      {t('Approve')}
                     </button>
 
                   </div>
@@ -2111,6 +2174,8 @@ function OwnersPage({
   loading,
   onDelete,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-5">
 
@@ -2130,14 +2195,14 @@ function OwnersPage({
                   event.target.value
                 )
               }
-              placeholder="Search owner name, email or phone..."
+              placeholder={t('Search owner name, email or phone...')}
               className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-amber-400"
             />
 
           </div>
 
           <div className="px-4 py-2 rounded-xl bg-amber-50 text-amber-700 text-sm font-black">
-            {totalOwners} Owners
+            {t('{{count}} Owners', { count: totalOwners })}
           </div>
 
         </div>
@@ -2209,7 +2274,7 @@ function OwnersPage({
                             <div className="font-black text-[#073957]">
                               {owner?.name ||
                                 owner?.fullName ||
-                                'N/A'}
+                                t('N/A')}
                             </div>
 
                             <div className="text-xs text-slate-400">
@@ -2227,7 +2292,7 @@ function OwnersPage({
                         <div className="flex items-center gap-2">
                           <Mail className="w-4 h-4 text-slate-400" />
                           {owner.email ||
-                            'N/A'}
+                            t('N/A')}
                         </div>
 
                       </td>
@@ -2237,7 +2302,7 @@ function OwnersPage({
                         <div className="flex items-center gap-2">
                           <Phone className="w-4 h-4 text-slate-400" />
                           {owner.phone ||
-                            'N/A'}
+                            t('N/A')}
                         </div>
 
                       </td>
@@ -2267,7 +2332,7 @@ function OwnersPage({
                             className="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                           >
                             <Trash2 className="w-3 h-3" />
-                            Delete
+                            {t('Delete')}
                           </button>
 
                         </div>
@@ -2302,6 +2367,7 @@ function CommissionPage({
   onRefresh,
   onRateChange,
 }) {
+  const { t } = useLanguage();
   const [rateInput, setRateInput] = useState(String(stats.commissionRate));
   const [rateError, setRateError] = useState('');
 
@@ -2313,7 +2379,7 @@ function CommissionPage({
     event.preventDefault();
     const nextRate = Number(rateInput);
     if (!Number.isFinite(nextRate) || nextRate < 0 || nextRate > 100) {
-      setRateError('Enter a commission rate between 0 and 100%.');
+      setRateError(t('Enter a commission rate between 0 and 100%.'));
       return;
     }
     setRateError('');
@@ -2334,7 +2400,7 @@ function CommissionPage({
           <div>
 
             <div className="text-xs uppercase tracking-[0.2em] font-black text-amber-300">
-              Platform Earnings
+              {t('Platform Earnings')}
             </div>
 
             <div className="mt-3 text-3xl sm:text-4xl font-black">
@@ -2345,8 +2411,7 @@ function CommissionPage({
             </div>
 
             <p className="mt-2 text-sm text-slate-300">
-              Estimated platform commission generated
-              from reservation revenue.
+              {t('Estimated platform commission generated from reservation revenue.')}
             </p>
 
           </div>
@@ -2364,7 +2429,7 @@ function CommissionPage({
                   : ''
               }`}
             />
-            Refresh
+            {t('Refresh')}
           </button>
 
         </div>
@@ -2375,39 +2440,39 @@ function CommissionPage({
           COMMISSION CARDS
       ==================================================== */}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
         <CommissionStat
-          title="Commission Rate"
+          title={t('Commission Rate')}
           value={`${stats.commissionRate}%`}
           icon={
             <Percent className="w-6 h-6" />
           }
-          description="Admin-controlled platform rate"
+          description={t('Admin-controlled platform rate')}
           tone="amber"
         />
 
         <CommissionStat
-          title="Gross Revenue"
+          title={t('Gross Revenue')}
           value={`${formatMoney(
             stats.totalRevenue
           )} ETB`}
           icon={
             <CircleDollarSign className="w-6 h-6" />
           }
-          description="Total reservation revenue"
+          description={t('Total reservation revenue')}
           tone="blue"
         />
 
         <CommissionStat
-          title="Owner Payouts"
+          title={t('Owner Payouts')}
           value={`${formatMoney(
             stats.ownerPayouts
           )} ETB`}
           icon={
             <Wallet className="w-6 h-6" />
           }
-          description="Revenue after commission"
+          description={t('Revenue after commission')}
           tone="emerald"
         />
 
@@ -2416,12 +2481,12 @@ function CommissionPage({
       <div className="rounded-3xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-orange-50 p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h3 className="font-black text-[#073957]">Control Commission Rate</h3>
-            <p className="mt-1 text-sm text-slate-500">Set the percentage deducted from successful reservation revenue.</p>
+            <h3 className="font-black text-[#073957]">{t('Control Commission Rate')}</h3>
+            <p className="mt-1 text-sm text-slate-500">{t('Set the percentage deducted from successful reservation revenue.')}</p>
           </div>
           <form onSubmit={handleRateSubmit} className="flex flex-wrap items-end gap-2">
             <label className="text-xs font-black uppercase tracking-wide text-slate-600">
-              Rate (%)
+              {t('Rate (%)')}
               <input
                 type="number"
                 min="0"
@@ -2433,7 +2498,7 @@ function CommissionPage({
               />
             </label>
             <button type="submit" className="rounded-xl bg-[#073957] px-4 py-2.5 text-sm font-black text-white hover:bg-[#0b4b73]">
-              Save Rate
+              {t('Save Rate')}
             </button>
           </form>
         </div>
@@ -2455,11 +2520,11 @@ function CommissionPage({
           <div>
 
             <h3 className="font-black text-[#073957]">
-              Commission Calculation
+              {t('Commission Calculation')}
             </h3>
 
             <p className="text-sm text-slate-500 mt-1">
-              Current platform commission calculation.
+              {t('Current platform commission calculation.')}
             </p>
 
           </div>
@@ -2473,19 +2538,19 @@ function CommissionPage({
             <tbody>
 
               <CommissionRow
-                label="Gross reservation revenue"
+                label={t('Gross reservation revenue')}
                 value={`${formatMoney(
                   stats.totalRevenue
                 )} ETB`}
               />
 
               <CommissionRow
-                label="Platform commission rate"
+                label={t('Platform commission rate')}
                 value={`${stats.commissionRate}%`}
               />
 
               <CommissionRow
-                label="Platform commission"
+                label={t('Platform commission')}
                 value={`${formatMoney(
                   stats.commissionRevenue
                 )} ETB`}
@@ -2493,7 +2558,7 @@ function CommissionPage({
               />
 
               <CommissionRow
-                label="Owner payout"
+                label={t('Owner payout')}
                 value={`${formatMoney(
                   stats.ownerPayouts
                 )} ETB`}
@@ -2520,14 +2585,11 @@ function CommissionPage({
           <div>
 
             <div className="font-black text-amber-800">
-              Commission data source
+              {t('Commission data source')}
             </div>
 
             <p className="text-sm text-amber-700 mt-1 leading-6">
-              This page reads commission and revenue
-              values returned by the admin platform statistics
-              API. The backend should calculate commission from
-              successful PAID reservations/payments.
+              {t('This page reads commission and revenue values returned by the admin platform statistics API. The backend should calculate commission from successful PAID reservations/payments.')}
             </p>
 
           </div>
@@ -2552,42 +2614,44 @@ function CommissionStat({
   description,
   tone = 'blue',
 }) {
+  const { t } = useLanguage();
   const tones = {
     amber: {
-      card: 'bg-[#073957] border-[#0b5277] text-white',
-      icon: 'bg-amber-200/70 text-amber-700',
+      icon: 'bg-amber-200/80 text-amber-700',
+      accent: 'text-amber-500',
     },
     blue: {
-      card: 'bg-[#073957] border-[#0b5277] text-white',
-      icon: 'bg-sky-200/70 text-sky-700',
+      icon: 'bg-sky-200/80 text-sky-700',
+      accent: 'text-sky-600',
     },
     emerald: {
-      card: 'bg-[#073957] border-[#0b5277] text-white',
-      icon: 'bg-emerald-200/70 text-emerald-700',
+      icon: 'bg-emerald-200/80 text-emerald-700',
+      accent: 'text-emerald-600',
     },
   };
   const selectedTone = tones[tone] || tones.blue;
 
   return (
-    <div className={`rounded-3xl border p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${selectedTone.card}`}>
-
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${selectedTone.icon}`}>
+    <button
+      type="button"
+      className="group w-full rounded-2xl border border-stone-200 bg-white p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-[#073957] hover:text-white"
+    >
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedTone.icon}`}>
         {icon}
       </div>
 
-      <div className="mt-5 text-xs font-black uppercase tracking-wider text-white">
-        {title}
+      <div className="mt-3 text-[9px] font-black uppercase tracking-[0.12em] text-[#073957] group-hover:text-white">
+        {t(title)}
       </div>
 
-      <div className="mt-2 text-2xl font-black text-amber-300">
+      <div className={`mt-2 text-lg sm:text-xl font-black leading-none ${selectedTone.accent} group-hover:text-amber-300`}>
         {value}
       </div>
 
-      <div className="mt-2 text-xs text-white">
-        {description}
+      <div className="mt-1.5 text-[9px] text-slate-500 group-hover:text-white/90">
+        {t(description)}
       </div>
-
-    </div>
+    </button>
   );
 }
 
@@ -2601,11 +2665,13 @@ function CommissionRow({
   value,
   highlight,
 }) {
+  const { t } = useLanguage();
+
   return (
     <tr className="border-b border-slate-100">
 
       <td className="py-4 text-sm text-slate-600">
-        {label}
+        {t(label)}
       </td>
 
       <td
@@ -2639,10 +2705,12 @@ function BackupPage({
   ownersCount,
   usersCount,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-5">
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
         <BackupStat
           label="Guesthouses"
@@ -2650,8 +2718,8 @@ function BackupPage({
             guesthousesCount
           }
           icon={Building2}
-          className="bg-[#073957] border-[#0b5277] text-white"
-          iconClassName="bg-blue-600 text-white"
+          className="bg-white border-stone-200 text-[#073957]"
+          iconClassName="bg-blue-100 text-blue-700"
         />
 
         <BackupStat
@@ -2660,8 +2728,8 @@ function BackupPage({
             ownersCount
           }
           icon={UserCog}
-          className="bg-[#073957] border-[#0b5277] text-white"
-          iconClassName="bg-amber-500 text-white"
+          className="bg-white border-stone-200 text-[#073957]"
+          iconClassName="bg-amber-100 text-amber-700"
         />
 
         <BackupStat
@@ -2670,8 +2738,8 @@ function BackupPage({
             usersCount
           }
           icon={Users}
-          className="bg-[#073957] border-[#0b5277] text-white"
-          iconClassName="bg-emerald-600 text-white"
+          className="bg-white border-stone-200 text-[#073957]"
+          iconClassName="bg-emerald-100 text-emerald-700"
         />
 
       </div>
@@ -2689,15 +2757,13 @@ function BackupPage({
               </div>
 
               <h3 className="font-black text-[#073957]">
-                Export platform data
+                {t('Export platform data')}
               </h3>
 
             </div>
 
             <p className="text-sm text-slate-500 mt-3 max-w-2xl leading-6">
-              Download guesthouses, pending applications,
-              owner accounts, users and platform statistics
-              as a JSON administration backup.
+              {t('Download guesthouses, pending applications, owner accounts, users and platform statistics as a JSON administration backup.')}
             </p>
 
           </div>
@@ -2711,7 +2777,7 @@ function BackupPage({
 
             <Download className="w-4 h-4" />
 
-            Download Backup
+            {t('Download Backup')}
 
           </button>
 
@@ -2720,12 +2786,12 @@ function BackupPage({
         <div className="mt-6 border-t border-slate-100 pt-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="font-black text-[#073957]">Restore from backup</h3>
-              <p className="mt-1 text-sm text-slate-500">Upload a complete JSON backup to recover the platform after data loss.</p>
+              <h3 className="font-black text-[#073957]">{t('Restore from backup')}</h3>
+              <p className="mt-1 text-sm text-slate-500">{t('Upload a complete JSON backup to recover the platform after data loss.')}</p>
             </div>
             <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 hover:bg-red-100">
               <Upload className="h-4 w-4" />
-              Upload Backup
+              {t('Upload Backup')}
               <input
                 type="file"
                 accept="application/json,.json"
@@ -2745,7 +2811,7 @@ function BackupPage({
             </label>
           </div>
           {backupMessage && <p role="status" className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">{backupMessage}</p>}
-          <p className="mt-3 text-xs font-semibold text-red-600">Restore replaces current database records. Keep multiple backup copies in a secure location.</p>
+          <p className="mt-3 text-xs font-semibold text-red-600">{t('Restore replaces current database records. Keep multiple backup copies in a secure location.')}</p>
         </div>
 
       </div>
@@ -2766,26 +2832,27 @@ function BackupStat({
   className,
   iconClassName,
 }) {
+  const { t } = useLanguage();
+
   return (
-    <div className={`group min-w-0 rounded-2xl border p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg ${className}`}>
-
+    <button
+      type="button"
+      className={`group min-w-0 w-full rounded-2xl border p-3.5 shadow-sm text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:bg-[#073957] hover:text-white ${className}`}
+    >
       <div className="flex items-start justify-between gap-3">
-
-        <div className="min-w-0 text-xs font-black uppercase tracking-wider opacity-70">
-          {label}
+        <div className="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-[#073957] transition-colors group-hover:text-white">
+          {t(label)}
         </div>
 
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition group-hover:scale-105 ${iconClassName}`}>
-          <Icon className="h-5 w-5" />
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm transition group-hover:scale-105 ${iconClassName}`}>
+          <Icon className="h-4 w-4" />
         </div>
-
       </div>
 
-      <div className="mt-5 text-4xl font-black leading-none">
+      <div className="mt-4 text-3xl font-black leading-none text-[#073957] transition-colors group-hover:text-white">
         {value}
       </div>
-
-    </div>
+    </button>
   );
 }
 
@@ -2799,6 +2866,8 @@ function PageHeader({
   title,
   subtitle,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
@@ -2811,11 +2880,11 @@ function PageHeader({
         <div>
 
           <h2 className="text-2xl font-black text-[#073957]">
-            {title}
+            {t(title)}
           </h2>
 
           <p className="text-sm text-slate-500 mt-1">
-            {subtitle}
+            {t(subtitle)}
           </p>
 
         </div>
@@ -2835,11 +2904,13 @@ function TableHeader({
   children,
   align = 'left',
 }) {
+  const { t } = useLanguage();
+
   return (
     <th
       className={`px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-${align}`}
     >
-      {children}
+      {typeof children === 'string' ? t(children) : children}
     </th>
   );
 }
@@ -2852,6 +2923,7 @@ function TableHeader({
 function StatusBadge({
   status,
 }) {
+  const { t } = useLanguage();
   const normalized =
     String(status)
       .toLowerCase();
@@ -2887,7 +2959,7 @@ function StatusBadge({
     <span
       className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase ${classes}`}
     >
-      {status}
+      {t(normalized === 'unknown' ? 'Unknown' : normalized.charAt(0).toUpperCase() + normalized.slice(1))}
     </span>
   );
 }
@@ -2901,6 +2973,8 @@ function EmptyState({
   title,
   text,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="p-12 text-center">
 
@@ -2909,11 +2983,11 @@ function EmptyState({
       </div>
 
       <h3 className="font-black text-[#073957] mt-4">
-        {title}
+        {t(title)}
       </h3>
 
       <p className="text-sm text-slate-500 mt-1">
-        {text}
+        {t(text)}
       </p>
 
     </div>
@@ -2930,6 +3004,8 @@ function UpdateProfileModal({
   onClose,
   onSaved,
 }) {
+  const { t } = useLanguage();
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] =
     useState(
       user?.name ||
@@ -3013,11 +3089,11 @@ function UpdateProfileModal({
           <div>
 
             <h2 className="text-lg font-black text-[#073957]">
-              Update Profile
+              {t('Update Profile')}
             </h2>
 
             <p className="text-xs text-slate-500 mt-1">
-              Update your administrator account.
+              {t('Update your administrator account.')}
             </p>
 
           </div>
@@ -3041,19 +3117,19 @@ function UpdateProfileModal({
 
           {error && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
-              {error}
+              {t(error)}
             </div>
           )}
 
           <ProfileInput
-            label="Full Name"
+            label={t('Full Name')}
             value={name}
             onChange={setName}
             required
           />
 
           <ProfileInput
-            label="Email"
+            label={t('Email')}
             type="email"
             value={email}
             onChange={setEmail}
@@ -3061,19 +3137,36 @@ function UpdateProfileModal({
           />
 
           <ProfileInput
-            label="Phone"
+            label={t('Phone')}
             type="tel"
             value={phone}
             onChange={setPhone}
           />
 
-          <ProfileInput
-            label="New Password"
-            type="password"
-            value={password}
-            onChange={setPassword}
-            placeholder="Leave empty to keep current password"
-          />
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+              {t('New Password')}
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={t('Leave empty to keep current password')}
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={t(showPassword ? 'Hide password' : 'Show password')}
+                title={t(showPassword ? 'Hide password' : 'Show password')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
 
             <div className="flex gap-3 pt-3">
 
@@ -3083,7 +3176,7 @@ function UpdateProfileModal({
               disabled={saving}
               className="flex-1 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold"
             >
-              Cancel
+              {t('Cancel')}
             </button>
 
             <button
@@ -3092,8 +3185,8 @@ function UpdateProfileModal({
               className="flex-1 px-4 py-3 rounded-xl bg-[#073957] hover:bg-[#052c45] text-white text-sm font-bold"
             >
               {saving
-                ? 'Saving...'
-                : 'Save Changes'}
+                ? t('Saving...')
+                : t('Save Changes')}
             </button>
 
             </div>
@@ -3168,4 +3261,4 @@ function formatMoney(
       maximumFractionDigits: 2,
     }
   );
-}
+} 

@@ -4,6 +4,7 @@ import {
   create,
   getAll,
   getById,
+  deleteOwn,
   updateStatus,
     checkout,
 
@@ -79,6 +80,12 @@ router.get(
   "/:id",
   authenticate,
   getById
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  deleteOwn
 );
 
 

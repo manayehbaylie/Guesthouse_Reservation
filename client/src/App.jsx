@@ -1,3 +1,4 @@
+import { useLanguage } from "./context/LanguageContext.jsx";
 import React, { useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
@@ -8,10 +9,13 @@ import { ArchitectureModal } from "./components/ArchitectureModal.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { NotificationToastContainer } from "./components/common/NotificationToastContainer.jsx";
 import { DashboardLayout } from "./components/DashboardLayout.jsx";
+import { LanguageSelector } from "./components/common/LanguageSelector.jsx";
 
 // Authentication pages
 import { Login } from "./pages/Auth/Login.jsx";
 import { Register } from "./pages/Auth/Register.jsx";
+import { ForgotPassword } from "./pages/Auth/ForgotPassword.jsx";
+import { ResetPassword } from "./pages/Auth/ResetPassword.jsx";
 
 // Profile
 import { Profile } from "./pages/Profile/Profile.jsx";
@@ -20,6 +24,7 @@ import { Profile } from "./pages/Profile/Profile.jsx";
 import { Home } from "./pages/Guest/Home.jsx";
 import { Explore } from "./pages/Guest/Explore.jsx";
 import { AboutUs } from "./pages/Guest/AboutUs.jsx";
+import { LearnMore } from "./pages/Guest/LearnMore.jsx";
 import { Contact } from "./pages/Guest/Contact.jsx";
 import { GuesthouseSearch } from "./pages/Guest/Search.jsx";
 import { PublicSearch } from "./pages/Guest/PublicSearch.jsx";
@@ -54,6 +59,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [archModalOpen, setArchModalOpen] = useState(false);
   const location = useLocation();
+  const { t } = useLanguage();
 
   /*
    * ==========================================================
@@ -95,6 +101,15 @@ export default function App() {
         <Navbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
+      )}
+
+      {isDashboard && (
+        location.pathname.startsWith("/booking") ||
+        location.pathname === "/guest/payment-receipt"
+      ) && (
+        <div className="fixed right-4 top-3 z-[100]">
+          <LanguageSelector />
+        </div>
       )}
 
       {/* =========================================================
@@ -140,6 +155,11 @@ export default function App() {
             <Route
               path="/about"
               element={<AboutUs />}
+            />
+
+            <Route
+              path="/learn-more"
+              element={<LearnMore />}
             />
 
             <Route
@@ -231,6 +251,16 @@ export default function App() {
             <Route
               path="/register"
               element={<Register />}
+            />
+
+            <Route
+              path="/forgot-password"
+              element={<ForgotPassword />}
+            />
+
+            <Route
+              path="/reset-password"
+              element={<ResetPassword />}
             />
 
             {/* ===================================================
@@ -441,11 +471,11 @@ export default function App() {
 
             <div>
               <p className="text-sm font-semibold">
-                © 2026 Guesthouse Platform.
+                © 2026 {t('Guesthouse Platform')}.
               </p>
 
               <p className="mt-1 text-xs text-white/60">
-                Discover and reserve verified guesthouses across Ethiopia.
+                  {t('Discover and reserve verified guesthouses across Ethiopia.')}
               </p>
             </div>
 
@@ -454,7 +484,7 @@ export default function App() {
               onClick={() => setArchModalOpen(true)}
               className="text-sm font-semibold text-[#FFC107] transition hover:text-white hover:underline"
             >
-              View Full-Stack API & Architecture Specs
+              {t('View Full-Stack API & Architecture Specs')}
             </button>
 
           </div>

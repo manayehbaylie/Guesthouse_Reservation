@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { Users, UserPlus, Shield, ChevronLeft, Trash2 } from 'lucide-react';
 
 export function StaffManage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [guesthouseId, setGuesthouseId] = useState(null);
   const [guesthouse, setGuesthouse] = useState(null);
@@ -51,7 +53,7 @@ export function StaffManage() {
     e.preventDefault();
 
     if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
-      alert('Your guesthouse is still pending approval. Receptionist registration is locked until approval is complete.');
+      alert(t('Your guesthouse is still pending approval. Receptionist registration is locked until approval is complete.'));
       return;
     }
 
@@ -73,7 +75,7 @@ export function StaffManage() {
 
   const handleDeleteStaff = async (staffId) => {
     if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
-      alert('Your guesthouse is still pending approval. Staff management is locked until approval is complete.');
+      alert(t('Your guesthouse is still pending approval. Staff management is locked until approval is complete.'));
       return;
     }
 
@@ -95,18 +97,18 @@ export function StaffManage() {
         className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900"
       >
         <ChevronLeft className="w-4 h-4" />
-        <span>Back to Owner Dashboard</span>
+        <span>{t('Back to Owner Dashboard')}</span>
       </button>
 
       <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-6">
         <div>
-          <h1 className="text-2xl font-black text-stone-900 tracking-tight">Front-Desk Staff Management</h1>
-          <p className="text-xs text-stone-500">Register and assign Receptionists to operate front-desk check-in consoles</p>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight">{t('Front-Desk Staff Management')}</h1>
+          <p className="text-xs text-stone-500">{t('Register and assign Receptionists to operate front-desk check-in consoles')}</p>
         </div>
 
         {String(guesthouse?.status || '').toUpperCase() !== 'APPROVED' && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900">
-            <strong className="font-bold">Approval required.</strong> Receptionist management is locked until your guesthouse is approved by the admin team.
+            <strong className="font-bold">{t('Approval required.')}</strong> {t('Receptionist management is locked until your guesthouse is approved by the admin team.')}
           </div>
         )}
 
@@ -115,12 +117,12 @@ export function StaffManage() {
           <form onSubmit={handleCreateStaff} className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4 text-xs font-semibold">
             <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-amber-600" />
-              <span>Register New Receptionist</span>
+              <span>{t('Register New Receptionist')}</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-stone-600 uppercase mb-1">Full Name</label>
+                <label className="block text-stone-600 uppercase mb-1">{t('Full Name')}</label>
                 <input
                   type="text"
                   required
@@ -131,7 +133,7 @@ export function StaffManage() {
                 />
               </div>
               <div>
-                <label className="block text-stone-600 uppercase mb-1">Email Address</label>
+                <label className="block text-stone-600 uppercase mb-1">{t('Email Address')}</label>
                 <input
                   type="email"
                   required
@@ -142,7 +144,7 @@ export function StaffManage() {
                 />
               </div>
               <div>
-                <label className="block text-stone-600 uppercase mb-1">Phone Number</label>
+                <label className="block text-stone-600 uppercase mb-1">{t('Phone Number')}</label>
                 <input
                   type="text"
                   required
@@ -157,14 +159,14 @@ export function StaffManage() {
               type="submit"
               className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl text-xs shadow-xs"
             >
-              Create Staff Account
+              {t('Create Staff Account')}
             </button>
           </form>
         )}
 
         {/* Staff Table */}
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-stone-900">Current Assigned Receptionists</h3>
+          <h3 className="text-sm font-bold text-stone-900">{t('Current Assigned Receptionists')}</h3>
           <div className="divide-y divide-stone-100 border border-stone-200 rounded-2xl overflow-hidden bg-white text-xs">
             {staffList.map((st) => (
               <div key={st.id} className="p-4 flex items-center justify-between">
@@ -174,14 +176,14 @@ export function StaffManage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
-                    Receptionist
+                    {t('Receptionist')}
                   </span>
                   <button
                     onClick={() => handleDeleteStaff(Number(st.id))}
                     className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-bold rounded-lg text-xs flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
-                    Remove
+                    {t('Remove')}
                   </button>
                 </div>
               </div>

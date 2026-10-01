@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -20,7 +21,9 @@ import {
 
 export function ReceptionistDashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
+  const translateStatus = (value) => t(String(value || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase()));
 
   const [guesthouse, setGuesthouse] = useState(null);
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -56,7 +59,7 @@ export function ReceptionistDashboard() {
       );
     } catch (err) {
       console.error('Failed to delete reservation:', err);
-      setError(err?.message || 'Failed to delete reservation.');
+      setError(err?.message || t('Failed to delete reservation.'));
     } finally {
       setActionLoadingId(null);
     }
@@ -181,7 +184,7 @@ export function ReceptionistDashboard() {
     return {
       ...valid,
       id: valid.id ?? valid.guesthouseId ?? valid.propertyId,
-      name: valid.name ?? valid.guesthouseName ?? valid.propertyName ?? 'Assigned Guesthouse',
+      name: valid.name ?? valid.guesthouseName ?? valid.propertyName ?? t('Assigned Guesthouse'),
     };
   };
 
@@ -245,7 +248,7 @@ export function ReceptionistDashboard() {
 
       if (!assignedGuesthouse) {
         throw new Error(
-          'No guesthouse is assigned to this receptionist. Please ask the owner/admin to assign this account to a guesthouse.'
+          t('No guesthouse is assigned to this receptionist. Please ask the owner/admin to assign this account to a guesthouse.')
         );
       }
 
@@ -259,7 +262,7 @@ export function ReceptionistDashboard() {
       setRooms(filterByGuesthouse(roomList, assignedId));
     } catch (err) {
       console.error('Error loading dashboard data:', err);
-      setError(err?.message || 'Failed to load dashboard data');
+      setError(err?.message || t('Failed to load dashboard data'));
     } finally {
       setLoading(false);
     }
@@ -425,7 +428,7 @@ export function ReceptionistDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-stone-500">Loading dashboard...</div>
+        <div className="text-stone-500">{t('Loading dashboard...')}</div>
       </div>
     );
   }
@@ -473,9 +476,9 @@ export function ReceptionistDashboard() {
             </div>
             <div>
               <h2 className="font-bold text-white text-sm">
-                {guesthouse?.name || 'Guesthouse'}
+                      {guesthouse?.name || t('Guesthouse')}
               </h2>
-              <p className="text-xs text-stone-400">Reception Dashboard</p>
+              <p className="text-xs text-stone-400">{t('Reception Dashboard')}</p>
             </div>
           </div>
         </div>
@@ -497,9 +500,9 @@ export function ReceptionistDashboard() {
           >
             <span className="text-lg">📅</span>
             <div className="flex-1 text-left">
-              <div className="font-bold">All Reservations</div>
+              <div className="font-bold">{t('All Reservations')}</div>
               <div className={`text-xs ${activeTab === 'all' ? 'text-stone-900' : 'text-stone-400'}`}>
-                {allReservations.length} total
+                {allReservations.length} {t('total')}
               </div>
             </div>
           </button>
@@ -519,9 +522,9 @@ export function ReceptionistDashboard() {
           >
             <BedDouble className={`w-5 h-5 ${activeTab === 'inhouse' ? 'text-stone-900' : 'text-stone-400'}`} />
             <div className="flex-1 text-left">
-              <div className="font-bold">In-House Guests</div>
+              <div className="font-bold">{t('In-House Guests')}</div>
               <div className={`text-xs ${activeTab === 'inhouse' ? 'text-stone-900' : 'text-stone-400'}`}>
-                {dashboardStats?.inHouse ?? inHouseGuests.length} staying
+                {dashboardStats?.inHouse ?? inHouseGuests.length} {t('staying')}
               </div>
             </div>
           </button>
@@ -541,9 +544,9 @@ export function ReceptionistDashboard() {
           >
             <SlidersHorizontal className={`w-5 h-5 ${activeTab === 'rooms' ? 'text-stone-900' : 'text-stone-400'}`} />
             <div className="flex-1 text-left">
-              <div className="font-bold">Room Availability</div>
+              <div className="font-bold">{t('Room Availability')}</div>
               <div className={`text-xs ${activeTab === 'rooms' ? 'text-stone-900' : 'text-stone-400'}`}>
-                {rooms.length} rooms
+                {rooms.length} {t('rooms')}
               </div>
             </div>
           </button>
@@ -557,9 +560,9 @@ export function ReceptionistDashboard() {
             </div>
             <div className="flex-1">
               <div className="text-sm font-semibold text-white">
-                {user?.name || user?.fullName || 'Receptionist'}
+                {user?.name || user?.fullName || t('Receptionist')}
               </div>
-              <div className="text-xs text-stone-400">Front Desk Staff</div>
+              <div className="text-xs text-stone-400">{t('Front Desk Staff')}</div>
             </div>
           </div>
         </div>
@@ -582,7 +585,7 @@ export function ReceptionistDashboard() {
             <Menu className="w-6 h-6" />
           </button>
           <span className="ml-3 font-bold text-stone-900 text-sm">
-            {guesthouse?.name || 'Guesthouse'} Dashboard
+            {guesthouse?.name || t('Guesthouse')} {t('Dashboard')}
           </span>
         </div>
 
@@ -601,14 +604,14 @@ export function ReceptionistDashboard() {
               setActiveTab('all');
               setSearchTerm('');
             }}
-            className="w-full min-h-16 text-left bg-white p-2.5 rounded-lg border border-sky-200 shadow-sm flex items-center justify-between transition-colors duration-200 hover:bg-sky-50"
+            className={`group w-full min-h-14 text-left p-2 rounded-lg border shadow-sm flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#0c3047] hover:border-[#0c3047] hover:text-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${activeTab === 'all' ? 'bg-[#0c3047] border-[#0c3047] text-white' : 'bg-white border-sky-200 text-stone-900'}`}
           >
             <div>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-sky-700 block">All Reservations</span>
-              <span className="text-base font-mono font-extrabold text-stone-900">{allReservations.length}</span>
-              <span className="text-[10px] text-sky-700 block">Total bookings</span>
+              <span className={`text-[9px] font-bold uppercase tracking-wider block ${activeTab === 'all' ? 'text-white/75 group-hover:text-white' : 'text-sky-700'}`}>{t('All Reservations')}</span>
+              <span className={`text-base font-mono font-extrabold ${activeTab === 'all' ? 'text-white' : 'text-stone-900 group-hover:text-white'}`}>{allReservations.length}</span>
+              <span className={`text-[10px] block ${activeTab === 'all' ? 'text-white/75' : 'text-sky-700 group-hover:text-white/75'}`}>{t('Total bookings')}</span>
             </div>
-            <div className="p-1.5 bg-sky-600 text-white rounded-md">
+            <div className={`p-1.5 rounded-md ${activeTab === 'all' ? 'bg-amber-400 text-[#0c3047]' : 'bg-sky-600 text-white group-hover:bg-amber-400 group-hover:text-[#0c3047]'}`}>
               <CalendarDays className="w-3.5 h-3.5" />
             </div>
           </button>
@@ -620,14 +623,14 @@ export function ReceptionistDashboard() {
               setActiveTab('inhouse');
               setSearchTerm('');
             }}
-            className="w-full min-h-16 text-left bg-white p-2.5 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between transition-colors duration-200 hover:bg-amber-50"
+            className={`group w-full min-h-14 text-left p-2 rounded-lg border shadow-sm flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#0c3047] hover:border-[#0c3047] hover:text-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${activeTab === 'inhouse' ? 'bg-[#0c3047] border-[#0c3047] text-white' : 'bg-white border-amber-200 text-stone-900'}`}
           >
             <div>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 block">In-House Guests</span>
-              <span className="text-base font-mono font-extrabold text-stone-900">{dashboardStats?.inHouse ?? 0}</span>
-              <span className="text-[10px] text-amber-700 block">Rooms occupied</span>
+              <span className={`text-[9px] font-bold uppercase tracking-wider block ${activeTab === 'inhouse' ? 'text-white/75' : 'text-amber-700'}`}>{t('In-House Guests')}</span>
+              <span className={`text-base font-mono font-extrabold ${activeTab === 'inhouse' ? 'text-white' : 'text-stone-900 group-hover:text-white'}`}>{dashboardStats?.inHouse ?? 0}</span>
+              <span className={`text-[10px] block ${activeTab === 'inhouse' ? 'text-white/75' : 'text-amber-700'}`}>{t('Rooms occupied')}</span>
             </div>
-            <div className="p-1.5 bg-amber-500 text-stone-900 rounded-md">
+            <div className={`p-1.5 rounded-md ${activeTab === 'inhouse' ? 'bg-amber-400 text-[#0c3047]' : 'bg-amber-500 text-stone-900 group-hover:bg-amber-400 group-hover:text-[#0c3047]'}`}>
               <BedDouble className="w-3.5 h-3.5" />
             </div>
           </button>
@@ -639,16 +642,16 @@ export function ReceptionistDashboard() {
               setActiveTab('rooms');
               setSearchTerm('');
             }}
-            className="w-full min-h-16 text-left bg-white p-2.5 rounded-lg border border-stone-300 shadow-sm flex items-center justify-between transition-colors duration-200 hover:bg-stone-50"
+            className={`group w-full min-h-14 text-left p-2 rounded-lg border shadow-sm flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#0c3047] hover:border-[#0c3047] hover:text-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${activeTab === 'rooms' ? 'bg-[#0c3047] border-[#0c3047] text-white' : 'bg-white border-stone-300 text-stone-900'}`}
           >
             <div>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-stone-700 block">Available Rooms</span>
-              <span className="text-base font-mono font-extrabold text-stone-900">
+              <span className={`text-[9px] font-bold uppercase tracking-wider block ${activeTab === 'rooms' ? 'text-white/75' : 'text-stone-700'}`}>{t('Available Rooms')}</span>
+              <span className={`text-base font-mono font-extrabold ${activeTab === 'rooms' ? 'text-white' : 'text-stone-900 group-hover:text-white'}`}>
                 {dashboardStats?.availableRooms ?? 0} / {dashboardStats?.totalRooms ?? 0}
               </span>
-              <span className="text-[10px] text-stone-700 block">Ready for guests</span>
+              <span className={`text-[10px] block ${activeTab === 'rooms' ? 'text-white/75' : 'text-stone-700 group-hover:text-white/75'}`}>{t('Ready for guests')}</span>
             </div>
-            <div className="p-1.5 bg-stone-700 text-white rounded-md">
+            <div className={`p-1.5 rounded-md ${activeTab === 'rooms' ? 'bg-amber-400 text-[#0c3047]' : 'bg-stone-700 text-white group-hover:bg-amber-400 group-hover:text-[#0c3047]'}`}>
               <SlidersHorizontal className="w-3.5 h-3.5" />
             </div>
           </button>
@@ -661,7 +664,7 @@ export function ReceptionistDashboard() {
 
           <input
             type="text"
-            placeholder="Search guest name, room #, reservation ID..."
+            placeholder={t('Search guest name, room #, reservation ID...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={(e) => {
@@ -676,7 +679,7 @@ export function ReceptionistDashboard() {
             onClick={handleSearch}
             className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-amber-500 text-stone-900 text-xs rounded-lg hover:bg-amber-400 transition-colors font-semibold"
           >
-            Search
+            {t('Search')}
           </button>
         </div>
 
@@ -687,7 +690,7 @@ export function ReceptionistDashboard() {
         {activeTab === 'inhouse' && (
           <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
             {inHouseGuests.length === 0 ? (
-              <div className="p-8 text-center text-stone-500 text-xs">No guests currently in-house.</div>
+              <div className="p-8 text-center text-stone-500 text-xs">{t('No guests currently in-house.')}</div>
             ) : (
               <div className="divide-y divide-stone-100">
                 {inHouseGuests.map((res) => (
@@ -699,11 +702,11 @@ export function ReceptionistDashboard() {
                         </span>
                         <span className="font-bold text-stone-900 text-sm">{res.guestName}</span>
                         <span className="uppercase text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                          Checked In
+                          {t('Checked In')}
                         </span>
                       </div>
                       <p className="text-xs text-stone-500">
-                        Phone: <span className="font-mono">{res.guestPhone || 'N/A'}</span> &bull; Room {res.roomNumber} ({res.roomType})
+                        {t('Phone')}: <span className="font-mono">{res.guestPhone || t('N/A')}</span> &bull; {t('Room')} {res.roomNumber} ({t(res.roomType)})
                       </p>
                       <p className="text-xs text-stone-500">
                         {formatDate(res.checkInDate)} - {formatDate(res.checkOutDate)}
@@ -723,7 +726,7 @@ export function ReceptionistDashboard() {
                         disabled={actionLoadingId === res.id}
                         className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-colors duration-200 flex items-center gap-1.5 border-2 border-amber-500"
                       >
-                        <span>{actionLoadingId === res.id ? 'Checking Out...' : 'Check Out Now'}</span>
+                        <span>{actionLoadingId === res.id ? t('Checking Out...') : t('Check Out Now')}</span>
                       </button>
                     </div>
                   </div>
@@ -743,18 +746,18 @@ export function ReceptionistDashboard() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase font-semibold text-[10px]">
                   <tr>
-                    <th className="p-3.5">TOKEN & GUEST</th>
-                    <th className="p-3.5">ROOM</th>
-                    <th className="p-3.5">DATES</th>
-                    <th className="p-3.5">STATUS</th>
-                    <th className="p-3.5">AMOUNT</th>
-                    <th className="p-3.5">ACTIONS</th>
+                    <th className="p-3.5">{t('TOKEN & GUEST')}</th>
+                    <th className="p-3.5">{t('ROOM')}</th>
+                    <th className="p-3.5">{t('DATES')}</th>
+                    <th className="p-3.5">{t('STATUS')}</th>
+                    <th className="p-3.5">{t('AMOUNT')}</th>
+                    <th className="p-3.5">{t('ACTIONS')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100 font-medium text-stone-900">
                   {allReservations.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="p-8 text-center text-stone-500">No reservations found.</td>
+                      <td colSpan="6" className="p-8 text-center text-stone-500">{t('No reservations found.')}</td>
                     </tr>
                   ) : (
                     allReservations.map((r) => (
@@ -763,11 +766,11 @@ export function ReceptionistDashboard() {
                           <div className="font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">#res_{r.id}</div>
                           <div className="font-bold">{r.guestName}</div>
                         </td>
-                        <td className="p-3.5">Room {r.roomNumber} {r.roomType}</td>
+                        <td className="p-3.5">{t('Room')} {r.roomNumber} {t(r.roomType)}</td>
                         <td className="p-3.5">{formatDate(r.checkInDate)} - {formatDate(r.checkOutDate)}</td>
                         <td className="p-3.5">
                           <span className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded ${getReservationStatusColor(r.status)}`}>
-                            {String(r.status || 'PENDING').replace(/_/g, ' ')}
+                            {translateStatus(r.status || 'PENDING')}
                           </span>
                         </td>
                         <td className="p-3.5 font-mono">ETB {Number(r.totalPrice || 0).toLocaleString()}</td>
@@ -779,7 +782,7 @@ export function ReceptionistDashboard() {
                                 disabled={actionLoadingId === r.id}
                                 className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-stone-900 text-xs rounded-lg font-bold"
                               >
-                                {actionLoadingId === r.id ? 'Checking In...' : 'Check In'}
+                                {actionLoadingId === r.id ? t('Checking In...') : t('Check In')}
                               </button>
                             )}
 
@@ -789,7 +792,7 @@ export function ReceptionistDashboard() {
                                 disabled={actionLoadingId === r.id}
                                 className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-stone-900 text-xs rounded-lg font-bold"
                               >
-                                {actionLoadingId === r.id ? 'Checking Out...' : 'Check Out'}
+                                {actionLoadingId === r.id ? t('Checking Out...') : t('Check Out')}
                               </button>
                             )}
 
@@ -797,7 +800,7 @@ export function ReceptionistDashboard() {
                               onClick={() => setReceiptReservation(r)}
                               className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs rounded font-bold border border-stone-200"
                             >
-                              Receipt
+                              {t('Receipt')}
                             </button>
 
                             {['CHECKED_OUT', 'CANCELLED'].includes(String(r.status || '').trim().toUpperCase()) && (
@@ -807,7 +810,7 @@ export function ReceptionistDashboard() {
                                 disabled={actionLoadingId === r.id}
                                 className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs rounded-lg font-bold"
                               >
-                                {actionLoadingId === r.id ? 'Deleting...' : 'Delete'}
+                                {actionLoadingId === r.id ? t('Deleting...') : t('Delete')}
                               </button>
                             )}
                           </div>
@@ -829,23 +832,23 @@ export function ReceptionistDashboard() {
           <div className="space-y-4">
             <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 text-xs text-stone-500 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-stone-700 shrink-0" />
-              <span>Receptionists can update room status: Available, Unavailable, and Maintenance.</span>
+              <span>{t('Receptionists can update room status: Available, Unavailable, and Maintenance.')}</span>
             </div>
 
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
               {rooms.length === 0 ? (
-                <div className="p-8 text-center text-stone-500">No rooms found for this guesthouse.</div>
+                <div className="p-8 text-center text-stone-500">{t('No rooms found for this guesthouse.')}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase font-semibold text-[10px]">
                       <tr>
-                        <th className="p-3.5">ROOM</th>
-                        <th className="p-3.5">CAPACITY</th>
-                        <th className="p-3.5">RATE</th>
-                        <th className="p-3.5">OCCUPANCY</th>
-                        <th className="p-3.5">STATUS</th>
-                        <th className="p-3.5">ACTIONS</th>
+                        <th className="p-3.5">{t('ROOM')}</th>
+                        <th className="p-3.5">{t('CAPACITY')}</th>
+                        <th className="p-3.5">{t('RATE')}</th>
+                        <th className="p-3.5">{t('OCCUPANCY')}</th>
+                        <th className="p-3.5">{t('STATUS')}</th>
+                        <th className="p-3.5">{t('ACTIONS')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 font-medium text-stone-900">
@@ -857,19 +860,19 @@ export function ReceptionistDashboard() {
                         return (
                           <tr key={rm.id}>
                             <td className="p-3.5">
-                              <div className="font-mono font-bold">Room {rm.roomNumber}</div>
-                              <div className="text-stone-500">{rm.roomType}</div>
+                              <div className="font-mono font-bold">{t('Room')} {rm.roomNumber}</div>
+                              <div className="text-stone-500">{translateStatus(rm.roomType)}</div>
                             </td>
-                            <td className="p-3.5">{rm.capacity ?? 0} guests</td>
+                            <td className="p-3.5">{t('{{count}} guests', { count: rm.capacity ?? 0 })}</td>
                             <td className="p-3.5 font-mono">ETB {Number(rm.price ?? rm.pricePerNight ?? 0).toLocaleString()}</td>
                             <td className="p-3.5">
                               <span className={`font-bold ${rm.available ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {rm.available ? 'Vacant' : 'Occupied'}
+                                {rm.available ? t('Vacant') : t('Occupied')}
                               </span>
                             </td>
                             <td className="p-3.5">
                               <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${getMaintenanceStatusColor(isOccupied ? 'UNAVAILABLE' : status)}`}>
-                                {isOccupied ? 'UNAVAILABLE' : status}
+                                {translateStatus(isOccupied ? 'UNAVAILABLE' : status)}
                               </span>
                             </td>
                             <td className="p-3.5">
@@ -879,14 +882,14 @@ export function ReceptionistDashboard() {
                                   disabled={isRoomActionLoading}
                                   className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-stone-900 text-xs rounded-lg font-bold disabled:opacity-60"
                                 >
-                                  {isRoomActionLoading ? 'Updating...' : 'Available'}
+                                  {isRoomActionLoading ? t('Updating...') : t('Available')}
                                 </button>
                                 <button
                                   onClick={() => handleUpdateRoomAvailability(rm.id, 'MAINTENANCE')}
                                   disabled={isRoomActionLoading}
                                   className="px-3 py-1 bg-orange-500 hover:bg-orange-400 text-white text-xs rounded-lg font-bold disabled:opacity-60"
                                 >
-                                  {isRoomActionLoading ? 'Updating...' : 'Maintenance'}
+                                  {isRoomActionLoading ? t('Updating...') : t('Maintenance')}
                                 </button>
                               </div>
                             </td>
@@ -903,7 +906,7 @@ export function ReceptionistDashboard() {
 
         {/* Footer */}
         <footer className="mt-8 pt-6 border-t border-stone-200 text-center">
-          <p className="text-sm text-stone-500">© 2026 Guesthouse Platform. All rights reserved.</p>
+          <p className="text-sm text-stone-500">© 2026 {t('Guesthouse Platform')}. {t('All rights reserved.')}</p>
         </footer>
 
       </div>
@@ -926,7 +929,7 @@ export function ReceptionistDashboard() {
                 <h3 className="font-bold text-stone-900 text-lg">
                   {guesthouse?.name || 'Guesthouse'}
                 </h3>
-                <p className="text-xs text-stone-500">Reservation Receipt</p>
+                <p className="text-xs text-stone-500">{t('Reservation Receipt')}</p>
               </div>
               <button
                 onClick={() => setReceiptReservation(null)}
@@ -938,48 +941,48 @@ export function ReceptionistDashboard() {
 
             <div className="space-y-3 text-sm border-t border-b border-dashed border-stone-200 py-4">
               <div className="flex justify-between">
-                <span className="text-stone-500">Reservation #</span>
+                    <span className="text-stone-500">{t('Reservation #')}</span>
                 <span className="font-mono font-bold">{receiptReservation.id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Guest</span>
+                    <span className="text-stone-500">{t('Guest')}</span>
                 <span className="font-semibold">{receiptReservation.guestName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Phone</span>
+                    <span className="text-stone-500">{t('Phone')}</span>
                 <span className="font-mono">{receiptReservation.guestPhone || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Room</span>
+                    <span className="text-stone-500">{t('Room')}</span>
                 <span>{receiptReservation.roomNumber} ({receiptReservation.roomType})</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Check-in</span>
+                    <span className="text-stone-500">{t('Check-in')}</span>
                 <span>{formatDate(receiptReservation.checkInDate)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Check-out</span>
+                    <span className="text-stone-500">{t('Check-out')}</span>
                 <span>{formatDate(receiptReservation.checkOutDate)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Nights</span>
+                    <span className="text-stone-500">{t('Nights')}</span>
                 <span>{receiptReservation.nightsCount}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Status</span>
+                    <span className="text-stone-500">{t('Status')}</span>
                 <span className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded ${getReservationStatusColor(receiptReservation.status)}`}>
-                  {String(receiptReservation.status || 'PENDING').replace(/_/g, ' ')}
+                  {translateStatus(receiptReservation.status || 'PENDING')}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-500">Payment</span>
-                <span className="uppercase font-semibold">{receiptReservation.paymentStatus || 'PENDING'}</span>
+                    <span className="text-stone-500">{t('Payment')}</span>
+                <span className="uppercase font-semibold">{translateStatus(receiptReservation.paymentStatus || 'PENDING')}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-center mt-4 mb-6">
               <span className="font-bold text-stone-900">Total</span>
-              <span className="font-mono font-extrabold text-xl text-stone-900">
+                  <span className="font-mono font-extrabold text-xl text-stone-900">
                 ETB {Number(receiptReservation.totalPrice || 0).toLocaleString()}
               </span>
             </div>
@@ -990,13 +993,13 @@ export function ReceptionistDashboard() {
                 className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
                 <Printer className="w-4 h-4" />
-                Print
+                {t('Print')}
               </button>
               <button
                 onClick={() => setReceiptReservation(null)}
                 className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm rounded-xl"
               >
-                Close
+                {t('Close')}
               </button>
             </div>
           </div>

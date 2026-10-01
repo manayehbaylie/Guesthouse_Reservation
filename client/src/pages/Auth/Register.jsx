@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 import {
   User,
@@ -26,6 +27,7 @@ import {
 export function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { t } = useLanguage();
 
   // ==========================================================
   // FORM STATE
@@ -55,13 +57,18 @@ export function Register() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const errorRef = useRef(null);
+  const lastErrorCountRef = useRef(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const hasError = error || Object.values(fieldErrors).some(Boolean);
-    if (hasError) {
+    const fieldErrorCount = Object.values(fieldErrors).filter(Boolean).length;
+    const totalErrorCount = fieldErrorCount + (error ? 1 : 0);
+
+    if (totalErrorCount > 0 && totalErrorCount > lastErrorCountRef.current) {
       errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+
+    lastErrorCountRef.current = totalErrorCount;
   }, [error, fieldErrors]);
 
   // ==========================================================
@@ -75,11 +82,11 @@ export function Register() {
 
     // Full name
     if (!trimmedName) {
-      return { field: "name", message: "Full name is required." };
+      return { field: "name", message: t("Full name is required.") };
     }
 
     if (trimmedName.length < 3) {
-      return { field: "name", message: "Full name must be at least 3 characters." };
+      return { field: "name", message: t("Full name must be at least 3 characters.") };
     }
 
     // Email is OPTIONAL
@@ -87,19 +94,19 @@ export function Register() {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!emailPattern.test(trimmedEmail)) {
-        return { field: "email", message: "Please enter a valid email address." };
+        return { field: "email", message: t("Please enter a valid email address.") };
       }
     }
 
     // Phone
     if (!trimmedPhone) {
-      return { field: "phone", message: "Phone number is required." };
+      return { field: "phone", message: t("Phone number is required.") };
     }
 
     const phoneDigits = trimmedPhone.replace(/\D/g, "");
 
     if (phoneDigits.length < 9) {
-      return { field: "phone", message: "Please enter a valid phone number." };
+      return { field: "phone", message: t("Please enter a valid phone number.") };
     }
 
     return null;
@@ -111,19 +118,19 @@ export function Register() {
 
   const validatePassword = () => {
     if (!password) {
-      return { field: "password", message: "Password is required." };
+      return { field: "password", message: t("Password is required.") };
     }
 
     if (password.length < 6) {
-      return { field: "password", message: "Password must be at least 6 characters." };
+      return { field: "password", message: t("Password must be at least 6 characters.") };
     }
 
     if (!confirmPassword) {
-      return { field: "confirmPassword", message: "Please confirm your password." };
+      return { field: "confirmPassword", message: t("Please confirm your password.") };
     }
 
     if (password !== confirmPassword) {
-      return { field: "confirmPassword", message: "Passwords do not match." };
+      return { field: "confirmPassword", message: t("Passwords do not match.") };
     }
 
     return null;
@@ -135,7 +142,7 @@ export function Register() {
 
   const validateAccountType = () => {
     if (!accountType) {
-      return { field: "accountType", message: "Please select how you want to use the platform." };
+      return { field: "accountType", message: t("Please select how you want to use the platform.") };
     }
 
     return null;
@@ -151,15 +158,15 @@ export function Register() {
     }
 
     if (!residentialAddress.trim()) {
-      return { field: "residentialAddress", message: "Residential address is required for owner accounts." };
+      return { field: "residentialAddress", message: t("Residential address is required for owner accounts.") };
     }
 
     if (!idType) {
-      return { field: "idType", message: "Please select your ID type." };
+      return { field: "idType", message: t("Please select your ID type.") };
     }
 
     if (!idNumber.trim()) {
-      return { field: "idNumber", message: "ID number is required for owner accounts." };
+      return { field: "idNumber", message: t("ID number is required for owner accounts.") };
     }
 
     return null;
@@ -392,11 +399,11 @@ export function Register() {
 
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-[#082F49] sm:text-4xl">
-                Create your account
+                {t('Create your account')}
               </h1>
 
               <p className="mt-1 text-sm text-slate-500">
-                Register once and start using the platform.
+                {t('Register once and start using the platform.')}
               </p>
             </div>
 
@@ -419,8 +426,8 @@ export function Register() {
 
           <FormSection
             icon={<User className="h-5 w-5" />}
-            title="Personal Information"
-            description="Enter your basic account information."
+            title={t('Personal Information')}
+            description={t('Enter your basic account information.')}
           >
 
             <div className="space-y-5">
@@ -428,7 +435,7 @@ export function Register() {
               {/* ACCOUNT TYPE */}
 
               <SelectField
-                label="Register as"
+                label={t('Register as')}
                 value={accountType}
                 onChange={(value) => {
                   setAccountType(value);
@@ -441,14 +448,14 @@ export function Register() {
               {/* FULL NAME */}
 
               <InputField
-                label="Full Name"
+                label={t('Full Name')}
                 value={name}
                 onChange={(value) => {
                   setName(value);
                   setFieldErrors((previous) => ({ ...previous, name: undefined }));
                 }}
                 error={fieldErrors.name}
-                placeholder="Enter your full name"
+                placeholder={t('Enter your full name')}
                 required
                 autoComplete="name"
                 icon={
@@ -459,7 +466,7 @@ export function Register() {
               {/* EMAIL */}
 
               <InputField
-                label="Email Address"
+                label={t('Email Address')}
                 type="email"
                 value={email}
                 onChange={(value) => {
@@ -467,7 +474,7 @@ export function Register() {
                   setFieldErrors((previous) => ({ ...previous, email: undefined }));
                 }}
                 error={fieldErrors.email}
-                placeholder="Enter your email address (optional)"
+                placeholder={t('Enter your email address (optional)')}
                 autoComplete="email"
                 icon={
                   <Mail className="h-4 w-4" />
@@ -477,7 +484,7 @@ export function Register() {
               {/* PHONE */}
 
               <InputField
-                label="Phone Number"
+                label={t('Phone Number')}
                 type="tel"
                 value={phone}
                 onChange={(value) => {
@@ -496,14 +503,14 @@ export function Register() {
               {accountType === "Owner" && (
                 <>
                   <InputField
-                    label="Residential Address"
+                    label={t('Residential Address')}
                     value={residentialAddress}
                     onChange={(value) => {
                       setResidentialAddress(value);
                       setFieldErrors((previous) => ({ ...previous, residentialAddress: undefined }));
                     }}
                     error={fieldErrors.residentialAddress}
-                    placeholder="Enter your residential address"
+                    placeholder={t('Enter your residential address')}
                     required
                     autoComplete="street-address"
                     icon={<Building2 className="h-4 w-4" />}
@@ -511,7 +518,7 @@ export function Register() {
 
                   <div>
                     <label className="mb-2 block text-sm font-bold text-[#173B53]">
-                      ID Type
+                      {t('ID Type')}
                       <span className="ml-1 text-red-500">*</span>
                     </label>
 
@@ -529,10 +536,10 @@ export function Register() {
                         required
                         className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm text-[#082F49] outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
                       >
-                        <option value="">Select ID type</option>
-                        <option value="National ID">National ID</option>
-                        <option value="Passport">Passport</option>
-                        <option value="Driver License">Driver License</option>
+                        <option value="">{t('Select ID type')}</option>
+                        <option value="National ID">{t('National ID')}</option>
+                        <option value="Passport">{t('Passport')}</option>
+                        <option value="Driver License">{t('Driver License')}</option>
                       </select>
 
 
@@ -541,14 +548,14 @@ export function Register() {
                   </div>
 
                   <InputField
-                    label="ID Number"
+                    label={t('ID Number')}
                     value={idNumber}
                     onChange={(value) => {
                       setIdNumber(value);
                       setFieldErrors((previous) => ({ ...previous, idNumber: undefined }));
                     }}
                     error={fieldErrors.idNumber}
-                    placeholder="Enter your ID number"
+                    placeholder={t('Enter your ID number')}
                     required
                     autoComplete="off"
                     icon={<BriefcaseBusiness className="h-4 w-4" />}
@@ -559,14 +566,14 @@ export function Register() {
               {/* PASSWORD */}
 
               <PasswordField
-                label="Password"
+                label={t('Password')}
                 value={password}
                 onChange={(value) => {
                   setPassword(value);
                   setFieldErrors((previous) => ({ ...previous, password: undefined }));
                 }}
                 error={fieldErrors.password}
-                placeholder="Minimum 6 characters"
+                placeholder={t('Minimum 6 characters')}
                 show={showPassword}
                 onToggle={() =>
                   setShowPassword(
@@ -580,14 +587,14 @@ export function Register() {
               {/* CONFIRM PASSWORD */}
 
               <PasswordField
-                label="Confirm Password"
+                label={t('Confirm Password')}
                 value={confirmPassword}
                 onChange={(value) => {
                   setConfirmPassword(value);
                   setFieldErrors((previous) => ({ ...previous, confirmPassword: undefined }));
                 }}
                 error={fieldErrors.confirmPassword}
-                placeholder="Re-enter your password"
+                placeholder={t('Re-enter your password')}
                 show={showConfirmPassword}
                 onToggle={() =>
                   setShowConfirmPassword(
@@ -623,12 +630,12 @@ export function Register() {
 
             <SubmitButton
               loading={loading}
-              loadingText="Creating account..."
+              loadingText={t('Creating account...')}
               icon={
                 <UserPlus className="h-4 w-4" />
               }
             >
-              Create Account
+              {t('Create Account')}
             </SubmitButton>
 
           </div>
@@ -820,6 +827,7 @@ function RegisterLayout({ children }) {
 // ============================================================
 
 function BackButton() {
+  const { t } = useLanguage();
   return (
     <Link
       to="/login"
@@ -827,7 +835,7 @@ function BackButton() {
     >
       <ArrowLeft className="h-4 w-4" />
 
-      Back to login
+      {t('Back to login')}
     </Link>
   );
 }
@@ -842,6 +850,7 @@ function FormSection({
   description,
   children,
 }) {
+  const { t } = useLanguage();
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
 
@@ -858,11 +867,11 @@ function FormSection({
         <div>
 
           <h2 className="text-lg font-extrabold text-[#082F49]">
-            {title}
+            {t(title)}
           </h2>
 
           <p className="mt-0.5 text-sm text-slate-500">
-            {description}
+            {t(description)}
           </p>
 
         </div>
@@ -890,12 +899,13 @@ function InputField({
   icon,
   autoComplete = "off",
 }) {
+  const { t } = useLanguage();
   return (
     <div>
 
       <label className="mb-2 block text-sm font-bold text-[#173B53]">
 
-        {label}
+        {t(label)}
 
         {required && (
           <span className="ml-1 text-red-500">
@@ -905,7 +915,7 @@ function InputField({
 
         {!required && (
           <span className="ml-2 text-xs font-normal text-slate-400">
-            Optional
+            {t('Optional')}
           </span>
         )}
 
@@ -925,7 +935,7 @@ function InputField({
           onChange={(event) =>
             onChange(event.target.value)
           }
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
           required={required}
           autoComplete={autoComplete}
           aria-invalid={Boolean(error)}
@@ -955,12 +965,13 @@ function SelectField({
   error,
   required = false,
 }) {
+  const { t } = useLanguage();
   return (
     <div>
 
       <label className="mb-2 block text-sm font-bold text-[#173B53]">
 
-        {label}
+        {t(label)}
 
         {required && (
           <span className="ml-1 text-red-500">
@@ -997,15 +1008,15 @@ function SelectField({
         >
 
           <option value="">
-            Select account type
+            {t('Select account type')}
           </option>
 
           <option value="Guest">
-            Guest — Book comfortable stays
+            {t('Guest — Book comfortable stays')}
           </option>
 
           <option value="Owner">
-            Owner — Manage your guesthouse
+            {t('Owner — Manage your guesthouse')}
           </option>
 
         </select>
@@ -1035,12 +1046,13 @@ function PasswordField({
   required = false,
   autoComplete = "new-password",
 }) {
+  const { t } = useLanguage();
   return (
     <div>
 
       <label className="mb-2 block text-sm font-bold text-[#173B53]">
 
-        {label}
+        {t(label)}
 
         {required && (
           <span className="ml-1 text-red-500">
@@ -1064,7 +1076,7 @@ function PasswordField({
           onChange={(event) =>
             onChange(event.target.value)
           }
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
           required={required}
           autoComplete={autoComplete}
           aria-invalid={Boolean(error)}
@@ -1079,8 +1091,8 @@ function PasswordField({
           className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-[#082F49]"
           aria-label={
             show
-              ? "Hide password"
-              : "Show password"
+              ? t("Hide password")
+              : t("Show password")
           }
         >
 
@@ -1107,6 +1119,7 @@ function TermsBox({
   onChange,
   error,
 }) {
+  const { t } = useLanguage();
   return (
     <div>
       <label className={`flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 transition hover:border-slate-300 ${error ? "border-red-400" : "border-slate-200"}`}>
@@ -1122,16 +1135,16 @@ function TermsBox({
 
       <span className="text-sm leading-6 text-slate-600">
 
-        I agree to the platform's{" "}
+        {t("I agree to the platform's")} {" "}
 
         <span className="font-semibold text-[#082F49]">
-          Terms of Service
+          {t('Terms of Service')}
         </span>{" "}
 
         and{" "}
 
         <span className="font-semibold text-[#082F49]">
-          Privacy Policy
+          {t('Privacy Policy')}
         </span>.
 
       </span>
@@ -1142,10 +1155,11 @@ function TermsBox({
 }
 
 function FieldError({ children }) {
+  const { t } = useLanguage();
   return (
     <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
       <X className="mt-0.5 h-4 w-4 flex-shrink-0" />
-      <span>{children}</span>
+      <span>{t(children)}</span>
     </div>
   );
 }
@@ -1155,16 +1169,17 @@ function FieldError({ children }) {
 // ============================================================
 
 function LoginLink() {
+  const { t } = useLanguage();
   return (
     <p className="mt-6 text-center text-sm text-slate-500">
 
-      Already have an account?{" "}
+      {t('Already have an account?')} {" "}
 
       <Link
         to="/login"
         className="font-bold text-[#B78103] transition hover:text-[#8F6500]"
       >
-        Sign in
+        {t('Sign In')}
       </Link>
 
     </p>
@@ -1181,6 +1196,7 @@ function SubmitButton({
   icon,
   children,
 }) {
+  const { t } = useLanguage();
   return (
     <button
       type="submit"
@@ -1193,7 +1209,7 @@ function SubmitButton({
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#082F49] border-t-transparent" />
 
           <span>
-            {loadingText}
+            {t(loadingText)}
           </span>
         </>
       ) : (
@@ -1201,7 +1217,7 @@ function SubmitButton({
           {icon}
 
           <span>
-            {children}
+            {t(children)}
           </span>
 
           <ArrowRight className="h-4 w-4" />

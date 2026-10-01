@@ -1,5 +1,7 @@
 import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
+import { parseDateOnly } from "../utils/date.utils.js";
+import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
 
 // ============================================================
 // CREATE RESERVATION
@@ -16,8 +18,8 @@ export const createReservation = async (data, guestId) => {
     throw new Error("Invalid room ID.");
   }
 
-  const checkIn = new Date(data.checkIn);
-  const checkOut = new Date(data.checkOut);
+  const checkIn = parseDateOnly(data.checkIn);
+  const checkOut = parseDateOnly(data.checkOut);
 
   if (
     Number.isNaN(checkIn.getTime()) ||
@@ -58,39 +60,15 @@ export const createReservation = async (data, guestId) => {
       );
     }
 
-    if (room.available === false) {
-      throw new Error(
-        "This room is currently unavailable for booking."
-      );
-    }
-
     if (room.maintenanceStatus !== "AVAILABLE") {
       throw new Error(
         "This room is currently unavailable for maintenance."
       );
     }
 
-    const overlappingReservation =
-      await tx.reservation.findFirst({
-        where: {
-          roomId,
-
-          status: {
-            in: [
-              "CONFIRMED",
-              "CHECKED_IN",
-            ],
-          },
-
-          checkIn: {
-            lt: checkOut,
-          },
-
-          checkOut: {
-            gt: checkIn,
-          },
-        },
-      });
+    const overlappingReservation = await tx.reservation.findFirst({
+      where: reservationOverlapWhere(roomId, checkIn, checkOut),
+    });
 
     if (overlappingReservation) {
       throw new Error(
@@ -164,6 +142,14 @@ export const getAllReservations = async () => {
           available: true,
           maintenanceStatus: true,
           guesthouseId: true,
+          guesthouse: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              city: true,
+            },
+          },
         },
       },
 
@@ -212,12 +198,49 @@ export const getReservationById = async (id) => {
           available: true,
           maintenanceStatus: true,
           guesthouseId: true,
+          guesthouse: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              city: true,
+            },
+          },
         },
       },
 
       payment: true,
     },
   });
+};
+
+export const deleteGuestReservation = async (id, guestId) => {
+  const reservationId = Number(id);
+  const ownerId = Number(guestId);
+
+  if (!Number.isInteger(reservationId) || reservationId <= 0) {
+    throw new Error("Invalid reservation ID.");
+  }
+
+  if (!Number.isInteger(ownerId) || ownerId <= 0) {
+    throw new Error("Authentication required.");
+  }
+
+  const result = await prisma.reservation.deleteMany({
+    where: {
+      id: reservationId,
+      guestId: ownerId,
+    },
+  });
+
+  if (result.count !== 1) {
+    throw new Error("Reservation not found.");
+  }
+
+  return {
+    id: reservationId,
+    deleted: true,
+  };
 };
 
 // ============================================================

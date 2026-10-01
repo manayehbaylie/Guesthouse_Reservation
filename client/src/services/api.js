@@ -56,6 +56,31 @@ export const api = axios.create({
   },
 });
 
+api.forgotPassword = async function forgotPassword(email) {
+  if (!email) {
+    throw new Error('Email is required.');
+  }
+
+  const response = await api.post('/auth/forgot-password', {
+    email: String(email).trim(),
+  });
+
+  return unwrap(response);
+};
+
+api.resetPassword = async function resetPassword(token, newPassword) {
+  if (!token || !newPassword) {
+    throw new Error('Token and new password are required.');
+  }
+
+  const response = await api.post('/auth/reset-password', {
+    token,
+    newPassword,
+  });
+
+  return unwrap(response);
+};
+
 // ============================================================
 // REQUEST INTERCEPTOR
 // ============================================================
@@ -919,8 +944,14 @@ function mapReservationFromBackend(
 
     guesthouseLocation:
       reservation.guesthouseLocation ||
+      guesthouse.city ||
       guesthouse.address ||
       guesthouse.location ||
+      '',
+
+    guesthouseCity:
+      reservation.guesthouseCity ||
+      guesthouse.city ||
       '',
 
     roomId:
@@ -2241,7 +2272,8 @@ async resubmitGuesthouse(data) {
   async getRoomsForGuesthouse(
     guesthouseId,
     checkIn,
-    checkOut
+    checkOut,
+    forBooking = false
   ) {
     if (!guesthouseId) {
       throw new Error(
@@ -2255,6 +2287,7 @@ async resubmitGuesthouse(data) {
           params: {
             ...(checkIn ? { checkIn } : {}),
             ...(checkOut ? { checkOut } : {}),
+            ...(forBooking ? { forBooking: true } : {}),
           },
         });
 
@@ -2816,6 +2849,18 @@ async resubmitGuesthouse(data) {
     }
 
     return list;
+  },
+
+  async deleteGuestReservation(reservationId) {
+    if (!reservationId) {
+      throw new Error("Reservation ID is required.");
+    }
+
+    const response = await api.delete(
+      `/reservations/${reservationId}`
+    );
+
+    return unwrap(response);
   },
 
   // ==========================================================

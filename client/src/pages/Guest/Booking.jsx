@@ -7,7 +7,9 @@ import {
 } from "react-router-dom";
 
 import { ApiService } from "../../services/api.js";
+import { calculateCalendarNights } from "../../utils/date.utils.js";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 import PaymentScreen from "../../components/PaymentScreen.jsx";
 
 import {
@@ -23,6 +25,7 @@ import {
 
 export function Booking() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const { guesthouseId: guesthouseIdFromParams, roomId: roomIdFromParams } = useParams();
@@ -366,28 +369,9 @@ export function Booking() {
       return 0;
     }
 
-    const start = new Date(
-      `${checkInDate}T12:00:00`
-    );
-
-    const end = new Date(
-      `${checkOutDate}T12:00:00`
-    );
-
-    if (
-      Number.isNaN(start.getTime()) ||
-      Number.isNaN(end.getTime())
-    ) {
-      return 0;
-    }
-
-    const difference =
-      (end.getTime() - start.getTime()) /
-      (1000 * 60 * 60 * 24);
-
-    return Math.max(
-      0,
-      Math.round(difference)
+    return calculateCalendarNights(
+      checkInDate,
+      checkOutDate
     );
   }, [
     checkInDate,
@@ -703,7 +687,7 @@ export function Booking() {
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
           <p className="mt-4 text-base text-stone-500">
-            Loading booking details...
+            {t('Loading booking details...')}
           </p>
         </div>
       </div>
@@ -721,12 +705,12 @@ export function Booking() {
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
 
           <h2 className="mt-4 text-2xl font-black text-stone-900">
-            Booking unavailable
+            {t('Booking unavailable')}
           </h2>
 
           <p className="mt-2 text-base text-stone-500">
             {error ||
-              "The selected room could not be found."}
+              t('The selected room could not be found.')}
           </p>
 
           <button
@@ -736,7 +720,7 @@ export function Booking() {
             }
             className="mt-6 px-6 py-4 rounded-xl bg-stone-900 text-white font-bold text-base hover:bg-stone-800 transition-colors"
           >
-            Back to Guesthouses
+            {t('Back to Guesthouses')}
           </button>
         </div>
       </div>
@@ -757,7 +741,7 @@ export function Booking() {
             className="flex items-center gap-2 text-stone-600 hover:text-stone-900 mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-semibold">Back to Details</span>
+            <span className="text-sm font-semibold">{t('Back to Details')}</span>
           </button>
           
           <PaymentScreen
@@ -833,11 +817,11 @@ export function Booking() {
               </div>
 
               <h1 className="mt-4 text-3xl font-black text-stone-900">
-                Booking Confirmed!
+                {t('Booking Confirmed!')}
               </h1>
 
               <p className="mt-2 text-base text-stone-600">
-                Your room has been reserved successfully.
+                {t('Your room has been reserved successfully.')}
               </p>
             </div>
 
@@ -850,7 +834,7 @@ export function Booking() {
                 reservation.reservationId) && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
                   <p className="text-sm text-amber-700 font-semibold">
-                    Reservation ID
+                    {t('Reservation ID')}
                   </p>
 
                   <p className="mt-1 font-mono font-black text-stone-900 text-lg">
@@ -867,7 +851,7 @@ export function Booking() {
 
                 <div>
                   <p className="text-sm text-stone-500">
-                    Guesthouse
+                    {t('Guesthouse')}
                   </p>
 
                   <p className="text-xl font-bold text-stone-900">
@@ -891,7 +875,7 @@ export function Booking() {
                 />
 
                 <InfoItem
-                  label="Room Type"
+                  label={t('Room Type')}
                   value={
                     reservation.roomType ||
                     room.type ||
@@ -935,7 +919,7 @@ export function Booking() {
                 />
 
                 <InfoItem
-                  label="Payment"
+                  label={t('Payment')}
                   value={
                     paymentData.paymentMethod ===
                     "TELEBIRR"
@@ -956,7 +940,7 @@ export function Booking() {
               <div className="border-t border-stone-200 pt-5">
                 <div className="flex justify-between items-center">
                   <span className="text-xl font-bold text-stone-700">
-                    Total Paid
+                    {t('Total Paid')}
                   </span>
 
                   <span className="text-3xl font-black text-emerald-600">
@@ -999,7 +983,7 @@ export function Booking() {
                   className="flex-1 py-4 rounded-xl bg-stone-900 text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-stone-800 transition"
                 >
                   <Printer className="w-5 h-5" />
-                  Print Receipt
+                  {t('Print Receipt')}
                 </button>
 
                 <button
@@ -1009,7 +993,7 @@ export function Booking() {
                   }
                   className="flex-1 py-4 rounded-xl bg-amber-500 text-stone-950 font-bold text-base hover:bg-amber-400 transition"
                 >
-                  View My Reservations
+                  {t('View My Reservations')}
                 </button>
               </div>
             </div>
@@ -1055,7 +1039,7 @@ export function Booking() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-black text-stone-900 flex items-center gap-3">
               <Calendar className="w-7 h-7 text-amber-500" />
-              Check Your Stay
+              {t('Check Your Stay')}
             </h2>
 
             <button
@@ -1069,7 +1053,7 @@ export function Booking() {
           </div>
 
           <p className="text-sm text-stone-500 mb-6">
-            Select your dates and number of guests before continuing.
+              {t('Select your dates and number of guests before continuing.')}
           </p>
 
           {/* SELECTED ROOM */}
@@ -1078,7 +1062,7 @@ export function Booking() {
             <div className="flex justify-between items-start gap-4">
               <div>
                 <p className="text-sm text-stone-500 font-bold">
-                  SELECTED ROOM
+                  {t('SELECTED ROOM')}
                 </p>
 
                 <h3 className="text-2xl font-black text-stone-900">
@@ -1091,8 +1075,7 @@ export function Booking() {
                   {room.type ||
                     room.roomType ||
                     "Room"}{" "}
-                  · Maximum{" "}
-                  {maxGuests} guests
+                  · {t('Maximum')} {maxGuests} {t('guests')}
                 </p>
               </div>
 
@@ -1103,7 +1086,7 @@ export function Booking() {
                 </p>
 
                 <p className="text-sm text-stone-500">
-                  per night
+                  {t('per night')}
                 </p>
               </div>
             </div>
@@ -1116,7 +1099,7 @@ export function Booking() {
 
             <div>
               <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                Check-in
+                {t('Check-in')}
               </label>
 
               <input
@@ -1154,7 +1137,7 @@ export function Booking() {
 
             <div>
               <label className="block text-sm font-bold text-stone-500 uppercase mb-2">
-                Check-out
+                {t('Check-out')}
               </label>
 
               <input
@@ -1297,7 +1280,7 @@ export function Booking() {
             }
             className="w-full mt-8 py-5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-stone-300 disabled:text-stone-500 text-stone-950 font-black text-lg transition-all duration-200 transform hover:scale-[1.02]"
           >
-            Continue to Payment
+              {t('Continue to Payment')}
           </button>
 
           <div className="mt-4 flex items-start gap-3 text-sm text-stone-500">

@@ -4,6 +4,7 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/DashboardLayout.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 import {
   ApiService,
@@ -24,11 +25,14 @@ import {
   Send,
   CheckCircle,
   ChevronRight,
+  Building2,
+  Trash2,
 } from 'lucide-react';
 
 import PaymentScreen from "../../components/PaymentScreen";
 export function GuestBookings() {
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const [reservations, setReservations] =
     useState([]);
@@ -36,8 +40,117 @@ export function GuestBookings() {
   const [loading, setLoading] =
     useState(true);
 
+  const [deletingReservationId, setDeletingReservationId] =
+    useState(null);
+
+  const [deleteError, setDeleteError] =
+    useState('');
+
   const [selectedReceiptRes, setSelectedReceiptRes] =
     useState(null);
+
+  const handlePrintReceipt = (reservation) => {
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      window.alert('Allow pop-ups for this site to print your receipt.');
+      return;
+    }
+
+    const escapeHtml = (value) => String(value ?? 'N/A').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[character]);
+    const amount = Number(reservation.totalPrice || 0);
+    const nights = Number(reservation.nightsCount || 0);
+    const guestName = reservation.guestName || user?.name || 'Guest';
+    const paymentMethod = reservation.paymentMethod || reservation.payment?.method || 'N/A';
+    const paymentStatus = reservation.paymentStatus || 'Pending';
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Reservation ${escapeHtml(reservation.id)} Receipt</title>
+          <style>
+            @page { size: A4 portrait; margin: 14mm; }
+            * { box-sizing: border-box; }
+            body { margin: 0; color: #153b53; font: 14px/1.5 Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .receipt { width: 100%; max-width: 182mm; margin: 0 auto; }
+            .topline { height: 5px; background: #ffb900; }
+            header { display: flex; justify-content: space-between; align-items: flex-start; padding: 24px 0 20px; border-bottom: 1px solid #dce6eb; }
+            .brand { color: #043658; font-size: 20px; font-weight: 700; }
+            .muted { color: #647b8a; }
+            .eyebrow { margin-bottom: 5px; color: #647b8a; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+            .reference { color: #043658; font-size: 16px; font-weight: 700; text-align: right; }
+            .status { display: inline-block; margin-top: 8px; padding: 4px 10px; border: 1px solid #9de2c4; border-radius: 20px; color: #087443; font-size: 11px; font-weight: 700; text-transform: capitalize; }
+            .property { padding: 22px 0 18px; }
+            h1 { margin: 0 0 4px; color: #043658; font-size: 21px; }
+            .section-title { margin: 0 0 12px; color: #647b8a; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+            .details { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #dce6eb; border-radius: 8px; overflow: hidden; }
+            .detail { min-height: 62px; padding: 12px 15px; border-bottom: 1px solid #dce6eb; }
+            .detail:nth-child(odd) { border-right: 1px solid #dce6eb; }
+            .detail:nth-last-child(-n+2) { border-bottom: 0; }
+            .label { display: block; margin-bottom: 3px; color: #647b8a; font-size: 10px; text-transform: uppercase; }
+            .value { color: #043658; font-weight: 700; }
+            .payment { margin-top: 22px; padding-top: 17px; border-top: 1px solid #dce6eb; }
+            .payment-row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; }
+            .total { display: flex; justify-content: space-between; margin-top: 10px; padding: 14px 15px; border-radius: 7px; background: #f2f6f8; font-size: 16px; font-weight: 700; }
+            .total-amount { color: #087443; }
+            footer { margin-top: 25px; padding-top: 12px; border-top: 1px solid #dce6eb; color: #647b8a; font-size: 10px; }
+            @media print { .receipt, header, .details, .payment, footer { break-inside: avoid; } }
+          </style>
+        </head>
+        <body>
+          <article class="receipt">
+            <div class="topline"></div>
+            <header>
+              <div>
+                <div class="brand">Guesthouse Platform</div>
+                <div class="muted">Official guest receipt</div>
+              </div>
+              <div>
+                <div class="eyebrow">Reservation</div>
+                <div class="reference">#${escapeHtml(reservation.id)}</div>
+                <div class="status">${escapeHtml(String(reservation.status || 'Confirmed').replace(/_/g, ' '))}</div>
+              </div>
+            </header>
+            <section class="property">
+              <div class="eyebrow">Property</div>
+              <h1>${escapeHtml(reservation.guesthouseName || `Guesthouse #${reservation.guesthouseId || 'N/A'}`)}</h1>
+              <div class="muted">${escapeHtml(reservation.guesthouseCity || reservation.guesthouseLocation || 'City unavailable')}</div>
+              <div class="muted">Property ID: ${escapeHtml(reservation.guesthouseId || 'N/A')}</div>
+            </section>
+            <section>
+              <h2 class="section-title">Guest and stay details</h2>
+              <div class="details">
+                <div class="detail"><span class="label">Guest name</span><span class="value">${escapeHtml(guestName)}</span></div>
+                <div class="detail"><span class="label">Room</span><span class="value">${escapeHtml(`Room ${reservation.roomNumber || 'N/A'} (${reservation.roomType || 'N/A'})`)}</span></div>
+                <div class="detail"><span class="label">Check-in</span><span class="value">${escapeHtml(reservation.checkInDate)}</span></div>
+                <div class="detail"><span class="label">Check-out</span><span class="value">${escapeHtml(reservation.checkOutDate)}</span></div>
+                <div class="detail"><span class="label">Duration</span><span class="value">${nights} night${nights === 1 ? '' : 's'}</span></div>
+                <div class="detail"><span class="label">Payment method</span><span class="value">${escapeHtml(paymentMethod)}</span></div>
+              </div>
+            </section>
+            <section class="payment">
+              <h2 class="section-title">Payment summary</h2>
+              <div class="payment-row"><span class="muted">Payment status</span><strong>${escapeHtml(paymentStatus)}</strong></div>
+              <div class="total"><span>Total amount paid</span><span class="total-amount">${Number.isFinite(amount) ? amount.toLocaleString() : '0'} ETB</span></div>
+            </section>
+            <footer>Generated ${escapeHtml(new Date().toLocaleDateString())}. Please present this receipt at check-in.</footer>
+          </article>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onafterprint = () => printWindow.close();
+    printWindow.focus();
+    window.setTimeout(() => printWindow.print(), 300);
+  };
 
   // ==========================================================
   // REVIEW STATE
@@ -114,6 +227,25 @@ export function GuestBookings() {
 
     loadBookings();
   }, [user]);
+
+  const handleDeleteReservation = async (reservation) => {
+    setDeleteError('');
+    setDeletingReservationId(reservation.id);
+    try {
+      await ApiService.deleteGuestReservation(reservation.id);
+      setReservations((current) =>
+        current.filter((item) => String(item.id) !== String(reservation.id))
+      );
+    } catch (error) {
+      setDeleteError(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to delete this reservation. Please try again.'
+      );
+    } finally {
+      setDeletingReservationId(null);
+    }
+  };
 
 
   const hasReviewed = (reservationId) => {
@@ -279,7 +411,7 @@ export function GuestBookings() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-[#e5edf2] border-t-[#FFC107] rounded-full animate-spin mx-auto" />
-            <p className="mt-4 text-[#647b8a]">Loading your bookings...</p>
+            <p className="mt-4 text-[#647b8a]">{t('Loading your bookings...')}</p>
           </div>
         </div>
       </DashboardLayout>
@@ -293,15 +425,19 @@ export function GuestBookings() {
         {/* PAGE HEADER */}
         <div>
           <h1 className="text-2xl font-black text-[#043658] tracking-tight">
-            My Reservations & Receipts
+            {t('My Reservations & Receipts')}
           </h1>
 
           <p className="text-xs text-[#647b8a]">
-            Track active check-ins, upcoming stays,
-            completed stays, and access official
-            payment receipts.
+            {t('Track active check-ins, upcoming stays, completed stays, and access official payment receipts.')}
           </p>
         </div>
+
+        {deleteError && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {deleteError}
+          </div>
+        )}
 
         {/* NO RESERVATIONS */}
         {reservations.length === 0 ? (
@@ -311,12 +447,11 @@ export function GuestBookings() {
             <Calendar className="w-10 h-10 text-[#94a8b5] mx-auto" />
 
             <h3 className="text-base font-bold text-[#043658]">
-              No Reservations Found
+              {t('No Reservations Found')}
             </h3>
 
             <p className="text-xs text-[#647b8a]">
-              You have no active or historical
-              bookings on this account.
+              {t('You have no active or historical bookings on this account.')}
             </p>
 
           </div>
@@ -374,9 +509,12 @@ export function GuestBookings() {
                   </div>
 
 
-                  <h3 className="text-lg font-bold text-[#043658]">
-                    {res.guesthouseName}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 shrink-0 text-[#ffb900]" />
+                    <h3 className="text-lg font-bold text-[#043658]">
+                      {res.guesthouseName || `Guesthouse #${res.guesthouseId || 'N/A'}`}
+                    </h3>
+                  </div>
 
 
                   <p className="text-xs text-[#647b8a] flex items-center gap-1">
@@ -384,7 +522,10 @@ export function GuestBookings() {
                     <MapPin className="w-3.5 h-3.5 text-[#94a8b5]" />
 
                     <span>
-                      {res.guesthouseLocation}
+                      {res.guesthouseCity || res.guesthouseLocation || 'City unavailable'}
+                    </span>
+                    <span className="ml-1 rounded-full bg-[#f5f8fa] px-2 py-0.5 text-[10px] font-semibold text-[#647b8a]">
+                      Property #{res.guesthouseId || 'N/A'}
                     </span>
 
                   </p>
@@ -393,7 +534,7 @@ export function GuestBookings() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs font-medium text-[#043658] pt-1">
 
                     <span>
-                      Room:{' '}
+                      {t('Room')}:{' '}
                       <strong>
                         {res.roomNumber}{' '}
                         ({res.roomType})
@@ -401,11 +542,11 @@ export function GuestBookings() {
                     </span>
 
                     <span>
-                      Dates:{' '}
+                      {t('Dates')}:{' '}
                       <strong>
                         {res.checkInDate}
                       </strong>{' '}
-                      to{' '}
+                      {t('to')}{' '}
                       <strong>
                         {res.checkOutDate}
                       </strong>{' '}
@@ -425,7 +566,7 @@ export function GuestBookings() {
                   <div className="text-right mr-1">
 
                     <div className="text-xs text-[#647b8a]">
-                      Total Paid
+                      {t('Total Paid')}
                     </div>
 
                     <div className="text-lg font-black text-[#043658]">
@@ -443,7 +584,7 @@ export function GuestBookings() {
                     to={`/reservations/${res.id}`}
                     className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-blue-200"
                   >
-                    <span>View Details</span>
+                    <span>{t('View Details')}</span>
                     <ChevronRight className="w-4 h-4" />
                   </Link>
 
@@ -460,9 +601,20 @@ export function GuestBookings() {
                     <FileText className="w-4 h-4 text-[#FFC107]" />
 
                     <span>
-                      View Receipt
+                      {t('View Receipt')}
                     </span>
 
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteReservation(res)}
+                    disabled={deletingReservationId === res.id}
+                    aria-label={`Delete reservation ${res.id}`}
+                    className="px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{deletingReservationId === res.id ? t('Deleting...') : t('Delete')}</span>
                   </button>
 
                 </div>
@@ -491,11 +643,11 @@ export function GuestBookings() {
                 </div>
 
                 <h2 className="text-xl font-black text-[#043658]">
-                  Official Guest Receipt
+                  {t('Official Guest Receipt')}
                 </h2>
 
                 <p className="text-[11px] text-[#647b8a]">
-                  Guesthouse Reservation Platform Verification
+                  {t('Guesthouse Reservation Platform Verification')}
                 </p>
 
               </div>
@@ -505,7 +657,7 @@ export function GuestBookings() {
 
                 <div className="flex justify-between gap-4">
                   <span className="text-[#647b8a]">
-                    Reservation ID:
+                    {t('Reservation ID')}:
                   </span>
 
                   <span className="font-mono font-bold text-[#043658]">
@@ -515,7 +667,7 @@ export function GuestBookings() {
 
                 <div className="flex justify-between gap-4">
                   <span className="text-[#647b8a]">
-                    Guest Name:
+                    {t('Guest Name')}:
                   </span>
 
                   <span className="font-bold text-[#043658]">
@@ -527,17 +679,27 @@ export function GuestBookings() {
 
                 <div className="flex justify-between gap-4">
                   <span className="text-[#647b8a]">
-                    Property:
+                    {t('Property')}:
                   </span>
 
-                  <span className="font-bold text-[#043658]">
-                    {selectedReceiptRes.guesthouseName}
+                  <span className="text-right font-bold text-[#043658]">
+                    {selectedReceiptRes.guesthouseName || `Guesthouse #${selectedReceiptRes.guesthouseId || 'N/A'}`}
+                    <span className="block text-[10px] font-medium text-[#647b8a]">
+                      Property #{selectedReceiptRes.guesthouseId || 'N/A'}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#647b8a]">Location:</span>
+                  <span className="text-right font-semibold text-[#043658]">
+                    {selectedReceiptRes.guesthouseCity || selectedReceiptRes.guesthouseLocation || 'City unavailable'}
                   </span>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <span className="text-[#647b8a]">
-                    Room:
+                    {t('Room')}:
                   </span>
 
                   <span className="font-bold text-[#043658]">
@@ -549,7 +711,7 @@ export function GuestBookings() {
 
                 <div className="flex justify-between gap-4">
                   <span className="text-[#647b8a]">
-                    Check-In / Out:
+                    {t('Check-In / Out')}:
                   </span>
 
                   <span className="font-bold text-[#043658]">
@@ -562,7 +724,7 @@ export function GuestBookings() {
                 <div className="flex justify-between pt-2 border-t border-[#e5edf2]">
 
                   <span className="text-[#647b8a] font-bold">
-                    Total Amount Paid:
+                    {t('Total Amount Paid')}:
                   </span>
 
                   <span className="font-black text-emerald-700 text-sm">
@@ -582,16 +744,14 @@ export function GuestBookings() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    window.print()
-                  }
+                  onClick={() => handlePrintReceipt(selectedReceiptRes)}
                   className="flex-1 py-2.5 bg-[#043658] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#0b2f4a] transition"
                 >
 
                   <Printer className="w-4 h-4" />
 
                   <span>
-                    Print Receipt
+                    {t('Print Receipt')}
                   </span>
 
                 </button>
@@ -603,7 +763,7 @@ export function GuestBookings() {
                   }
                   className="px-4 py-2.5 bg-[#f5f8fa] text-[#647b8a] rounded-xl text-xs font-bold hover:bg-[#e5edf2] transition"
                 >
-                  Close
+                  {t('Close')}
                 </button>
 
               </div>

@@ -4,6 +4,7 @@ import {
   createReservation,
   getAllReservations,
   getReservationById,
+  deleteGuestReservation,
   updateReservationStatus,
     checkoutReservation,
 
@@ -116,6 +117,30 @@ export const getById = async (
       res,
       reservation,
       "Reservation fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteOwn = async (req, res, next) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const result = await deleteGuestReservation(
+      req.params.id,
+      req.user.id
+    );
+
+    return successResponse(
+      res,
+      result,
+      "Reservation deleted successfully"
     );
   } catch (error) {
     next(error);

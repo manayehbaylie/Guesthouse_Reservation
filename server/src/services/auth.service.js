@@ -1,6 +1,10 @@
 import prisma from "../config/prisma.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
-import { generateToken } from "../utils/jwt.js";
+import {
+  generateToken,
+  generatePasswordResetToken,
+  verifyPasswordResetToken,
+} from "../utils/jwt.js";
 
 function requireField(value, label) {
   if (value === undefined || value === null || String(value).trim() === "") {
@@ -199,8 +203,8 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
   if (!user) {
     const error = new Error(
       loginMethod === 'phone'
-        ? "Invalid phone number or password"
-        : "Invalid email or password"
+        ? "Invalid phone number."
+        : "Invalid email address."
     );
     error.statusCode = 401;
     throw error;
@@ -212,11 +216,7 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
   const isMatch = await comparePassword(password, user.password);
 
   if (!isMatch) {
-    const error = new Error(
-      loginMethod === 'phone'
-        ? "Invalid phone number or password"
-        : "Invalid email or password"
-    );
+    const error = new Error("Invalid password.");
     error.statusCode = 401;
     throw error;
   }
@@ -238,5 +238,72 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
     user: removePassword(user),
     token,
     requiresApproval: false,
+  };
+};
+
+// ==========================
+// Password Reset
+// ==========================
+export const requestPasswordReset = async (email) => {
+  requireField(email, "Email");
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
+  if (!user) {
+    return {
+      sent: false,
+      message: "If an account exists for that email, a password reset link has been sent.",
+    };
+  }
+
+  const resetToken = generatePasswordResetToken(user.email);
+  const frontendBaseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const resetUrl = `${frontendBaseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  return {
+    sent: true,
+    message: "A password reset link has been sent to your email.",
+    email: user.email,
+    resetToken,
+    resetUrl,
+  };
+};
+
+export const resetUserPassword = async (token, newPassword) => {
+  requireField(token, "Reset token");
+  requireField(newPassword, "New password");
+
+  if (String(newPassword).trim().length < 8) {
+    throw new Error("Password must be at least 8 characters long.");
+  }
+
+  const decoded = verifyPasswordResetToken(token);
+
+  if (!decoded || decoded.purpose !== "password-reset" || !decoded.email) {
+    throw new Error("Invalid or expired reset token.");
+  }
+
+  const normalizedEmail = String(decoded.email).trim().toLowerCase();
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  const hashedPassword = await hashPassword(String(newPassword));
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: hashedPassword },
+  });
+
+  return {
+    success: true,
+    message: "Password reset successfully. You can now sign in with your new password.",
   };
 };

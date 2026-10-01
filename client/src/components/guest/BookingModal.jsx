@@ -49,25 +49,36 @@ export const BookingModal = ({
 
     setStep('processing');
 
-    // Simulate real-time System payment verification & automated reservation creation (2 seconds)
-    setTimeout(async () => {
-      try {
-        const { reservation, payment } = await ApiService.createBookingAndPay({
-          guesthouseId: guesthouse.id,
-          roomId: room.id,
-          checkInDate,
-          checkOutDate,
-          nightsCount,
-          paymentMethod,
-        });
+    try {
+      const result = await ApiService.createBookingAndPay({
+        guesthouseId: guesthouse.id,
+        roomId: room.id,
+        checkInDate,
+        checkOutDate,
+        nightsCount,
+        paymentMethod,
+      });
 
-        setStep('confirmed');
-        onSuccess(reservation, payment);
-      } catch (err) {
-        setStep('details');
-        setError(err.message || 'Payment verification failed. Please try again.');
+      if (result?.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
       }
-    }, 2000);
+
+      const reservation = result?.reservation;
+      const payment = result?.payment;
+      if (
+        payment?.status?.toUpperCase() !== 'PAID' ||
+        reservation?.status?.toUpperCase() !== 'CONFIRMED'
+      ) {
+        throw new Error('Payment must be completed before the reservation is confirmed.');
+      }
+
+      setStep('confirmed');
+      onSuccess(reservation, payment);
+    } catch (err) {
+      setStep('details');
+      setError(err.message || 'Payment verification failed. Please try again.');
+    }
   };
 
   return (

@@ -163,9 +163,20 @@ export const deleteGuesthouse = async (id) => {
 ==================================================
 */
 export const deleteUser = async (id) => {
+  const userId = Number(id);
+
   const user = await prisma.user.findUnique({
     where: {
-      id: Number(id),
+      id: userId,
+    },
+    select: {
+      id: true,
+      role: true,
+      guesthouses: {
+        select: {
+          id: true,
+        },
+      },
     },
   });
 
@@ -173,10 +184,51 @@ export const deleteUser = async (id) => {
     throw new Error("User not found");
   }
 
-  return await prisma.user.delete({
-    where: {
-      id: Number(id),
-    },
+  return await prisma.$transaction(async (tx) => {
+    const ownedGuesthouseIds = user.guesthouses.map(
+      (guesthouse) => guesthouse.id
+    );
+
+    await tx.reservation.deleteMany({
+      where: {
+        guestId: userId,
+      },
+    });
+
+    if (ownedGuesthouseIds.length > 0) {
+      // Remove reservations before rooms because Reservation.roomId is required.
+      await tx.reservation.deleteMany({
+        where: {
+          room: {
+            guesthouseId: {
+              in: ownedGuesthouseIds,
+            },
+          },
+        },
+      });
+
+      await tx.room.deleteMany({
+        where: {
+          guesthouseId: {
+            in: ownedGuesthouseIds,
+          },
+        },
+      });
+
+      await tx.guesthouse.deleteMany({
+        where: {
+          id: {
+            in: ownedGuesthouseIds,
+          },
+        },
+      });
+    }
+
+    return tx.user.delete({
+      where: {
+        id: userId,
+      },
+    });
   });
 };
 
@@ -362,6 +414,28 @@ export const updateAdminProfile = async (
       throw new Error(
         "Email address is already in use."
       );
+    }
+  }
+
+  // -----------------------------------------------
+  // PREVENT DUPLICATE PHONE
+  // -----------------------------------------------
+
+  if (updateData.phone) {
+    const phoneOwner = await prisma.user.findFirst({
+      where: {
+        phone: updateData.phone,
+        id: { not: Number(id) },
+      },
+      select: { id: true },
+    });
+
+    if (phoneOwner) {
+      const error = new Error(
+        "Phone number is already in use."
+      );
+      error.statusCode = 409;
+      throw error;
     }
   }
 

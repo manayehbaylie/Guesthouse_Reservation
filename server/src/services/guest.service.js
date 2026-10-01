@@ -64,9 +64,16 @@ export const getMyReservations = async (
           roomNumber: true,
           roomType: true,
           price: true,
+          guesthouse: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              city: true,
+            },
+          },
         },
       },
-      guesthouse: false,
     },
     orderBy: {
       createdAt: "desc",

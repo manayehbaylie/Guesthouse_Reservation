@@ -343,9 +343,6 @@ export const GuesthouseSearch = ({ onSelectGuesthouse }) => {
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     {gh.rating} ({gh.reviewCount} reviews)
                   </div>
-                  <div className="absolute top-3 right-3 bg-emerald-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
-                    <Shield className="w-3 h-3" /> System Verified
-                  </div>
                 </div>
 
                 {/* Body Details */}

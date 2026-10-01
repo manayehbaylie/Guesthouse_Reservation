@@ -9,6 +9,7 @@ import {
   getPaymentHistory,
   processChapaCallback,
   getChapaPaymentStatus,
+  cancelPendingReservation,
 } from "../services/payment.service.js";
 
 import { successResponse } from "../utils/response.js";
@@ -26,6 +27,12 @@ export const create = async (req, res, next) => {
       201
     );
   } catch (error) {
+    try {
+      await cancelPendingReservation(req.body?.reservationId);
+    } catch (cleanupError) {
+      console.error("Could not cancel reservation after payment initialization failed:", cleanupError);
+    }
+
     next(error);
   }
 };

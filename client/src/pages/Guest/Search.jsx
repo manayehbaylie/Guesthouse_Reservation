@@ -1,3 +1,4 @@
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
@@ -11,24 +12,16 @@ import {
   Building2,
 } from "lucide-react";
 
-const CITIES = [
-  "All Cities",
-  "Addis Ababa",
-  "Hawassa",
-  "Bishoftu",
-  "Bahir Dar",
-  "Lalibela",
-];
-
 const DEFAULT_MAX_PRICE = 15000;
 
 export function GuesthouseSearch() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [params, setParams] = useSearchParams();
 
   const [keyword, setKeyword] = useState(params.get("q") || "");
   const [city, setCity] = useState(
-    params.get("city") || "All Cities"
+    canonicalizeCity(params.get("city")) || "All Cities"
   );
   const [maxPrice, setMaxPrice] = useState(
     Number(
@@ -54,14 +47,7 @@ export function GuesthouseSearch() {
       try {
         const list =
           await ApiService.getGuesthouses({
-            city:
-              city === "All Cities"
-                ? ""
-                : city,
-
-            keyword: keyword.trim(),
-
-            maxPrice,
+            // Load all approved guesthouses so filters include every registered property.
           });
 
         if (!mounted) return;
@@ -101,11 +87,32 @@ export function GuesthouseSearch() {
     return () => {
       mounted = false;
     };
-  }, [
-    city,
-    keyword,
-    maxPrice,
-  ]);
+  }, []);
+
+  const cityOptions = useMemo(() => {
+    const uniqueCities = new Map();
+
+    guesthouses.forEach((guesthouse) => {
+      const label = canonicalizeCity(guesthouse.city);
+      const key = normalizeCityKey(label);
+
+      if (label && key && !uniqueCities.has(key)) {
+        uniqueCities.set(key, label);
+      }
+    });
+
+    const selectedCity = canonicalizeCity(city);
+    if (selectedCity && selectedCity !== "All Cities") {
+      uniqueCities.set(normalizeCityKey(selectedCity), selectedCity);
+    }
+
+    return [
+      "All Cities",
+      ...Array.from(uniqueCities.values()).sort((first, second) =>
+        first.localeCompare(second)
+      ),
+    ];
+  }, [guesthouses, city]);
 
   // ============================================================
   // FRONTEND FILTERING
@@ -122,42 +129,24 @@ export function GuesthouseSearch() {
     // ----------------------------------------------------------
 
     if (keyword.trim()) {
-      const search =
-        keyword
-          .trim()
-          .toLowerCase();
+      const search = normalizeSearchText(keyword);
 
       list = list.filter((gh) => {
-        return (
-          String(
-            gh.name || ""
-          )
-            .toLowerCase()
-            .includes(search) ||
+        const searchableFields = [
+          gh.name,
+          gh.city,
+          gh.subCity,
+          gh.address,
+          gh.location,
+          gh.woreda,
+          gh.description,
+          gh.phone,
+          gh.email,
+          ...(Array.isArray(gh.amenities) ? gh.amenities : []),
+        ];
 
-          String(
-            gh.city || ""
-          )
-            .toLowerCase()
-            .includes(search) ||
-
-          String(
-            gh.address || ""
-          )
-            .toLowerCase()
-            .includes(search) ||
-
-          String(
-            gh.location || ""
-          )
-            .toLowerCase()
-            .includes(search) ||
-
-          String(
-            gh.description || ""
-          )
-            .toLowerCase()
-            .includes(search)
+        return searchableFields.some((field) =>
+          normalizeSearchText(field).includes(search)
         );
       });
     }
@@ -169,14 +158,8 @@ export function GuesthouseSearch() {
     if (city !== "All Cities") {
       list = list.filter(
         (gh) =>
-          String(
-            gh.city || ""
-          )
-            .toLowerCase()
-            .trim() ===
-          city
-            .toLowerCase()
-            .trim()
+          normalizeCityKey(gh.city) ===
+          normalizeCityKey(city)
       );
     }
 
@@ -201,10 +184,7 @@ export function GuesthouseSearch() {
     });
 
     // ----------------------------------------------------------
-    // Maximum 10 unique guesthouses
-    // ----------------------------------------------------------
-
-    return list.slice(0, 10);
+    return list;
   }, [
     guesthouses,
     keyword,
@@ -274,15 +254,15 @@ export function GuesthouseSearch() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-bold border border-emerald-500/20">
             <ShieldCheck className="w-3.5 h-3.5" />
 
-            Verified Guesthouses Only
+            {t('Verified Guesthouses Only')}
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-black mt-4">
-            Search Guesthouses
+            {t('Search Guesthouses')}
           </h1>
 
           <p className="text-stone-300 text-xs sm:text-sm mt-2 max-w-2xl">
-            Find administrator-approved
+              {t('Find administrator-approved')}{' '}
             guesthouses across Addis Ababa,
             Hawassa, Bishoftu, Bahir Dar
             and Lalibela.
@@ -303,7 +283,7 @@ export function GuesthouseSearch() {
                 KEYWORD
             -------------------------------------------------- */}
 
-            <Field label="Location or Keyword">
+            <Field label={t('Location or Keyword')}>
               <div className="relative">
                 <SearchIcon className="absolute left-3 top-3 w-4 h-4 text-amber-600" />
 
@@ -324,7 +304,7 @@ export function GuesthouseSearch() {
                 CITY
             -------------------------------------------------- */}
 
-            <Field label="City">
+            <Field label={t('City')}>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 w-4 h-4 text-amber-600" />
 
@@ -337,7 +317,7 @@ export function GuesthouseSearch() {
                   }
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 text-xs outline-none bg-white"
                 >
-                  {CITIES.map(
+                  {cityOptions.map(
                     (item) => (
                       <option
                         key={item}
@@ -356,7 +336,7 @@ export function GuesthouseSearch() {
             -------------------------------------------------- */}
 
             <Field
-              label={`Max Price: ${Number(
+              label={`${t('Max Price')}: ${Number(
                 maxPrice
               ).toLocaleString()} ETB`}
             >
@@ -388,33 +368,6 @@ export function GuesthouseSearch() {
             </Field>
           </div>
 
-          {/* ---------------------------------------------------
-              BUTTONS
-          ---------------------------------------------------- */}
-
-          <div className="flex flex-wrap gap-3 mt-5">
-
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-2 transition"
-            >
-              <SearchIcon className="w-4 h-4" />
-
-              Find Guesthouses (
-              {results.length}
-              )
-            </button>
-
-            <button
-              type="button"
-              onClick={
-                clearFilters
-              }
-              className="px-5 py-3 rounded-xl border border-stone-300 text-stone-600 text-xs font-bold hover:bg-stone-50 transition"
-            >
-              Clear Filters
-            </button>
-          </div>
         </form>
 
         {/* =====================================================
@@ -432,9 +385,7 @@ export function GuesthouseSearch() {
             </h2>
 
             <p className="text-xs text-stone-500 mt-1">
-              Only unique
-              administrator-approved
-              properties are displayed.
+              {t('Only unique administrator-approved properties are displayed.')}
             </p>
           </div>
 
@@ -475,8 +426,7 @@ export function GuesthouseSearch() {
             <Building2 className="w-12 h-12 text-red-300 mx-auto" />
 
             <h3 className="text-base font-bold mt-3 text-red-700">
-              Unable to Load
-              Guesthouses
+              {t('Unable to Load Guesthouses')}
             </h3>
 
             <p className="text-xs text-stone-500 mt-1 px-4">
@@ -490,7 +440,7 @@ export function GuesthouseSearch() {
               }
               className="mt-4 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-bold"
             >
-              Try Again
+              {t('Try Again')}
             </button>
           </div>
         ) : results.length ===
@@ -503,14 +453,11 @@ export function GuesthouseSearch() {
             <Building2 className="w-12 h-12 text-stone-300 mx-auto" />
 
             <h3 className="text-base font-bold mt-3">
-              No Verified
-              Guesthouses Found
+              {t('No Verified Guesthouses Found')}
             </h3>
 
             <p className="text-xs text-stone-500 mt-1">
-              Try another city,
-              keyword, date, or
-              maximum price.
+              {t('Try another city, keyword, date, or maximum price.')}
             </p>
 
             <button
@@ -520,8 +467,7 @@ export function GuesthouseSearch() {
               }
               className="mt-4 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold"
             >
-              Show All
-              Guesthouses
+              {t('Show All Guesthouses')}
             </button>
           </div>
         ) : (
@@ -573,6 +519,7 @@ function GuesthouseCard({
   guesthouse: gh,
   navigate,
 }) {
+  const { t } = useLanguage();
   const image =
     gh.image ||
     gh.images?.[0] ||
@@ -616,14 +563,6 @@ function GuesthouseCard({
           </div>
         )}
 
-        {/* VERIFIED */}
-
-        <div className="absolute top-3 left-3 bg-emerald-700 text-white rounded-full px-2.5 py-1 text-[10px] font-bold flex gap-1 items-center">
-          <ShieldCheck className="w-3 h-3" />
-
-          Verified
-        </div>
-
         {/* RATING */}
 
         <div className="absolute top-3 right-3 bg-stone-900/80 text-amber-400 rounded-full px-2 py-1 text-xs font-bold flex gap-1 items-center">
@@ -642,12 +581,8 @@ function GuesthouseCard({
 
         {/* CITY */}
 
-        <div className="text-[10px] text-amber-700 font-bold uppercase flex items-center gap-1">
-          <MapPin className="w-3 h-3" />
-
-          {gh.city ||
-            gh.location ||
-            "Location not specified"}
+        <div className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">
+          {canonicalizeCity(gh.city) || "Ethiopia"}
         </div>
 
         {/* NAME */}
@@ -657,22 +592,29 @@ function GuesthouseCard({
             "Unnamed Guesthouse"}
         </h3>
 
+        {/* LOCATION */}
+
+        <p className="text-xs text-stone-500 flex items-start gap-1.5 min-h-[32px]">
+          <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
+          <span className="line-clamp-2">
+            {[
+              gh.subCity,
+              gh.address || gh.location,
+              gh.woreda,
+            ]
+              .map((part) => String(part || "").trim())
+              .filter(Boolean)
+              .filter((part, index, parts) => parts.indexOf(part) === index)
+              .join(", ") || "Location not specified"}
+          </span>
+        </p>
+
         {/* DESCRIPTION */}
 
         <p className="text-xs text-stone-500 line-clamp-2 min-h-[32px]">
           {gh.description ||
             "Administrator-approved guesthouse available for booking."}
         </p>
-
-        {/* ADDRESS */}
-
-        {gh.address && (
-          <p className="text-[10px] text-stone-400 flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-
-            {gh.address}
-          </p>
-        )}
 
         {/* ----------------------------------------------------
             PRICE + BOOK
@@ -682,7 +624,7 @@ function GuesthouseCard({
 
           <div>
             <span className="text-[10px] text-stone-400 block">
-              Starting from
+              {t('Starting from')}
             </span>
 
             {displayPrice !==
@@ -694,12 +636,12 @@ function GuesthouseCard({
                 </span>
 
                 <span className="text-[10px] text-stone-400 ml-1">
-                  / night
+                  / {t('per night')}
                 </span>
               </>
             ) : (
               <span className="text-xs font-bold text-stone-500">
-                View rooms
+                {t('View rooms')}
               </span>
             )}
           </div>
@@ -715,7 +657,7 @@ function GuesthouseCard({
             }}
             className="px-3 py-2 bg-amber-500 hover:bg-amber-400 rounded-xl text-xs font-bold flex items-center gap-1 transition"
           >
-            View &amp; Book
+            {t('View & Book')}
 
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
@@ -728,6 +670,38 @@ function GuesthouseCard({
 // ============================================================
 // UNIQUE VERIFIED GUESTHOUSES
 // ============================================================
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeCityKey(value) {
+  return normalizeSearchText(value).replace(/[^a-z0-9]/g, "");
+}
+
+function canonicalizeCity(value) {
+  const label = String(value || "").trim();
+  const key = normalizeCityKey(label);
+
+  if (!key || key === "allcities") {
+    return key === "allcities" ? "All Cities" : "";
+  }
+
+  const aliases = {
+    addisabba: "Addis Ababa",
+    addisababa: "Addis Ababa",
+    awassa: "Hawassa",
+    hawassa: "Hawassa",
+    dessie: "Dessie",
+    desie: "Dessie",
+  };
+
+  return aliases[key] || label;
+}
 
 function uniqueVerifiedGuesthouses(
   list = []

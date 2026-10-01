@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { BedDouble, Plus, Trash2, CheckCircle2, ChevronLeft, ToggleLeft, ToggleRight, X, Edit } from 'lucide-react';
 
 export function RoomManage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [guesthouseId, setGuesthouseId] = useState(null);
   const [guesthouse, setGuesthouse] = useState(null);
@@ -61,7 +63,7 @@ export function RoomManage() {
     e.preventDefault();
 
     if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
-      alert('Your guesthouse is still pending approval. Please wait for admin approval before adding rooms.');
+      alert(t('Your guesthouse is still pending approval. Please wait for admin approval before adding rooms.'));
       return;
     }
 
@@ -87,7 +89,7 @@ export function RoomManage() {
 
  const handleToggleStatus = async (roomId, currentAvailable) => {
   if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
-    alert('Your guesthouse is still pending approval. Room management is locked until the property is approved.');
+    alert(t('Your guesthouse is still pending approval. Room management is locked until the property is approved.'));
     return;
   }
 
@@ -118,7 +120,7 @@ export function RoomManage() {
 
   const handleUpdateRoomClick = (room) => {
     if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
-      alert('Your guesthouse is still pending approval. Room updates are locked until approval is complete.');
+      alert(t('Your guesthouse is still pending approval. Room updates are locked until approval is complete.'));
       return;
     }
 
@@ -134,7 +136,7 @@ setUpdateAvailability(room.available === true);
   const handleUpdateRoom = async (e) => {
     e.preventDefault();
     if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
-      alert('Your guesthouse is still pending approval. Room updates are locked until admin approval.');
+      alert(t('Your guesthouse is still pending approval. Room updates are locked until admin approval.'));
       return;
     }
 
@@ -166,13 +168,13 @@ setUpdateAvailability(room.available === true);
         className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900"
       >
         <ChevronLeft className="w-4 h-4" />
-        <span>Back to Owner Dashboard</span>
+        <span>{t('Back to Owner Dashboard')}</span>
       </button>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-stone-900 tracking-tight">Room Inventory Management</h1>
-          <p className="text-xs text-stone-500">Configure room types, rates per night, and toggle live availability</p>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight">{t('Room Inventory Management')}</h1>
+          <p className="text-xs text-stone-500">{t('Configure room types, rates per night, and toggle live availability')}</p>
         </div>
 
         {String(guesthouse?.status || '').toUpperCase() === 'APPROVED' && (
@@ -181,24 +183,24 @@ setUpdateAvailability(room.available === true);
             className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New Room</span>
+            <span>{t('Add New Room')}</span>
           </button>
         )}
       </div>
 
       {String(guesthouse?.status || '').toUpperCase() !== 'APPROVED' && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900">
-          <strong className="font-bold">Approval required.</strong> Room management is locked until your guesthouse is approved by the admin team.
+          <strong className="font-bold">{t('Approval required.')}</strong> {t('Room management is locked until your guesthouse is approved by the admin team.')}
         </div>
       )}
 
       {/* Add Room Form */}
       {showForm && (
         <form onSubmit={handleAddRoom} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-md space-y-4 text-xs font-semibold">
-          <h3 className="text-base font-bold text-stone-900 border-b border-stone-100 pb-2">Add New Room</h3>
+          <h3 className="text-base font-bold text-stone-900 border-b border-stone-100 pb-2">{t('Add New Room')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Room Number</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Room Number')}</label>
               <input
                 type="text"
                 required
@@ -209,22 +211,22 @@ setUpdateAvailability(room.available === true);
               />
             </div>
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Room Type</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Room Type')}</label>
               <select
                 required
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
               >
-                <option value="SINGLE">Single Room</option>
-                <option value="DOUBLE">Double Room</option>
-                <option value="TWIN">Twin Room</option>
-                <option value="FAMILY">Family Room</option>
-                <option value="SUITE">Suite</option>
+                <option value="SINGLE">{t('Single Room')}</option>
+                <option value="DOUBLE">{t('Double Room')}</option>
+                <option value="TWIN">{t('Twin Room')}</option>
+                <option value="FAMILY">{t('Family Room')}</option>
+                <option value="SUITE">{t('Suite')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Max Guests</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Max Guests')}</label>
               <input
                 type="number"
                 required
@@ -234,7 +236,7 @@ setUpdateAvailability(room.available === true);
               />
             </div>
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Price per Night (ETB)</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Price per Night (ETB)')}</label>
               <input
                 type="number"
                 required
@@ -250,13 +252,13 @@ setUpdateAvailability(room.available === true);
               onClick={() => setShowForm(false)}
               className="px-4 py-2 bg-stone-100 text-stone-700 rounded-xl text-xs font-bold"
             >
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-amber-500 text-stone-950 font-bold rounded-xl text-xs shadow-xs"
             >
-              Save Room
+              {t('Save Room')}
             </button>
           </div>
         </form>
@@ -265,10 +267,10 @@ setUpdateAvailability(room.available === true);
       {/* Update Room Form */}
       {showUpdateForm && (
         <form onSubmit={handleUpdateRoom} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-md space-y-4 text-xs font-semibold">
-          <h3 className="text-base font-bold text-stone-900 border-b border-stone-100 pb-2">Update Room</h3>
+          <h3 className="text-base font-bold text-stone-900 border-b border-stone-100 pb-2">{t('Update Room')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Room Number</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Room Number')}</label>
               <input
                 type="text"
                 required
@@ -279,22 +281,22 @@ setUpdateAvailability(room.available === true);
               />
             </div>
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Room Type</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Room Type')}</label>
               <select
                 required
                 value={updateType}
                 onChange={(e) => setUpdateType(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white"
               >
-                <option value="SINGLE">Single Room</option>
-                <option value="DOUBLE">Double Room</option>
-                <option value="TWIN">Twin Room</option>
-                <option value="FAMILY">Family Room</option>
-                <option value="SUITE">Suite</option>
+                <option value="SINGLE">{t('Single Room')}</option>
+                <option value="DOUBLE">{t('Double Room')}</option>
+                <option value="TWIN">{t('Twin Room')}</option>
+                <option value="FAMILY">{t('Family Room')}</option>
+                <option value="SUITE">{t('Suite')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Max Guests</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Max Guests')}</label>
               <input
                 type="number"
                 required
@@ -304,7 +306,7 @@ setUpdateAvailability(room.available === true);
               />
             </div>
             <div>
-              <label className="block text-stone-700 uppercase mb-1">Price per Night (ETB)</label>
+              <label className="block text-stone-700 uppercase mb-1">{t('Price per Night (ETB)')}</label>
               <input
                 type="number"
                 required
@@ -323,7 +325,7 @@ setUpdateAvailability(room.available === true);
               className="w-4 h-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500"
             />
             <label htmlFor="updateAvailability" className="text-stone-700">
-              Room is available for booking
+              {t('Room is available for booking')}
             </label>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -340,13 +342,13 @@ setUpdateAvailability(room.available === true);
               }}
               className="px-4 py-2 bg-stone-100 text-stone-700 rounded-xl text-xs font-bold"
             >
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white font-bold rounded-xl text-xs shadow-xs"
             >
-              Update Room
+              {t('Update Room')}
             </button>
           </div>
         </form>
@@ -358,12 +360,12 @@ setUpdateAvailability(room.available === true);
           <table className="w-full text-left text-xs font-medium">
             <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider">
               <tr>
-                <th className="px-6 py-3.5">Room No.</th>
-                <th className="px-6 py-3.5">Type</th>
-                <th className="px-6 py-3.5">Capacity</th>
-                <th className="px-6 py-3.5">Nightly Rate</th>
-                <th className="px-6 py-3.5">Status</th>
-                <th className="px-6 py-3.5 text-right">Actions</th>
+                <th className="px-6 py-3.5">{t('Room No.')}</th>
+                <th className="px-6 py-3.5">{t('Type')}</th>
+                <th className="px-6 py-3.5">{t('Capacity')}</th>
+                <th className="px-6 py-3.5">{t('Nightly Rate')}</th>
+                <th className="px-6 py-3.5">{t('Status')}</th>
+                <th className="px-6 py-3.5 text-right">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-stone-800">
@@ -391,20 +393,20 @@ setUpdateAvailability(room.available === true);
                         className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold rounded-lg text-xs flex items-center gap-1"
                       >
                         <Edit className="w-3 h-3" />
-                        Update
+                        {t('Update')}
                       </button>
                       <button
   onClick={() => handleToggleStatus(room.id, room.available)}
   className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-lg text-xs"
 >
-  Toggle Availability
+  {t('Toggle Availability')}
 </button>
                       <button
                         onClick={() => handleDeleteRoom(room.id)}
                         className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-bold rounded-lg text-xs flex items-center gap-1"
                       >
                         <Trash2 className="w-3 h-3" />
-                        Delete
+                        {t('Delete')}
                       </button>
                     </div>
                   </td>

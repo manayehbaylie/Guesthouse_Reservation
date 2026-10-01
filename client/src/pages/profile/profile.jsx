@@ -3,9 +3,11 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import ApiService from "../../services/api.js";
 import { User, Mail, ShieldCheck, Save, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export function Profile() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const role = String(user?.role || "USER").toUpperCase();
@@ -47,14 +49,14 @@ export function Profile() {
       phone: user?.phone || "",
     });
 
-    setMessage("Profile information updated successfully.");
+    setMessage(t('Profile information updated successfully.'));
 
     console.log("Updated user:", updatedUser);
   } catch (err) {
     console.error("Profile update error:", err);
 
     setError(
-      err?.message || "Failed to update profile."
+      err?.message || t('Failed to update profile.')
     );
   } finally {
     setLoading(false);
@@ -79,15 +81,15 @@ export function Profile() {
                      transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
+          {t('Back to Dashboard')}
         </button>
 
         <h1 className="text-2xl font-bold text-stone-900">
-          Update Profile
+          {t('Update Profile')}
         </h1>
 
         <p className="text-sm text-stone-500 mt-1">
-          Update your {roleLabel.toLowerCase()} account information.
+          {t('Update your account information')}
         </p>
       </div>
 

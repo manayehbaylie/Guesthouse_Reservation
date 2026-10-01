@@ -365,6 +365,23 @@ export async function updateOwnerProfile(
       phone,
     };
 
+    if (phone !== undefined) {
+      const phoneOwner = await prisma.user.findFirst({
+        where: {
+          phone: String(phone).trim(),
+          id: { not: userId },
+        },
+        select: { id: true },
+      });
+
+      if (phoneOwner) {
+        return res.status(409).json({
+          success: false,
+          message: "This phone number is already in use.",
+        });
+      }
+    }
+
     if (password?.trim()) {
       data.password =
         await bcrypt.hash(
@@ -392,6 +409,15 @@ export async function updateOwnerProfile(
       "UPDATE OWNER PROFILE ERROR:",
       error
     );
+
+    if (error?.code === "P2002") {
+      return res.status(409).json({
+        success: false,
+        message: error.meta?.target?.includes("phone")
+          ? "This phone number is already in use."
+          : "This information is already in use.",
+      });
+    }
 
     return res.status(500).json({
       success: false,

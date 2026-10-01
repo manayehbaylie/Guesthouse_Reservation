@@ -33,7 +33,8 @@ export const getAll = async (req, res, next) => {
     const rooms = await getAllRooms(
       guesthouseId,
       req.query.checkIn,
-      req.query.checkOut
+      req.query.checkOut,
+      req.query.forBooking === "true"
     );
 
     successResponse(

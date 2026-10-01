@@ -46,9 +46,18 @@ export const errorHandler = (
 
   // Handle Prisma errors
   if (err.code === 'P2002') {
-    return res.status(400).json({
+    const fields = Array.isArray(err.meta?.target)
+      ? err.meta.target
+      : [];
+    const message = fields.includes('phone')
+      ? 'This phone number is already in use.'
+      : fields.includes('email')
+        ? 'This email address is already in use.'
+        : 'A record with this information already exists';
+
+    return res.status(409).json({
       success: false,
-      message: 'A record with this information already exists',
+      message,
     });
   }
 

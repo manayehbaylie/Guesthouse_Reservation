@@ -1,6 +1,9 @@
 import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
 import axios from "axios";
+import { calculateNights, parseDateOnly } from "../utils/date.utils.js";
+import { getBankAccountValidationError } from "../validators/payment.validator.js";
+import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
 
 // ============================================================
 // CONFIGURATION
@@ -36,6 +39,9 @@ const ETHIOPIAN_BANKS = [
   "Zemen Bank",
   "Dashen Bank",
   "PRIDE Microfinance",
+  "Hibret Bank",
+  "Oromia Bank",
+  "Wegagen Bank",
 ];
 
 // ============================================================
@@ -96,8 +102,8 @@ const calculateReservationAmount = (reservation) => {
     throw new Error("Room not found.");
   }
 
-  const checkIn = new Date(reservation.checkIn);
-  const checkOut = new Date(reservation.checkOut);
+  const checkIn = parseDateOnly(reservation.checkIn);
+  const checkOut = parseDateOnly(reservation.checkOut);
 
   if (
     Number.isNaN(checkIn.getTime()) ||
@@ -112,12 +118,9 @@ const calculateReservationAmount = (reservation) => {
     );
   }
 
-  const millisecondsPerDay =
-    1000 * 60 * 60 * 24;
-
-  const nights = Math.ceil(
-    (checkOut.getTime() - checkIn.getTime()) /
-      millisecondsPerDay
+  const nights = calculateNights(
+    reservation.checkIn,
+    reservation.checkOut
   );
 
   const roomPrice = Number(
@@ -250,31 +253,14 @@ const validateReservationForPayment = async (
     );
   }
 
-  const overlappingReservation =
-    await prisma.reservation.findFirst({
-      where: {
-        roomId: reservation.roomId,
-
-        id: {
-          not: reservation.id,
-        },
-
-        status: {
-          in: [
-            "CONFIRMED",
-            "CHECKED_IN",
-          ],
-        },
-
-        checkIn: {
-          lt: reservation.checkOut,
-        },
-
-        checkOut: {
-          gt: reservation.checkIn,
-        },
-      },
-    });
+  const overlappingReservation = await prisma.reservation.findFirst({
+    where: reservationOverlapWhere(
+      reservation.roomId,
+      reservation.checkIn,
+      reservation.checkOut,
+      reservation.id
+    ),
+  });
 
   if (overlappingReservation) {
     throw new Error(
@@ -776,13 +762,81 @@ const notifyPaymentFailed = async (
 
     message:
       `Payment for Reservation #${reservation.id} ` +
-      `was not successful. The reservation remains pending.`,
+      `was not successful. The reservation was cancelled.`,
 
     userId:
       reservation.guestId,
 
     category: "payment",
   });
+};
+
+export const cancelPendingReservation = async (reservationId) => {
+  const id = Number(reservationId);
+  if (!Number.isInteger(id) || id <= 0) return false;
+
+  const reservation = await prisma.reservation.findUnique({
+    where: { id },
+    include: { payment: { select: { status: true } } },
+  });
+
+  if (
+    !reservation ||
+    reservation.status !== "PENDING" ||
+    reservation.payment?.status === "PENDING"
+  ) {
+    return false;
+  }
+
+  const result = await prisma.reservation.updateMany({
+    where: { id, status: "PENDING" },
+    data: { status: "CANCELLED" },
+  });
+
+  return result.count === 1;
+};
+
+const failPaymentAndCancelReservation = async (paymentId) => {
+  const id = Number(paymentId);
+  const failure = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Payment" WHERE "id" = ${id} FOR UPDATE`;
+
+    const payment = await tx.payment.findUnique({
+      where: { id },
+      include: { reservation: true },
+    });
+
+    if (!payment) {
+      throw new Error("Payment not found.");
+    }
+
+    if (payment.status === "PAID") {
+      return { changed: false, reservation: null };
+    }
+
+    const changed = payment.status === "PENDING";
+    if (changed) {
+      await tx.payment.update({
+        where: { id },
+        data: { status: "FAILED" },
+      });
+    }
+
+    if (payment.reservation.status === "PENDING") {
+      await tx.reservation.update({
+        where: { id: payment.reservationId },
+        data: { status: "CANCELLED" },
+      });
+    }
+
+    return { changed, reservation: payment.reservation };
+  });
+
+  if (failure.changed && failure.reservation) {
+    await notifyPaymentFailed(failure.reservation);
+  }
+
+  return prisma.payment.findUnique({ where: { id } });
 };
 
 // ============================================================
@@ -863,14 +917,13 @@ export const createPayment = async (
         data.accountNumber || ""
       ).trim();
 
-    if (
-      !/^[0-9]{6,20}$/.test(
-        accountNumber
-      )
-    ) {
-      throw new Error(
-        "Account number must contain 6 to 20 digits."
-      );
+    const accountNumberError = getBankAccountValidationError(
+      bankName,
+      accountNumber
+    );
+
+    if (accountNumberError) {
+      throw new Error(accountNumberError);
     }
   }
 
@@ -986,14 +1039,13 @@ export const initiatePayment = async ({
         accountNumber || ""
       ).trim();
 
-    if (
-      !/^[0-9]{6,20}$/.test(
-        acc
-      )
-    ) {
-      throw new Error(
-        "Account number must contain 6 to 20 digits."
-      );
+    const accountNumberError = getBankAccountValidationError(
+      selectedBank,
+      acc
+    );
+
+    if (accountNumberError) {
+      throw new Error(accountNumberError);
     }
   }
 
@@ -1125,25 +1177,13 @@ export const initiatePayment = async ({
       );
 
       try {
-        await prisma.payment.update({
-          where: {
-            id: payment.id,
-          },
-
-          data: {
-            status: "FAILED",
-          },
-        });
+        await failPaymentAndCancelReservation(payment.id);
       } catch (dbError) {
         console.error(
-          "Could not update failed payment:",
+          "Could not cancel failed payment reservation:",
           dbError
         );
       }
-
-      await notifyPaymentFailed(
-        reservation
-      );
 
       throw error;
     }
@@ -1201,6 +1241,8 @@ export const markPaymentAsPaid =
     const result =
       await prisma.$transaction(
         async (tx) => {
+          await tx.$queryRaw`SELECT "id" FROM "Payment" WHERE "id" = ${id} FOR UPDATE`;
+
           const payment =
             await tx.payment.findUnique(
               {
@@ -1278,6 +1320,8 @@ export const markPaymentAsPaid =
             );
           }
 
+          await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id" = ${reservation.roomId} FOR UPDATE`;
+
           if (
             reservation.status !==
             "PENDING"
@@ -1307,37 +1351,14 @@ export const markPaymentAsPaid =
             );
           }
 
-          const overlapping =
-            await tx.reservation.findFirst(
-              {
-                where: {
-                  roomId:
-                    reservation.roomId,
-
-                  id: {
-                    not:
-                      reservation.id,
-                  },
-
-                  status: {
-                    in: [
-                      "CONFIRMED",
-                      "CHECKED_IN",
-                    ],
-                  },
-
-                  checkIn: {
-                    lt:
-                      reservation.checkOut,
-                  },
-
-                  checkOut: {
-                    gt:
-                      reservation.checkIn,
-                  },
-                },
-              }
-            );
+          const overlapping = await tx.reservation.findFirst({
+            where: reservationOverlapWhere(
+              reservation.roomId,
+              reservation.checkIn,
+              reservation.checkOut,
+              reservation.id
+            ),
+          });
 
           if (overlapping) {
             throw new Error(
@@ -1464,15 +1485,14 @@ export const processChapaCallback = async (payload = {}) => {
     return markPaymentAsPaid(payment.id);
   }
 
-  const failed = ['failed', 'cancelled', 'canceled'].includes(
-    verification.status.toLowerCase()
+  const verificationStatusTokens =
+    verification.status.toLowerCase().match(/[a-z]+/g) || [];
+  const failed = verificationStatusTokens.some((status) =>
+    ['failed', 'cancelled', 'canceled', 'expired'].includes(status)
   );
 
-  if (failed && payment.status === 'PENDING') {
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'FAILED' },
-    });
+  if (failed && payment.status !== 'PAID') {
+    await failPaymentAndCancelReservation(payment.id);
   }
 
   return prisma.payment.findUnique({
@@ -1498,6 +1518,14 @@ export const getChapaPaymentStatus = async (guestId, txRef) => {
 
   if (!payment) {
     throw new Error('Payment not found.');
+  }
+
+  if (payment.status === 'FAILED') {
+    await cancelPendingReservation(payment.reservationId);
+    return prisma.payment.findUnique({
+      where: { id: payment.id },
+      include: { reservation: true },
+    });
   }
 
   if (payment.status === 'PENDING') {
@@ -1591,22 +1619,7 @@ export const updatePaymentStatus =
       normalizedStatus ===
       "FAILED"
     ) {
-      const updatedPayment =
-        await prisma.payment.update({
-          where: {
-            id: paymentId,
-          },
-
-          data: {
-            status: "FAILED",
-          },
-        });
-
-      await notifyPaymentFailed(
-        payment.reservation
-      );
-
-      return updatedPayment;
+      return await failPaymentAndCancelReservation(paymentId);
     }
 
     if (

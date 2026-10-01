@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { ApiService } from '../../services/api.js';
 import { DashboardLayout } from '../../components/DashboardLayout.jsx';
 import {
@@ -24,8 +25,51 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+const BANK_ACCOUNT_RULES = {
+  CBE: {
+    pattern: /^1000\d{9}$/,
+    error: 'CBE account number must be exactly 13 digits and start with 1000.',
+  },
+  'Awash Bank': {
+    pattern: /^\d{14}$/,
+    hint: 'Enter exactly 14 digits.',
+    error: 'Awash Bank account number must be exactly 14 digits.',
+  },
+  'Dashen Bank': {
+    pattern: /^\d{8,16}$/,
+    hint: 'Enter 8 to 16 digits.',
+    error: 'Dashen Bank account number must contain 8 to 16 digits.',
+  },
+  'Hibret Bank': {
+    pattern: /^\d{8,16}$/,
+    hint: 'Enter 8 to 16 digits.',
+    error: 'Hibret Bank account number must contain 8 to 16 digits.',
+  },
+  'Oromia Bank': {
+    pattern: /^\d{8,16}$/,
+    hint: 'Enter 8 to 16 digits.',
+    error: 'Oromia Bank account number must contain 8 to 16 digits.',
+  },
+  'Wegagen Bank': {
+    pattern: /^(\d{8}|\d{13})$/,
+    hint: 'Enter exactly 8 or 13 digits.',
+    error: 'Wegagen Bank account number must be exactly 8 or 13 digits.',
+  },
+  'Zemen Bank': {
+    pattern: /^\d{8,16}$/,
+    hint: 'Enter 8 to 16 digits.',
+    error: 'Zemen Bank account number must contain 8 to 16 digits.',
+  },
+  'Bank of Abyssinia': {
+    pattern: /^\d{9}$/,
+    hint: 'Enter exactly 9 digits.',
+    error: 'Bank of Abyssinia account number must be exactly 9 digits.',
+  },
+};
+
 export default function GuestDashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -132,35 +176,39 @@ export default function GuestDashboard() {
     setSubmitting(true);
 
     if (!pendingBooking) {
-      setPaymentError('No booking found to complete.');
+      setPaymentError(t('No booking found to complete.'));
       setSubmitting(false);
       return;
     }
 
     if (!paymentMethod) {
-      setPaymentError('Please select a payment method.');
+      setPaymentError(t('Please select a payment method.'));
       setSubmitting(false);
       return;
     }
 
     if (paymentMethod === 'telebirr' && !phone) {
-      setPaymentError('Please enter your phone number for Telebirr.');
+      setPaymentError(t('Please enter your phone number for Telebirr.'));
       setSubmitting(false);
       return;
     }
 
     if (paymentMethod === 'bank_transfer') {
       if (!bankName) {
-        setPaymentError('Please select your bank.');
+        setPaymentError(t('Please select your bank.'));
         setSubmitting(false);
         return;
       }
 
-      if (!/^\d{6,20}$/.test(accountNumber.trim())) {
+      const accountDigits = accountNumber.trim();
+      const accountRule = BANK_ACCOUNT_RULES[bankName];
+      const hasValidFormat = accountRule?.pattern.test(accountDigits);
+
+      if (!accountDigits || !hasValidFormat) {
         setPaymentError(
-          accountNumber.trim()
-            ? 'Account number must contain 6 to 20 digits.'
-            : 'Please enter your bank account number.'
+          accountDigits
+            ? t(accountRule?.error || 'Please select a supported bank.')
+            : t('Please enter your bank account number.')
         );
         setSubmitting(false);
         return;
@@ -187,19 +235,13 @@ export default function GuestDashboard() {
         return;
       }
 
-      setPaymentSuccess('Payment checkout is ready. Please complete payment to confirm your booking.');
-      sessionStorage.removeItem('pendingReservation');
-      
-      setTimeout(() => {
-        setShowPayment(false);
-        setPendingBooking(null);
-        loadDashboardData();
-        navigate('/reservations');
-      }, 2000);
+      throw new Error(
+        t('Payment checkout could not be started. Your reservation is not confirmed.')
+      );
 
     } catch (error) {
       console.error('Payment error:', error);
-      setPaymentError(error?.message || 'Failed to complete booking. Please try again.');
+      setPaymentError(error?.message || t('Failed to complete booking. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -242,7 +284,7 @@ export default function GuestDashboard() {
       checked_out: 'Completed',
       cancelled: 'Cancelled',
     };
-    return statusMap[status?.toLowerCase()] || status || 'Unknown';
+    return t(statusMap[status?.toLowerCase()] || status || 'Unknown');
   };
 
   if (loading) {
@@ -251,7 +293,7 @@ export default function GuestDashboard() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
-            <p className="mt-4 text-base text-stone-500">Loading your dashboard...</p>
+            <p className="mt-4 text-base text-stone-500">{t('Loading your dashboard...')}</p>
           </div>
         </div>
       </DashboardLayout>
@@ -270,50 +312,50 @@ export default function GuestDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Wallet className="w-6 h-6 text-amber-500" />
-                <h2 className="text-xl font-black text-stone-900">Complete Your Booking</h2>
+                <h2 className="text-xl font-black text-stone-900">{t('Complete Your Booking')}</h2>
               </div>
               <button
                 onClick={handleCancelBooking}
                 className="text-sm text-red-500 hover:text-red-600 font-semibold transition"
               >
-                Cancel
+                {t('Cancel')}
               </button>
             </div>
             
             <p className="text-stone-500 mb-4">
-              Please complete your payment to confirm the reservation.
+              {t('Please complete your payment to confirm the reservation.')}
             </p>
 
             {/* Booking Summary */}
             <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 mb-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-xs text-stone-500">Guesthouse</p>
+                  <p className="text-xs text-stone-500">{t('Guesthouse')}</p>
                   <p className="font-bold text-stone-900 text-sm">
-                    {pendingBooking.guesthouse?.name || 'Guesthouse'}
+                    {pendingBooking.guesthouse?.name || t('Guesthouse')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-stone-500">Room</p>
+                  <p className="text-xs text-stone-500">{t('Room')}</p>
                   <p className="font-bold text-stone-900 text-sm">
-                    Room {pendingBooking.room?.roomNumber || pendingBooking.roomId}
+                    {t('Room {{number}}', { number: pendingBooking.room?.roomNumber || pendingBooking.roomId })}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-stone-500">Dates</p>
+                  <p className="text-xs text-stone-500">{t('Dates')}</p>
                   <p className="font-bold text-stone-900 text-sm">
                     {pendingBooking.checkInDate} → {pendingBooking.checkOutDate}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-stone-500">Guests</p>
+                  <p className="text-xs text-stone-500">{t('Guests')}</p>
                   <p className="font-bold text-stone-900 text-sm">
-                    {pendingBooking.numberOfGuests || 1} guest
+                    {t('{{count}} guest', { count: pendingBooking.numberOfGuests || 1 })}
                   </p>
                 </div>
               </div>
               <div className="mt-3 pt-3 border-t border-stone-200 flex justify-between">
-                <span className="text-stone-500">Total Amount</span>
+                <span className="text-stone-500">{t('Total Amount')}</span>
                 <span className="text-xl font-black text-amber-500">
                   {pendingBooking.totalPrice?.toLocaleString() || 0} ETB
                 </span>
@@ -329,7 +371,7 @@ export default function GuestDashboard() {
 
             {/* Payment Methods */}
             <div className="space-y-3">
-              <p className="text-sm font-bold text-stone-900">Select Payment Method</p>
+              <p className="text-sm font-bold text-stone-900">{t('Select Payment Method')}</p>
               
               {/* Telebirr */}
               <div
@@ -351,7 +393,7 @@ export default function GuestDashboard() {
                   </div>
                   <div>
                     <p className="font-bold text-stone-900">Telebirr</p>
-                    <p className="text-xs text-stone-500">Pay using your Telebirr mobile account</p>
+                    <p className="text-xs text-stone-500">{t('Pay using your Telebirr mobile account')}</p>
                   </div>
                   <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     paymentMethod === 'telebirr' ? 'border-amber-500 bg-amber-500' : 'border-stone-300'
@@ -381,7 +423,7 @@ export default function GuestDashboard() {
                   </div>
                   <div>
                     <p className="font-bold text-stone-900">Card</p>
-                    <p className="text-xs text-stone-500">Pay securely by card</p>
+                    <p className="text-xs text-stone-500">{t('Pay securely by card')}</p>
                   </div>
                   <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     paymentMethod === 'card' ? 'border-amber-500 bg-amber-500' : 'border-stone-300'
@@ -411,7 +453,7 @@ export default function GuestDashboard() {
                   </div>
                   <div>
                     <p className="font-bold text-stone-900">Bank Transfer</p>
-                    <p className="text-xs text-stone-500">Transfer from any Ethiopian bank account</p>
+                    <p className="text-xs text-stone-500">{t('Transfer from any Ethiopian bank account')}</p>
                   </div>
                   <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     paymentMethod === 'bank_transfer' ? 'border-amber-500 bg-amber-500' : 'border-stone-300'
@@ -426,7 +468,7 @@ export default function GuestDashboard() {
             {paymentMethod === 'telebirr' && (
               <div className="mt-4 p-4 bg-stone-50 rounded-xl border border-stone-200">
                 <label className="block text-sm font-bold text-stone-900 mb-1.5">
-                  Mobile Number for Confirmation
+                  {t('Mobile Number for Confirmation')}
                 </label>
                 <input
                   type="tel"
@@ -439,7 +481,7 @@ export default function GuestDashboard() {
                   className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm bg-white"
                 />
                 <p className="text-xs text-stone-500 mt-1">
-                  Enter the phone number connected to your Telebirr account.
+                  {t('Enter the phone number connected to your Telebirr account.')}
                 </p>
               </div>
             )}
@@ -448,7 +490,7 @@ export default function GuestDashboard() {
               <div className="mt-4 space-y-3">
                 <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
                   <label className="block text-sm font-bold text-stone-900 mb-1.5">
-                    Bank Name
+                    {t('Bank Name')}
                   </label>
                   <select
                     value={bankName}
@@ -458,7 +500,7 @@ export default function GuestDashboard() {
                     }}
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm bg-white"
                   >
-                    <option value="">Select Bank</option>
+                    <option value="">{t('Select Bank')}</option>
                     <option value="CBE">Commercial Bank of Ethiopia (CBE)</option>
                     <option value="Awash Bank">Awash Bank</option>
                     <option value="Dashen Bank">Dashen Bank</option>
@@ -471,16 +513,18 @@ export default function GuestDashboard() {
                 </div>
                 <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
                   <label className="block text-sm font-bold text-stone-900 mb-1.5">
-                    Account Number
+                    {t('Account Number')}
                   </label>
                   <input
                     type="text"
                     value={accountNumber}
                     onChange={(e) => {
-                      setAccountNumber(e.target.value);
+                      setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 16));
                       setPaymentError('');
                     }}
-                    placeholder="Enter your bank account number"
+                    inputMode="numeric"
+                    maxLength={16}
+                    placeholder={t('Enter your bank account number')}
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm bg-white"
                   />
                 </div>
@@ -497,12 +541,12 @@ export default function GuestDashboard() {
                 {submitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
-                    Processing...
+                    {t('Processing...')}
                   </>
                 ) : (
                   <>
                     <Wallet className="w-4 h-4" />
-                    Confirm & Pay {pendingBooking.totalPrice?.toLocaleString() || 0} ETB
+                    {t('Confirm & Pay {{amount}} ETB', { amount: pendingBooking.totalPrice?.toLocaleString() || 0 })}
                   </>
                 )}
               </button>
@@ -521,7 +565,7 @@ export default function GuestDashboard() {
             <div className="mt-4 flex items-start gap-3 text-sm text-stone-500">
               <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-500" />
               <span>
-                Your booking information is securely processed and the room availability is checked before confirmation.
+                {t('Your booking information is securely processed and the room availability is checked before confirmation.')}
               </span>
             </div>
           </div>
@@ -535,65 +579,89 @@ export default function GuestDashboard() {
             {/* WELCOME SECTION */}
             <div className="mb-8">
               <h1 className="text-3xl font-black text-stone-900">
-                Welcome back, {user?.name?.split(' ')[0] || 'Guest'}! 👋
+                {t('Welcome back, {{name}}!', { name: user?.name?.split(' ')[0] || t('Guest') })} 👋
               </h1>
               <p className="text-stone-500 mt-1">
-                Here's an overview of your stays and bookings
+                {t("Here's an overview of your stays and bookings")}
               </p>
             </div>
 
             {/* STATS CARDS */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+              <Link
+                to="/reservations"
+                aria-label={t('View bookings: {{count}} total bookings', { count: stats.totalBookings })}
+                className="group block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              >
+              <div className="h-full rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:scale-[1.02] group-hover:border-stone-950 group-hover:bg-stone-950 group-hover:shadow-xl group-hover:shadow-stone-950/25 group-active:translate-y-0 group-active:scale-[0.98] group-active:bg-stone-900 motion-reduce:transform-none motion-reduce:transition-none">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-stone-500">Total Bookings</span>
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm text-stone-500 transition-colors group-hover:text-white/75">{t('Total Bookings')}</span>
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center transition-colors group-hover:bg-amber-100">
+                    <Calendar className="w-5 h-5 text-blue-600 transition-colors group-hover:text-amber-700" />
                   </div>
                 </div>
-                <p className="text-3xl font-black text-stone-900">{stats.totalBookings}</p>
+                <p className="text-3xl font-black text-stone-900 transition-colors group-hover:text-white">{stats.totalBookings}</p>
               </div>
+              </Link>
 
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+              <Link
+                to="/reservations"
+                aria-label={t('View upcoming stays: {{count}}', { count: stats.upcomingStays })}
+                className="group block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              >
+              <div className="h-full rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:scale-[1.02] group-hover:border-stone-950 group-hover:bg-stone-950 group-hover:shadow-xl group-hover:shadow-stone-950/25 group-active:translate-y-0 group-active:scale-[0.98] group-active:bg-stone-900 motion-reduce:transform-none motion-reduce:transition-none">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-stone-500">Upcoming Stays</span>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-emerald-600" />
+                  <span className="text-sm text-stone-500 transition-colors group-hover:text-white/75">{t('Upcoming Stays')}</span>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center transition-colors group-hover:bg-amber-100">
+                    <Clock className="w-5 h-5 text-emerald-600 transition-colors group-hover:text-amber-700" />
                   </div>
                 </div>
-                <p className="text-3xl font-black text-stone-900">{stats.upcomingStays}</p>
+                <p className="text-3xl font-black text-stone-900 transition-colors group-hover:text-white">{stats.upcomingStays}</p>
               </div>
+              </Link>
 
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+              <Link
+                to="/reservations"
+                aria-label={t('View bookings and payments: {{amount}} ETB spent', { amount: stats.totalSpent.toLocaleString() })}
+                className="group block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              >
+              <div className="h-full rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:scale-[1.02] group-hover:border-stone-950 group-hover:bg-stone-950 group-hover:shadow-xl group-hover:shadow-stone-950/25 group-active:translate-y-0 group-active:scale-[0.98] group-active:bg-stone-900 motion-reduce:transform-none motion-reduce:transition-none">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-stone-500">Total Spent</span>
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-amber-600" />
+                  <span className="text-sm text-stone-500 transition-colors group-hover:text-white/75">{t('Total Spent')}</span>
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center transition-colors group-hover:bg-amber-200">
+                    <Wallet className="w-5 h-5 text-amber-600 transition-transform group-hover:-translate-y-0.5" />
                   </div>
                 </div>
                 <p className="text-3xl font-black text-amber-600">
                   {stats.totalSpent.toLocaleString()} ETB
                 </p>
               </div>
+              </Link>
 
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+              <Link
+                to="/reservations"
+                aria-label={t('View bookings: {{count}} nights stayed', { count: stats.totalNights })}
+                className="group block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              >
+              <div className="h-full rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:scale-[1.02] group-hover:border-stone-950 group-hover:bg-stone-950 group-hover:shadow-xl group-hover:shadow-stone-950/25 group-active:translate-y-0 group-active:scale-[0.98] group-active:bg-stone-900 motion-reduce:transform-none motion-reduce:transition-none">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-stone-500">Nights Stayed</span>
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                    <Bed className="w-5 h-5 text-purple-600" />
+                  <span className="text-sm text-stone-500 transition-colors group-hover:text-white/75">{t('Nights Stayed')}</span>
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center transition-colors group-hover:bg-amber-100">
+                    <Bed className="w-5 h-5 text-purple-600 transition-colors group-hover:text-amber-700" />
                   </div>
                 </div>
-                <p className="text-3xl font-black text-stone-900">{stats.totalNights}</p>
+                <p className="text-3xl font-black text-stone-900 transition-colors group-hover:text-white">{stats.totalNights}</p>
               </div>
+              </Link>
             </div>
 
             {/* UPCOMING STAYS */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-black text-stone-900">Upcoming Stays</h2>
+                <h2 className="text-xl font-black text-stone-900">{t('Upcoming Stays')}</h2>
                 {upcomingBookings.length > 0 && (
                   <Link to="/reservations" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                    View All →
+                    {t('View All')} →
                   </Link>
                 )}
               </div>
@@ -603,13 +671,13 @@ export default function GuestDashboard() {
                   <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
                     <Calendar className="w-8 h-8 text-stone-400" />
                   </div>
-                  <p className="text-stone-500 font-medium">No upcoming stays</p>
-                  <p className="text-sm text-stone-400 mt-1">Book a guesthouse to start your journey</p>
+                  <p className="text-stone-500 font-medium">{t('No upcoming stays')}</p>
+                  <p className="text-sm text-stone-400 mt-1">{t('Book a guesthouse to start your journey')}</p>
                   <Link
                     to="/guest/search"
                     className="mt-4 inline-block px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl text-sm transition"
                   >
-                    Start Exploring
+                    {t('Start Exploring')}
                   </Link>
                 </div>
               ) : (
@@ -635,21 +703,21 @@ export default function GuestDashboard() {
 
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
-                          <p className="text-stone-500">Room</p>
+                          <p className="text-stone-500">{t('Room')}</p>
                           <p className="font-semibold text-stone-900">
                             {booking.roomNumber} ({booking.roomType})
                           </p>
                         </div>
                         <div>
-                          <p className="text-stone-500">Nights</p>
+                          <p className="text-stone-500">{t('Nights')}</p>
                           <p className="font-semibold text-stone-900">{booking.nightsCount}</p>
                         </div>
                         <div>
-                          <p className="text-stone-500">Check-in</p>
+                          <p className="text-stone-500">{t('Check-in')}</p>
                           <p className="font-semibold text-stone-900">{booking.checkInDate}</p>
                         </div>
                         <div>
-                          <p className="text-stone-500">Check-out</p>
+                          <p className="text-stone-500">{t('Check-out')}</p>
                           <p className="font-semibold text-stone-900">{booking.checkOutDate}</p>
                         </div>
                       </div>
@@ -662,7 +730,7 @@ export default function GuestDashboard() {
                           to={`/reservations/${booking.id}`}
                           className="text-sm font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1"
                         >
-                          Details <ChevronRight className="w-4 h-4" />
+                          {t('Details')} <ChevronRight className="w-4 h-4" />
                         </Link>
                       </div>
                     </div>
@@ -674,22 +742,22 @@ export default function GuestDashboard() {
             {/* SELECTED GUESTHOUSE */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-black text-stone-900">Your Guesthouse</h2>
+                <h2 className="text-xl font-black text-stone-900">{t('Your Guesthouse')}</h2>
                 <Link to="/guest/search" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                  Change guesthouse →
+                  {t('Change guesthouse')} →
                 </Link>
               </div>
 
               {!selectedGuesthouse ? (
                 <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center shadow-sm">
                   <Building2 className="w-12 h-12 text-stone-400 mx-auto mb-3" />
-                  <p className="font-semibold text-stone-700">No guesthouse selected</p>
-                  <p className="mt-1 text-sm text-stone-500">Choose a guesthouse to personalize your dashboard.</p>
+                  <p className="font-semibold text-stone-700">{t('No guesthouse selected')}</p>
+                  <p className="mt-1 text-sm text-stone-500">{t('Choose a guesthouse to personalize your dashboard.')}</p>
                   <Link
                     to="/guest/search"
                     className="mt-4 inline-block rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-400"
                   >
-                    Find a guesthouse
+                    {t('Find a guesthouse')}
                   </Link>
                 </div>
               ) : (
@@ -699,10 +767,21 @@ export default function GuestDashboard() {
                       <Building2 className="h-6 w-6 text-amber-600" />
                     </div>
                     <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                        {selectedGuesthouse.city || 'Ethiopia'}
+                      </p>
                       <h3 className="text-lg font-black text-stone-900">{selectedGuesthouse.name}</h3>
                       <p className="flex items-center gap-1 text-sm text-stone-500">
                         <MapPin className="h-3.5 w-3.5" />
-                        {selectedGuesthouse.city || selectedGuesthouse.location || 'Ethiopia'}
+                        {[
+                          selectedGuesthouse.subCity,
+                          selectedGuesthouse.address || selectedGuesthouse.location,
+                          selectedGuesthouse.woreda,
+                        ]
+                          .map((part) => String(part || '').trim())
+                          .filter(Boolean)
+                          .filter((part, index, parts) => parts.indexOf(part) === index)
+                          .join(', ') || 'Location unavailable'}
                       </p>
                     </div>
                   </div>
@@ -715,15 +794,15 @@ export default function GuestDashboard() {
               <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 text-amber-500" />
-                  <h2 className="font-bold text-stone-900">Your Reviews</h2>
+                  <h2 className="font-bold text-stone-900">{t('Your Reviews')}</h2>
                 </div>
                 <Link to="/guest/reviews" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                  Write a Review
+                  {t('Write a Review')}
                 </Link>
               </div>
               <div className="space-y-3 p-6">
                 {myReviews.length === 0 ? (
-                  <p className="text-sm text-stone-500">You have not submitted a review yet.</p>
+                  <p className="text-sm text-stone-500">{t('You have not submitted a review yet.')}</p>
                 ) : (
                   myReviews.slice(0, 3).map((review) => (
                     <div key={review.id} className="rounded-xl border border-stone-100 bg-stone-50 p-4">
@@ -752,10 +831,10 @@ export default function GuestDashboard() {
               <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-amber-500" />
-                  <h2 className="font-bold text-stone-900">Recent Bookings History</h2>
+                  <h2 className="font-bold text-stone-900">{t('Recent Bookings History')}</h2>
                 </div>
                 <Link to="/reservations" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                  View All →
+                  {t('View All')} →
                 </Link>
               </div>
               <div className="overflow-x-auto">
@@ -788,7 +867,7 @@ export default function GuestDashboard() {
                     {bookings.length === 0 && (
                       <tr>
                         <td colSpan="6" className="px-6 py-8 text-center text-stone-500">
-                          No bookings found
+                          {t('No bookings found')}
                         </td>
                       </tr>
                     )}
@@ -802,7 +881,7 @@ export default function GuestDashboard() {
         {/* Footer */}
         <footer className="mt-8 pt-6 border-t border-stone-200 text-center">
           <p className="text-sm text-stone-400">
-            © 2026 Guesthouse Platform. All rights reserved.
+            © 2026 {t('Guesthouse Platform')}. {t('All rights reserved.')}
           </p>
         </footer>
       </div>

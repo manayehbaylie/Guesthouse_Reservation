@@ -1,19 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 import {
   MapPin,
   ShieldCheck,
-  Star,
   Building2,
   ArrowRight,
-  Mail,
-  Phone,
   Send,
   Users,
   CalendarCheck,
   Receipt,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
 } from "lucide-react";
 
 const MAX_GUESTHOUSES = 20;
@@ -23,8 +25,8 @@ const MAX_GUESTHOUSES = 20;
  * HERO IMAGES
  * ============================================================
  *
- * These images are only used as static visual references for
- * the Home page hero section.
+ * These local approved-property images provide a reliable hero
+ * fallback while the guesthouse API is loading or has no photos.
  *
  * IMPORTANT:
  * Guesthouse cards are NOT created from these images.
@@ -32,29 +34,20 @@ const MAX_GUESTHOUSES = 20;
  */
 const HERO_IMAGES = [
   {
-    image:
-      "https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?auto=format&fit=crop&w=2000&q=85",
-    title: "Discover Ethiopia",
+    image: "/uploads/guesthouses/1789584209457-3d8e0819-9c9f-4330-8d4e-860da27f1553.jpg",
+    title: "Lalibela Heritage Guesthouse",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=2000&q=85",
-    title: "Explore Ethiopia's Heritage",
+    image: "/uploads/guesthouses/1789582234979-e1cf7a29-bfb3-462d-83a5-efed8284eba3.jpg",
+    title: "Gonder Guesthouse",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=2000&q=85",
-    title: "Experience Nature",
+    image: "/uploads/guesthouses/1788778701566-f3cae2d9-a9ac-4c63-8b19-6932c926d5de.jpg",
+    title: "Lucy Heritage",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=2000&q=85",
-    title: "Travel Across Ethiopia",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2000&q=85",
-    title: "Find Your Perfect Stay",
+    image: "/uploads/guesthouses/1789565289882-9836f2b9-bfb3-462d-83a5-efed8284eba3.jpg",
+    title: "National Guesthouse",
   },
 ];
 
@@ -284,6 +277,18 @@ const normalizeGuesthouse = (guesthouse) => {
   };
 };
 
+const getGuesthouseLocationParts = (guesthouse) => {
+  const parts = [
+    guesthouse?.subCity,
+    guesthouse?.address || guesthouse?.location,
+    guesthouse?.woreda,
+  ]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(parts));
+};
+
 /*
  * ============================================================
  * REMOVE DUPLICATES
@@ -371,6 +376,7 @@ const handleImageError = (event) => {
  * ============================================================
  */
 export function Home() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [guesthouses, setGuesthouses] =
@@ -378,6 +384,8 @@ export function Home() {
 
   const [loading, setLoading] =
     useState(true);
+  const [activeHeroIndex, setActiveHeroIndex] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
 
   /*
    * ==========================================================
@@ -646,6 +654,57 @@ export function Home() {
     );
   }, [guesthouses]);
 
+  const heroSlides = useMemo(() => {
+    const listingSlides = verifiedGuesthouses.flatMap((guesthouse) => {
+      const images = guesthouse.images?.length
+        ? guesthouse.images
+        : [guesthouse.image];
+
+      return images
+        .filter(Boolean)
+        .map((image) => ({
+          image,
+          title: guesthouse.name,
+        }));
+    });
+
+    const uniqueSlides = Array.from(
+      new Map(listingSlides.map((slide) => [slide.image, slide])).values()
+    );
+
+    if (uniqueSlides.length < 2) {
+      HERO_IMAGES.forEach((slide) => {
+        if (!uniqueSlides.some((existing) => existing.image === slide.image)) {
+          uniqueSlides.push(slide);
+        }
+      });
+    }
+
+    return uniqueSlides;
+  }, [verifiedGuesthouses]);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    if (heroPaused || prefersReducedMotion || heroSlides.length < 2) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveHeroIndex((current) => (current + 1) % heroSlides.length);
+    }, 3500);
+
+    return () => window.clearInterval(intervalId);
+  }, [heroPaused, heroSlides.length]);
+
+  const showHeroSlide = (direction) => {
+    setActiveHeroIndex((current) =>
+      (current + direction + heroSlides.length) % heroSlides.length
+    );
+  };
+
   /*
    * ==========================================================
    * DEBUG DISPLAY LIST
@@ -760,10 +819,25 @@ export function Home() {
 
       <section
         id="home"
-        className="relative flex min-h-[680px] items-center justify-center overflow-hidden"
+        className="relative flex min-h-[640px] items-center justify-center overflow-hidden bg-[#043658]"
       >
-        <div className="absolute inset-0 bg-[#043658]">
-          <div className="absolute inset-0 opacity-20 bg-[linear-gradient(135deg,transparent_0%,#FFC107_50%,transparent_100%)]" />
+        <div className="absolute inset-0" aria-hidden="true">
+          {heroSlides.map((slide, index) => (
+            <img
+              key={slide.image}
+              src={slide.image}
+              alt=""
+              aria-hidden="true"
+              loading={index === 0 ? "eager" : "lazy"}
+              className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-[2000ms] ease-out motion-reduce:transition-none ${
+                index === activeHeroIndex
+                  ? "scale-105 opacity-100"
+                  : "scale-100 opacity-0"
+              }`}
+            />
+          ))}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,21,34,0.82)_0%,rgba(4,38,57,0.65)_52%,rgba(3,29,45,0.48)_100%)]" />
+          <div className="absolute inset-0 bg-[#032238]/20" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 text-center sm:px-6 lg:px-8">
@@ -778,8 +852,7 @@ export function Home() {
                   "'Times New Roman', Times, serif",
               }}
             >
-              Discover & Book Verified
-              Guesthouses Across Ethiopia
+              {t('Discover & Book Verified Guesthouses Across Ethiopia')}
             </h1>
 
             <p
@@ -789,39 +862,60 @@ export function Home() {
                   "'Times New Roman', Times, serif",
               }}
             >
-              Find trusted guesthouses, explore
-              comfortable rooms, check availability,
-              and reserve your stay with confidence.
+              {t('Find trusted guesthouses, explore comfortable rooms, check availability, and reserve your stay with confidence.')}
             </p>
 
             <div className="mt-9 flex flex-wrap justify-center gap-4">
               <button
                 type="button"
-                onClick={() =>
-                  scrollToSection(
-                    "explore"
-                  )
-                }
+                onClick={() => navigate("/search")}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FFC107] px-6 py-3.5 text-sm font-bold text-[#043658] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#ffca28]"
               >
-                Explore Guesthouses
+                {t('Explore Guesthouses')}
                 <ArrowRight className="h-4 w-4" />
               </button>
 
               <button
                 type="button"
-                onClick={() =>
-                  scrollToSection(
-                    "about"
-                  )
-                }
+                onClick={() => navigate("/learn-more")}
                 className="rounded-xl border border-white/50 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
               >
-                Learn More
+                {t('Learn More')}
               </button>
             </div>
 
           </div>
+        </div>
+
+        <div className="absolute bottom-5 right-4 z-20 flex items-center gap-1 rounded-full border border-white/20 bg-[#032238]/70 px-2 py-1.5 text-white shadow-lg backdrop-blur-sm sm:right-8">
+          <button
+            type="button"
+            onClick={() => showHeroSlide(-1)}
+            aria-label={t('Previous hero image')}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107]"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="min-w-12 text-center text-xs font-semibold tabular-nums" aria-live="polite">
+            {activeHeroIndex + 1} / {heroSlides.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => showHeroSlide(1)}
+            aria-label={t('Next hero image')}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107]"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <span className="mx-1 h-5 w-px bg-white/25" />
+          <button
+            type="button"
+            onClick={() => setHeroPaused((paused) => !paused)}
+            aria-label={heroPaused ? t('Play hero slideshow') : t('Pause hero slideshow')}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107]"
+          >
+            {heroPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+          </button>
         </div>
 
         <button
@@ -832,7 +926,7 @@ export function Home() {
             )
           }
           className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-white/80 transition hover:text-white"
-          aria-label="Scroll down"
+          aria-label={t('Scroll down')}
         >
           <ChevronDown className="h-7 w-7 animate-bounce" />
         </button>
@@ -849,19 +943,12 @@ export function Home() {
         <div className="mx-auto max-w-7xl">
 
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-              EXPLORE
-            </p>
-
-            <h2 className="mt-2 text-3xl font-black tracking-tight text-[#043658] sm:text-4xl">
-              Find a Guesthouse You Can Trust
+            <h2 className="text-3xl font-black tracking-tight text-[#043658] sm:text-4xl">
+              {t('Find a Guesthouse You Can Trust')}
             </h2>
 
             <p className="mt-5 text-base leading-8 text-slate-600">
-              Directly reserve guest rooms with
-              real-time double-booking prevention
-              and instant receipt generation via
-              Telebirr or bank transfer.
+              {t('Directly reserve guest rooms with real-time double-booking prevention and instant receipt generation via Telebirr or bank transfer.')}
             </p>
           </div>
 
@@ -869,51 +956,65 @@ export function Home() {
 
           <div className="mt-12 grid gap-5 md:grid-cols-3">
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107]">
+            <button
+              type="button"
+              onClick={() => navigate("/guesthouses")}
+              className="group relative w-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#043658] hover:bg-[#043658] hover:shadow-lg focus-visible:bg-[#043658] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107] focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107] transition-colors group-hover:bg-[#FFC107] group-hover:text-[#043658] group-focus-visible:bg-[#FFC107] group-focus-visible:text-[#043658]">
                 <ShieldCheck className="h-6 w-6" />
               </div>
 
-              <h3 className="mt-5 text-lg font-black text-[#043658]">
-                Verified Guesthouses
-              </h3>
+              <div className="mt-5">
+                <h3 className="text-lg font-black text-[#043658] transition-colors group-hover:text-white group-focus-visible:text-white">
+                  {t('Verified Guesthouses')}
+                </h3>
+              </div>
 
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Discover guesthouses that have passed
-                the platform verification process.
+              <p className="mt-2 text-sm leading-7 text-slate-600 transition-colors group-hover:text-white/85 group-focus-visible:text-white/85">
+                {t('Discover guesthouses that have passed the platform verification process.')}
               </p>
-            </div>
+            </button>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107]">
+            <button
+              type="button"
+              onClick={() => navigate("/search")}
+              className="group relative w-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#043658] hover:bg-[#043658] hover:shadow-lg focus-visible:bg-[#043658] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107] focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107] transition-colors group-hover:bg-[#FFC107] group-hover:text-[#043658] group-focus-visible:bg-[#FFC107] group-focus-visible:text-[#043658]">
                 <CalendarCheck className="h-6 w-6" />
               </div>
 
-              <h3 className="mt-5 text-lg font-black text-[#043658]">
-                Easy Reservations
-              </h3>
+              <div className="mt-5">
+                <h3 className="text-lg font-black text-[#043658] transition-colors group-hover:text-white group-focus-visible:text-white">
+                  {t('Easy Reservations')}
+                </h3>
+              </div>
 
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Search available rooms and reserve your
-                preferred stay without unnecessary phone
-                calls or walk-ins.
+              <p className="mt-2 text-sm leading-7 text-slate-600 transition-colors group-hover:text-white/85 group-focus-visible:text-white/85">
+                {t('Search available rooms and reserve your preferred stay without unnecessary phone calls or walk-ins.')}
               </p>
-            </div>
+            </button>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107]">
+            <button
+              type="button"
+              onClick={() => navigate("/search")}
+              className="group relative w-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#043658] hover:bg-[#043658] hover:shadow-lg focus-visible:bg-[#043658] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107] focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#043658] text-[#FFC107] transition-colors group-hover:bg-[#FFC107] group-hover:text-[#043658] group-focus-visible:bg-[#FFC107] group-focus-visible:text-[#043658]">
                 <Receipt className="h-6 w-6" />
               </div>
 
-              <h3 className="mt-5 text-lg font-black text-[#043658]">
-                Clear Confirmation
-              </h3>
+              <div className="mt-5">
+                <h3 className="text-lg font-black text-[#043658] transition-colors group-hover:text-white group-focus-visible:text-white">
+                  {t('Clear Confirmation')}
+                </h3>
+              </div>
 
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Complete payment and receive your
-                reservation confirmation and receipt.
+              <p className="mt-2 text-sm leading-7 text-slate-600 transition-colors group-hover:text-white/85 group-focus-visible:text-white/85">
+                {t('Complete payment and receive your reservation confirmation and receipt.')}
               </p>
-            </div>
+            </button>
 
           </div>
 
@@ -924,30 +1025,20 @@ export function Home() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-                  VERIFIED STAYS
+                  {t('VERIFIED STAYS')}
                 </p>
 
                 <h3 className="mt-2 text-2xl font-black text-[#043658] sm:text-3xl">
-                  Guesthouses Across Ethiopia
+                  {t('Guesthouses Across Ethiopia')}
                 </h3>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Showing{" "}
-                  {verifiedGuesthouses.length}{" "}
-                  verified guesthouses
+                  {t('Showing {{count}} verified guesthouses', {
+                    count: verifiedGuesthouses.length,
+                  })}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  navigate("/search")
-                }
-                className="inline-flex items-center gap-2 self-start rounded-xl bg-[#043658] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#064b78] sm:self-auto"
-              >
-                View All Guesthouses
-                <ArrowRight className="h-4 w-4" />
-              </button>
             </div>
 
             {/* LOADING */}
@@ -1013,43 +1104,33 @@ export function Home() {
                           <Building2 className="h-12 w-12 text-slate-300" />
                         </div>
 
-                        <div className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#043658] shadow">
-                          <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                          Verified
-                        </div>
                       </div>
 
                       {/* CARD CONTENT */}
 
                       <div className="p-5">
 
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
 
                           <div className="min-w-0">
+
+                            <p className="mb-1 text-xs font-bold uppercase tracking-wider text-amber-700">
+                              {guesthouse.city || "Ethiopia"}
+                            </p>
 
                             <h4 className="truncate text-lg font-black text-[#043658]">
                               {guesthouse.name}
                             </h4>
 
-                            <div className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+                            <div className="mt-2 flex items-start gap-1.5 text-sm text-slate-500">
                               <MapPin className="h-4 w-4 shrink-0 text-[#FFC107]" />
 
-                              <span className="truncate">
-                                {
-                                  guesthouse.address
-                                }
+                              <span className="line-clamp-2">
+                                {getGuesthouseLocationParts(guesthouse).join(", ") || "Location unavailable"}
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
-                            <Star className="h-3.5 w-3.5 fill-current" />
-
-                            {Number(
-                              guesthouse.rating ||
-                                0
-                            ).toFixed(1)}
-                          </div>
                         </div>
 
                         <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">
@@ -1062,20 +1143,20 @@ export function Home() {
 
                           <div>
                             <p className="text-xs text-slate-500">
-                              Starting from
+                              {t('Starting from')}
                             </p>
 
                             <p className="mt-1 text-lg font-black text-[#043658]">
                               {guesthouse.price >
                               0
                                 ? `${guesthouse.price.toLocaleString()} ETB`
-                                : "Contact for price"}
+                                : t('Contact for price')}
                             </p>
 
                             {guesthouse.price >
                               0 && (
                               <p className="text-xs text-slate-400">
-                                per night
+                                {t('per night')}
                               </p>
                             )}
                           </div>
@@ -1089,7 +1170,7 @@ export function Home() {
                             }
                             className="inline-flex items-center gap-2 rounded-xl bg-[#043658] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#064b78]"
                           >
-                            View & Book
+                            {t('View & Book')}
                             <ArrowRight className="h-4 w-4" />
                           </button>
 
@@ -1106,11 +1187,11 @@ export function Home() {
                 <Building2 className="mx-auto h-12 w-12 text-slate-300" />
 
                 <h4 className="mt-4 text-lg font-black text-[#043658]">
-                  No verified guesthouses found
+                  {t('No verified guesthouses found')}
                 </h4>
 
                 <p className="mt-2 text-sm text-slate-500">
-                  Please check again later.
+                  {t('Please check again later.')}
                 </p>
 
               </div>
@@ -1127,7 +1208,7 @@ export function Home() {
               }
               className="inline-flex items-center gap-2 rounded-xl border border-[#043658] px-6 py-3.5 text-sm font-black text-[#043658] transition hover:bg-[#043658] hover:text-white"
             >
-              Explore All Guesthouses
+              {t('Explore All Guesthouses')}
               <ArrowRight className="h-4 w-4" />
             </button>
 
@@ -1148,7 +1229,7 @@ export function Home() {
           <div>
 
             <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-              ABOUT US
+              {t('ABOUT US')}
             </p>
 
             <h2
@@ -1158,36 +1239,16 @@ export function Home() {
                   "'Times New Roman', Times, serif",
               }}
             >
-              About Guesthouse Platform
+              {t('About Guesthouse Platform')}
             </h2>
 
             <p className="mt-6 text-base leading-8 text-white/80">
-              Guesthouse Platform is an Ethiopian
-              reservation platform designed to make
-              finding and booking guesthouses easier,
-              safer, and more convenient.
+              {t('Guesthouse Platform is an Ethiopian reservation platform designed to make finding and booking guesthouses easier, safer, and more convenient.')}
             </p>
 
             <p className="mt-5 text-base leading-8 text-white/80">
-              Instead of relying only on phone calls,
-              walk-ins, or informal booking methods,
-              guests can explore available guesthouses,
-              view rooms, make reservations, and
-              receive confirmation through the platform.
+              {t('Instead of relying only on phone calls, walk-ins, or informal booking methods, guests can explore available guesthouses, view rooms, make reservations, and receive confirmation through the platform.')}
             </p>
-
-            <button
-              type="button"
-              onClick={() =>
-                scrollToSection(
-                  "explore"
-                )
-              }
-              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#FFC107] px-6 py-3.5 text-sm font-black text-[#043658] transition hover:bg-[#ffca28]"
-            >
-              Explore Guesthouses
-              <ArrowRight className="h-4 w-4" />
-            </button>
 
           </div>
 
@@ -1197,13 +1258,11 @@ export function Home() {
               <ShieldCheck className="h-8 w-8 text-[#FFC107]" />
 
               <h3 className="mt-5 text-lg font-black">
-                Verified Stays
+                {t('Verified Stays')}
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Guests can discover guesthouses that
-                have passed the platform's verification
-                process.
+                {t("Guests can discover guesthouses that have passed the platform's verification process.")}
               </p>
             </div>
 
@@ -1211,12 +1270,11 @@ export function Home() {
               <Users className="h-8 w-8 text-[#FFC107]" />
 
               <h3 className="mt-5 text-lg font-black">
-                Built for Everyone
+                {t('Built for Everyone')}
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Designed for guests, owners,
-                receptionists, and administrators.
+                {t('Designed for guests, owners, receptionists, and administrators.')}
               </p>
             </div>
 
@@ -1224,12 +1282,11 @@ export function Home() {
               <CalendarCheck className="h-8 w-8 text-[#FFC107]" />
 
               <h3 className="mt-5 text-lg font-black">
-                Reliable Booking
+                {t('Reliable Booking')}
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Reservations are managed digitally to
-                help prevent double-booking.
+                {t('Reservations are managed digitally to help prevent double-booking.')}
               </p>
             </div>
 
@@ -1237,85 +1294,15 @@ export function Home() {
               <Receipt className="h-8 w-8 text-[#FFC107]" />
 
               <h3 className="mt-5 text-lg font-black">
-                Clear Receipts
+                {t('Clear Receipts')}
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Guests can receive clear booking and
-                payment information after making
-                reservations.
+                {t('Guests can receive clear booking and payment information after making reservations.')}
               </p>
             </div>
 
           </div>
-        </div>
-      </section>
-
-      {/* ======================================================
-          CONTACT - UPDATED (Message form removed)
-      ======================================================= */}
-
-      <section
-        id="contact"
-        className="scroll-mt-20 bg-[#043658] px-4 py-20 text-center sm:px-6 lg:px-8"
-      >
-        <div className="mx-auto max-w-4xl">
-          
-          <div className="text-center">
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#FFC107]">
-              CONTACT
-            </p>
-
-            <h2
-              className="mt-3 text-5xl font-normal text-white sm:text-6xl"
-              style={{
-                fontFamily: "'Times New Roman', Times, serif",
-              }}
-            >
-              Get in Touch
-            </h2>
-
-            <p className="mt-6 max-w-2xl mx-auto text-base leading-8 text-white/80">
-              Have a question about a guesthouse, reservation, payment,
-              or the platform? Reach out to us and our team will be
-              happy to help.
-            </p>
-          </div>
-
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 text-center border border-white/10">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC107]/20 mx-auto">
-                <Mail className="h-8 w-8 text-[#FFC107]" />
-              </div>
-              <p className="mt-4 text-sm text-white/60">Email</p>
-              <p className="mt-1 font-bold text-white">
-                manayehbaylie1921@gmail.com
-              </p>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 text-center border border-white/10">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC107]/20 mx-auto">
-                <Phone className="h-8 w-8 text-[#FFC107]" />
-              </div>
-              <p className="mt-4 text-sm text-white/60">Phone</p>
-              <p className="mt-1 font-bold text-white">
-                +251 9 24392994
-              </p>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 text-center border border-white/10">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC107]/20 mx-auto">
-                <MapPin className="h-8 w-8 text-[#FFC107]" />
-              </div>
-              <p className="mt-4 text-sm text-white/60">Location</p>
-              <p className="mt-1 font-bold text-white">
-                Addis Ababa, Ethiopia
-              </p>
-            </div>
-
-          </div>
-
         </div>
       </section>
 
@@ -1329,13 +1316,13 @@ export function Home() {
 
           <div>
             <h3 className="text-lg font-black">
-              Guesthouse Platform
+              {t('Guesthouse Platform')}
             </h3>
           </div>
 
           <p className="text-xs text-white/50">
-            © {new Date().getFullYear()} Guesthouse Platform.
-            All rights reserved.
+            © {new Date().getFullYear()} {t('Guesthouse Platform')}.{' '}
+            {t('All rights reserved.')}
           </p>
 
         </div>

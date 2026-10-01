@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 import {
   Building2,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export function GuesthouseManage() {
+  const { t } = useLanguage();
   const { user, switchUser } = useAuth();
   const navigate = useNavigate();
 
@@ -540,7 +542,7 @@ export function GuesthouseManage() {
     existingGuesthouse?.status || 'DRAFT'
   ).toUpperCase();
 
-  const statusLabel = status.replace(/_/g, ' ');
+  const statusLabel = t(status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase()));
 
   const isPending = status === 'PENDING';
   const isApproved = status === 'APPROVED';
@@ -584,7 +586,7 @@ export function GuesthouseManage() {
           className="mb-4 flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-bold text-white/90 transition hover:bg-white/10 hover:text-white"
         >
           <ChevronLeft className="h-5 w-5" />
-          Back to Owner Dashboard
+          {t('Back to Owner Dashboard')}
         </button>
 
         {/* ==================================================
@@ -605,15 +607,15 @@ export function GuesthouseManage() {
 
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#ffbd08]">
-                    Property Console
+                    {t('Property Console')}
                   </p>
 
                   <h1 className="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl">
-                    Guesthouse Registration
+                    {t('Guesthouse Registration')}
                   </h1>
 
                   <p className="mt-1 text-xs font-medium text-white/70">
-                    Manage your property information and submit it for verification.
+                    {t('Manage your property information and submit it for verification.')}
                   </p>
                 </div>
               </div>
@@ -640,13 +642,12 @@ export function GuesthouseManage() {
 
               <div>
                 <h2 className="text-sm font-black text-[#063e60]">
-                  Administrator verification
+                  {t('Administrator verification')}
                 </h2>
 
                 <p className="mt-1 text-xs leading-5 text-slate-600">
-                  Your guesthouse becomes publicly visible after administrator approval.
-                  The uploaded main image and license document are saved with your
-                  property information for administrator review.
+                  {t('Your guesthouse becomes publicly visible after administrator approval.')}
+                  {' '}{t('The uploaded main image and license document are saved with your property information for administrator review.')}
                 </p>
               </div>
             </div>
@@ -663,11 +664,11 @@ export function GuesthouseManage() {
 
                 <div>
                   <p className="text-sm font-black">
-                    Success
+                    {t('Success')}
                   </p>
 
                   <p className="mt-0.5 text-xs font-semibold">
-                    {success}
+                    {t(success)}
                   </p>
                 </div>
               </div>
@@ -682,11 +683,11 @@ export function GuesthouseManage() {
 
                 <div>
                   <p className="text-sm font-black">
-                    Please check this form
+                    {t('Please check this form')}
                   </p>
 
                   <p className="mt-0.5 text-xs font-semibold">
-                    {error}
+                    {t(error)}
                   </p>
                 </div>
               </div>
@@ -696,7 +697,7 @@ export function GuesthouseManage() {
               existingGuesthouse?.rejectionReason && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4">
                   <p className="text-sm font-black text-red-800">
-                    Administrator rejection reason
+                    {t('Administrator rejection reason')}
                   </p>
 
                   <p className="mt-1 text-xs font-semibold leading-5 text-red-700">
@@ -726,11 +727,11 @@ export function GuesthouseManage() {
 
                 <div>
                   <h2 className="text-base font-black text-[#063e60]">
-                    Property Information
+                    {t('Property Information')}
                   </h2>
 
                   <p className="text-xs font-medium text-slate-500">
-                    Basic guesthouse information
+                    {t('Basic guesthouse information')}
                   </p>
                 </div>
               </div>
@@ -740,7 +741,7 @@ export function GuesthouseManage() {
                 {/* NAME */}
                 <div>
                   <label className={labelClass}>
-                    Guesthouse Name *
+                    {t('Guesthouse Name')} *
                   </label>
 
                   <div className="relative">
@@ -751,7 +752,7 @@ export function GuesthouseManage() {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter guesthouse name"
+                      placeholder={t('Enter guesthouse name')}
                       className={`${inputClass} pl-11`}
                     />
                   </div>
@@ -760,7 +761,7 @@ export function GuesthouseManage() {
                 {/* CITY */}
                 <div>
                   <label className={labelClass}>
-                    City *
+                    {t('City *')}
                   </label>
 
                   <input
@@ -768,7 +769,7 @@ export function GuesthouseManage() {
                     required
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="Addis Ababa"
+                    placeholder={t('Addis Ababa')}
                     className={inputClass}
                   />
                 </div>
@@ -776,7 +777,7 @@ export function GuesthouseManage() {
                 {/* ADDRESS */}
                 <div className="md:col-span-2">
                   <label className={labelClass}>
-                    Address / Location *
+                    {t('Address / Location *')}
                   </label>
 
                   <div className="relative">
@@ -787,7 +788,7 @@ export function GuesthouseManage() {
                       required
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Enter complete address"
+                      placeholder={t('Enter complete address')}
                       className={`${inputClass} pl-11`}
                     />
                   </div>
@@ -796,14 +797,14 @@ export function GuesthouseManage() {
                 {/* SUB CITY */}
                 <div>
                   <label className={labelClass}>
-                    Sub-city
+                    {t('Sub-city')}
                   </label>
 
                   <input
                     type="text"
                     value={subCity}
                     onChange={(e) => setSubCity(e.target.value)}
-                    placeholder="Enter sub-city"
+                    placeholder={t('Enter sub-city')}
                     className={inputClass}
                   />
                 </div>
@@ -811,14 +812,14 @@ export function GuesthouseManage() {
                 {/* WOREDA */}
                 <div>
                   <label className={labelClass}>
-                    Woreda
+                    {t('Woreda')}
                   </label>
 
                   <input
                     type="text"
                     value={woreda}
                     onChange={(e) => setWoreda(e.target.value)}
-                    placeholder="Enter woreda"
+                    placeholder={t('Enter woreda')}
                     className={inputClass}
                   />
                 </div>
@@ -826,7 +827,7 @@ export function GuesthouseManage() {
                 {/* PHONE */}
                 <div>
                   <label className={labelClass}>
-                    Phone
+                    {t('Phone')}
                   </label>
 
                   <div className="relative">
@@ -847,7 +848,7 @@ export function GuesthouseManage() {
                 {/* EMAIL */}
                 <div>
                   <label className={labelClass}>
-                    Email Address
+                    {t('Email Address')}
                   </label>
 
                   <div className="relative">
@@ -868,7 +869,7 @@ export function GuesthouseManage() {
                 {/* ROOMS */}
                 <div>
                   <label className={labelClass}>
-                    Number of Rooms *
+                    {t('Number of Rooms *')}
                   </label>
 
                   <div className="relative">
@@ -891,7 +892,7 @@ export function GuesthouseManage() {
                 {/* LICENSE NUMBER */}
                 <div>
                   <label className={labelClass}>
-                    Business / License Number
+                    {t('Business / License Number')}
                   </label>
 
                   <div className="relative">
@@ -903,7 +904,7 @@ export function GuesthouseManage() {
                       onChange={(e) =>
                         setLicenseNumber(e.target.value)
                       }
-                      placeholder="Enter license number"
+                      placeholder={t('Enter license number')}
                       className={`${inputClass} pl-11`}
                     />
                   </div>
@@ -915,7 +916,7 @@ export function GuesthouseManage() {
               ------------------------------------------------ */}
               <div className="mt-5">
                 <label className={labelClass}>
-                  Guesthouse Description
+                  {t('Guesthouse Description')}
                 </label>
 
                 <textarea
@@ -925,7 +926,7 @@ export function GuesthouseManage() {
                   onChange={(e) =>
                     setDescription(e.target.value)
                   }
-                  placeholder="Describe your guesthouse, rooms, services and environment..."
+                  placeholder={t('Describe your guesthouse, rooms, services and environment...')}
                   className={textareaClass}
                 />
 
@@ -939,9 +940,9 @@ export function GuesthouseManage() {
               ------------------------------------------------ */}
               <div className="mt-4">
                 <label className={labelClass}>
-                  Amenities
+                  {t('Amenities')}
                   <span className="ml-1 normal-case font-semibold text-slate-400">
-                    (comma separated)
+                    ({t('comma separated')})
                   </span>
                 </label>
 
@@ -951,7 +952,7 @@ export function GuesthouseManage() {
                   onChange={(e) =>
                     setAmenities(e.target.value)
                   }
-                  placeholder="Free Wi-Fi, Breakfast, Parking..."
+                  placeholder={t('Free Wi-Fi, Breakfast, Parking...')}
                   className={inputClass}
                 />
               </div>
@@ -969,11 +970,11 @@ export function GuesthouseManage() {
 
                 <div>
                   <h2 className="text-base font-black text-[#063e60]">
-                    Verification Documents
+                    {t('Verification Documents')}
                   </h2>
 
                   <p className="text-xs font-medium text-slate-500">
-                    Upload the property image and license document for administrator review.
+                    {t('Upload the property image and license document for administrator review.')}
                   </p>
                 </div>
               </div>
@@ -985,7 +986,7 @@ export function GuesthouseManage() {
                 ================================================== */}
                 <div>
                   <label className={labelClass}>
-                    Upload Main Image *
+                    {t('Upload Main Image *')}
                   </label>
 
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
@@ -997,7 +998,7 @@ export function GuesthouseManage() {
                         <>
                           <img
                             src={displayImageUrl}
-                            alt="Guesthouse main preview"
+                            alt={t('Guesthouse main preview')}
                             className="h-[210px] w-full object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -1010,7 +1011,7 @@ export function GuesthouseManage() {
                               type="button"
                               onClick={handleRemoveNewImage}
                               className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition hover:bg-red-600"
-                              title="Remove selected image"
+                              title={t('Remove selected image')}
                             >
                               <X className="h-4 w-4" />
                             </button>
@@ -1023,11 +1024,11 @@ export function GuesthouseManage() {
                           </div>
 
                           <p className="text-sm font-black text-slate-600">
-                            No main image selected
+                            {t('No main image selected')}
                           </p>
 
                           <p className="mt-1 text-xs font-medium text-slate-400">
-                            Upload the guesthouse image below
+                            {t('Upload the guesthouse image below')}
                           </p>
                         </div>
                       )}
@@ -1053,7 +1054,7 @@ export function GuesthouseManage() {
                       ) : existingGuesthouse?.image ? (
                         <div className="mb-3 rounded-xl bg-slate-50 px-3 py-3">
                           <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                            Current uploaded image
+                            {t('Current uploaded image')}
                           </p>
 
                           <p className="mt-1 truncate text-xs font-bold text-[#063e60]">
@@ -1066,8 +1067,8 @@ export function GuesthouseManage() {
                         <Upload className="h-4 w-4" />
 
                         {mainImage instanceof File
-                          ? 'Change Main Image'
-                          : 'Upload Main Image'}
+                          ? t('Change Main Image')
+                          : t('Upload Main Image')}
 
                         <input
                           type="file"
@@ -1078,7 +1079,7 @@ export function GuesthouseManage() {
                       </label>
 
                       <p className="mt-2 text-[10px] font-semibold text-slate-400">
-                        JPG, PNG or WEBP • Maximum 5MB
+                        {t('JPG, PNG or WEBP • Maximum 5MB')}
                       </p>
                     </div>
                   </div>
@@ -1089,7 +1090,7 @@ export function GuesthouseManage() {
                 ================================================== */}
                 <div>
                   <label className={labelClass}>
-                    Uploaded License Document *
+                    {t('Uploaded License Document *')}
                   </label>
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -1117,7 +1118,7 @@ export function GuesthouseManage() {
                             className="mt-4 flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-black text-red-600 hover:bg-red-50"
                           >
                             <X className="h-4 w-4" />
-                            Remove selected document
+                            {t('Remove selected document')}
                           </button>
                         </>
                       ) : existingGuesthouse?.licenseDocument ? (
@@ -1127,7 +1128,7 @@ export function GuesthouseManage() {
                           </div>
 
                           <p className="mt-4 text-xs font-black text-[#063e60]">
-                            License document uploaded
+                            {t('License document uploaded')}
                           </p>
 
                           <p className="mt-1 max-w-full truncate text-[10px] font-semibold text-slate-400">
@@ -1141,11 +1142,11 @@ export function GuesthouseManage() {
                           </div>
 
                           <p className="mt-4 text-sm font-black text-slate-600">
-                            No license document
+                            {t('No license document')}
                           </p>
 
                           <p className="mt-1 text-xs font-medium text-slate-400">
-                            Upload a valid business/license document
+                            {t('Upload a valid business/license document')}
                           </p>
                         </>
                       )}
@@ -1156,10 +1157,10 @@ export function GuesthouseManage() {
                       <Upload className="h-4 w-4" />
 
                       {licenseDocument
-                        ? 'Change License Document'
+                        ? t('Change License Document')
                         : existingGuesthouse?.licenseDocument
-                          ? 'Replace License Document'
-                          : 'Upload License Document'}
+                          ? t('Replace License Document')
+                          : t('Upload License Document')}
 
                       <input
                         type="file"
@@ -1170,7 +1171,7 @@ export function GuesthouseManage() {
                     </label>
 
                     <p className="mt-2 text-[10px] font-semibold text-slate-400">
-                      PDF, JPG, JPEG or PNG • Maximum 5MB
+                      {t('PDF, JPG, JPEG or PNG • Maximum 5MB')}
                     </p>
                   </div>
                 </div>
@@ -1199,7 +1200,7 @@ export function GuesthouseManage() {
                 )}
 
                 <span>
-                  {loading ? 'Saving...' : 'Save Draft'}
+                  {loading ? t('Saving...') : t('Save Draft')}
                 </span>
               </button>
 
@@ -1218,12 +1219,12 @@ export function GuesthouseManage() {
 
                 <span>
                   {isPending
-                    ? 'Pending Administrator Review'
+                    ? t('Pending Administrator Review')
                     : isRejected
-                      ? 'Resubmit for Review'
+                      ? t('Resubmit for Review')
                       : isApproved
-                        ? 'Update Property'
-                        : 'Submit for Review'}
+                        ? t('Update Property')
+                        : t('Submit for Review')}
                 </span>
               </button>
             </div>
@@ -1235,7 +1236,7 @@ export function GuesthouseManage() {
               <ShieldCheck className="h-4 w-4" />
 
               <span>
-                Your property information and verification documents are securely stored.
+                {t('Your property information and verification documents are securely stored.')}
               </span>
             </div>
           </form>

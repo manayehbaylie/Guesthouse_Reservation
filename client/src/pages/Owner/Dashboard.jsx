@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { GuestReviews } from './GuestReviews.jsx';
 import {
   Building2,
@@ -83,8 +84,10 @@ const PRESET_AMENITIES = [
 
 export function OwnerDashboard() {
   const { user, switchUser } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const translateStatus = (value) => t(String(value || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase()));
   
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -160,7 +163,7 @@ export function OwnerDashboard() {
   const [submittingOnboarding, setSubmittingOnboarding] = useState(false);
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
+    setNotification({ message: t(message), type });
     setTimeout(() => {
       setNotification(null);
     }, 4500);
@@ -304,7 +307,7 @@ export function OwnerDashboard() {
       }
     } catch (err) {
       console.error('❌ Error loading owner dashboard:', err);
-      showToast(err.message || 'Error loading dashboard data', 'error');
+      showToast(err.message || t('Error loading dashboard data'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -325,17 +328,17 @@ export function OwnerDashboard() {
     }
 
     if (room.availabilityStatus === 'reserved') {
-      showToast(`Room ${room.roomNumber} is reserved and cannot be toggled until the reservation ends.`, 'info');
+      showToast(t('Room {{number}} is reserved and cannot be toggled until the reservation ends.', { number: room.roomNumber }), 'info');
       return;
     }
 
     const nextStatus = room.availabilityStatus === 'available' ? 'unavailable' : 'available';
     try {
       await ApiService.updateRoomAvailability(room.id, nextStatus);
-      showToast(`Room ${room.roomNumber} status set to ${nextStatus.toUpperCase()}`);
+      showToast(t('Room {{number}} status set to {{status}}', { number: room.roomNumber, status: translateStatus(nextStatus) }));
       loadOwnerDashboard(true);
     } catch (err) {
-      showToast(err.message || 'Failed to toggle room status', 'error');
+      showToast(err.message || t('Failed to toggle room status'), 'error');
     }
   };
 
@@ -391,7 +394,7 @@ export function OwnerDashboard() {
           pricePerNight: Number(roomPrice),
           available: roomAvailable,
         });
-        showToast(`Room ${roomNumber} updated successfully!`);
+        showToast(t('Room {{number}} updated successfully!', { number: roomNumber }));
       } else {
         await ApiService.addRoom({
           guesthouseId: guesthouse.id,
@@ -401,25 +404,25 @@ export function OwnerDashboard() {
           pricePerNight: Number(roomPrice),
           availabilityStatus: roomAvailable ? 'available' : 'unavailable',
         });
-        showToast(`Room ${roomNumber} added to inventory!`);
+        showToast(t('Room {{number}} added to inventory!', { number: roomNumber }));
       }
       setShowAddRoomModal(false);
       loadOwnerDashboard(true);
     } catch (err) {
-      setRoomFormError(err.message || 'Failed to save room details');
+      setRoomFormError(err.message || t('Failed to save room details'));
     }
   };
 
   const handleDeleteRoom = async (room) => {
-    if (!confirm(`Are you sure you want to delete Room ${room.roomNumber}? This cannot be undone.`)) {
+    if (!confirm(t('Are you sure you want to delete Room {{number}}? This cannot be undone.', { number: room.roomNumber }))) {
       return;
     }
     try {
       await ApiService.deleteRoom(room.id);
-      showToast(`Room ${room.roomNumber} deleted from inventory`);
+      showToast(t('Room {{number}} deleted from inventory', { number: room.roomNumber }));
       loadOwnerDashboard(true);
     } catch (err) {
-      showToast(err.message || 'Failed to delete room', 'error');
+      showToast(err.message || t('Failed to delete room'), 'error');
     }
   };
 
@@ -445,14 +448,14 @@ export function OwnerDashboard() {
         phone: staffPhone,
         password: staffPassword || 'Reception@123',
       });
-      showToast(`Receptionist ${staffName} successfully registered and assigned!`);
+      showToast(t('Receptionist {{name}} successfully registered and assigned!', { name: staffName }));
       setShowAddStaffModal(false);
       setStaffName('');
       setStaffEmail('');
       setStaffPhone('+251 9');
       loadOwnerDashboard(true);
     } catch (err) {
-      setStaffFormError(err.message || 'Failed to register receptionist staff');
+      setStaffFormError(err.message || t('Failed to register receptionist staff'));
     }
   };
 
@@ -467,15 +470,15 @@ export function OwnerDashboard() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to remove ${staffMember.name || staffMember.fullName} from your front-desk staff?`)) {
+    if (!confirm(t('Are you sure you want to remove {{name}} from your front-desk staff?', { name: staffMember.name || staffMember.fullName }))) {
       return;
     }
     try {
       await ApiService.removeReceptionistFromGuesthouse(staffMember.id);
-      showToast(`Receptionist ${staffMember.name || staffMember.fullName} removed from guesthouse`);
+      showToast(t('Receptionist {{name}} removed from guesthouse', { name: staffMember.name || staffMember.fullName }));
       loadOwnerDashboard(true);
     } catch (err) {
-      showToast(err.message || 'Failed to remove receptionist', 'error');
+      showToast(err.message || t('Failed to remove receptionist'), 'error');
     }
   };
 
@@ -506,7 +509,7 @@ export function OwnerDashboard() {
       showToast('Property profile updated successfully!');
       loadOwnerDashboard(true);
     } catch (err) {
-      showToast(err.message || 'Failed to update property details', 'error');
+      showToast(err.message || t('Failed to update property details'), 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -528,13 +531,13 @@ export function OwnerDashboard() {
         image: onboardingImage,
         ownerId: user?.id,
       });
-      showToast('🎉 Guesthouse created successfully! Pending Admin verification.');
+      showToast(t('Guesthouse created successfully! Pending Admin verification.'));
       if (user) {
         switchUser({ ...user, guesthouseId: newGh.id });
       }
       loadOwnerDashboard();
     } catch (err) {
-      showToast(err.message || 'Failed to create guesthouse', 'error');
+      showToast(err.message || t('Failed to create guesthouse'), 'error');
     } finally {
       setSubmittingOnboarding(false);
     }
@@ -653,8 +656,8 @@ export function OwnerDashboard() {
           <RefreshCw className="w-6 h-6 text-amber-500" />
         </div>
         <div className="text-center space-y-1">
-          <h3 className="text-base font-bold text-stone-900">Loading Owner Command Center</h3>
-          <p className="text-xs text-stone-500">Retrieving real-time room inventory, revenue ledger, and front-desk staff...</p>
+          <h3 className="text-base font-bold text-stone-900">{t('Loading Owner Command Center')}</h3>
+          <p className="text-xs text-stone-500">{t('Retrieving real-time room inventory, revenue ledger, and front-desk staff...')}</p>
         </div>
       </div>
     );
@@ -664,10 +667,10 @@ export function OwnerDashboard() {
      MAIN OWNER DASHBOARD VIEW
      ========================================================== */
   const ghDisplay = guesthouse || {
-    name: 'Unregistered Property',
+    name: t('Unregistered Property'),
     status: 'NOT REGISTERED',
-    city: 'Location Not Set',
-    address: 'No property address registered',
+    city: t('Location Not Set'),
+    address: t('No property address registered'),
   };
   return (
     <div className="max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 py-6">
@@ -707,7 +710,7 @@ export function OwnerDashboard() {
           </div>
           <div>
             <div className="font-bold text-xs line-clamp-1">{ghDisplay.name}</div>
-            <div className="text-[10px] text-amber-400 capitalize">{ghDisplay.status}</div>
+            <div className="text-[10px] text-amber-400 capitalize">{translateStatus(ghDisplay.status)}</div>
           </div>
         </div>
         <button
@@ -730,7 +733,7 @@ export function OwnerDashboard() {
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
-                <span>Property Console</span>
+                <span>{t('Property Console')}</span>
               </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
@@ -741,7 +744,7 @@ export function OwnerDashboard() {
                     : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                 }`}
               >
-                {ghDisplay.status}
+                {translateStatus(ghDisplay.status)}
               </span>
             </div>
             <h2 className="text-sm font-black text-white line-clamp-1">{ghDisplay.name}</h2>
@@ -757,12 +760,12 @@ export function OwnerDashboard() {
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'overview'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
-                  : 'text-stone-300 hover:bg-stone-900 hover:text-white'
+                  : 'text-stone-300 hover:bg-amber-500/20 hover:text-amber-300 hover:ring-1 hover:ring-amber-400/40'
               }`}
             >
               <div className="flex items-center gap-3">
                 <LayoutDashboard className="w-4 h-4" />
-                <span>Property Overview</span>
+                <span>{t('Property Overview')}</span>
               </div>
             </button>
 
@@ -771,12 +774,12 @@ export function OwnerDashboard() {
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'rooms'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
-                  : 'text-stone-300 hover:bg-stone-900 hover:text-white'
+                  : 'text-stone-300 hover:bg-blue-500/20 hover:text-blue-300 hover:ring-1 hover:ring-blue-400/40'
               }`}
             >
               <div className="flex items-center gap-3">
                 <BedDouble className="w-4 h-4" />
-                <span>Room Inventory</span>
+                <span>{t('Room Inventory')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-stone-800 text-amber-400">
                 {rooms.length}
@@ -788,12 +791,12 @@ export function OwnerDashboard() {
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'staff'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
-                  : 'text-stone-300 hover:bg-stone-900 hover:text-white'
+                  : 'text-stone-300 hover:bg-violet-500/20 hover:text-violet-300 hover:ring-1 hover:ring-violet-400/40'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Users className="w-4 h-4" />
-                <span>Receptionist Staff</span>
+                <span>{t('Receptionist Staff')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-stone-800 text-amber-400">
                 {staff.length}
@@ -805,12 +808,12 @@ export function OwnerDashboard() {
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'revenue'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
-                  : 'text-stone-300 hover:bg-stone-900 hover:text-white'
+                  : 'text-stone-300 hover:bg-emerald-500/20 hover:text-emerald-300 hover:ring-1 hover:ring-emerald-400/40'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Receipt className="w-4 h-4" />
-                <span>Revenue & Audit</span>
+                <span>{t('Revenue & Audit')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-stone-800 text-emerald-400">
                 {revenueReport?.totalRevenue ? `${(revenueReport.totalRevenue / 1000).toFixed(0)}k` : '0k'}
@@ -819,11 +822,11 @@ export function OwnerDashboard() {
 
             <button
               onClick={() => navigate('/owner/guesthouse')}
-              className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all text-stone-300 hover:bg-stone-900 hover:text-white"
+              className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all text-stone-300 hover:bg-cyan-500/20 hover:text-cyan-300 hover:ring-1 hover:ring-cyan-400/40"
             >
               <div className="flex items-center gap-3">
                 <Building2 className="w-4 h-4" />
-                <span>Guesthouse Registration</span>
+                <span>{t('Guesthouse Registration')}</span>
               </div>
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
@@ -833,12 +836,12 @@ export function OwnerDashboard() {
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'edit_property'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
-                  : 'text-stone-300 hover:bg-stone-900 hover:text-white'
+                  : 'text-stone-300 hover:bg-orange-500/20 hover:text-orange-300 hover:ring-1 hover:ring-orange-400/40'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Settings className="w-4 h-4" />
-                <span>Edit Property Profile</span>
+                <span>{t('Edit Property Profile')}</span>
               </div>
             </button>
 
@@ -847,12 +850,12 @@ export function OwnerDashboard() {
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'reviews'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
-                  : 'text-stone-300 hover:bg-stone-900 hover:text-white'
+                  : 'text-stone-300 hover:bg-rose-500/20 hover:text-rose-300 hover:ring-1 hover:ring-rose-400/40'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Star className="w-4 h-4" />
-                <span>Guest Feedback</span>
+                <span>{t('Guest Feedback')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-stone-800 text-amber-400">
                 {reviews.length}
@@ -865,7 +868,7 @@ export function OwnerDashboard() {
               {user?.name?.charAt(0) || 'O'}
             </div>
             <div className="overflow-hidden">
-              <div className="text-xs font-black text-white truncate">{user?.name || 'Property Owner'}</div>
+              <div className="text-xs font-black text-white truncate">{user?.name || t('Property Owner')}</div>
               <div className="text-[10px] text-stone-400 truncate">{user?.email}</div>
             </div>
           </div>
@@ -878,18 +881,18 @@ export function OwnerDashboard() {
             <div>
               <div className="text-[11px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Property Management Console</span>
+                <span>{t('Property Management Console')}</span>
               </div>
               <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-                {activeTab === 'overview' && 'Owner Command Center'}
-                {activeTab === 'rooms' && 'Room Inventory & Rate Manager'}
-                {activeTab === 'staff' && 'Front-Desk Receptionist Console'}
-                {activeTab === 'revenue' && 'Verified Revenue & Payment Audit'}
-                {activeTab === 'edit_property' && 'Edit Guesthouse Profile Details'}
-                {activeTab === 'reviews' && 'Guest Reviews & Feedback'}
+                {activeTab === 'overview' && t('Owner Command Center')}
+                {activeTab === 'rooms' && t('Room Inventory & Rate Manager')}
+                {activeTab === 'staff' && t('Front-Desk Receptionist Console')}
+                {activeTab === 'revenue' && t('Verified Revenue & Payment Audit')}
+                {activeTab === 'edit_property' && t('Edit Guesthouse Profile Details')}
+                {activeTab === 'reviews' && t('Guest Reviews & Feedback')}
               </h1>
               <p className="text-xs text-stone-500">
-                Operating property: <strong className="text-stone-800">{ghDisplay.name}</strong> • City: <strong className="text-stone-800">{ghDisplay.city}</strong>
+                {t('Operating property')}: <strong className="text-stone-800">{ghDisplay.name}</strong> • {t('City')}: <strong className="text-stone-800">{ghDisplay.city}</strong>
               </p>
             </div>
 
@@ -900,7 +903,7 @@ export function OwnerDashboard() {
                 className="px-3.5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-                <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                <span>{refreshing ? t('Refreshing...') : t('Refresh')}</span>
               </button>
 
             </div>
@@ -915,11 +918,11 @@ export function OwnerDashboard() {
                   <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider mb-2">
                       <Sparkles className="w-3 h-3" />
-                      <span>Action Required</span>
+                      <span>{t('Action Required')}</span>
                     </div>
-                    <h3 className="text-lg font-black">Register Your Guesthouse</h3>
+                    <h3 className="text-lg font-black">{t('Register Your Guesthouse')}</h3>
                     <p className="text-stone-300 text-xs mt-1 max-w-xl">
-                      Submit your guesthouse details to the platform administrator. Once approved, your property will be published and you will be able to add rooms and receptionists.
+                      {t('Submit your guesthouse details to the platform administrator. Once approved, your property will be published and you will be able to add rooms and receptionists.')}
                     </p>
                   </div>
                   <button
@@ -928,7 +931,7 @@ export function OwnerDashboard() {
                     className="shrink-0 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Register Property</span>
+                    <span>{t('Register Property')}</span>
                   </button>
                 </div>
               )}
@@ -938,9 +941,9 @@ export function OwnerDashboard() {
                 <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start gap-3.5 text-amber-900 text-xs shadow-xs">
                   <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="font-bold text-sm block text-amber-950">Property Verification in Progress</strong>
+                    <strong className="font-bold text-sm block text-amber-950">{t('Property Verification in Progress')}</strong>
                     <p className="mt-1 leading-relaxed text-amber-900">
-                      Your guesthouse <strong>{guesthouse.name}</strong> is currently pending administrator verification. While in pending status, public search visibility, room inventory creation, and staff invites are locked until an administrator reviews and approves your submission.
+                      {t('Your guesthouse {{name}} is currently pending administrator verification. While in pending status, public search visibility, room inventory creation, and staff invites are locked until an administrator reviews and approves your submission.', { name: guesthouse.name })}
                     </p>
                   </div>
                 </div>
@@ -951,9 +954,9 @@ export function OwnerDashboard() {
                   <div className="flex items-start gap-3">
                     <ShieldAlert className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="font-bold text-sm block text-red-950">Guesthouse Registration Needs Correction</strong>
+                      <strong className="font-bold text-sm block text-red-950">{t('Guesthouse Registration Needs Correction')}</strong>
                       <p className="mt-1 text-red-800">
-                        {guesthouse.rejectionReason || 'The administrator requested modifications to your property details.'}
+                        {guesthouse.rejectionReason || t('The administrator requested modifications to your property details.')}
                       </p>
                     </div>
                   </div>
@@ -963,87 +966,87 @@ export function OwnerDashboard() {
                     className="shrink-0 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl flex items-center justify-center gap-2"
                   >
                     <Edit className="w-4 h-4" />
-                    Review and Resubmit
+                    {t('Review and Resubmit')}
                   </button>
                 </div>
               )}
 
               {/* 4 KPI Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-stone-400 text-xs font-semibold">
-                    <span>Verified Gross Revenue</span>
+                <button type="button" onClick={() => handleTabChange('revenue')} className="group w-full text-left bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2 transition-all hover:-translate-y-0.5 hover:border-[#0b3b5b] hover:bg-[#0b3b5b] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                  <div className="flex items-center justify-between text-stone-400 group-hover:text-amber-300 text-xs font-semibold">
+                    <span>{t('Verified Gross Revenue')}</span>
                     <DollarSign className="w-4 h-4 text-amber-500" />
                   </div>
-                  <div className="text-2xl font-black text-stone-900">
+                  <div className="text-2xl font-black text-stone-900 group-hover:text-white">
                     {revenueReport?.totalRevenue ? `${revenueReport.totalRevenue.toLocaleString()} ETB` : '0 ETB'}
                   </div>
-                  <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                  <div className="text-[11px] text-emerald-600 group-hover:text-amber-300 font-bold flex items-center gap-1">
                     <ArrowUpRight className="w-3.5 h-3.5" />
-                    <span>Total Revenue</span>
+                    <span>{t('Total Revenue')}</span>
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-stone-400 text-xs font-semibold">
-                    <span>Room Inventory</span>
+                <button type="button" onClick={() => handleTabChange('rooms')} className="group w-full text-left bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2 transition-all hover:-translate-y-0.5 hover:border-[#0b3b5b] hover:bg-[#0b3b5b] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                  <div className="flex items-center justify-between text-stone-400 group-hover:text-amber-300 text-xs font-semibold">
+                    <span>{t('Room Inventory')}</span>
                     <BedDouble className="w-4 h-4 text-blue-500" />
                   </div>
-                  <div className="text-2xl font-black text-stone-900">{totalRoomsCount} Rooms</div>
-                  <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
-                    <span className="text-emerald-700 font-bold">{availableRoomsCount} Available</span> •{' '}
-                    <span className="text-amber-700 font-bold">{occupiedRoomsCount} Occupied</span>
+                  <div className="text-2xl font-black text-stone-900 group-hover:text-white">{t('{{count}} Rooms', { count: totalRoomsCount })}</div>
+                  <div className="text-[11px] text-stone-500 group-hover:text-stone-200 flex items-center gap-1.5">
+                    <span className="text-emerald-700 group-hover:text-emerald-300 font-bold">{t('{{count}} Available', { count: availableRoomsCount })}</span> •{' '}
+                    <span className="text-amber-700 group-hover:text-amber-300 font-bold">{t('{{count}} Occupied', { count: occupiedRoomsCount })}</span>
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-stone-400 text-xs font-semibold">
-                    <span>Receptionist Team</span>
+                <button type="button" onClick={() => handleTabChange('staff')} className="group w-full text-left bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2 transition-all hover:-translate-y-0.5 hover:border-[#0b3b5b] hover:bg-[#0b3b5b] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                  <div className="flex items-center justify-between text-stone-400 group-hover:text-amber-300 text-xs font-semibold">
+                    <span>{t('Receptionist Team')}</span>
                     <Users className="w-4 h-4 text-purple-500" />
                   </div>
-                  <div className="text-2xl font-black text-stone-900">{staff.length} Active Staff</div>
-                  <div className="text-[11px] text-stone-500">Operating Front-Desk Console</div>
-                </div>
+                  <div className="text-2xl font-black text-stone-900 group-hover:text-white">{t('{{count}} Active Staff', { count: staff.length })}</div>
+                  <div className="text-[11px] text-stone-500 group-hover:text-stone-200">{t('Operating Front-Desk Console')}</div>
+                </button>
 
-                <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-stone-400 text-xs font-semibold">
-                    <span>Occupancy Rate</span>
+                <button type="button" onClick={() => handleTabChange('overview')} className="group w-full text-left bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2 transition-all hover:-translate-y-0.5 hover:border-[#0b3b5b] hover:bg-[#0b3b5b] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                  <div className="flex items-center justify-between text-stone-400 group-hover:text-amber-300 text-xs font-semibold">
+                    <span>{t('Occupancy Rate')}</span>
                     <Percent className="w-4 h-4 text-emerald-500" />
                   </div>
-                  <div className="text-2xl font-black text-stone-900">{occupancyRate}%</div>
-                  <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                  <div className="text-2xl font-black text-stone-900 group-hover:text-white">{occupancyRate}%</div>
+                  <div className="w-full h-1.5 bg-stone-100 group-hover:bg-white/20 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full transition-all duration-500"
                       style={{ width: `${occupancyRate}%` }}
                     />
                   </div>
-                </div>
+                </button>
               </div>
 
               {/* Live Room Grid */}
               <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-stone-900">Live Room Status Grid</h3>
-                    <p className="text-xs text-stone-500">Real-time room occupancy and quick toggle status</p>
+                    <h3 className="text-base font-bold text-stone-900">{t('Live Room Status Grid')}</h3>
+                    <p className="text-xs text-stone-500">{t('Real-time room occupancy and quick toggle status')}</p>
                   </div>
                   <button
                     onClick={() => handleTabChange('rooms')}
                     className="text-xs text-amber-600 font-bold hover:underline"
                   >
-                    Manage All Rooms →
+                    {t('Manage All Rooms')} →
                   </button>
                 </div>
 
                 {rooms.length === 0 ? (
                   <div className="p-8 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200 space-y-3">
                     <BedDouble className="w-8 h-8 text-stone-300 mx-auto" />
-                    <p className="text-xs text-stone-500">No rooms added to inventory yet.</p>
+                    <p className="text-xs text-stone-500">{t('No rooms added to inventory yet.')}</p>
                     <button
                       onClick={handleOpenAddRoomModal}
                       className="px-4 py-2 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-sm hover:bg-amber-400"
                     >
-                      + Add Your First Room
+                      {t('+ Add Your First Room')}
                     </button>
                   </div>
                 ) : (
@@ -1058,7 +1061,7 @@ export function OwnerDashboard() {
                         }`}
                       >
                         <div className="flex items-center justify-between text-[11px] font-black">
-                          <span className="text-stone-900">Room {room.roomNumber}</span>
+                          <span className="text-stone-900">{t('Room {{number}}', { number: room.roomNumber })}</span>
                           <span
                             className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
                               room.availabilityStatus === 'available'
@@ -1066,20 +1069,20 @@ export function OwnerDashboard() {
                                 : 'bg-amber-200 text-amber-900'
                             }`}
                           >
-                            {room.availabilityStatus}
+                            {translateStatus(room.availabilityStatus)}
                           </span>
                         </div>
-                        <div className="text-[10px] text-stone-500 mt-1 capitalize">{room.type} • {room.capacity} Guests</div>
+                        <div className="text-[10px] text-stone-500 mt-1 capitalize">{translateStatus(room.type)} • {t('{{count}} Guests', { count: room.capacity })}</div>
                         <div className="text-xs font-black text-stone-900 mt-2">
                           {room.pricePerNight?.toLocaleString()} ETB
                         </div>
                         <button
                           onClick={() => handleToggleRoomStatus(room)}
                           disabled={room.availabilityStatus === 'reserved'}
-                          title={room.availabilityStatus === 'reserved' ? 'Reserved rooms cannot be toggled until the reservation ends' : 'Toggle room availability'}
+                          title={room.availabilityStatus === 'reserved' ? t('Reserved rooms cannot be toggled until the reservation ends') : t('Toggle room availability')}
                           className="w-full mt-2 py-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-[10px] font-bold rounded-lg transition-colors shadow-xs disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
                         >
-                          {room.availabilityStatus === 'reserved' ? 'Reserved' : 'Toggle Status'}
+                          {room.availabilityStatus === 'reserved' ? t('Reserved') : t('Toggle Status')}
                         </button>
                       </div>
                     ))}
@@ -1097,11 +1100,11 @@ export function OwnerDashboard() {
                   <div className="flex items-start gap-3">
                     <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="font-bold text-sm block text-amber-950">Room Management Locked</strong>
+                      <strong className="font-bold text-sm block text-amber-950">{t('Room Management Locked')}</strong>
                       <p className="mt-0.5 text-amber-900">
                         {guesthouse
-                          ? `Your guesthouse (${guesthouse.name}) is currently ${guesthouse.status || 'pending approval'}. Room additions and status changes will unlock automatically once an administrator approves your property.`
-                          : 'You must register a guesthouse and have it approved by an administrator before managing rooms.'}
+                          ? t('Your guesthouse ({{name}}) is currently {{status}}. Room additions and status changes will unlock automatically once an administrator approves your property.', { name: guesthouse.name, status: translateStatus(guesthouse.status || 'pending approval') })
+                          : t('You must register a guesthouse and have it approved by an administrator before managing rooms.')}
                       </p>
                     </div>
                   </div>
@@ -1110,7 +1113,7 @@ export function OwnerDashboard() {
                     className="shrink-0 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5"
                   >
                     <Building2 className="w-4 h-4" />
-                    <span>{guesthouse ? 'View Registration Status' : 'Register Guesthouse'}</span>
+                    <span>{guesthouse ? t('View Registration Status') : t('Register Guesthouse')}</span>
                   </button>
                 </div>
               )}
@@ -1121,7 +1124,7 @@ export function OwnerDashboard() {
                     <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Search room..."
+                      placeholder={t('Search room...')}
                       value={roomSearchQuery}
                       onChange={(e) => setRoomSearchQuery(e.target.value)}
                       className="pl-8 pr-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-amber-500 w-56 bg-stone-50"
@@ -1132,9 +1135,9 @@ export function OwnerDashboard() {
                     onChange={(e) => setRoomFilterStatus(e.target.value)}
                     className="px-3 py-2 rounded-xl border border-stone-300 text-xs bg-white focus:ring-2 focus:ring-amber-500 font-semibold"
                   >
-                    <option value="ALL">All Rooms ({rooms.length})</option>
-                    <option value="AVAILABLE">Available ({availableRoomsCount})</option>
-                    <option value="OCCUPIED">Occupied ({occupiedRoomsCount})</option>
+                    <option value="ALL">{t('All Rooms ({{count}})', { count: rooms.length })}</option>
+                    <option value="AVAILABLE">{t('Available ({{count}})', { count: availableRoomsCount })}</option>
+                    <option value="OCCUPIED">{t('Occupied ({{count}})', { count: occupiedRoomsCount })}</option>
                   </select>
                 </div>
                 <button
@@ -1146,7 +1149,7 @@ export function OwnerDashboard() {
                   }`}
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add New Room</span>
+                    <span>{t('Add New Room')}</span>
                 </button>
               </div>
 
@@ -1155,36 +1158,36 @@ export function OwnerDashboard() {
                   <table className="w-full text-left text-xs font-medium">
                     <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider font-bold">
                       <tr>
-                        <th className="px-6 py-4">Room No.</th>
-                        <th className="px-6 py-4">Type</th>
-                        <th className="px-6 py-4">Capacity</th>
-                        <th className="px-6 py-4">Rate</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4 text-right">Actions</th>
+                        <th className="px-6 py-4">{t('Room No.')}</th>
+                        <th className="px-6 py-4">{t('Type')}</th>
+                        <th className="px-6 py-4">{t('Capacity')}</th>
+                        <th className="px-6 py-4">{t('Rate')}</th>
+                        <th className="px-6 py-4">{t('Status')}</th>
+                        <th className="px-6 py-4 text-right">{t('Actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 text-stone-800">
                       {filteredRooms.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="px-6 py-12 text-center text-stone-400">
-                            No rooms found.
+                            {t('No rooms found.')}
                           </td>
                         </tr>
                       ) : (
                         filteredRooms.map((room) => (
                           <tr key={room.id} className="hover:bg-stone-50/60">
-                            <td className="px-6 py-4 font-black text-stone-900">Room {room.roomNumber}</td>
-                            <td className="px-6 py-4"><span className="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 font-bold uppercase text-[10px]">{room.type}</span></td>
-                            <td className="px-6 py-4">{room.capacity} Persons</td>
+                            <td className="px-6 py-4 font-black text-stone-900">{t('Room {{number}}', { number: room.roomNumber })}</td>
+                            <td className="px-6 py-4"><span className="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 font-bold uppercase text-[10px]">{translateStatus(room.type)}</span></td>
+                            <td className="px-6 py-4">{t('{{count}} Persons', { count: room.capacity })}</td>
                             <td className="px-6 py-4 font-black text-stone-900">{room.pricePerNight?.toLocaleString()} ETB</td>
                             <td className="px-6 py-4">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${room.availabilityStatus === 'available' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                                {room.availabilityStatus}
+                                {translateStatus(room.availabilityStatus)}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => handleToggleRoomStatus(room)} className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl text-xs">Toggle</button>
+                                <button onClick={() => handleToggleRoomStatus(room)} className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl text-xs">{t('Toggle')}</button>
                                 <button onClick={() => handleOpenEditRoomModal(room)} className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl"><Edit className="w-4 h-4" /></button>
                                 <button onClick={() => handleDeleteRoom(room)} className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl"><Trash2 className="w-4 h-4" /></button>
                               </div>
@@ -1207,11 +1210,11 @@ export function OwnerDashboard() {
                   <div className="flex items-start gap-3">
                     <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="font-bold text-sm block text-amber-950">Receptionist Management Locked</strong>
+                      <strong className="font-bold text-sm block text-amber-950">{t('Receptionist Management Locked')}</strong>
                       <p className="mt-0.5 text-amber-900">
                         {guesthouse
-                          ? `Your guesthouse (${guesthouse.name}) is currently ${guesthouse.status || 'pending approval'}. Front-desk receptionist registration will unlock automatically once an administrator approves your property.`
-                          : 'You must register a guesthouse and have it approved by an administrator before creating receptionist accounts.'}
+                          ? t('Your guesthouse ({{name}}) is currently {{status}}. Front-desk receptionist registration will unlock automatically once an administrator approves your property.', { name: guesthouse.name, status: translateStatus(guesthouse.status || 'pending approval') })
+                          : t('You must register a guesthouse and have it approved by an administrator before creating receptionist accounts.')}
                       </p>
                     </div>
                   </div>
@@ -1220,15 +1223,15 @@ export function OwnerDashboard() {
                     className="shrink-0 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5"
                   >
                     <Building2 className="w-4 h-4" />
-                    <span>{guesthouse ? 'View Registration Status' : 'Register Guesthouse'}</span>
+                    <span>{guesthouse ? t('View Registration Status') : t('Register Guesthouse')}</span>
                   </button>
                 </div>
               )}
 
               <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-base font-bold text-stone-900">Front-Desk Team ({staff.length})</h3>
-                  <p className="text-xs text-stone-500">Manage receptionist accounts</p>
+                  <h3 className="text-base font-bold text-stone-900">{t('Front-Desk Team ({{count}})', { count: staff.length })}</h3>
+                  <p className="text-xs text-stone-500">{t('Manage receptionist accounts')}</p>
                 </div>
                 <button
                   onClick={handleOpenStaffModal}
@@ -1239,16 +1242,16 @@ export function OwnerDashboard() {
                   }`}
                 >
                   <UserPlus className="w-4 h-4 text-amber-400" />
-                  <span>Register Receptionist</span>
+                  <span>{t('Register Receptionist')}</span>
                 </button>
               </div>
 
               {staff.length === 0 ? (
                 <div className="bg-white p-12 rounded-3xl border border-stone-200 text-center">
                   <Users className="w-12 h-12 text-stone-300 mx-auto mb-3" />
-                  <h4 className="text-sm font-bold text-stone-800">No Receptionists Assigned</h4>
-                  <p className="text-xs text-stone-500 max-w-md mx-auto">Create receptionist credentials for your front-desk staff.</p>
-                  <button onClick={handleOpenStaffModal} className="mt-4 px-4 py-2 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl">+ Register First Receptionist</button>
+                  <h4 className="text-sm font-bold text-stone-800">{t('No Receptionists Assigned')}</h4>
+                  <p className="text-xs text-stone-500 max-w-md mx-auto">{t('Create receptionist credentials for your front-desk staff.')}</p>
+                  <button onClick={handleOpenStaffModal} className="mt-4 px-4 py-2 bg-amber-500 text-stone-950 font-bold text-xs rounded-xl">{t('+ Register First Receptionist')}</button>
                 </div>
               ) : (
                 <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
@@ -1256,24 +1259,24 @@ export function OwnerDashboard() {
                     <table className="w-full min-w-[640px] text-left text-xs">
                       <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider">
                         <tr>
-                          <th className="px-5 py-3 font-bold">Name</th>
-                          <th className="px-5 py-3 font-bold">Role</th>
-                          <th className="px-5 py-3 font-bold">Email</th>
-                          <th className="px-5 py-3 font-bold">Phone</th>
-                          <th className="px-5 py-3 text-right font-bold">Action</th>
+                          <th className="px-5 py-3 font-bold">{t('Name')}</th>
+                          <th className="px-5 py-3 font-bold">{t('Role')}</th>
+                          <th className="px-5 py-3 font-bold">{t('Email')}</th>
+                          <th className="px-5 py-3 font-bold">{t('Phone')}</th>
+                          <th className="px-5 py-3 text-right font-bold">{t('Action')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
                         {staff.map((st) => (
                           <tr key={st.id} className="hover:bg-stone-50/70">
-                            <td className="px-5 py-4 font-bold text-stone-900">{st.name || st.fullName || 'Receptionist'}</td>
+                            <td className="px-5 py-4 font-bold text-stone-900">{st.name || st.fullName || t('Receptionist')}</td>
                             <td className="px-5 py-4">
-                              <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-bold uppercase">Receptionist</span>
+                              <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-bold uppercase">{t('Receptionist')}</span>
                             </td>
                             <td className="px-5 py-4 text-stone-600">{st.email || '-'}</td>
                             <td className="px-5 py-4 text-stone-600">{st.phone || '-'}</td>
                             <td className="px-5 py-4 text-right">
-                              <button onClick={() => handleRemoveStaff(st)} aria-label={`Remove ${st.name || st.fullName || 'receptionist'}`} className="p-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl">
+                              <button onClick={() => handleRemoveStaff(st)} aria-label={t('Remove {{name}}', { name: st.name || st.fullName || t('Receptionist') })} className="p-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </td>
@@ -1306,7 +1309,7 @@ export function OwnerDashboard() {
                   >
                     <div className={`flex min-w-0 items-center gap-1.5 font-bold text-[10px] ${paymentFilterPeriod === key ? 'text-amber-400' : colorClass}`}>
                       <PeriodIcon className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{label}</span>
+                      <span className="truncate">{t(label)}</span>
                     </div>
                     <div className={`truncate text-lg font-black ${paymentFilterPeriod === key ? 'text-white' : 'text-stone-900'}`}>
                       {paidRevenueByPeriod[key].toLocaleString()} ETB
@@ -1318,41 +1321,41 @@ export function OwnerDashboard() {
               <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
                 <div className="p-5 border-b border-stone-100 flex items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-black text-stone-900">Payment Activity</h3>
-                    <p className="text-xs text-stone-500 mt-1">Verified transactions from your guesthouse reservations.</p>
+                    <h3 className="text-base font-black text-stone-900">{t('Payment Activity')}</h3>
+                    <p className="text-xs text-stone-500 mt-1">{t('Verified transactions from your guesthouse reservations.')}</p>
                   </div>
-                  <span className="text-xs font-bold text-stone-500">{filteredPayments.length} records</span>
+                  <span className="text-xs font-bold text-stone-500">{t('{{count}} records', { count: filteredPayments.length })}</span>
                 </div>
 
                 {payments.length === 0 ? (
                   <div className="p-10 text-center">
                     <Receipt className="w-10 h-10 text-stone-300 mx-auto mb-3" />
-                    <p className="text-sm font-bold text-stone-700">No payment activity yet</p>
-                    <p className="text-xs text-stone-500 mt-1">Completed guest payments will appear here.</p>
+                    <p className="text-sm font-bold text-stone-700">{t('No payment activity yet')}</p>
+                    <p className="text-xs text-stone-500 mt-1">{t('Completed guest payments will appear here.')}</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider">
                         <tr>
-                          <th className="px-5 py-3 font-bold">Guest</th>
-                          <th className="px-5 py-3 font-bold">Room</th>
-                          <th className="px-5 py-3 font-bold">Method</th>
-                          <th className="px-5 py-3 font-bold">Status</th>
-                          <th className="px-5 py-3 font-bold">Paid Date</th>
-                          <th className="px-5 py-3 font-bold text-right">Amount</th>
-                          <th className="px-5 py-3 font-bold text-right">Action</th>
+                          <th className="px-5 py-3 font-bold">{t('Guest')}</th>
+                          <th className="px-5 py-3 font-bold">{t('Room')}</th>
+                          <th className="px-5 py-3 font-bold">{t('Method')}</th>
+                          <th className="px-5 py-3 font-bold">{t('Status')}</th>
+                          <th className="px-5 py-3 font-bold">{t('Paid Date')}</th>
+                          <th className="px-5 py-3 font-bold text-right">{t('Amount')}</th>
+                          <th className="px-5 py-3 font-bold text-right">{t('Action')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
                         {filteredPayments.map((payment) => (
                           <tr key={payment.id} className="hover:bg-stone-50/70">
-                            <td className="px-5 py-4 font-bold text-stone-900">{payment.guestName || 'Guest'}</td>
-                            <td className="px-5 py-4 text-stone-600">{payment.roomNumber ? `Room ${payment.roomNumber}` : '-'}</td>
-                            <td className="px-5 py-4 uppercase text-stone-600">{payment.method || '-'}</td>
+                            <td className="px-5 py-4 font-bold text-stone-900">{payment.guestName || t('Guest')}</td>
+                            <td className="px-5 py-4 text-stone-600">{payment.roomNumber ? t('Room {{number}}', { number: payment.roomNumber }) : '-'}</td>
+                            <td className="px-5 py-4 uppercase text-stone-600">{translateStatus(payment.method || '-')}</td>
                             <td className="px-5 py-4">
                               <span className={`px-2 py-1 rounded-full font-bold uppercase ${payment.status === 'paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                                {payment.status || 'pending'}
+                                {translateStatus(payment.status || 'pending')}
                               </span>
                             </td>
                             <td className="px-5 py-4 text-stone-600">{formatPaymentDate(payment.createdAt)}</td>
@@ -1361,11 +1364,11 @@ export function OwnerDashboard() {
                               <button
                                 type="button"
                                 onClick={() => handleDeletePayment(payment)}
-                                aria-label={`Delete payment for ${payment.guestName || 'guest'}`}
+                                aria-label={t('Delete payment for {{name}}', { name: payment.guestName || t('Guest') })}
                                 className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
-                                Delete
+                                {t('Delete')}
                               </button>
                             </td>
                           </tr>
@@ -1385,57 +1388,53 @@ export function OwnerDashboard() {
           {activeTab === 'edit_property' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <form onSubmit={handleUpdatePropertySubmit} className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-5 text-xs font-semibold">
-                <h3 className="text-base font-bold text-stone-900 border-b border-stone-100 pb-3">Property Information</h3>
+                <h3 className="text-base font-bold text-stone-900 border-b border-stone-100 pb-3">{t('Property Information')}</h3>
                 <div>
-                  <label className="block text-stone-700 uppercase mb-1.5 font-bold">Guesthouse Name *</label>
+                  <label className="block text-stone-700 uppercase mb-1.5 font-bold">{t('Guesthouse Name *')}</label>
                   <input type="text" required value={propName} onChange={(e) => setPropName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900 text-xs" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-stone-700 uppercase mb-1.5 font-bold">City *</label>
+                    <label className="block text-stone-700 uppercase mb-1.5 font-bold">{t('City *')}</label>
                     <select value={propCity} onChange={(e) => setPropCity(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-white focus:ring-2 focus:ring-amber-500 text-stone-900 text-xs">
                       {ETHIOPIAN_CITIES.map((c) => (<option key={c} value={c}>{c}</option>))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-stone-700 uppercase mb-1.5 font-bold">Address *</label>
+                    <label className="block text-stone-700 uppercase mb-1.5 font-bold">{t('Address *')}</label>
                     <input type="text" required value={propAddress} onChange={(e) => setPropAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900 text-xs" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-stone-700 uppercase mb-1.5 font-bold">Description *</label>
+                  <label className="block text-stone-700 uppercase mb-1.5 font-bold">{t('Description *')}</label>
                   <textarea rows={4} required value={propDesc} onChange={(e) => setPropDesc(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900 text-xs" />
                 </div>
                 <div>
-                  <label className="block text-stone-700 uppercase mb-1.5 font-bold">Photo URL</label>
-                  <input type="url" value={propImage} onChange={(e) => setPropImage(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-stone-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 text-stone-900 text-xs" />
-                </div>
-                <div>
-                  <label className="block text-stone-700 uppercase mb-2 font-bold">Amenities</label>
+                  <label className="block text-stone-700 uppercase mb-2 font-bold">{t('Amenities')}</label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {PRESET_AMENITIES.map((amenity) => {
                       const isSelected = propAmenities.includes(amenity);
                       return (
                         <button key={amenity} type="button" onClick={() => handleToggleAmenity(amenity)} className={`px-3 py-2 rounded-xl text-left text-xs font-semibold flex items-center gap-2 border transition-all ${isSelected ? 'bg-amber-500/10 border-amber-500 text-stone-950 font-bold' : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'}`}>
                           <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${isSelected ? 'bg-amber-500 text-stone-950' : 'border border-stone-300'}`}>{isSelected && '✓'}</div>
-                          <span className="line-clamp-1">{amenity}</span>
+                          <span className="line-clamp-1">{t(amenity)}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
                 <button type="submit" disabled={savingProfile} className="px-6 py-3.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-2">
-                  {savingProfile ? (<><RefreshCw className="w-4 h-4 animate-spin" /><span>Saving...</span></>) : (<><Check className="w-4 h-4" /><span>Save Property</span></>)}
+                  {savingProfile ? (<><RefreshCw className="w-4 h-4 animate-spin" /><span>{t('Saving...')}</span></>) : (<><Check className="w-4 h-4" /><span>{t('Save Property')}</span></>)}
                 </button>
               </form>
               <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
                 <div className="h-44 relative bg-stone-100 overflow-hidden">
-                  <img src={propImage || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'} alt="Preview" className="w-full h-full object-cover" />
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-stone-950/80 text-amber-400 text-[10px] font-black uppercase">Preview</div>
+                  <img src={propImage || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'} alt={t('Preview')} className="w-full h-full object-cover" />
+                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-stone-950/80 text-amber-400 text-[10px] font-black uppercase">{t('Preview')}</div>
                 </div>
                 <div className="p-5">
-                  <h4 className="text-base font-black text-stone-900">{propName || 'Guesthouse'}</h4>
-                  <p className="text-xs text-stone-500 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-amber-600" /><span>{propAddress || 'Address'}, {propCity}</span></p>
+                  <h4 className="text-base font-black text-stone-900">{propName || t('Guesthouse')}</h4>
+                  <p className="text-xs text-stone-500 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-amber-600" /><span>{propAddress || t('Address')}, {propCity}</span></p>
                 </div>
               </div>
             </div>
@@ -1448,37 +1447,37 @@ export function OwnerDashboard() {
         <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-stone-200 shadow-2xl space-y-5 text-xs font-semibold">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <h3 className="text-base font-black text-stone-900">{editingRoom ? `Edit Room ${editingRoom.roomNumber}` : 'Add Room'}</h3>
+              <h3 className="text-base font-black text-stone-900">{editingRoom ? t('Edit Room {{number}}', { number: editingRoom.roomNumber }) : t('Add Room')}</h3>
               <button onClick={() => setShowAddRoomModal(false)} className="p-1 rounded-lg text-stone-400 hover:text-stone-700"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSaveRoomSubmit} className="space-y-4">
               <div>
-                <label className="block text-stone-700 uppercase mb-1 font-bold">Room Number *</label>
+                <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Room Number *')}</label>
                 <input type="text" required placeholder="e.g. 101" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-stone-700 uppercase mb-1 font-bold">Room Type *</label>
+                  <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Room Type *')}</label>
                   <select value={roomType} onChange={(e) => setRoomType(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-white focus:ring-2 focus:ring-amber-500 font-semibold">
-                    <option value="SINGLE">Single</option>
-                    <option value="DOUBLE">Double</option>
-                    <option value="TWIN">Twin</option>
-                    <option value="FAMILY">Family</option>
-                    <option value="SUITE">Suite</option>
+                    <option value="SINGLE">{t('Single')}</option>
+                    <option value="DOUBLE">{t('Double')}</option>
+                    <option value="TWIN">{t('Twin')}</option>
+                    <option value="FAMILY">{t('Family')}</option>
+                    <option value="SUITE">{t('Suite')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-stone-700 uppercase mb-1 font-bold">Max Guests *</label>
+                  <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Max Guests *')}</label>
                   <input type="number" min={1} max={10} required value={roomCapacity} onChange={(e) => setRoomCapacity(Number(e.target.value))} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500" />
                 </div>
               </div>
               <div>
-                <label className="block text-stone-700 uppercase mb-1 font-bold">Nightly Rate (ETB) *</label>
+                <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Nightly Rate (ETB) *')}</label>
                 <input type="number" min={100} required value={roomPrice} onChange={(e) => setRoomPrice(Number(e.target.value))} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500" />
               </div>
               <div className="flex items-center gap-2.5">
                 <input type="checkbox" id="roomAvailableCheck" checked={roomAvailable} onChange={(e) => setRoomAvailable(e.target.checked)} className="w-4 h-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500" />
-                <label htmlFor="roomAvailableCheck" className="text-stone-700 font-bold">Available for Booking</label>
+                <label htmlFor="roomAvailableCheck" className="text-stone-700 font-bold">{t('Available for Booking')}</label>
               </div>
               {roomFormError && (
                 <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm font-semibold text-red-700">
@@ -1487,8 +1486,8 @@ export function OwnerDashboard() {
                 </div>
               )}
               <div className="flex gap-2 justify-end pt-3 border-t border-stone-100">
-                <button type="button" onClick={() => setShowAddRoomModal(false)} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">Cancel</button>
-                <button type="submit" className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl">{editingRoom ? 'Update Room' : 'Add Room'}</button>
+                <button type="button" onClick={() => setShowAddRoomModal(false)} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">{t('Cancel')}</button>
+                <button type="submit" className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl">{editingRoom ? t('Update Room') : t('Add Room')}</button>
               </div>
             </form>
           </div>
@@ -1500,24 +1499,24 @@ export function OwnerDashboard() {
         <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-stone-200 shadow-2xl space-y-5 text-xs font-semibold">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <h3 className="text-base font-black text-stone-900">Register Receptionist</h3>
+              <h3 className="text-base font-black text-stone-900">{t('Register Receptionist')}</h3>
               <button onClick={() => setShowAddStaffModal(false)} className="p-1 rounded-lg text-stone-400 hover:text-stone-700"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleAddStaffSubmit} className="space-y-4">
               <div>
-                <label className="block text-stone-700 uppercase mb-1 font-bold">Full Name *</label>
+                <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Full Name *')}</label>
                 <input type="text" required placeholder="e.g. Tigist Alemu" value={staffName} onChange={(e) => setStaffName(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500" />
               </div>
               <div>
-                <label className="block text-stone-700 uppercase mb-1 font-bold">Email *</label>
+                <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Email *')}</label>
                 <input type="email" required placeholder="receptionist@guesthouse.com" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500" />
               </div>
               <div>
-                <label className="block text-stone-700 uppercase mb-1 font-bold">Phone *</label>
+                <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Phone *')}</label>
                 <input type="text" required placeholder="+251 911 234567" value={staffPhone} onChange={(e) => setStaffPhone(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500" />
               </div>
               <div>
-                <label className="block text-stone-700 uppercase mb-1 font-bold">Password</label>
+                <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Password')}</label>
                 <input type="text" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 font-mono" />
               </div>
               {staffFormError && (
@@ -1527,8 +1526,8 @@ export function OwnerDashboard() {
                 </div>
               )}
               <div className="flex gap-2 justify-end pt-3 border-t border-stone-100">
-                <button type="button" onClick={() => setShowAddStaffModal(false)} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">Cancel</button>
-                <button type="submit" className="px-5 py-2.5 bg-stone-950 hover:bg-stone-800 text-white font-black rounded-xl">Register</button>
+                <button type="button" onClick={() => setShowAddStaffModal(false)} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">{t('Cancel')}</button>
+                <button type="submit" className="px-5 py-2.5 bg-stone-950 hover:bg-stone-800 text-white font-black rounded-xl">{t('Register')}</button>
               </div>
             </form>
           </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 import {
   Mail,
@@ -19,6 +20,7 @@ import {
 
 export function Login() {
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -159,13 +161,13 @@ export function Login() {
       return {
         field: "identifier",
         message: loginMethod === "email"
-          ? "Please enter your email address."
-          : "Please enter your phone number.",
+          ? t("Please enter your email address.")
+          : t("Please enter your phone number."),
       };
     }
 
     if (!password) {
-      return { field: "password", message: "Please enter your password." };
+      return { field: "password", message: t("Please enter your password.") };
     }
 
     // Email validation
@@ -174,7 +176,7 @@ export function Login() {
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!emailRegex.test(identifier.trim())) {
-        return { field: "identifier", message: "Please enter a valid email address." };
+        return { field: "identifier", message: t("Please enter a valid email address.") };
       }
     }
 
@@ -186,7 +188,7 @@ export function Login() {
       if (!/^\+2519\d{8}$/.test(normalizedPhone)) {
         return {
           field: "identifier",
-          message: "Please enter a valid Ethiopian phone number. Example: +251 9XXXXXXXX",
+          message: t("Please enter a valid Ethiopian phone number. Example: +251 9XXXXXXXX"),
         };
       }
     }
@@ -406,11 +408,23 @@ export function Login() {
     } catch (err) {
       console.error("Login error:", err);
 
-      setError(
+      const message =
         err?.response?.data?.message ||
-          err?.message ||
-          "Login failed. Please check your credentials."
-      );
+        err?.message ||
+        "Login failed. Please check your credentials.";
+
+      setError(message);
+
+      const lowerMessage = String(message).toLowerCase();
+
+      if (lowerMessage.includes("password")) {
+        setFieldErrors({ password: message });
+      } else if (
+        lowerMessage.includes("email") ||
+        lowerMessage.includes("phone")
+      ) {
+        setFieldErrors({ identifier: message });
+      }
     } finally {
       setLoading(false);
     }
@@ -458,11 +472,11 @@ export function Login() {
               <div className="max-w-xs">
 
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-amber-300/90 mb-3">
-                  Welcome
+                  {t('Welcome')}
                 </p>
 
                 <h2 className="text-3xl xl:text-4xl font-black text-white leading-tight">
-                  Modern guesthouse reservation platform
+                  {t('Modern guesthouse reservation platform')}
                 </h2>
 
               </div>
@@ -480,21 +494,19 @@ export function Login() {
                 </span>
 
                 <span className="text-sm font-semibold text-white/80">
-                  Guesthouse Reservation Platform
+                  {t('Guesthouse Reservation Platform')}
                 </span>
 
               </div>
 
               <h1 className="text-4xl xl:text-5xl font-black leading-tight mb-5">
-                Stay comfortable.
+                {t('Stay comfortable.')}
                 <br />
-                Book with confidence.
+                {t('Book with confidence.')}
               </h1>
 
               <p className="text-white/80 text-base leading-7 max-w-lg mb-7">
-                Discover beautiful guesthouses, manage
-                reservations seamlessly, and enjoy a smooth,
-                secure booking experience in a modern platform.
+                {t('Discover beautiful guesthouses, manage reservations seamlessly, and enjoy a smooth, secure booking experience in a modern platform.')}
               </p>
 
               {/* Features */}
@@ -508,11 +520,11 @@ export function Login() {
 
                   <div>
                     <p className="text-sm font-bold">
-                      Easy Booking
+                      {t('Easy Booking')}
                     </p>
 
                     <p className="text-xs text-white/60">
-                      Find your stay
+                      {t('Find your stay')}
                     </p>
                   </div>
                 </div>
@@ -524,11 +536,11 @@ export function Login() {
 
                   <div>
                     <p className="text-sm font-bold">
-                      Secure
+                      {t('Secure')}
                     </p>
 
                     <p className="text-xs text-white/60">
-                      Protected account
+                      {t('Protected account')}
                     </p>
                   </div>
                 </div>
@@ -556,11 +568,11 @@ export function Login() {
 
                 <div>
                   <p className="text-2xl font-black text-stone-950">
-                    Guesthouse
+                    {t('Guesthouse')}
                   </p>
 
                   <p className="text-sm font-bold text-stone-500">
-                    Reservation Platform
+                    {t('Reservation Platform')}
                   </p>
                 </div>
 
@@ -576,7 +588,7 @@ export function Login() {
                   className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-stone-300 hover:text-stone-950"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back to homepage
+                  {t('Back to homepage')}
                 </button>
 
               </div>
@@ -602,7 +614,7 @@ export function Login() {
                     }`}
                   >
                     <Mail className="w-4 h-4" />
-                    Email
+                    {t('Email')}
                   </button>
 
                   <button
@@ -618,7 +630,7 @@ export function Login() {
                     }`}
                   >
                     <Phone className="w-4 h-4" />
-                    Phone
+                    {t('Phone')}
                   </button>
 
                 </div>
@@ -643,8 +655,8 @@ export function Login() {
                     className="block text-sm font-bold text-stone-800 mb-2"
                   >
                     {loginMethod === "email"
-                      ? "Email Address"
-                      : "Phone Number"}
+                      ? t("Email Address")
+                      : t("Phone Number")}
                   </label>
 
                   <div className="relative">
@@ -719,7 +731,7 @@ export function Login() {
                       to="/forgot-password"
                       className="text-sm font-bold text-amber-600 hover:text-amber-700 hover:underline"
                     >
-                      Forgot Password?
+                      {t('Forgot Password?')}
                     </Link>
 
                   </div>
@@ -744,7 +756,7 @@ export function Login() {
                       aria-invalid={Boolean(fieldErrors.password)}
                       required
                       autoComplete="current-password"
-                      placeholder="Enter your password"
+                      placeholder={t('Enter your password')}
                       className={`w-full h-14 pl-12 pr-12 rounded-xl border bg-white text-stone-900 placeholder:text-stone-400 outline-none transition-all focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 ${fieldErrors.password ? "border-red-400" : "border-stone-300"}`}
                     />
 
@@ -752,8 +764,8 @@ export function Login() {
                       type="button"
                       aria-label={
                         showPassword
-                          ? "Hide password"
-                          : "Show password"
+                          ? t("Hide password")
+                          : t("Show password")
                       }
                       onClick={() =>
                         setShowPassword(
@@ -786,15 +798,15 @@ export function Login() {
                       <span className="w-5 h-5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
 
                       <span>
-                        Signing in...
+                        {t('Signing in...')}
                       </span>
                     </>
                   ) : (
                     <>
                       <span>
                         {isFromBooking
-                          ? "Login & Continue Booking"
-                          : "Sign In"}
+                          ? t("Login & Continue Booking")
+                          : t("Sign In")}
                       </span>
 
                       <ArrowRight className="w-5 h-5" />
@@ -817,13 +829,13 @@ export function Login() {
 
                 <p className="text-sm text-stone-500">
 
-                  Don't have an account?{" "}
+                  {t("Don't have an account?")} {" "}
 
                   <Link
                     to="/register"
                     className="font-black text-amber-600 hover:text-amber-700 hover:underline"
                   >
-                    Create Account
+                    {t('Create Account')}
                   </Link>
 
                 </p>
@@ -838,7 +850,7 @@ export function Login() {
 
                   <span className="flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4" />
-                    Secure Login
+                    {t('Secure Login')}
                   </span>
 
                   <span className="flex items-center gap-1.5">
@@ -865,10 +877,11 @@ export function Login() {
 }
 
 function FieldError({ children }) {
+  const { t } = useLanguage();
   return (
     <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
       <X className="mt-0.5 h-4 w-4 flex-shrink-0" />
-      <span>{children}</span>
+      <span>{t(children)}</span>
     </div>
   );
 }

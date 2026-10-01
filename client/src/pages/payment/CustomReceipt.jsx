@@ -1,6 +1,7 @@
 
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 import {
   CheckCircle2,
   Receipt,
@@ -15,6 +16,7 @@ import {
 export default function CustomReceipt() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const payment = location.state?.payment;
   const txRef = location.state?.txRef;
@@ -28,11 +30,11 @@ export default function CustomReceipt() {
           <Receipt className="mx-auto h-14 w-14 text-stone-400" />
 
           <h1 className="mt-5 text-2xl font-black text-stone-900">
-            Receipt Unavailable
+            {t('Receipt Unavailable')}
           </h1>
 
           <p className="mt-3 text-sm text-stone-600">
-            Payment receipt information could not be found.
+            {t('Payment receipt information could not be found.')}
           </p>
 
           <button
@@ -40,7 +42,7 @@ export default function CustomReceipt() {
             onClick={() => navigate("/guest/dashboard", { replace: true })}
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-stone-900 px-5 py-4 text-sm font-black text-white hover:bg-stone-800"
           >
-            Go to Dashboard
+            {t('Go to Dashboard')}
             <ArrowRight className="h-5 w-5" />
           </button>
 
@@ -127,11 +129,11 @@ export default function CustomReceipt() {
           </div>
 
           <h1 className="mt-5 text-3xl font-black text-stone-900">
-            Payment Successful
+            {t('Payment Successful')}
           </h1>
 
           <p className="mt-2 text-sm text-stone-600">
-            Your payment has been successfully verified.
+            {t('Your payment has been successfully verified.')}
           </p>
 
         </div>
@@ -154,19 +156,19 @@ export default function CustomReceipt() {
                   <Receipt className="h-6 w-6" />
 
                   <span className="text-sm font-black uppercase tracking-widest">
-                    Payment Receipt
+                    {t('Payment Receipt')}
                   </span>
                 </div>
 
                 <h2 className="mt-3 text-2xl font-black">
-                  Guesthouse Reservation
+                  {t('Guesthouse Reservation')}
                 </h2>
 
               </div>
 
               <div className="rounded-full bg-emerald-500/20 px-4 py-2">
                 <span className="text-sm font-black text-emerald-300">
-                  PAID
+                  {t('PAID')}
                 </span>
               </div>
 
@@ -179,7 +181,7 @@ export default function CustomReceipt() {
           <div className="border-b border-stone-200 px-6 py-8 text-center">
 
             <p className="text-xs font-black uppercase tracking-widest text-stone-500">
-              Amount Paid
+              {t('Amount Paid')}
             </p>
 
             <div className="mt-3">
@@ -198,7 +200,7 @@ export default function CustomReceipt() {
 
               <CheckCircle2 className="h-4 w-4" />
 
-              Payment Confirmed
+              {t('Payment Confirmed')}
 
             </div>
 
@@ -209,7 +211,7 @@ export default function CustomReceipt() {
           <div className="px-6 py-8 sm:px-8">
 
             <h3 className="text-lg font-black text-stone-900">
-              Transaction Details
+              {t('Transaction Details')}
             </h3>
 
             <div className="mt-5 space-y-4">
@@ -225,7 +227,7 @@ export default function CustomReceipt() {
                 <div className="min-w-0">
 
                   <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-                    Transaction Reference
+                    {t('Transaction Reference')}
                   </p>
 
                   <p className="mt-1 break-all text-sm font-black text-stone-900">
@@ -247,7 +249,7 @@ export default function CustomReceipt() {
                 <div>
 
                   <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-                    Reservation ID
+                    {t('Reservation ID')}
                   </p>
 
                   <p className="mt-1 text-sm font-black text-stone-900">
@@ -269,7 +271,7 @@ export default function CustomReceipt() {
                 <div>
 
                   <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-                    Payment Method
+                    {t('Payment Method')}
                   </p>
 
                   <p className="mt-1 text-sm font-black text-stone-900">
@@ -291,7 +293,7 @@ export default function CustomReceipt() {
                 <div>
 
                   <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-                    Payment Date
+                    {t('Payment Date')}
                   </p>
 
                   <p className="mt-1 text-sm font-black text-stone-900">
@@ -317,12 +319,11 @@ export default function CustomReceipt() {
               <div>
 
                 <p className="font-black text-emerald-900">
-                  Your payment is confirmed
+                  {t('Your payment is confirmed')}
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-emerald-800">
-                  Your payment has been successfully verified.
-                  Please keep this receipt for your records.
+                  {t('Your payment has been successfully verified. Please keep this receipt for your records.')}
                 </p>
 
               </div>
@@ -353,14 +354,14 @@ export default function CustomReceipt() {
 
               <Home className="h-5 w-5" />
 
-              Go to Guest Dashboard
+              {t('Go to Guest Dashboard')}
 
               <ArrowRight className="h-5 w-5" />
 
             </button>
 
             <p className="mt-3 text-center text-xs text-stone-500">
-              You can continue to your dashboard whenever you are ready.
+              {t('You can continue to your dashboard whenever you are ready.')}
             </p>
 
           </div>

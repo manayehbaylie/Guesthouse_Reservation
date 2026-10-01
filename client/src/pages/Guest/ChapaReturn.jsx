@@ -23,7 +23,6 @@ export function ChapaReturn() {
     const params = new URLSearchParams(location.search);
 
     const txRef = params.get("tx_ref");
-    const chapaStatus = params.get("status");
 
     const verifyPayment = async () => {
       try {
@@ -45,69 +44,38 @@ export function ChapaReturn() {
          * ============================================================
          */
 
-        const payment =
-          await ApiService.getChapaPaymentStatus(txRef);
+        let payment = null;
 
-        if (!mounted) {
-          return;
+        // Chapa may redirect before its server callback finishes. Poll briefly
+        // so successful payments are not incorrectly shown as pending.
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          payment = await ApiService.getChapaPaymentStatus(txRef);
+
+          if (!mounted) return;
+
+          if (payment?.status === "paid") {
+            navigate("/guest/payment-receipt", {
+              replace: true,
+              state: {
+                paymentStatus: "PAID",
+                payment,
+                txRef,
+              },
+            });
+            return;
+          }
+
+          if (["failed", "cancelled", "canceled"].includes(payment?.status)) {
+            throw new Error("Your Chapa payment was not completed.");
+          }
+
+          if (attempt < 4) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
         }
-
-        /*
-         * ============================================================
-         * PAYMENT SUCCESS
-         *
-         * THIS IS THE IMPORTANT CHANGE.
-         *
-         * We do NOT go to:
-         *
-         * /guest/dashboard
-         *
-         * We go to:
-         *
-         * /guest/payment-receipt
-         *
-         * which is our CUSTOM receipt page.
-         * ============================================================
-         */
-
-        if (payment?.status === "paid") {
-
-          navigate("/guest/payment-receipt", {
-            replace: true,
-
-            state: {
-              paymentStatus: "PAID",
-              payment: payment,
-              txRef: txRef,
-            },
-          });
-
-          return;
-        }
-
-        /*
-         * ============================================================
-         * PAYMENT FAILED / CANCELLED
-         * ============================================================
-         */
-
-        if (
-          chapaStatus === "failed" ||
-          chapaStatus === "cancelled"
-        ) {
-          throw new Error(
-            "Your Chapa payment was not completed."
-          );
-        }
-
-        /*
-         * ============================================================
-         * PAYMENT STILL PENDING
-         * ============================================================
-         */
 
         throw new Error(
-          "Payment is still pending verification."
+          "Payment is still pending verification. Please check your dashboard shortly."
         );
 
       } catch (error) {

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 // Format relative time helper
 function formatRelativeTime(dateString) {
@@ -119,6 +120,7 @@ function getNotificationVisuals(notification) {
 
 export function NotificationBell({ variant = 'navbar' }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const {
     notifications,
@@ -208,7 +210,7 @@ export function NotificationBell({ variant = 'navbar' }) {
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
-        title="Notifications"
+        title={t('Notifications')}
         className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 focus:outline-none ${
           isOpen
             ? 'bg-[#043658] text-white shadow-sm ring-2 ring-[#043658]/20'
@@ -238,11 +240,11 @@ export function NotificationBell({ variant = 'navbar' }) {
                 <Bell className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold tracking-tight">Notifications</h3>
+                <h3 className="text-sm font-bold tracking-tight">{t('Notifications')}</h3>
               </div>
               {unreadCount > 0 && (
                 <span className="rounded-full bg-[#FFC107] px-2 py-0.5 text-[10px] font-extrabold text-[#043658]">
-                  {unreadCount} New
+                  {unreadCount} {t('New')}
                 </span>
               )}
             </div>
@@ -253,7 +255,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                 type="button"
                 onClick={() => fetchNotifications(false)}
                 disabled={loading}
-                title="Refresh notifications"
+                title={t('Refresh notifications')}
                 className="rounded-lg p-1.5 text-white/80 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -264,11 +266,11 @@ export function NotificationBell({ variant = 'navbar' }) {
                 <button
                   type="button"
                   onClick={markAllAsRead}
-                  title="Mark all as read"
+                  title={t('Mark all as read')}
                   className="flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-xs font-semibold text-white transition hover:bg-white/20"
                 >
                   <CheckCheck className="h-3.5 w-3.5 text-[#FFC107]" />
-                  <span className="text-[11px]">Read all</span>
+                  <span className="text-[11px]">{t('Read all')}</span>
                 </button>
               )}
 
@@ -295,7 +297,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                All ({notifications.length})
+                {t('All')} ({notifications.length})
               </button>
               <button
                 type="button"
@@ -306,7 +308,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Unread ({unreadCount})
+                {t('Unread')} ({unreadCount})
               </button>
             </div>
 
@@ -314,11 +316,11 @@ export function NotificationBell({ variant = 'navbar' }) {
               <button
                 type="button"
                 onClick={clearAllNotifications}
-                title="Clear all notifications"
+                title={t('Clear all notifications')}
                 className="flex items-center gap-1 text-[11px] font-semibold text-stone-400 transition hover:text-red-600"
               >
                 <Trash2 className="h-3 w-3" />
-                <span>Clear</span>
+                <span>{t('Clear')}</span>
               </button>
             )}
           </div>
@@ -330,7 +332,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500">
                   <Bell className="h-6 w-6" />
                 </div>
-                <p className="text-sm font-bold text-stone-800">Notifications unavailable</p>
+                <p className="text-sm font-bold text-stone-800">{t('Notifications unavailable')}</p>
                 <p className="mt-1 max-w-[240px] text-xs text-stone-500">{error}</p>
                 <button
                   type="button"
@@ -338,7 +340,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                   disabled={loading}
                   className="mt-4 rounded-lg bg-[#043658] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
                 >
-                  Try again
+                  {t('Try again')}
                 </button>
               </div>
             ) : filteredNotifications.length === 0 ? (
@@ -348,13 +350,13 @@ export function NotificationBell({ variant = 'navbar' }) {
                 </div>
                 <p className="text-sm font-bold text-stone-800">
                   {activeTab === 'unread'
-                    ? 'No unread notifications'
-                    : 'No notifications yet'}
+                    ? t('No unread notifications')
+                    : t('No notifications')}
                 </p>
                 <p className="mt-1 text-xs text-stone-500 max-w-[220px]">
                   {activeTab === 'unread'
-                    ? 'All your notifications have been marked as read.'
-                    : 'When owners respond to your reviews or you receive updates, they will appear here.'}
+                    ? t('All your notifications have been marked as read.')
+                    : t('When owners respond to your reviews or you receive updates, they will appear here.')}
                 </p>
               </div>
             ) : (
@@ -394,7 +396,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                               : 'font-semibold text-stone-700'
                           }`}
                         >
-                          {item.title}
+                          {t(item.title)}
                         </h4>
                         <span className="shrink-0 text-[10px] font-medium text-stone-400 flex items-center gap-0.5">
                           <Clock className="h-2.5 w-2.5" />
@@ -404,7 +406,7 @@ export function NotificationBell({ variant = 'navbar' }) {
 
                       {/* ✅ SHOW FULL MESSAGE - NO TRUNCATION */}
                       <p className="mt-1 text-xs leading-relaxed text-stone-600">
-                        {item.message}
+                        {t(item.message)}
                       </p>
 
                       {/* ✅ "View Full Response" button for review responses */}
@@ -417,7 +419,7 @@ export function NotificationBell({ variant = 'navbar' }) {
                           }}
                           className="mt-2 px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 text-[10px] font-bold rounded-lg transition"
                         >
-                          View Full Response →
+                          {t('View Full Response')} →
                         </button>
                       )}
 

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { DollarSign, Smartphone, CreditCard, ChevronLeft, ArrowUpRight } from 'lucide-react';
 
 export function RevenueReports() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [guesthouseId, setGuesthouseId] = useState(null);
 
@@ -60,12 +62,12 @@ export function RevenueReports() {
         className="flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-stone-900"
       >
         <ChevronLeft className="w-4 h-4" />
-        <span>Back to Owner Dashboard</span>
+        <span>{t('Back to Owner Dashboard')}</span>
       </button>
 
       <div>
-        <h1 className="text-2xl font-black text-stone-900 tracking-tight">Revenue & Payment Analytics</h1>
-        <p className="text-xs text-stone-500">Track verified revenue transactions across Telebirr, Chapa, and cards</p>
+        <h1 className="text-2xl font-black text-stone-900 tracking-tight">{t('Revenue & Payment Analytics')}</h1>
+        <p className="text-xs text-stone-500">{t('Track verified revenue transactions across Telebirr, Chapa, and cards')}</p>
       </div>
 
       {/* Breakdown Cards */}
@@ -74,7 +76,7 @@ export function RevenueReports() {
           <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
               <Smartphone className="w-4 h-4" />
-              <span>Telebirr Collections</span>
+              <span>{t('Telebirr Collections')}</span>
             </div>
             <div className="text-2xl font-black text-stone-900">
               {revenueReport.paymentMethodBreakdown.telebirr.toLocaleString()} ETB
@@ -84,7 +86,7 @@ export function RevenueReports() {
           <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs">
               <CreditCard className="w-4 h-4" />
-              <span>Chapa Online Cards</span>
+              <span>{t('Chapa Online Cards')}</span>
             </div>
             <div className="text-2xl font-black text-stone-900">
               {revenueReport.paymentMethodBreakdown.chapa.toLocaleString()} ETB
@@ -94,7 +96,7 @@ export function RevenueReports() {
           <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-purple-600 font-bold text-xs">
               <DollarSign className="w-4 h-4" />
-              <span>Total Gross Revenue</span>
+              <span>{t('Total Gross Revenue')}</span>
             </div>
             <div className="text-2xl font-black text-stone-900">
               {revenueReport.totalRevenue.toLocaleString()} ETB
@@ -106,19 +108,19 @@ export function RevenueReports() {
       {/* Payment Transactions Table */}
       <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-xs">
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-stone-900">Verified Payment Audit Trail</h3>
+          <h3 className="text-sm font-bold text-stone-900">{t('Verified Payment Audit Trail')}</h3>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-medium">
             <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider">
               <tr>
-                <th className="px-6 py-3.5">Payment Ref</th>
-                <th className="px-6 py-3.5">Guest</th>
-                <th className="px-6 py-3.5">Gateway</th>
-                <th className="px-6 py-3.5">Amount</th>
-                <th className="px-6 py-3.5">Status</th>
-                <th className="px-6 py-3.5">Date</th>
+                <th className="px-6 py-3.5">{t('Payment Ref')}</th>
+                <th className="px-6 py-3.5">{t('Guest')}</th>
+                <th className="px-6 py-3.5">{t('Gateway')}</th>
+                <th className="px-6 py-3.5">{t('Amount')}</th>
+                <th className="px-6 py-3.5">{t('Status')}</th>
+                <th className="px-6 py-3.5">{t('Date')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-stone-800">

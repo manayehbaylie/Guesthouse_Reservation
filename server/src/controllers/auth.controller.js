@@ -1,6 +1,8 @@
 import {
   registerUser,
   loginUser,
+  requestPasswordReset,
+  resetUserPassword,
 } from "../services/auth.service.js";
 import { registerSchema } from "../validators/auth.validator.js";
 import { successResponse } from "../utils/response.js";
@@ -44,6 +46,36 @@ export const login = async (req, res, next) => {
       res,
       result,
       "Login successful"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await requestPasswordReset(email);
+
+    return successResponse(
+      res,
+      result,
+      result.message || "Password reset request received."
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    const result = await resetUserPassword(token, newPassword);
+
+    return successResponse(
+      res,
+      result,
+      result.message || "Password reset successful."
     );
   } catch (error) {
     next(error);
