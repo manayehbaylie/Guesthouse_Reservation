@@ -18,7 +18,7 @@ import { ForgotPassword } from "./pages/Auth/ForgotPassword.jsx";
 import { ResetPassword } from "./pages/Auth/ResetPassword.jsx";
 
 // Profile
-import { Profile } from "./pages/Profile/Profile.jsx";
+import { Profile } from "./pages/profile/profile.jsx";
 
 // Guest pages
 import { Home } from "./pages/Guest/Home.jsx";
