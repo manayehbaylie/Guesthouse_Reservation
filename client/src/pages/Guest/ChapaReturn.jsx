@@ -45,11 +45,18 @@ export function ChapaReturn() {
          */
 
         let payment = null;
+        let lastVerificationError = null;
 
         // Chapa may redirect before its server callback finishes. Poll briefly
-        // so successful payments are not incorrectly shown as pending.
+        // so callbacks and short-lived verification errors can settle.
         for (let attempt = 0; attempt < 5; attempt += 1) {
-          payment = await ApiService.getChapaPaymentStatus(txRef);
+          try {
+            payment = await ApiService.getChapaPaymentStatus(txRef);
+            lastVerificationError = null;
+          } catch (error) {
+            payment = null;
+            lastVerificationError = error;
+          }
 
           if (!mounted) return;
 
@@ -65,13 +72,19 @@ export function ChapaReturn() {
             return;
           }
 
-          if (["failed", "cancelled", "canceled"].includes(payment?.status)) {
-            throw new Error("Your Chapa payment was not completed.");
-          }
-
           if (attempt < 4) {
             await new Promise((resolve) => setTimeout(resolve, 1500));
           }
+        }
+
+        if (["failed", "cancelled", "canceled"].includes(payment?.status)) {
+          throw new Error("Your Chapa payment was not completed.");
+        }
+
+        if (lastVerificationError) {
+          throw new Error(
+            "We could not verify your payment right now. Check your payment history before trying again."
+          );
         }
 
         throw new Error(

@@ -11,7 +11,6 @@ export const reservationOverlapWhere = (
   checkIn: { lt: checkOut },
   checkOut: { gt: checkIn },
   OR: [
-    { status: "PENDING" },
     { status: "CHECKED_IN" },
     {
       status: "CONFIRMED",

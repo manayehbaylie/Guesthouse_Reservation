@@ -1226,7 +1226,7 @@ export const initiatePayment = async ({
 // ============================================================
 
 export const markPaymentAsPaid =
-  async (paymentId) => {
+  async (paymentId, { allowFailedRecovery = false } = {}) => {
     const id = Number(paymentId);
 
     if (
@@ -1270,8 +1270,8 @@ export const markPaymentAsPaid =
           }
 
           if (
-            payment.status ===
-            "FAILED"
+            payment.status === "FAILED" &&
+            !allowFailedRecovery
           ) {
             throw new Error(
               "Failed payment cannot be marked as paid."
@@ -1322,9 +1322,14 @@ export const markPaymentAsPaid =
 
           await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id" = ${reservation.roomId} FOR UPDATE`;
 
+          const recoveringFailedPayment =
+            allowFailedRecovery &&
+            payment.status === "FAILED" &&
+            reservation.status === "CANCELLED";
+
           if (
-            reservation.status !==
-            "PENDING"
+            reservation.status !== "PENDING" &&
+            !recoveringFailedPayment
           ) {
             throw new Error(
               "Only a pending reservation can be confirmed by payment."
@@ -1482,7 +1487,9 @@ export const processChapaCallback = async (payload = {}) => {
   const verification = await verifyChapaTransaction(txRef);
 
   if (verification.verified) {
-    return markPaymentAsPaid(payment.id);
+    return markPaymentAsPaid(payment.id, {
+      allowFailedRecovery: true,
+    });
   }
 
   const verificationStatusTokens =
@@ -1520,15 +1527,7 @@ export const getChapaPaymentStatus = async (guestId, txRef) => {
     throw new Error('Payment not found.');
   }
 
-  if (payment.status === 'FAILED') {
-    await cancelPendingReservation(payment.reservationId);
-    return prisma.payment.findUnique({
-      where: { id: payment.id },
-      include: { reservation: true },
-    });
-  }
-
-  if (payment.status === 'PENDING') {
+  if (payment.status === 'PENDING' || payment.status === 'FAILED') {
     return processChapaCallback({ tx_ref: txRef });
   }
 

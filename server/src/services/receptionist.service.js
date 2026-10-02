@@ -326,6 +326,11 @@ export const confirmReservation = async (receptionistId, id) => {
         guesthouseId: guesthouse.id,
       },
     },
+    include: {
+      payment: {
+        select: { status: true },
+      },
+    },
   });
 
   if (!reservation) {
@@ -334,6 +339,10 @@ export const confirmReservation = async (receptionistId, id) => {
 
   if (reservation.status !== "PENDING") {
     throw new Error("Only pending reservations can be confirmed.");
+  }
+
+  if (reservation.payment?.status !== "PAID") {
+    throw new Error("Reservation can only be confirmed after successful payment.");
   }
 
   const updatedReservation = await prisma.reservation.update({

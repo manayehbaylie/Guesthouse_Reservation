@@ -272,7 +272,7 @@ router.patch(
  * /api/receptionist/reservations/{id}/confirm:
  *   patch:
  *     summary: Confirm a reservation
- *     description: Confirm a pending reservation for a guest.
+ *     description: Confirm a pending reservation only after successful payment.
  *     tags:
  *       - Receptionist
  *     security:
