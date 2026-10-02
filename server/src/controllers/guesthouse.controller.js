@@ -13,6 +13,7 @@ import {
 } from "../services/guesthouse.service.js";
 
 import { successResponse } from "../utils/response.js";
+import { uploadToCloudinary } from "../config/cloudinary.js";
 
 // ============================================================
 // CREATE GUESTHOUSE
@@ -28,8 +29,9 @@ export const create = async (req, res, next) => {
     // MAIN GUESTHOUSE IMAGE
     // ==========================================================
 
-    if (req.file) {
-      rawBody.image = `/uploads/guesthouses/${req.file.filename}`;
+       if (req.file) {
+      const result = await uploadToCloudinary(req.file, "guesthouse/images");
+      rawBody.image = result.secure_url;
     } else if (
       typeof rawBody.image !== "string" ||
       !rawBody.image.trim()
@@ -164,8 +166,9 @@ export const update = async (req, res, next) => {
     // existing image from the database.
     // ==========================================================
 
-    if (req.file) {
-      rawBody.image = `/uploads/guesthouses/${req.file.filename}`;
+       if (req.file) {
+      const result = await uploadToCloudinary(req.file, "guesthouse/images");
+      rawBody.image = result.secure_url;
     } else {
       // Don't send an empty/null image during normal updates.
       delete rawBody.image;

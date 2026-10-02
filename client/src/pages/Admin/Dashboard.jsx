@@ -6,7 +6,7 @@ import React, {
 } from 'react';
 
 import { useNavigate } from 'react-router-dom';
-import { ApiService } from '../../services/api.js';
+import { ApiService, getApiUrl } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
@@ -1757,23 +1757,33 @@ function PendingPage({
     useState(null);
 
   const fileUrl = (value) => {
-    if (!value) return '';
+  if (!value) return '';
 
-    if (
-      /^https?:\/\//i.test(
-        value
-      )
-    ) {
-      return value;
-    }
+  // Cloudinary / Unsplash full URLs work as they are
+  if (/^https?:\/\//i.test(value)) return value;
 
-    return `http://localhost:5000${
-      value.startsWith('/')
-        ? value
-        : `/${value}`
-    }`;
-  };
+  // Old local paths like /uploads/... -> backend URL
+  const path = value.startsWith('/') ? value : `/${value}`;
+  const apiUrl = getApiUrl();
 
+  if (/^https?:\/\//i.test(apiUrl)) {
+    return `${apiUrl.replace(/\/api\/?$/, '')}${path}`;
+  }
+
+  return path;
+};
+const openLicense = async (id) => {
+  try {
+    const url = await ApiService.getGuesthouseLicenseUrl(id);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  } catch (err) {
+    alert(
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to open license document.'
+    );
+  }
+};
   return (
     <div className="space-y-5">
 
@@ -1959,22 +1969,28 @@ function PendingPage({
                             {t('License document')}
                           </h4>
 
-                          {gh.licenseDocument ? (
-                            <a
-                              href={fileUrl(
-                                gh.licenseDocument
-                              )}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-amber-700 font-bold hover:underline"
-                            >
-                              {t('Open license document')}
-                            </a>
-                          ) : (
-                            <p className="text-slate-500">
-                              {t('No license document')}
-                            </p>
-                          )}
+                          {gh.licensePublicId ? (
+  <button
+    type="button"
+    onClick={() => openLicense(gh.id)}
+    className="text-amber-700 font-bold hover:underline"
+  >
+    {t('Open license document')}
+  </button>
+) : gh.licenseDocument ? (
+  <a
+    href={fileUrl(gh.licenseDocument)}
+    target="_blank"
+    rel="noreferrer"
+    className="text-amber-700 font-bold hover:underline"
+  >
+    {t('Open license document')}
+  </a>
+) : (
+  <p className="text-slate-500">
+    {t('No license document')}
+  </p>
+)}
 
                         </div>
 

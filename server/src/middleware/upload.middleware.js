@@ -1,47 +1,8 @@
 import multer from "multer";
 import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import crypto from "crypto";
 
-const middlewareDirectory = path.dirname(
-  fileURLToPath(import.meta.url)
-);
-
-const uploadDirectory = path.resolve(
-  middlewareDirectory,
-  "../../uploads/guesthouses"
-);
-
-// Make sure the upload directory exists
-fs.mkdirSync(uploadDirectory, {
-  recursive: true,
-});
-
-// ==========================================================
-// STORAGE CONFIGURATION
-// ==========================================================
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDirectory);
-  },
-
-  filename: (req, file, cb) => {
-    const extension = path
-      .extname(file.originalname)
-      .toLowerCase();
-
-    const uniqueName =
-      `${Date.now()}-${crypto.randomUUID()}${extension}`;
-
-    cb(null, uniqueName);
-  },
-});
-
-// ==========================================================
-// FILE FILTER
-// ==========================================================
+// ፋይሉ በዲስክ ላይ አይቀመጥም፤ በ req.file.buffer ውስጥ ይቆያል
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowedExtensions = [
@@ -68,15 +29,9 @@ const fileFilter = (req, file, cb) => {
   );
 };
 
-// ==========================================================
-// MULTER CONFIGURATION
-// ==========================================================
-
 const upload = multer({
   storage,
-
   fileFilter,
-
   limits: {
     fileSize: 5 * 1024 * 1024,
   },

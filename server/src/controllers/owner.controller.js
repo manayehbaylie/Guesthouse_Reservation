@@ -18,28 +18,23 @@ import { successResponse } from "../utils/response.js";
 
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
+import { uploadToCloudinary } from "../config/cloudinary.js";
 
 // ============================================================
 // OWNER GUESTHOUSE PAYLOAD
 // ============================================================
 
-const ownerGuesthousePayload = (req) => {
+const ownerGuesthousePayload = async (req) => {
   const payload = {
     ...req.body,
   };
 
-  // ==========================================================
   // MAIN GUESTHOUSE IMAGE
-  // ==========================================================
+  const imageFile = req.files?.image?.[0];
 
-  if (
-    req.files?.image &&
-    Array.isArray(req.files.image) &&
-    req.files.image.length > 0
-  ) {
-    const imageFile = req.files.image[0];
-
-    payload.image = `/uploads/guesthouses/${imageFile.filename}`;
+  if (imageFile) {
+    const result = await uploadToCloudinary(imageFile, "guesthouse/images");
+    payload.image = result.secure_url;
   } else if (
     typeof req.body.image === "string" &&
     req.body.image.trim()
@@ -48,48 +43,32 @@ const ownerGuesthousePayload = (req) => {
     payload.image = req.body.image.trim();
   }
 
-  // ==========================================================
   // LICENSE DOCUMENT
-  // ==========================================================
+  const licenseFile = req.files?.licenseDocument?.[0];
 
-  if (
-    req.files?.licenseDocument &&
-    Array.isArray(req.files.licenseDocument) &&
-    req.files.licenseDocument.length > 0
-  ) {
-    const licenseFile =
-      req.files.licenseDocument[0];
-
-    payload.licenseDocument =
-      `/uploads/guesthouses/${licenseFile.filename}`;
+  if (licenseFile) {
+    const result = await uploadToCloudinary(licenseFile, "guesthouse/licenses");
+    payload.licenseDocument = result.secure_url;
   } else if (
     typeof req.body.licenseDocument === "string" &&
     req.body.licenseDocument.trim()
   ) {
-    payload.licenseDocument =
-      req.body.licenseDocument.trim();
+    payload.licenseDocument = req.body.licenseDocument.trim();
   }
 
-  // ==========================================================
   // ADDITIONAL PHOTOS
-  // ==========================================================
+  const photoFiles = req.files?.photos;
 
-  if (
-    req.files?.photos &&
-    Array.isArray(req.files.photos) &&
-    req.files.photos.length > 0
-  ) {
-    payload.photos = req.files.photos.map(
-      (file) =>
-        `/uploads/guesthouses/${file.filename}`
+  if (Array.isArray(photoFiles) && photoFiles.length > 0) {
+    const results = await Promise.all(
+      photoFiles.map((file) =>
+        uploadToCloudinary(file, "guesthouse/photos")
+      )
     );
-  } else if (
-    Array.isArray(req.body.photos)
-  ) {
+    payload.photos = results.map((result) => result.secure_url);
+  } else if (Array.isArray(req.body.photos)) {
     payload.photos = req.body.photos.filter(
-      (photo) =>
-        typeof photo === "string" &&
-        photo.trim()
+      (photo) => typeof photo === "string" && photo.trim()
     );
   } else if (
     typeof req.body.photos === "string" &&
@@ -138,7 +117,7 @@ export const createGuesthouse = async (
 ) => {
   try {
     const payload =
-      ownerGuesthousePayload(req);
+    await ownerGuesthousePayload(req);
 
     const guesthouse =
       await registerGuesthouseService(
@@ -172,8 +151,7 @@ export const resubmitGuesthouse = async (
 ) => {
   try {
     const payload =
-      ownerGuesthousePayload(req);
-
+      await ownerGuesthousePayload(req);
     const guesthouse =
       await resubmitGuesthouseService(
         req.user.id,
@@ -201,7 +179,7 @@ export const updateGuesthouse = async (
 ) => {
   try {
     const payload =
-      ownerGuesthousePayload(req);
+       await ownerGuesthousePayload(req);
 
     const guesthouse =
       await updateMyGuesthouse(
@@ -522,8 +500,7 @@ export const submitGuesthouseForReview =
   ) => {
     try {
       const payload =
-        ownerGuesthousePayload(req);
-
+        await ownerGuesthousePayload(req);
       const guesthouse =
         await submitGuesthouseForReviewService(
           req.user.id,

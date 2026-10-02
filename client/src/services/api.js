@@ -4665,6 +4665,17 @@ async getMyGuesthouse() {
       : [];
   },
 
+    async getGuesthouseLicenseUrl(id) {
+    if (!id) {
+      throw new Error("Guesthouse ID is required.");
+    }
+
+    const response = await api.get(`/guesthouses/${id}/license`);
+    const data = unwrap(response);
+
+    return data?.url || null;
+  },
+  
   async getAdminGuesthouses() {
     const response =
       await api.get(
