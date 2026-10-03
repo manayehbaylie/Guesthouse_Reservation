@@ -1396,9 +1396,18 @@ export function OwnerDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-stone-700 uppercase mb-1.5 font-bold">{t('City *')}</label>
-                    <select value={propCity} onChange={(e) => setPropCity(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-white focus:ring-2 focus:ring-amber-500 text-stone-900 text-xs">
-                      {ETHIOPIAN_CITIES.map((c) => (<option key={c} value={c}>{c}</option>))}
-                    </select>
+                  <input
+  type="text"
+  list="city-suggestions"
+  required
+  value={propCity}
+  onChange={(e) => setPropCity(e.target.value)}
+  placeholder={t('Enter city')}
+  className="w-full px-4 py-3 rounded-xl border border-stone-300 bg-white focus:ring-2 focus:ring-amber-500 text-stone-900 text-xs"
+/>
+<datalist id="city-suggestions">
+  {ETHIOPIAN_CITIES.map((c) => (<option key={c} value={c} />))}
+</datalist>
                   </div>
                   <div>
                     <label className="block text-stone-700 uppercase mb-1.5 font-bold">{t('Address *')}</label>

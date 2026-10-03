@@ -16,7 +16,7 @@ export const uploadToCloudinary = (file, folder = "guesthouse") =>
 
     cloudinary.uploader
       .upload_stream(
-        { folder, resource_type: "auto" }, // ምስልም PDF ም ይሰራል
+        { folder, resource_type: "auto" }, 
         (error, result) => (error ? reject(error) : resolve(result))
       )
       .end(file.buffer);
