@@ -20,6 +20,7 @@ import {
   Building2,
   ChevronDown,
   MessageSquare,
+  Sparkles,
   MapPin,
   Settings,
 } from 'lucide-react';
@@ -234,6 +235,11 @@ export function DashboardLayout({ children, showHeader = true }) {
       path: '/guest/search', 
       icon: <Search className="w-5 h-5" />, 
       label: t('Find Guesthouses')
+    },
+    {
+      path: '/assistant',
+      icon: <Sparkles className="w-5 h-5" />,
+      label: t('AI Assistant')
     },
     { 
       path: '/guest/reviews', 

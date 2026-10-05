@@ -34,6 +34,7 @@ import { GuestBookings } from "./pages/Guest/Reservations.jsx";
 import GuestDashboard from "./pages/Guest/Dashboard.jsx";
 import { BookingDetail } from "./pages/Guest/BookingDetail.jsx";
 import { WriteReview } from "./pages/Guest/WriteReview.jsx";
+import { Assistant } from "./pages/Guest/Assistant.jsx";
 import ChapaReturn from "./pages/Guest/ChapaReturn.jsx";
 
 // Payment pages
@@ -78,6 +79,7 @@ export default function App() {
   const isDashboard =
     location.pathname === "/guest/dashboard" ||
     location.pathname === "/guest/search" ||
+    location.pathname === "/assistant" ||
     location.pathname === "/reservations" ||
     location.pathname === "/guest/reviews" ||
     location.pathname === "/booking" ||
@@ -277,6 +279,17 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={["GUEST"]}>
                   <GuesthouseSearch />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/assistant"
+              element={
+                <ProtectedRoute
+                  allowedRoles={["GUEST", "OWNER", "RECEPTIONIST", "ADMIN"]}
+                >
+                  <Assistant />
                 </ProtectedRoute>
               }
             />

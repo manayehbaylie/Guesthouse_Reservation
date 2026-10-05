@@ -1388,6 +1388,11 @@ export const ApiService = {
 
   getApiUrl,
 
+  async chatWithAssistant({ message, history = [], language = 'en' }) {
+    const response = await api.post('/ai/chat', { message, history, language });
+    return unwrap(response);
+  },
+
   // ==========================================================
   // AUTH
   // ==========================================================

@@ -18,6 +18,7 @@ import swaggerSpec from "./docs/swagger.js";
 import ownerRoutes from "./routes/owner.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import guestRoutes from "./routes/guest.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -55,6 +56,7 @@ app.use("/api/reports", reportRoutes);
  app.use("/api/owner", ownerRoutes);
  app.use("/api/admin", adminRoutes);
  app.use("/api/guest", guestRoutes);
+app.use("/api/ai", aiRoutes);
 // Error Handler (Always last)
 app.use(errorHandler);
 
