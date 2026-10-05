@@ -68,6 +68,33 @@ const getPrimaryGuesthouseImage = (guesthouse) => {
   return photos[0] || null;
 };
 
+const addGuesthouseReviewMetrics = (guesthouse) => {
+  if (!guesthouse) {
+    return guesthouse;
+  }
+
+  const reviews = Array.isArray(guesthouse.reviews)
+    ? guesthouse.reviews
+    : [];
+
+  const reviewCount = reviews.length;
+
+  const averageRating =
+    reviewCount > 0
+      ? reviews.reduce(
+          (total, review) =>
+            total + Number(review?.rating ?? 0),
+          0
+        ) / reviewCount
+      : 0;
+
+  return {
+    ...guesthouse,
+    rating: Number(averageRating.toFixed(1)),
+    reviewCount,
+  };
+};
+
 // ============================================================
 // CREATE GUESTHOUSE
 // ============================================================
@@ -160,21 +187,28 @@ export const getAllGuesthouses = async () => {
       },
 
       rooms: true,
+      reviews: {
+        select: {
+          rating: true,
+        },
+      },
     },
   });
 
-  return guesthouses.map((guesthouse) => ({
-    ...guesthouse,
+  return guesthouses.map((guesthouse) =>
+    addGuesthouseReviewMetrics({
+      ...guesthouse,
 
-    // ========================================================
-    // RETURN OWNER-UPLOADED IMAGE
-    // ========================================================
-    image: getPrimaryGuesthouseImage(guesthouse),
+      // ========================================================
+      // RETURN OWNER-UPLOADED IMAGE
+      // ========================================================
+      image: getPrimaryGuesthouseImage(guesthouse),
 
-    photos: Array.isArray(guesthouse.photos)
-      ? guesthouse.photos
-      : [],
-  }));
+      photos: Array.isArray(guesthouse.photos)
+        ? guesthouse.photos
+        : [],
+    })
+  );
 };
 
 // ============================================================
@@ -363,6 +397,11 @@ export const getGuesthouseByOwnerId = async (ownerId) => {
 
     include: {
       rooms: true,
+      reviews: {
+        select: {
+          rating: true,
+        },
+      },
     },
 
     orderBy: {
@@ -370,18 +409,20 @@ export const getGuesthouseByOwnerId = async (ownerId) => {
     },
   });
 
-  return guesthouses.map((guesthouse) => ({
-    ...guesthouse,
+  return guesthouses.map((guesthouse) =>
+    addGuesthouseReviewMetrics({
+      ...guesthouse,
 
-    // ========================================================
-    // IMPORTANT FOR OWNER DASHBOARD
-    // ========================================================
-    image: getPrimaryGuesthouseImage(guesthouse),
+      // ========================================================
+      // IMPORTANT FOR OWNER DASHBOARD
+      // ========================================================
+      image: getPrimaryGuesthouseImage(guesthouse),
 
-    photos: Array.isArray(guesthouse.photos)
-      ? guesthouse.photos
-      : [],
-  }));
+      photos: Array.isArray(guesthouse.photos)
+        ? guesthouse.photos
+        : [],
+    })
+  );
 };
 
 // ============================================================
@@ -448,21 +489,28 @@ export const getPendingGuesthouses = async () => {
       },
 
       rooms: true,
+      reviews: {
+        select: {
+          rating: true,
+        },
+      },
     },
   });
 
-  return guesthouses.map((guesthouse) => ({
-    ...guesthouse,
+  return guesthouses.map((guesthouse) =>
+    addGuesthouseReviewMetrics({
+      ...guesthouse,
 
-    // ========================================================
-    // ADMIN SHOULD ALSO SEE THE OWNER IMAGE BEFORE APPROVAL
-    // ========================================================
-    image: getPrimaryGuesthouseImage(guesthouse),
+      // ========================================================
+      // ADMIN SHOULD ALSO SEE THE OWNER IMAGE BEFORE APPROVAL
+      // ========================================================
+      image: getPrimaryGuesthouseImage(guesthouse),
 
-    photos: Array.isArray(guesthouse.photos)
-      ? guesthouse.photos
-      : [],
-  }));
+      photos: Array.isArray(guesthouse.photos)
+        ? guesthouse.photos
+        : [],
+    })
+  );
 };
 
 // ============================================================
@@ -491,21 +539,28 @@ export const getAllGuesthousesAdmin = async () => {
       },
 
       rooms: true,
+      reviews: {
+        select: {
+          rating: true,
+        },
+      },
     },
   });
 
-  return guesthouses.map((guesthouse) => ({
-    ...guesthouse,
+  return guesthouses.map((guesthouse) =>
+    addGuesthouseReviewMetrics({
+      ...guesthouse,
 
-    // ========================================================
-    // ADMIN GETS THE REAL SAVED IMAGE
-    // ========================================================
-    image: getPrimaryGuesthouseImage(guesthouse),
+      // ========================================================
+      // ADMIN GETS THE REAL SAVED IMAGE
+      // ========================================================
+      image: getPrimaryGuesthouseImage(guesthouse),
 
-    photos: Array.isArray(guesthouse.photos)
-      ? guesthouse.photos
-      : [],
-  }));
+      photos: Array.isArray(guesthouse.photos)
+        ? guesthouse.photos
+        : [],
+    })
+  );
 };
 
 // ============================================================

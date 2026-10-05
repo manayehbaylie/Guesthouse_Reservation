@@ -658,12 +658,16 @@ function mapGuesthouseFromBackend(
 
     rating:
       Number(
-        guesthouse.rating ?? 0
+        guesthouse.averageRating ??
+        guesthouse.rating ??
+        0
       ),
 
     reviewCount:
       Number(
-        guesthouse.reviewCount ?? 0
+        guesthouse.reviewCount ??
+        guesthouse.reviews?.length ??
+        0
       ),
 
     createdAt:
@@ -4785,6 +4789,19 @@ async getMyGuesthouse() {
     return mapGuesthouseFromBackend(
       unwrap(response)
     );
+  },
+
+  async setGuesthouseActiveStatus(id, active) {
+    if (!id) {
+      throw new Error("Guesthouse ID is required.");
+    }
+
+    const response = await api.patch(
+      `/admin/guesthouses/${id}/active-status`,
+      { active }
+    );
+
+    return mapGuesthouseFromBackend(unwrap(response));
   },
 
   // ==========================================================

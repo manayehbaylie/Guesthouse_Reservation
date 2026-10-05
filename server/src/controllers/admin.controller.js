@@ -1,6 +1,7 @@
 import {
   approveGuesthouse,
   rejectGuesthouse,
+  setGuesthouseActiveStatus,
   deleteGuesthouse,
   deleteUser,
   getAllUsers,
@@ -38,6 +39,22 @@ export const reject = async (req, res, next) => {
   try {
     const guesthouse = await rejectGuesthouse(req.params.id, req.body.reason);
     return successResponse(res, guesthouse, "Guesthouse rejected successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateGuesthouseActiveStatus = async (req, res, next) => {
+  try {
+    const guesthouse = await setGuesthouseActiveStatus(
+      req.params.id,
+      req.body.active
+    );
+    const message = req.body.active
+      ? "Guesthouse activated successfully"
+      : "Guesthouse deactivated successfully";
+
+    return successResponse(res, guesthouse, message);
   } catch (error) {
     next(error);
   }

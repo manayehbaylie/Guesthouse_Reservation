@@ -5,7 +5,6 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 // Components
 import Navbar from "./components/Navbar.jsx";
 import { Sidebar } from "./components/Sidebar.jsx";
-import { ArchitectureModal } from "./components/ArchitectureModal.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { NotificationToastContainer } from "./components/common/NotificationToastContainer.jsx";
 import { DashboardLayout } from "./components/DashboardLayout.jsx";
@@ -57,7 +56,6 @@ import AdminDashboard from "./pages/Admin/Dashboard.jsx";
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [archModalOpen, setArchModalOpen] = useState(false);
   const location = useLocation();
   const { t } = useLanguage();
 
@@ -120,11 +118,7 @@ export default function App() {
 
         {/* DASHBOARD SIDEBAR */}
 
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          onOpenArchModal={() => setArchModalOpen(true)}
-        />
+        <Sidebar />
 
         {/* =======================================================
             MAIN CONTENT
@@ -479,26 +473,13 @@ export default function App() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setArchModalOpen(true)}
-              className="text-sm font-semibold text-[#FFC107] transition hover:text-white hover:underline"
-            >
-              {t('View Full-Stack API & Architecture Specs')}
-            </button>
+            <p className="text-sm font-semibold text-[#FFC107]">
+              {t('This platform developed by Manayeh Baylie.')}
+            </p>
 
           </div>
         </footer>
       )}
-
-      {/* =========================================================
-          ARCHITECTURE MODAL
-      ========================================================= */}
-
-      <ArchitectureModal
-        isOpen={archModalOpen}
-        onClose={() => setArchModalOpen(false)}
-      />
 
       {/* =========================================================
           LIVE REAL-TIME NOTIFICATION TOAST ALERTS

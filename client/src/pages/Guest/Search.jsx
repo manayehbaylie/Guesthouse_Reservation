@@ -568,8 +568,12 @@ function GuesthouseCard({
         <div className="absolute top-3 right-3 bg-stone-900/80 text-amber-400 rounded-full px-2 py-1 text-xs font-bold flex gap-1 items-center">
           <Star className="w-3 h-3 fill-amber-400" />
 
-          {gh.rating ??
-            "4.5"}
+          {Number(
+            gh.rating ??
+            gh.averageRating ??
+            gh.average_rating ??
+            0
+          ).toFixed(1)}
         </div>
       </div>
 

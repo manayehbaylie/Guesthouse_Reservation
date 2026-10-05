@@ -193,6 +193,7 @@ enum GuesthouseStatus {
   PENDING
   APPROVED
   REJECTED
+  INACTIVE
 }
 
 enum ReservationStatus {

@@ -12,10 +12,6 @@ import {
   CalendarCheck,
   Receipt,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Pause,
-  Play,
 } from "lucide-react";
 
 const MAX_GUESTHOUSES = 20;
@@ -231,7 +227,8 @@ const normalizeGuesthouse = (guesthouse) => {
   const numericRating = Number(
     guesthouse.rating ??
       guesthouse.averageRating ??
-      4.5
+      guesthouse.average_rating ??
+      0
   );
 
   const numericPrice = Number(
@@ -385,7 +382,6 @@ export function Home() {
   const [loading, setLoading] =
     useState(true);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
-  const [heroPaused, setHeroPaused] = useState(false);
 
   /*
    * ==========================================================
@@ -688,7 +684,7 @@ export function Home() {
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (heroPaused || prefersReducedMotion || heroSlides.length < 2) {
+    if (prefersReducedMotion || heroSlides.length < 2) {
       return undefined;
     }
 
@@ -697,13 +693,7 @@ export function Home() {
     }, 3500);
 
     return () => window.clearInterval(intervalId);
-  }, [heroPaused, heroSlides.length]);
-
-  const showHeroSlide = (direction) => {
-    setActiveHeroIndex((current) =>
-      (current + direction + heroSlides.length) % heroSlides.length
-    );
-  };
+  }, [heroSlides.length]);
 
   /*
    * ==========================================================
@@ -885,37 +875,6 @@ export function Home() {
             </div>
 
           </div>
-        </div>
-
-        <div className="absolute bottom-5 right-4 z-20 flex items-center gap-1 rounded-full border border-white/20 bg-[#032238]/70 px-2 py-1.5 text-white shadow-lg backdrop-blur-sm sm:right-8">
-          <button
-            type="button"
-            onClick={() => showHeroSlide(-1)}
-            aria-label={t('Previous hero image')}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107]"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <span className="min-w-12 text-center text-xs font-semibold tabular-nums" aria-live="polite">
-            {activeHeroIndex + 1} / {heroSlides.length}
-          </span>
-          <button
-            type="button"
-            onClick={() => showHeroSlide(1)}
-            aria-label={t('Next hero image')}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107]"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-          <span className="mx-1 h-5 w-px bg-white/25" />
-          <button
-            type="button"
-            onClick={() => setHeroPaused((paused) => !paused)}
-            aria-label={heroPaused ? t('Play hero slideshow') : t('Pause hero slideshow')}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107]"
-          >
-            {heroPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          </button>
         </div>
 
         <button

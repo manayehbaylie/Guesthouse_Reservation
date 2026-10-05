@@ -3,6 +3,7 @@ import express from "express";
 import {
   approve,
   reject,
+  updateGuesthouseActiveStatus,
   deleteGuesthouseController,
   deleteUserController,
   getUsers,
@@ -61,6 +62,13 @@ router.get(
   authenticate,
   authorize("ADMIN"),
   getGuesthouses
+);
+
+router.patch(
+  "/guesthouses/:id/active-status",
+  authenticate,
+  authorize("ADMIN"),
+  updateGuesthouseActiveStatus
 );
 
 /**

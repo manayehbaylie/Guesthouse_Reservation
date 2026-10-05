@@ -229,11 +229,11 @@ export function AllGuesthouses() {
       guesthouse?.rating ??
         guesthouse?.averageRating ??
         guesthouse?.average_rating ??
-        4.5
+        0
     );
 
     if (!Number.isFinite(rating)) {
-      return '4.5';
+      return '0.0';
     }
 
     return Math.min(5, Math.max(0, rating)).toFixed(1);

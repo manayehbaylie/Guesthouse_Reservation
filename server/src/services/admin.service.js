@@ -91,6 +91,54 @@ export const rejectGuesthouse = async (id, reason) => {
   return updatedGuesthouse;
 };
 
+export const setGuesthouseActiveStatus = async (id, active) => {
+  if (typeof active !== "boolean") {
+    throw new Error("Active status must be a boolean");
+  }
+
+  const guesthouseId = Number(id);
+  if (!Number.isInteger(guesthouseId) || guesthouseId <= 0) {
+    throw new Error("Invalid guesthouse ID");
+  }
+
+  const guesthouse = await prisma.guesthouse.findUnique({
+    where: { id: guesthouseId },
+  });
+
+  if (!guesthouse) {
+    throw new Error("Guesthouse not found");
+  }
+
+  if (!["APPROVED", "INACTIVE"].includes(guesthouse.status)) {
+    throw new Error("Only approved guesthouses can be activated or deactivated");
+  }
+
+  const status = active ? "APPROVED" : "INACTIVE";
+  if (guesthouse.status === status) {
+    return guesthouse;
+  }
+
+  const updatedGuesthouse = await prisma.guesthouse.update({
+    where: { id: guesthouseId },
+    data: { status },
+  });
+
+  try {
+    await createNotification({
+      title: active ? "Guesthouse Reactivated" : "Guesthouse Deactivated",
+      message: active
+        ? `Your property "${guesthouse.name}" is active and available to guests again.`
+        : `Your property "${guesthouse.name}" has been deactivated and is no longer available to guests.`,
+      userId: guesthouse.ownerId,
+      category: "guesthouse",
+    });
+  } catch (error) {
+    console.error("Failed to notify owner of guesthouse status change:", error);
+  }
+
+  return updatedGuesthouse;
+};
+
 /*
 ==================================================
 1.6 GET ALL GUESTHOUSES (ADMIN)

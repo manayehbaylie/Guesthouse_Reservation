@@ -47,6 +47,8 @@ import {
   CircleDollarSign,
   FileCheck2,
   Ban,
+  ToggleLeft,
+  ToggleRight,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -89,6 +91,7 @@ export default function AdminDashboard() {
     approvedGuesthouses: 0,
     pendingGuesthouses: 0,
     rejectedGuesthouses: 0,
+    inactiveGuesthouses: 0,
     totalOwners: 0,
     totalUsers: 0,
 
@@ -170,6 +173,46 @@ export default function AdminDashboard() {
             .toUpperCase() === 'OWNER'
         );
 
+      const ownerLookup = new Map(
+        ownersOnly.map((owner) => [
+          String(owner?.id ?? ''),
+          owner,
+        ])
+      );
+
+      const guesthousesWithOwnerNames =
+        safeGuesthouses.map((gh) => {
+          const ownerId =
+            gh?.ownerId ??
+            gh?.owner?.id ??
+            null;
+
+          const matchedOwner =
+            ownerId !== null &&
+            ownerId !== undefined
+              ? ownerLookup.get(
+                  String(ownerId)
+                )
+              : null;
+
+          const ownerName =
+            matchedOwner?.name ||
+            matchedOwner?.fullName ||
+            gh?.owner?.name ||
+            gh?.owner?.fullName ||
+            gh?.ownerName ||
+            'Unknown owner';
+
+          return {
+            ...gh,
+            ownerId:
+              ownerId ??
+              matchedOwner?.id ??
+              null,
+            ownerName,
+          };
+        });
+
       // ------------------------------------------------------
       // CALCULATE BASIC COUNTS
       // ------------------------------------------------------
@@ -181,27 +224,17 @@ export default function AdminDashboard() {
         safeGuesthouses.length ||
         0;
 
-      const approvedGuesthouses =
-        Number(
-          platformStats?.approvedGuesthouses
-        ) ||
-        safeGuesthouses.filter(
-          (gh) =>
-            String(gh?.status || '')
-              .toLowerCase() === 'approved'
-        ).length ||
-        0;
+      const approvedGuesthouses = safeGuesthouses.filter(
+        (gh) => String(gh?.status || '').toLowerCase() === 'approved'
+      ).length;
 
-      const rejectedGuesthouses =
-        Number(
-          platformStats?.rejectedGuesthouses
-        ) ||
-        safeGuesthouses.filter(
-          (gh) =>
-            String(gh?.status || '')
-              .toLowerCase() === 'rejected'
-        ).length ||
-        0;
+      const rejectedGuesthouses = safeGuesthouses.filter(
+        (gh) => String(gh?.status || '').toLowerCase() === 'rejected'
+      ).length;
+
+      const inactiveGuesthouses = safeGuesthouses.filter(
+        (gh) => String(gh?.status || '').toLowerCase() === 'inactive'
+      ).length;
 
       // ------------------------------------------------------
       // REVENUE / COMMISSION
@@ -245,6 +278,7 @@ export default function AdminDashboard() {
         pendingGuesthouses:
           safePending.length,
         rejectedGuesthouses,
+        inactiveGuesthouses,
         totalOwners:
           ownersOnly.length,
         totalUsers:
@@ -261,7 +295,7 @@ export default function AdminDashboard() {
       );
 
       setAllGuesthouses(
-        safeGuesthouses
+        guesthousesWithOwnerNames
       );
 
       setUsersList(
@@ -384,10 +418,18 @@ export default function AdminDashboard() {
               ''
             ).toLowerCase();
 
+          const ownerName = String(
+            gh?.ownerName ||
+              gh?.owner?.name ||
+              gh?.owner?.fullName ||
+              ''
+          ).toLowerCase();
+
           return (
             name.includes(query) ||
             city.includes(query) ||
-            location.includes(query)
+            location.includes(query) ||
+            ownerName.includes(query)
           );
         }
       );
@@ -445,6 +487,29 @@ export default function AdminDashboard() {
         setLoading(false);
       }
     };
+
+  const handleGuesthouseActiveStatus = async (id, active) => {
+    if (!id) return;
+
+    if (!active && !window.confirm(t('Deactivate this guesthouse?'))) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await ApiService.setGuesthouseActiveStatus(id, active);
+      await loadAdminData();
+    } catch (err) {
+      console.error('Guesthouse status update error:', err);
+      alert(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to update guesthouse status.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ==========================================================
   // REJECT
@@ -784,6 +849,7 @@ export default function AdminDashboard() {
               loading={loading}
               onApprove={handleApproveGuesthouse}
               onDelete={handleDeleteGuesthouse}
+              onToggleActive={handleGuesthouseActiveStatus}
             />
           )}
 
@@ -1114,120 +1180,6 @@ function AdminSidebar({
 // ADMIN DASHBOARD HOME
 // ============================================================
 
-function MetricSparkBar({ color, values, idPrefix, positive = true }) {
-  const width = 180;
-  const height = 82;
-  const padX = 16;
-  const padY = 8;
-  const xAxisY = height - 18;
-  const yAxisX = 18;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const chartColor = color || (positive ? '#22c55e' : '#ef4444');
-
-  const points = values.map((value, index) => {
-    const x = padX + (index / (values.length - 1)) * (width - padX * 2);
-    const y = xAxisY - ((value - min) / (max - min || 1)) * (xAxisY - padY - 10);
-    return [x, y];
-  });
-
-  const linePath = points
-    .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`)
-    .join(' ');
-
-  const areaPath = `${linePath} L ${points[points.length - 1][0]} ${xAxisY} L ${points[0][0]} ${xAxisY} Z`;
-  const gradientId = `spark-${idPrefix}`;
-  const yTicks = [0, 0.25, 0.5, 0.75, 1];
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-14 w-full" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={chartColor} stopOpacity="0.38" />
-          <stop offset="52%" stopColor={chartColor} stopOpacity="0.16" />
-          <stop offset="100%" stopColor={chartColor} stopOpacity="0.02" />
-        </linearGradient>
-        <filter id={`glow-${idPrefix}`} x="-25%" y="-25%" width="150%" height="150%">
-          <feGaussianBlur stdDeviation="1.8" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      <g opacity="0.9">
-        <line x1={yAxisX} y1={padY} x2={yAxisX} y2={xAxisY} stroke="#cbd5e1" strokeWidth="0.9" strokeLinecap="round" />
-        <line x1={yAxisX} y1={xAxisY} x2={width - 4} y2={xAxisY} stroke="#cbd5e1" strokeWidth="0.9" strokeLinecap="round" />
-        {yTicks.map((tick) => {
-          const yPos = padY + (xAxisY - padY) * tick;
-          return (
-            <g key={`${idPrefix}-y-${tick}`}>
-              <line
-                x1={yAxisX}
-                y1={yPos}
-                x2={width - 4}
-                y2={yPos}
-                stroke="#e2e8f0"
-                strokeWidth="0.7"
-                strokeDasharray="3 4"
-              />
-              <text
-                x={4}
-                y={yPos + 3}
-                fontSize="6"
-                fill="#64748b"
-                fontWeight="700"
-              >
-                {Math.round((max - (max - min) * tick) * 10) / 10}
-              </text>
-            </g>
-          );
-        })}
-      </g>
-
-      <path d={areaPath} fill={`url(#${gradientId})`} opacity="1" />
-      <path
-        d={linePath}
-        fill="none"
-        stroke={chartColor}
-        strokeWidth="2.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter={`url(#glow-${idPrefix})`}
-      />
-
-      {points.map(([x, y], index) => (
-        <circle
-          key={`${idPrefix}-${index}`}
-          cx={x}
-          cy={y}
-          r="2.8"
-          fill="#ffffff"
-          stroke={chartColor}
-          strokeWidth="1.6"
-        />
-      ))}
-
-      <g>
-        {points.map(([x], index) => (
-          <text
-            key={`${idPrefix}-x-${index}`}
-            x={x}
-            y={height - 4}
-            textAnchor="middle"
-            fontSize="5.5"
-            fill="#64748b"
-            fontWeight="700"
-          >
-            {index + 1}
-          </text>
-        ))}
-      </g>
-    </svg>
-  );
-}
-
 function AdminDashboardHome({
   stats,
   loading,
@@ -1237,9 +1189,60 @@ function AdminDashboardHome({
   guesthouses,
 }) {
   const { t } = useLanguage();
+  const statusRows = [
+    {
+      label: 'Approved',
+      value: Number(stats.approvedGuesthouses) || 0,
+      color: 'bg-emerald-500',
+      textColor: 'text-emerald-700',
+    },
+    {
+      label: 'Pending review',
+      value: Number(stats.pendingGuesthouses) || 0,
+      color: 'bg-amber-400',
+      textColor: 'text-amber-700',
+    },
+    {
+      label: 'Rejected',
+      value: Number(stats.rejectedGuesthouses) || 0,
+      color: 'bg-rose-500',
+      textColor: 'text-rose-700',
+    },
+    {
+      label: 'Inactive',
+      value: Number(stats.inactiveGuesthouses) || 0,
+      color: 'bg-slate-400',
+      textColor: 'text-slate-600',
+    },
+  ];
+  const statusTotal = Math.max(
+    Number(stats.totalGuesthouses) || 0,
+    statusRows.reduce((total, row) => total + row.value, 0)
+  );
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat('en-ET', {
+      style: 'currency',
+      currency: 'ETB',
+      maximumFractionDigits: 0,
+    }).format(Number(value) || 0);
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-black text-[#073957]">{t('Platform snapshot')}</h2>
+          <p className="mt-1 text-sm text-slate-500">{t('Current platform activity and finances')}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-[#073957] shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          {t('Refresh data')}
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -1261,17 +1264,12 @@ function AdminDashboardHome({
           {
             label: 'Owner Accounts',
             value: stats.totalOwners,
-            detail: 'active owners',
+            detail: 'Registered owners',
             icon: Users,
             page: 'owners',
             valueClass: 'text-[#073957]',
             iconClass: 'text-[#073957]',
             tagClass: 'text-[#073957]',
-            color: '#22c55e',
-            spark: [12, 15, 18, 24, 29, 34, 38],
-            chartId: 'owner-accounts',
-            trend: '+8.1%',
-            positive: true,
           },
           {
             label: 'Pending Verification',
@@ -1282,11 +1280,6 @@ function AdminDashboardHome({
             valueClass: 'text-[#073957]',
             iconClass: 'text-[#073957]',
             tagClass: 'text-[#073957]',
-            color: '#ef4444',
-            spark: [32, 30, 28, 24, 20, 18, 15],
-            chartId: 'pending-verification',
-            trend: '-3.2%',
-            positive: false,
           },
           {
             label: 'Platform Commission',
@@ -1297,40 +1290,125 @@ function AdminDashboardHome({
             valueClass: 'text-[#073957]',
             iconClass: 'text-[#073957]',
             tagClass: 'text-[#073957]',
-            color: '#22c55e',
-            spark: [10, 14, 18, 23, 27, 31, 36],
-            chartId: 'platform-commission',
-            trend: '+5.8%',
-            positive: true,
           },
         ].map((card) => {
           const Icon = card.icon;
 
           return (
-            <div key={card.label} className="space-y-6">
+            <div key={card.label}>
               <button
                 type="button"
                 onClick={() => onNavigate(card.page)}
-                className="w-full min-h-[118px] rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:bg-[#073957] hover:text-white group"
+                className="group w-full min-h-[118px] rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#073957] hover:bg-[#073957] hover:shadow-md active:translate-y-0 active:border-amber-400 active:bg-amber-400 active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className={`text-[9px] font-black uppercase tracking-[0.12em] transition-colors group-hover:text-white ${card.tagClass}`}>{t(card.label)}</span>
-                  <Icon className={`h-4 w-4 shrink-0 transition-colors group-hover:text-white ${card.iconClass}`} />
+                  <span className={`text-[9px] font-black uppercase tracking-[0.12em] transition-colors group-hover:text-white group-active:text-[#073957] ${card.tagClass}`}>{t(card.label)}</span>
+                  <Icon className={`h-4 w-4 shrink-0 transition-colors group-hover:text-white group-active:text-[#073957] ${card.iconClass}`} />
                 </div>
-                <div className={`mt-2.5 text-[1.8rem] font-black leading-none transition-colors group-hover:text-white ${card.valueClass}`}>{card.value}</div>
-                <p className={`mt-1.5 text-[10px] font-semibold transition-colors group-hover:text-white/90 ${card.tagClass}`}>{t(card.detail)}</p>
+                <div className={`mt-2.5 text-[1.8rem] font-black leading-none transition-colors group-hover:text-white group-active:text-[#073957] ${card.valueClass}`}>{card.value}</div>
+                <p className={`mt-1.5 text-[10px] font-semibold transition-colors group-hover:text-white/80 group-active:text-[#073957] ${card.tagClass}`}>{t(card.detail)}</p>
               </button>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  <span>{t(card.label)}</span>
-                  <span className={card.positive ? 'text-emerald-500' : 'text-red-500'}>{card.trend}</span>
-                </div>
-                <MetricSparkBar color={card.color} values={card.spark} idPrefix={card.chartId} positive={card.positive} />
-              </div>
             </div>
           );
         })}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-black text-[#073957]">{t('Guesthouse status')}</h3>
+              <p className="mt-1 text-xs text-slate-500">{t('Total registered')}: {statusTotal}</p>
+            </div>
+            <Building2 className="h-5 w-5 text-[#073957]" />
+          </div>
+          <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-slate-100" aria-label={t('Guesthouse status')}>
+            {statusRows.map((row) => (
+              <span
+                key={row.label}
+                className={row.color}
+                style={{ width: `${statusTotal ? (row.value / statusTotal) * 100 : 0}%` }}
+              />
+            ))}
+          </div>
+          <div className="mt-5 space-y-3">
+            {statusRows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
+                <span className="flex items-center gap-2 text-slate-600">
+                  <span className={`h-2 w-2 rounded-full ${row.color}`} />
+                  {t(row.label)}
+                </span>
+                <span className={`font-bold tabular-nums ${row.textColor}`}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-black text-[#073957]">{t('Revenue overview')}</h3>
+              <p className="mt-1 text-xs text-slate-500">{t('Current platform revenue breakdown')}</p>
+            </div>
+            <CircleDollarSign className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="mt-4 divide-y divide-slate-100">
+            {[
+              { label: 'Total revenue', value: stats.totalRevenue, emphasize: true },
+              { label: 'Platform commission', value: stats.commissionRevenue },
+              { label: 'Owner payouts', value: stats.ownerPayouts },
+            ].map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <span className="text-sm text-slate-600">{t(row.label)}</span>
+                <span className={`text-right tabular-nums ${row.emphasize ? 'font-black text-[#073957]' : 'font-semibold text-slate-700'}`}>
+                  {formatCurrency(row.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-black text-[#073957]">{t('Latest applications')}</h3>
+              <p className="mt-1 text-xs text-slate-500">{t('Pending review')}: {pendingGuesthouses.length}</p>
+            </div>
+            <Clock3 className="h-5 w-5 text-amber-500" />
+          </div>
+          {pendingGuesthouses.length ? (
+            <div className="mt-3 divide-y divide-slate-100">
+              {pendingGuesthouses.slice(0, 4).map((guesthouse) => (
+                <button
+                  key={guesthouse.id}
+                  type="button"
+                  onClick={() => onNavigate('pending')}
+                  className="flex w-full items-center justify-between gap-3 py-3 text-left first:pt-0 last:pb-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-[#073957]">{guesthouse.name || t('Unnamed Guesthouse')}</span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-500">
+                      {guesthouse.city || guesthouse.location || guesthouse.address || t('Unknown city')}
+                    </span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-5 rounded-lg bg-emerald-50 px-3 py-4 text-sm text-emerald-800">
+              {t('No pending guesthouses')}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => onNavigate('pending')}
+            className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#073957] transition hover:text-amber-700"
+          >
+            {t('View review queue')}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </section>
       </div>
 
     </div>
@@ -1539,6 +1617,7 @@ function GuesthousePage({
   loading,
   onApprove,
   onDelete,
+  onToggleActive,
 }) {
   const { t } = useLanguage();
 
@@ -1614,8 +1693,11 @@ function GuesthousePage({
 
               <tbody className="divide-y divide-slate-100">
 
-                {guesthouses.map(
-                  (gh) => (
+                {guesthouses.map((gh) => {
+                  const status = String(gh.status || '').toLowerCase();
+                  const isActive = status === 'approved';
+
+                  return (
                     <tr
                       key={gh.id}
                       className="hover:bg-slate-50"
@@ -1626,6 +1708,13 @@ function GuesthousePage({
                         <div className="font-black text-[#073957]">
                           {gh.name ||
                             t('Unnamed Guesthouse')}
+                        </div>
+
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                          <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                          <span>
+                            {gh.ownerName || 'Unknown owner'}
+                          </span>
                         </div>
 
                         <div className="text-xs text-slate-400 mt-1">
@@ -1704,6 +1793,30 @@ function GuesthousePage({
                             </button>
                           )}
 
+                          {['approved', 'inactive'].includes(status) && (
+                            <button
+                              type="button"
+                              onClick={() => onToggleActive(gh.id, !isActive)}
+                              disabled={loading}
+                              role="switch"
+                              aria-checked={isActive}
+                              aria-label={`${gh.name || t('guesthouse')} ${t(isActive ? 'Active' : 'Inactive')}`}
+                              title={t(isActive ? 'Deactivate' : 'Activate')}
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                                isActive
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {isActive ? (
+                                <ToggleRight className="h-4 w-4" />
+                              ) : (
+                                <ToggleLeft className="h-4 w-4" />
+                              )}
+                              {t(isActive ? 'Active' : 'Inactive')}
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() =>
@@ -1725,8 +1838,8 @@ function GuesthousePage({
                       </td>
 
                     </tr>
-                  )
-                )}
+                  );
+                })}
 
               </tbody>
 
@@ -2971,11 +3084,21 @@ function StatusBadge({
       'bg-amber-100 text-amber-700';
   }
 
+  if (normalized === 'inactive') {
+    classes = 'bg-slate-100 text-slate-600';
+  }
+
+  const label = normalized === 'approved'
+    ? 'Active'
+    : normalized === 'unknown'
+      ? 'Unknown'
+      : normalized.charAt(0).toUpperCase() + normalized.slice(1);
+
   return (
     <span
       className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase ${classes}`}
     >
-      {t(normalized === 'unknown' ? 'Unknown' : normalized.charAt(0).toUpperCase() + normalized.slice(1))}
+      {t(label)}
     </span>
   );
 }
