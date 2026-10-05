@@ -23,6 +23,11 @@ console.log(
 );
 console.log("=================================");
 
+// Health check route (used by UptimeRobot to keep the server awake)
+app.get("/health", (req, res) => {
+  res.status(200).send("ok");
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
