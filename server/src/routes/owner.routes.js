@@ -13,6 +13,10 @@ import {
   updateOwnerProfile,
   getPayments,
   deletePayment,
+  getMediaSignature,
+  createRoomImages,
+  deleteRoomImage,
+  updateGuesthouseVideo,
 } from "../controllers/owner.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -20,6 +24,34 @@ import { authorize } from "../middleware/role.middleware.js";
 import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
+
+router.get(
+  "/media/signature",
+  authenticate,
+  authorize("OWNER"),
+  getMediaSignature
+);
+
+router.post(
+  "/guesthouse/room-images",
+  authenticate,
+  authorize("OWNER"),
+  createRoomImages
+);
+
+router.delete(
+  "/room-images/:id",
+  authenticate,
+  authorize("OWNER"),
+  deleteRoomImage
+);
+
+router.put(
+  "/guesthouse/video",
+  authenticate,
+  authorize("OWNER"),
+  updateGuesthouseVideo
+);
 
 /* ============================================================
    GUESTHOUSE

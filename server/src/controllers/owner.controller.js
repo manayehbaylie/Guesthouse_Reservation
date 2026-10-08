@@ -8,6 +8,9 @@ import {
   getReceptionists,
   assignReceptionistToGuesthouse,
   removeReceptionistFromGuesthouse,
+  createRoomImages as createRoomImagesService,
+  deleteRoomImage as deleteRoomImageService,
+  replaceGuesthouseVideo,
 } from "../services/owner.service.js";
 
 import {
@@ -18,7 +21,10 @@ import { successResponse } from "../utils/response.js";
 
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
-import { uploadToCloudinary } from "../config/cloudinary.js";
+import {
+  cloudinary,
+  uploadToCloudinary,
+} from "../config/cloudinary.js";
 
 // ============================================================
 // OWNER GUESTHOUSE PAYLOAD
@@ -97,6 +103,107 @@ export const getGuesthouse = async (
       res,
       guesthouse,
       "Guesthouse fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMediaSignature = async (req, res, next) => {
+  try {
+    const resourceType = req.query.resourceType;
+
+    if (!["image", "video"].includes(resourceType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Resource type must be image or video.",
+      });
+    }
+
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      const error = new Error("Cloudinary credentials are not configured.");
+      error.statusCode = 503;
+      throw error;
+    }
+
+    const mediaFolder = resourceType === "image" ? "rooms" : "videos";
+    const folder = `guesthouses/${req.user.id}/${mediaFolder}`;
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = cloudinary.utils.api_sign_request(
+      { folder, timestamp },
+      apiSecret
+    );
+
+    return successResponse(
+      res,
+      { cloudName, apiKey, folder, timestamp, signature },
+      "Upload signature created successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createRoomImages = async (req, res, next) => {
+  try {
+    const result = await createRoomImagesService(
+      req.user.id,
+      req.body?.items
+    );
+
+    return successResponse(
+      res,
+      result,
+      "Room images saved successfully",
+      201
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteRoomImage = async (req, res, next) => {
+  try {
+    await deleteRoomImageService(
+      req.user.id,
+      req.params.id
+    );
+
+    return successResponse(
+      res,
+      null,
+      "Room image deleted successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateGuesthouseVideo = async (req, res, next) => {
+  try {
+    const { url, publicId } = req.body || {};
+
+    if (typeof url !== "string" || typeof publicId !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "A video URL and public ID are required.",
+      });
+    }
+
+    const guesthouse = await replaceGuesthouseVideo(
+      req.user.id,
+      url,
+      publicId
+    );
+
+    return successResponse(
+      res,
+      guesthouse,
+      "Guesthouse video updated successfully"
     );
   } catch (error) {
     next(error);

@@ -8,17 +8,20 @@ datasource db {
 }
 
 model User {
-  id                 Int               @id @default(autoincrement())
-  fullName           String
-  email              String?           @unique
-  password           String
-  phone              String            @unique
-  role               Role
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  residentialAddress String?
-  idType             String?
-  idNumber           String?
+  id                    Int       @id @default(autoincrement())
+  fullName              String
+  email                 String?   @unique
+  password              String
+  phone                 String    @unique
+  role                  Role
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  residentialAddress    String?
+  idType                String?
+  idNumber              String?
+  telegramChatId        String?   @unique
+  telegramLinkCodeHash  String?   @unique
+  telegramLinkExpiresAt DateTime?
 
   guesthouses      Guesthouse[]      @relation("OwnerGuesthouses")
   notifications    Notification[]
@@ -42,6 +45,8 @@ model Guesthouse {
   photos          String[]         @default([])
   licenseNumber   String?
   licenseDocument String?
+  videoUrl        String?
+  videoPublicId   String?
   ownerId         Int
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -71,10 +76,24 @@ model Room {
   maintenanceStatus RoomMaintenanceStatus @default(AVAILABLE)
 
   reservations Reservation[]
-  guesthouse   Guesthouse @relation(fields: [guesthouseId], references: [id])
+  guesthouse   Guesthouse    @relation(fields: [guesthouseId], references: [id])
+  images       RoomImage[]
 
   @@unique([guesthouseId, roomNumber])
   @@index([guesthouseId])
+}
+
+model RoomImage {
+  id        Int      @id @default(autoincrement())
+  roomId    Int
+  url       String
+  publicId  String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
 }
 
 model Reservation {
@@ -88,8 +107,8 @@ model Reservation {
   updatedAt DateTime          @updatedAt
 
   payment Payment?
-  guest   User         @relation("GuestReservations", fields: [guestId], references: [id])
-  room    Room         @relation(fields: [roomId], references: [id])
+  guest   User     @relation("GuestReservations", fields: [guestId], references: [id])
+  room    Room     @relation(fields: [roomId], references: [id])
   reviews Review[]
 
   @@index([guestId])

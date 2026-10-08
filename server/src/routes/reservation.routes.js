@@ -3,6 +3,7 @@ import express from "express";
 import {
   create,
   getAll,
+  getMine,
   getById,
   deleteOwn,
   updateStatus,
@@ -55,6 +56,12 @@ router.post(
  *     security:
  *       - bearerAuth: []
  */
+router.get(
+  "/mine",
+  authenticate,
+  getMine
+);
+
 router.get(
   "/",
   authenticate,

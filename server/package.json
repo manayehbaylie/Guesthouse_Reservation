@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "seed": "node prisma/seed.js",
-    "test": "node --test src/services/ai-assistant.service.test.js"
+    "test": "node --test src/services/*.test.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

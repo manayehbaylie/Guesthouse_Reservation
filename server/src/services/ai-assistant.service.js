@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import prisma from "../config/prisma.js";
 import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
+import { buildReservationAccessWhere } from "../utils/reservation-access.utils.js";
+export { buildReservationAccessWhere } from "../utils/reservation-access.utils.js";
 
 const SEARCH_INTENT = /\b(find|search|recommend|suggest|show|looking for|need|want|cheap|affordable|room|guesthouse|stay|accommodation|available)\b|barbaadi|agarsiisi|sakatta’i|salphaa|kutaa|mana keessummaa|ክፍል|ማረፊያ|ፈልግ|አሳይ|ርካሽ/i;
 const BOOKING_INTENT = /\b(my|our)\b.{0,40}\b(bookings?|reservations?)\b|\b(bookings?|reservations?)\b.{0,40}\b(my|our)\b|የቦታ ማስያዣዎቼን|ቦታ ማስያዣዎቼ|qabsiisawwan koo/i;
@@ -110,6 +112,9 @@ export const buildAssistantSearchWhere = (criteria) => {
       status: "APPROVED",
       OR: [
         { city: { contains: criteria.location, mode: "insensitive" } },
+        { address: { contains: criteria.location, mode: "insensitive" } },
+        { subCity: { contains: criteria.location, mode: "insensitive" } },
+        { woreda: { contains: criteria.location, mode: "insensitive" } },
         { name: { contains: criteria.location, mode: "insensitive" } },
       ],
       rooms: { some: roomWhere },
@@ -120,29 +125,6 @@ export const buildAssistantSearchWhere = (criteria) => {
     status: "APPROVED",
     rooms: { some: roomWhere },
   };
-};
-
-export const buildReservationAccessWhere = (user) => {
-  if (!user?.id) return null;
-
-  switch (user.role) {
-    case "GUEST":
-      return { guestId: user.id };
-    case "OWNER":
-      return { room: { guesthouse: { ownerId: user.id } } };
-    case "RECEPTIONIST":
-      return {
-        room: {
-          guesthouse: {
-            staffAssignments: { some: { staffId: user.id } },
-          },
-        },
-      };
-    case "ADMIN":
-      return {};
-    default:
-      return null;
-  }
 };
 
 const getRecommendations = async (message) => {

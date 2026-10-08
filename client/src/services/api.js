@@ -165,6 +165,37 @@ function unwrap(response) {
   return data;
 }
 
+async function uploadSignedMedia(file, resourceType, onUploadProgress) {
+  const signature = unwrap(
+    await api.get('/owner/media/signature', {
+      params: { resourceType },
+    })
+  );
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('api_key', signature.apiKey);
+  formData.append('timestamp', String(signature.timestamp));
+  formData.append('folder', signature.folder);
+  formData.append('signature', signature.signature);
+
+  const response = await axios.post(
+    `https://api.cloudinary.com/v1_1/${encodeURIComponent(signature.cloudName)}/${resourceType}/upload`,
+    formData,
+    {
+      onUploadProgress: (event) => {
+        if (event.total) {
+          onUploadProgress?.(
+            Math.round((event.loaded / event.total) * 100)
+          );
+        }
+      },
+    }
+  );
+
+  return response.data;
+}
+
 // ============================================================
 // ROLE HELPERS
 // ============================================================
@@ -634,6 +665,12 @@ function mapGuesthouseFromBackend(
         ? guesthouse.photos
         : [],
 
+    videoUrl:
+      guesthouse.videoUrl || '',
+
+    videoPublicId:
+      guesthouse.videoPublicId || '',
+
     rejectionReason:
       guesthouse.rejectionReason ||
       '',
@@ -801,6 +838,11 @@ function mapRoomFromBackend(room) {
 
     updatedAt:
       room.updatedAt,
+
+    images:
+      Array.isArray(room.images)
+        ? room.images
+        : [],
   };
 }
 
@@ -1390,6 +1432,21 @@ export const ApiService = {
 
   async chatWithAssistant({ message, history = [], language = 'en' }) {
     const response = await api.post('/ai/chat', { message, history, language });
+    return unwrap(response);
+  },
+
+  async getTelegramLinkStatus() {
+    const response = await api.get('/telegram/link');
+    return unwrap(response);
+  },
+
+  async createTelegramLinkCode() {
+    const response = await api.post('/telegram/link-code');
+    return unwrap(response);
+  },
+
+  async unlinkTelegramAccount() {
+    const response = await api.delete('/telegram/link');
     return unwrap(response);
   },
 
@@ -3519,6 +3576,27 @@ async resubmitGuesthouse(data) {
   // ==========================================================
 // GET MY GUESTHOUSE
 // ==========================================================
+
+async uploadMediaToCloudinary(file, resourceType, onUploadProgress) {
+  return uploadSignedMedia(file, resourceType, onUploadProgress);
+},
+
+async createRoomImages(items) {
+  const response = await api.post('/owner/guesthouse/room-images', {
+    items,
+  });
+  return unwrap(response);
+},
+
+async deleteRoomImage(imageId) {
+  const response = await api.delete(`/owner/room-images/${imageId}`);
+  return unwrap(response);
+},
+
+async updateGuesthouseVideo(asset) {
+  const response = await api.put('/owner/guesthouse/video', asset);
+  return unwrap(response);
+},
 
 async getMyGuesthouse() {
   try {

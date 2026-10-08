@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
+import { cloudinary } from "../config/cloudinary.js";
 
 /*
 ==================================================
@@ -87,6 +88,205 @@ export const getMyGuesthouse = async (ownerId) => {
     },
     include: {
       rooms: true,
+    },
+  });
+};
+
+const mediaError = (message, statusCode = 400) =>
+  Object.assign(new Error(message), { statusCode });
+
+const validateCloudinaryAsset = (
+  url,
+  publicId,
+  ownerId,
+  resourceType,
+  mediaFolder
+) => {
+  if (typeof url !== "string" || typeof publicId !== "string") {
+    throw mediaError("A Cloudinary URL and public ID are required.");
+  }
+
+  const folder = `guesthouses/${ownerId}/${mediaFolder}`;
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw mediaError("The Cloudinary URL is invalid.");
+  }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const expectedPath = `/${cloudName}/${resourceType}/upload/`;
+  let normalizedPath;
+
+  try {
+    normalizedPath = decodeURIComponent(parsedUrl.pathname);
+  } catch {
+    throw mediaError("The Cloudinary URL is invalid.");
+  }
+
+  if (
+    !cloudName ||
+    parsedUrl.protocol !== "https:" ||
+    parsedUrl.hostname !== "res.cloudinary.com" ||
+    !normalizedPath.includes(expectedPath) ||
+    !publicId.startsWith(`${folder}/`) ||
+    !normalizedPath.includes(`/${publicId}.`)
+  ) {
+    throw mediaError("The uploaded asset does not belong to your Cloudinary folder.");
+  }
+};
+
+export const createRoomImages = async (ownerId, items) => {
+  if (!Array.isArray(items) || items.length === 0 || items.length > 30) {
+    throw mediaError("Upload between 1 and 30 room images at a time.");
+  }
+
+  const normalizedItems = items.map((item) => {
+    const roomId = Number(item?.roomId);
+
+    if (!Number.isInteger(roomId) || roomId <= 0) {
+      throw mediaError("Every room image must have a valid room.");
+    }
+
+    validateCloudinaryAsset(
+      item?.url,
+      item?.publicId,
+      ownerId,
+      "image",
+      "rooms"
+    );
+
+    return {
+      roomId,
+      url: item.url.trim(),
+      publicId: item.publicId.trim(),
+    };
+  });
+
+  const duplicatePublicIds = new Set();
+  for (const item of normalizedItems) {
+    if (duplicatePublicIds.has(item.publicId)) {
+      throw mediaError("Each room image must use a unique Cloudinary asset.");
+    }
+    duplicatePublicIds.add(item.publicId);
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    const roomIds = [...new Set(normalizedItems.map((item) => item.roomId))];
+    const rooms = await transaction.room.findMany({
+      where: {
+        id: { in: roomIds },
+        guesthouse: { ownerId },
+      },
+      select: {
+        id: true,
+        _count: { select: { images: true } },
+      },
+    });
+
+    if (rooms.length !== roomIds.length) {
+      throw mediaError("One or more selected rooms do not belong to your guesthouse.", 403);
+    }
+
+    const counts = new Map(
+      rooms.map((room) => [room.id, room._count.images])
+    );
+    const nextOrder = new Map(counts);
+
+    const data = normalizedItems.map((item) => {
+      const currentCount = nextOrder.get(item.roomId);
+
+      if (currentCount >= 10) {
+        throw mediaError("A room cannot have more than 10 images.");
+      }
+
+      nextOrder.set(item.roomId, currentCount + 1);
+
+      return {
+        ...item,
+        sortOrder: currentCount,
+      };
+    });
+
+    return transaction.roomImage.createMany({ data });
+  });
+};
+
+export const deleteRoomImage = async (ownerId, imageId) => {
+  const roomImageId = Number(imageId);
+
+  if (!Number.isInteger(roomImageId) || roomImageId <= 0) {
+    throw mediaError("A valid room image ID is required.");
+  }
+
+  const image = await prisma.roomImage.findFirst({
+    where: {
+      id: roomImageId,
+      room: {
+        guesthouse: { ownerId },
+      },
+    },
+    select: {
+      id: true,
+      publicId: true,
+    },
+  });
+
+  if (!image) {
+    throw mediaError("Room image not found.", 404);
+  }
+
+  const result = await cloudinary.uploader.destroy(image.publicId, {
+    resource_type: "image",
+  });
+
+  if (!["ok", "not found"].includes(result.result)) {
+    throw new Error("Cloudinary could not delete the room image.");
+  }
+
+  return prisma.roomImage.delete({
+    where: { id: image.id },
+  });
+};
+
+export const replaceGuesthouseVideo = async (ownerId, url, publicId) => {
+  validateCloudinaryAsset(
+    url,
+    publicId,
+    ownerId,
+    "video",
+    "videos"
+  );
+
+  const guesthouse = await prisma.guesthouse.findFirst({
+    where: { ownerId },
+    select: {
+      id: true,
+      videoPublicId: true,
+    },
+  });
+
+  if (!guesthouse) {
+    throw mediaError("Guesthouse not found.", 404);
+  }
+
+  if (guesthouse.videoPublicId && guesthouse.videoPublicId !== publicId) {
+    const result = await cloudinary.uploader.destroy(
+      guesthouse.videoPublicId,
+      { resource_type: "video" }
+    );
+
+    if (!["ok", "not found"].includes(result.result)) {
+      throw new Error("Cloudinary could not delete the previous guesthouse video.");
+    }
+  }
+
+  return prisma.guesthouse.update({
+    where: { id: guesthouse.id },
+    data: {
+      videoUrl: url.trim(),
+      videoPublicId: publicId.trim(),
     },
   });
 };

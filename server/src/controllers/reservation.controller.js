@@ -3,6 +3,7 @@ import { reservationSchema } from "../validators/reservation.validator.js";
 import {
   createReservation,
   getAllReservations,
+  getReservationsForUser,
   getReservationById,
   deleteGuestReservation,
   updateReservationStatus,
@@ -83,6 +84,19 @@ export const getAll = async (
       res,
       reservations,
       "Reservations fetched successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMine = async (req, res, next) => {
+  try {
+    const reservations = await getReservationsForUser(req.user);
+    return successResponse(
+      res,
+      reservations,
+      "Your reservations fetched successfully"
     );
   } catch (error) {
     next(error);

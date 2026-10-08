@@ -17,6 +17,7 @@ import {
   Mail,
   ShieldCheck,
   ChevronLeft,
+  X,
 } from "lucide-react";
 
 export function GuesthouseDetail() {
@@ -42,6 +43,7 @@ export function GuesthouseDetail() {
   const loadRequestRef = useRef(0);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedRoomImage, setSelectedRoomImage] = useState(null);
 
   const selectGuesthouse = () => {
     if (!guesthouse?.id) return;
@@ -769,7 +771,8 @@ export function GuesthouseDetail() {
 
         {/* MAIN IMAGE */}
 
-        <div className="lg:col-span-2 h-80 sm:h-96 rounded-3xl overflow-hidden bg-stone-100">
+        <div className="lg:col-span-2 space-y-3">
+          <div className="h-80 sm:h-96 rounded-3xl overflow-hidden bg-stone-100">
 
           {activeImage ? (
             <img
@@ -799,6 +802,16 @@ export function GuesthouseDetail() {
                 </p>
               </div>
             </div>
+          )}
+          </div>
+
+          {guesthouse.videoUrl && (
+            <video
+              src={guesthouse.videoUrl}
+              controls
+              preload="metadata"
+              className="w-full max-h-[28rem] rounded-3xl bg-black"
+            />
           )}
 
         </div>
@@ -1001,6 +1014,9 @@ export function GuesthouseDetail() {
                     room.type ||
                     room.roomType ||
                             t('Room');
+                  const roomImages = Array.isArray(room.images)
+                    ? room.images
+                    : [];
 
                   return (
                     <div
@@ -1043,6 +1059,32 @@ export function GuesthouseDetail() {
                           )}
 
                         </div>
+
+                        {roomImages.length > 0 && (
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {roomImages.map((image) => {
+                              const imageUrl = getImageUrl(image.url);
+                              if (!imageUrl) return null;
+
+                              return (
+                                <button
+                                  key={image.id}
+                                  type="button"
+                                  onClick={() => setSelectedRoomImage(imageUrl)}
+                                  className="overflow-hidden rounded-xl bg-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                  aria-label={t('View larger room image')}
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={`${t('Room')} ${room.roomNumber || room.id}`}
+                                    loading="lazy"
+                                    className="h-28 w-full object-cover transition-transform hover:scale-105"
+                                  />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-4 text-xs text-stone-500 mt-2">
 
@@ -1217,6 +1259,31 @@ export function GuesthouseDetail() {
         </aside>
 
       </div>
+
+      {selectedRoomImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('Room image')}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setSelectedRoomImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedRoomImage(null)}
+            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+            aria-label={t('Close image')}
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={selectedRoomImage}
+            alt={t('Room')}
+            className="max-h-full max-w-full rounded-xl object-contain"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
 
     </div>
   );

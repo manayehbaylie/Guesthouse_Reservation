@@ -2,6 +2,7 @@
 // server/src/services/notification.service.js
 
 import prisma from "../config/prisma.js";
+import { sendTelegramMessage } from "./telegram-api.service.js";
 
 // ========================================
 // Ensure Approval Notifications
@@ -154,6 +155,26 @@ export const createNotification = async ({
     console.log(
       `✅ Notification created: ${notification.id}`
     );
+
+    if (["reservation", "payment"].includes(notification.category)) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: uid },
+          select: { telegramChatId: true },
+        });
+        if (user?.telegramChatId) {
+          await sendTelegramMessage(
+            user.telegramChatId,
+            `${notification.title}\n\n${notification.message}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Telegram notification delivery failed:",
+          error?.message || error
+        );
+      }
+    }
 
     return notification;
   } catch (error) {
@@ -341,4 +362,3 @@ export const deleteAllNotifications = async (
     message: "All notifications cleared successfully",
   };
 };
-

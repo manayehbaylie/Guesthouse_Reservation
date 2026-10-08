@@ -2,6 +2,7 @@ import prisma from "../config/prisma.js";
 import { createNotification } from "./notification.service.js";
 import { parseDateOnly } from "../utils/date.utils.js";
 import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
+import { buildReservationAccessWhere } from "../utils/reservation-access.utils.js";
 
 // ============================================================
 // CREATE RESERVATION
@@ -162,6 +163,45 @@ export const getAllReservations = async () => {
   });
 };
 
+export const getReservationsForUser = async (user) => {
+  const where = buildReservationAccessWhere(user);
+  if (!where) {
+    throw new Error("Unsupported account role.");
+  }
+
+  return prisma.reservation.findMany({
+    where,
+    include: {
+      room: {
+        select: {
+          id: true,
+          roomNumber: true,
+          roomType: true,
+          price: true,
+          guesthouse: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              city: true,
+              subCity: true,
+              woreda: true,
+            },
+          },
+        },
+      },
+      payment: {
+        select: {
+          amount: true,
+          method: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
 // ============================================================
 // GET RESERVATION BY ID
 // ============================================================
@@ -226,16 +266,38 @@ export const deleteGuestReservation = async (id, guestId) => {
     throw new Error("Authentication required.");
   }
 
-  const result = await prisma.reservation.deleteMany({
+  const reservation = await prisma.reservation.findFirst({
     where: {
       id: reservationId,
       guestId: ownerId,
     },
+    include: {
+      room: {
+        select: {
+          roomType: true,
+          guesthouse: { select: { name: true, city: true } },
+        },
+      },
+    },
   });
 
+  if (!reservation) {
+    throw new Error("Reservation not found.");
+  }
+
+  const result = await prisma.reservation.deleteMany({
+    where: { id: reservationId, guestId: ownerId },
+  });
   if (result.count !== 1) {
     throw new Error("Reservation not found.");
   }
+
+  await createNotification({
+    title: "Reservation Cancelled",
+    message: `Your reservation #${reservationId} at ${reservation.room.guesthouse.name}, ${reservation.room.guesthouse.city} has been cancelled.`,
+    userId: ownerId,
+    category: "reservation",
+  });
 
   return {
     id: reservationId,

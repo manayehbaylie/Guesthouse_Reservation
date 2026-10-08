@@ -793,6 +793,15 @@ export const cancelPendingReservation = async (reservationId) => {
     data: { status: "CANCELLED" },
   });
 
+  if (result.count === 1) {
+    await createNotification({
+      title: "Reservation Cancelled",
+      message: `Your reservation #${id} was cancelled because payment could not be started.`,
+      userId: reservation.guestId,
+      category: "reservation",
+    });
+  }
+
   return result.count === 1;
 };
 

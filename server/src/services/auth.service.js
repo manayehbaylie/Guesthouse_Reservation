@@ -15,7 +15,11 @@ function requireField(value, label) {
 function removePassword(user) {
   if (!user) return null;
 
-  const { password: _, ...userWithoutPassword } = user;
+  const {
+    password: _,
+    telegramChatId: __,
+    ...userWithoutPassword
+  } = user;
   return userWithoutPassword;
 }
 

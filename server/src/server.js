@@ -1,5 +1,6 @@
 import "dotenv/config";
 import app from "./app.js";
+import { startTelegramBot } from "./services/telegram-bot.service.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -30,4 +31,5 @@ app.get("/health", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startTelegramBot();
 });

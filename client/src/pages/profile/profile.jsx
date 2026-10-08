@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import ApiService from "../../services/api.js";
-import { User, Mail, ShieldCheck, Save, ArrowLeft } from "lucide-react";
+import { User, Mail, ShieldCheck, Save, ArrowLeft, MessageCircle, ExternalLink, Unlink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
@@ -34,6 +34,54 @@ export function Profile() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [telegramLinked, setTelegramLinked] = useState(false);
+  const [telegramCode, setTelegramCode] = useState(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramError, setTelegramError] = useState("");
+
+  const refreshTelegramStatus = async () => {
+    setTelegramLoading(true);
+    setTelegramError("");
+    try {
+      const status = await ApiService.getTelegramLinkStatus();
+      setTelegramLinked(status.linked);
+    } catch (err) {
+      setTelegramError(err?.message || "Unable to check Telegram link status.");
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshTelegramStatus();
+  }, []);
+
+  const handleCreateTelegramLink = async () => {
+    setTelegramLoading(true);
+    setTelegramError("");
+    setTelegramCode(null);
+    try {
+      setTelegramCode(await ApiService.createTelegramLinkCode());
+    } catch (err) {
+      setTelegramError(err?.message || "Unable to create a Telegram link.");
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    setTelegramLoading(true);
+    setTelegramError("");
+    try {
+      await ApiService.unlinkTelegramAccount();
+      setTelegramLinked(false);
+      setTelegramCode(null);
+    } catch (err) {
+      setTelegramError(err?.message || "Unable to unlink Telegram.");
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
 
   const handleUpdateProfile = async (e) => {
   e.preventDefault();
@@ -262,6 +310,85 @@ export function Profile() {
 
         </form>
       </div>
+
+      <section className="max-w-3xl mx-auto mt-6 bg-white rounded-2xl
+                          border border-stone-200 shadow-sm p-6">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl bg-sky-50 p-3 text-sky-700">
+            <MessageCircle className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-bold text-stone-900">Telegram chatbot</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Link Telegram to search guesthouses, ask the AI assistant, view role-authorized reservations, and receive booking updates.
+            </p>
+            {telegramError && (
+              <p role="alert" className="mt-3 text-sm text-red-700">{telegramError}</p>
+            )}
+            <div className="mt-4 flex flex-wrap gap-3">
+              {telegramLinked ? (
+                <>
+                  <span className="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                    Connected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleUnlinkTelegram}
+                    disabled={telegramLoading}
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60"
+                  >
+                    <Unlink className="h-4 w-4" />
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCreateTelegramLink}
+                  disabled={telegramLoading}
+                  className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+                >
+                  {telegramLoading ? "Please wait..." : "Connect Telegram"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={refreshTelegramStatus}
+                disabled={telegramLoading}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60"
+              >
+                Check connection
+              </button>
+            </div>
+            {telegramCode && (
+              <div className="mt-4 rounded-xl bg-stone-50 p-4 text-sm">
+                <p className="font-semibold text-stone-800">
+                  This one-time code expires at {new Date(telegramCode.expiresAt).toLocaleTimeString()}.
+                </p>
+                <p className="mt-1 text-stone-600">
+                  {telegramCode.linkUrl
+                    ? "Open the bot link to securely connect your account:"
+                    : "In your Telegram bot chat, send /link followed by this code:"}
+                </p>
+                {telegramCode.linkUrl ? (
+                  <a
+                    href={telegramCode.linkUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-2 font-semibold text-sky-800 underline"
+                  >
+                    Open Telegram bot <ExternalLink className="h-4 w-4" />
+                  </a>
+                ) : (
+                  <code className="mt-3 block break-all rounded bg-white p-3 font-mono text-stone-800">
+                    {telegramCode.code}
+                  </code>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
