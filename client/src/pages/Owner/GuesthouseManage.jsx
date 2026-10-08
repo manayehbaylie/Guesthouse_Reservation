@@ -23,6 +23,8 @@ import {
   X,
 } from 'lucide-react';
 
+const MAX_VIDEO_MB = 100;
+
 export function GuesthouseManage() {
   const { t } = useLanguage();
   const { user, switchUser } = useAuth();
@@ -65,14 +67,16 @@ export function GuesthouseManage() {
   const [pendingRoomImages, setPendingRoomImages] = useState([]);
   const [roomMediaError, setRoomMediaError] = useState('');
   const [roomMediaMessage, setRoomMediaMessage] = useState('');
+  const [roomUploadProgress, setRoomUploadProgress] = useState(0);
   const [uploadingRoomImages, setUploadingRoomImages] = useState(false);
+  const [roomUploadStatuses, setRoomUploadStatuses] = useState({});
   const [deletingRoomImageId, setDeletingRoomImageId] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
-  const [videoPreview, setVideoPreview] = useState('');
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoError, setVideoError] = useState('');
   const [videoMessage, setVideoMessage] = useState('');
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const videoUploadController = useRef(null);
   const previewUrls = useRef(new Set());
 
   /*
@@ -81,6 +85,11 @@ export function GuesthouseManage() {
    * ---------------------------------------------------------
    */
   const [mainImagePreview, setMainImagePreview] = useState('');
+
+  useEffect(() => () => {
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current.clear();
+  }, []);
 
   useEffect(() => {
     if (!mainImage) {
@@ -105,23 +114,6 @@ export function GuesthouseManage() {
 
     setMainImagePreview('');
   }, [mainImage]);
-
-  useEffect(() => () => {
-    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
-    previewUrls.current.clear();
-  }, []);
-
-  useEffect(() => {
-    if (!videoFile) {
-      setVideoPreview('');
-      return undefined;
-    }
-
-    const objectUrl = URL.createObjectURL(videoFile);
-    setVideoPreview(objectUrl);
-
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [videoFile]);
 
   /*
    * ---------------------------------------------------------
@@ -178,7 +170,6 @@ export function GuesthouseManage() {
             }))
           )
         );
-
         setName(gh.name || '');
         setCity(gh.city || 'Addis Ababa');
 
@@ -228,313 +219,6 @@ export function GuesthouseManage() {
       mounted = false;
     };
   }, [user]);
-
-  const getRoomImageCount = (roomId, excludingId = null) =>
-    roomImageRecords.filter(
-      (image) => String(image.roomId) === String(roomId)
-    ).length +
-    pendingRoomImages.filter(
-      (image) =>
-        image.id !== excludingId &&
-        String(image.roomId) === String(roomId)
-    ).length;
-
-  const handleRoomImageSelection = (event) => {
-    const files = Array.from(event.target.files || []);
-    event.target.value = '';
-    setRoomMediaError('');
-    setRoomMediaMessage('');
-
-    if (pendingRoomImages.length + files.length > 30) {
-      setRoomMediaError('You can upload at most 30 room images at a time.');
-      return;
-    }
-
-    const acceptedFiles = [];
-
-    for (const file of files) {
-      if (!file.type.startsWith('image/')) {
-        setRoomMediaError(`${file.name} is not a supported image file.`);
-        continue;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        setRoomMediaError(`${file.name} exceeds the 5MB image limit.`);
-        continue;
-      }
-
-      const preview = URL.createObjectURL(file);
-      previewUrls.current.add(preview);
-      acceptedFiles.push({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        file,
-        preview,
-        roomId: '',
-        progress: 0,
-        uploaded: null,
-        status: '',
-      });
-    }
-
-    if (acceptedFiles.length) {
-      setPendingRoomImages((current) => [...current, ...acceptedFiles]);
-    }
-  };
-
-  const handleRoomAssignment = (imageId, roomId) => {
-    if (roomId && getRoomImageCount(roomId, imageId) >= 10) {
-      setRoomMediaError('Each room can have a maximum of 10 images.');
-      return;
-    }
-
-    setRoomMediaError('');
-    setPendingRoomImages((current) =>
-      current.map((image) =>
-        image.id === imageId ? { ...image, roomId } : image
-      )
-    );
-  };
-
-  const removePendingRoomImage = (imageId) => {
-    const image = pendingRoomImages.find((item) => item.id === imageId);
-    if (image?.preview) {
-      URL.revokeObjectURL(image.preview);
-      previewUrls.current.delete(image.preview);
-    }
-
-    setPendingRoomImages((current) =>
-      current.filter((item) => item.id !== imageId)
-    );
-  };
-
-  const refreshRoomImages = async () => {
-    const guesthouse = await ApiService.getMyGuesthouse();
-    if (!guesthouse) return;
-
-    setExistingGuesthouse(guesthouse);
-    setRoomImageRecords(
-      (guesthouse.rooms || []).flatMap((room) =>
-        (room.images || []).map((image) => ({
-          ...image,
-          roomId: room.id,
-          roomNumber: room.roomNumber,
-        }))
-      )
-    );
-  };
-
-  const handleUploadRoomImages = async () => {
-    if (!existingGuesthouse?.id || pendingRoomImages.length === 0) {
-      setRoomMediaError('Choose one or more images to upload.');
-      return;
-    }
-
-    if (pendingRoomImages.some((image) => !image.roomId)) {
-      setRoomMediaError('Choose a room for every selected image.');
-      return;
-    }
-
-    for (const image of pendingRoomImages) {
-      const roomId = String(image.roomId);
-      if (getRoomImageCount(roomId) > 10) {
-        setRoomMediaError('Each room can have a maximum of 10 images.');
-        return;
-      }
-    }
-
-    setUploadingRoomImages(true);
-    setRoomMediaError('');
-    setRoomMediaMessage('');
-
-    const uploaded = new Map(
-      pendingRoomImages
-        .filter((image) => image.uploaded)
-        .map((image) => [image.id, image.uploaded])
-    );
-
-    try {
-      await Promise.all(
-        pendingRoomImages
-          .filter((image) => !image.uploaded)
-          .map(async (image) => {
-            try {
-              const result = await ApiService.uploadMediaToCloudinary(
-                image.file,
-                'image',
-                (progress) => {
-                  setPendingRoomImages((current) =>
-                    current.map((item) =>
-                      item.id === image.id
-                        ? { ...item, progress, status: 'Uploading' }
-                        : item
-                    )
-                  );
-                }
-              );
-
-              if (!result.secure_url || !result.public_id) {
-                throw new Error('Cloudinary did not return the image URL and public ID.');
-              }
-
-              const asset = {
-                url: result.secure_url,
-                publicId: result.public_id,
-              };
-              uploaded.set(image.id, asset);
-              setPendingRoomImages((current) =>
-                current.map((item) =>
-                  item.id === image.id
-                    ? { ...item, uploaded: asset, progress: 100, status: 'Uploaded' }
-                    : item
-                )
-              );
-            } catch (uploadError) {
-              setPendingRoomImages((current) =>
-                current.map((item) =>
-                  item.id === image.id
-                    ? { ...item, status: uploadError.message }
-                    : item
-                )
-              );
-            }
-          })
-      );
-
-      const readyImages = pendingRoomImages
-        .filter((image) => uploaded.has(image.id))
-        .map((image) => ({
-          id: image.id,
-          roomId: Number(image.roomId),
-          ...uploaded.get(image.id),
-        }));
-
-      if (readyImages.length === 0) {
-        setRoomMediaError('No images were uploaded successfully. Please retry.');
-        return;
-      }
-
-      setPendingRoomImages((current) =>
-        current.map((image) =>
-          uploaded.has(image.id)
-            ? { ...image, uploaded: uploaded.get(image.id) }
-            : image
-        )
-      );
-
-      await ApiService.createRoomImages(
-        readyImages.map(({ roomId, url, publicId }) => ({
-          roomId,
-          url,
-          publicId,
-        }))
-      );
-
-      readyImages.forEach(({ id }) => removePendingRoomImage(id));
-      const failedCount = pendingRoomImages.length - readyImages.length;
-      setRoomMediaMessage(
-        `${readyImages.length} room image${readyImages.length === 1 ? '' : 's'} uploaded successfully.${failedCount ? ` ${failedCount} image${failedCount === 1 ? '' : 's'} need a retry.` : ''}`
-      );
-
-      try {
-        await refreshRoomImages();
-      } catch (refreshError) {
-        console.error('Saved room images but could not refresh the list:', refreshError);
-        setRoomMediaError('Images were saved, but the room image list could not refresh. Reload this page.');
-      }
-    } catch (uploadError) {
-      console.error('Room image upload failed:', uploadError);
-      setRoomMediaError(uploadError.message || 'Could not save room images.');
-    } finally {
-      setUploadingRoomImages(false);
-    }
-  };
-
-  const handleDeleteRoomImage = async (image) => {
-    setDeletingRoomImageId(image.id);
-    setRoomMediaError('');
-    setRoomMediaMessage('');
-
-    try {
-      await ApiService.deleteRoomImage(image.id);
-      setRoomImageRecords((current) =>
-        current.filter((item) => item.id !== image.id)
-      );
-      setRoomMediaMessage('Room image deleted successfully.');
-    } catch (deleteError) {
-      console.error('Room image deletion failed:', deleteError);
-      setRoomMediaError(deleteError.message || 'Could not delete room image.');
-    } finally {
-      setDeletingRoomImageId(null);
-    }
-  };
-
-  const handleVideoSelection = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    setVideoError('');
-    setVideoMessage('');
-
-    if (!file) return;
-
-    if (file.size > 50 * 1024 * 1024) {
-      setVideoError('The video exceeds the 50MB limit.');
-      return;
-    }
-
-    const isSupportedVideo =
-      ['video/mp4', 'video/webm'].includes(file.type) ||
-      /\.(mp4|webm)$/i.test(file.name);
-
-    if (!isSupportedVideo) {
-      setVideoError('Choose an MP4 or WebM video.');
-      return;
-    }
-
-    setVideoFile(file);
-    setVideoProgress(0);
-  };
-
-  const handleUploadVideo = async () => {
-    if (!videoFile) {
-      setVideoError('Choose an MP4 or WebM video first.');
-      return;
-    }
-
-    setUploadingVideo(true);
-    setVideoError('');
-    setVideoMessage('');
-
-    try {
-      const result = await ApiService.uploadMediaToCloudinary(
-        videoFile,
-        'video',
-        setVideoProgress
-      );
-
-      if (!result.secure_url || !result.public_id) {
-        throw new Error('Cloudinary did not return the video URL and public ID.');
-      }
-
-      const updated = await ApiService.updateGuesthouseVideo({
-        url: result.secure_url,
-        publicId: result.public_id,
-      });
-
-      setExistingGuesthouse((current) => ({
-        ...current,
-        videoUrl: updated?.videoUrl || result.secure_url,
-        videoPublicId: updated?.videoPublicId || result.public_id,
-      }));
-      setVideoFile(null);
-      setVideoProgress(100);
-      setVideoMessage('Guesthouse video uploaded successfully.');
-    } catch (uploadError) {
-      console.error('Guesthouse video upload failed:', uploadError);
-      setVideoError(uploadError.message || 'Could not upload the video.');
-    } finally {
-      setUploadingVideo(false);
-    }
-  };
 
   /*
    * ---------------------------------------------------------
@@ -877,6 +561,353 @@ export function GuesthouseManage() {
 
     setError('');
     setLicenseDocument(file);
+  };
+
+  const rooms = existingGuesthouse?.rooms || [];
+
+  const getSortedRoomImages = (roomId) =>
+    roomImageRecords
+      .filter((image) => String(image.roomId) === String(roomId))
+      .sort((first, second) => Number(first.sortOrder || 0) - Number(second.sortOrder || 0));
+
+  const handleRoomImageSelection = (room, kind, event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    setRoomMediaError('');
+    setRoomMediaMessage('');
+
+    if (!files.length) return;
+
+    const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const savedImages = getSortedRoomImages(room.id);
+    const queuedForRoom = pendingRoomImages.filter(
+      (image) => String(image.roomId) === String(room.id)
+    );
+    const replacement = kind === 'main'
+      ? queuedForRoom.find((image) => image.kind === 'main')
+      : null;
+    const existingCount = savedImages.length + queuedForRoom.length - (replacement ? 1 : 0);
+    const availableSlots = Math.max(0, 10 - existingCount);
+    const acceptedFiles = [];
+
+    for (const file of files) {
+      if (!acceptedTypes.includes(file.type)) {
+        setRoomMediaError(`${file.name} must be a JPEG, PNG, or WEBP image.`);
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setRoomMediaError(`${file.name} exceeds the 5MB image limit.`);
+        continue;
+      }
+
+      const isDuplicateSaved = savedImages.some((image) => {
+        const savedName = image.fileName || image.originalName || image.name;
+        const savedSize = Number(image.fileSize ?? image.size);
+        return savedName === file.name && savedSize === file.size;
+      });
+      const isDuplicate = isDuplicateSaved || [...queuedForRoom, ...acceptedFiles].some(
+        (image) => image.file.name === file.name && image.file.size === file.size
+      );
+      if (isDuplicate && !(replacement && replacement.file.name === file.name && replacement.file.size === file.size)) {
+        setRoomMediaError(`${file.name} is already selected for Room ${room.roomNumber}.`);
+        continue;
+      }
+      if (acceptedFiles.length >= availableSlots) {
+        setRoomMediaError(`Room ${room.roomNumber} can have up to 10 photos. Delete a saved photo before adding more.`);
+        break;
+      }
+      acceptedFiles.push(file);
+      if (kind === 'main') break;
+    }
+
+    const newImages = acceptedFiles.map((file) => {
+      const preview = URL.createObjectURL(file);
+      previewUrls.current.add(preview);
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        preview,
+        roomId: String(room.id),
+        kind,
+        status: 'pending',
+      };
+    });
+
+    if (kind === 'main' && replacement) {
+      URL.revokeObjectURL(replacement.preview);
+      previewUrls.current.delete(replacement.preview);
+      setPendingRoomImages((current) => [
+        ...current.filter((image) => image.id !== replacement.id),
+        ...newImages,
+      ]);
+    } else if (newImages.length) {
+      setPendingRoomImages((current) => [...current, ...newImages]);
+    }
+
+    if (newImages.length) {
+      setRoomUploadStatuses((current) => ({ ...current, [room.id]: 'pending' }));
+    }
+  };
+
+  const handleRemovePendingRoomImage = (imageId) => {
+    const image = pendingRoomImages.find((item) => item.id === imageId);
+    if (!image) return;
+    URL.revokeObjectURL(image.preview);
+    previewUrls.current.delete(image.preview);
+    setPendingRoomImages((current) => current.filter((item) => item.id !== imageId));
+    setRoomUploadStatuses((current) => {
+      const hasRoomItems = pendingRoomImages.some(
+        (item) => item.id !== imageId && String(item.roomId) === String(image.roomId)
+      );
+      if (hasRoomItems) return current;
+      const next = { ...current };
+      delete next[image.roomId];
+      return next;
+    });
+  };
+
+  const handleUploadRoomImages = async (onlyRoomId) => {
+    const candidates = pendingRoomImages.filter((image) =>
+      image.status !== 'uploading' &&
+      (onlyRoomId === undefined || String(image.roomId) === String(onlyRoomId))
+    );
+    if (!candidates.length) return;
+
+    setUploadingRoomImages(true);
+    setRoomUploadProgress(0);
+    setRoomMediaError('');
+    setRoomMediaMessage('');
+    const totalBytes = candidates.reduce((total, image) => total + image.file.size, 0);
+    let completedBytes = 0;
+    let failedCount = 0;
+    const failedRoomIds = new Set();
+    const readyToSave = [];
+
+    try {
+      for (const pendingImage of candidates) {
+        setRoomUploadStatuses((current) => ({
+          ...current,
+          [pendingImage.roomId]: 'uploading',
+        }));
+        setPendingRoomImages((current) => current.map((image) =>
+          image.id === pendingImage.id ? { ...image, status: 'uploading' } : image
+        ));
+
+        try {
+          let asset = pendingImage.asset;
+          if (!asset) {
+            asset = await ApiService.uploadMediaToCloudinary(
+              pendingImage.file,
+              'image',
+              (fileProgress) => {
+                setRoomUploadProgress(Math.round(
+                  ((completedBytes + (pendingImage.file.size * fileProgress) / 100) / totalBytes) * 100
+                ));
+              }
+            );
+          }
+          completedBytes += pendingImage.file.size;
+          setRoomUploadProgress(Math.round((completedBytes / totalBytes) * 100));
+          readyToSave.push({ pendingImage, asset });
+          setPendingRoomImages((current) => current.map((image) =>
+            image.id === pendingImage.id ? { ...image, asset, status: 'pending' } : image
+          ));
+        } catch (uploadError) {
+          failedCount += 1;
+          failedRoomIds.add(String(pendingImage.roomId));
+          setPendingRoomImages((current) => current.map((image) =>
+            image.id === pendingImage.id ? { ...image, status: 'failed' } : image
+          ));
+          setRoomUploadStatuses((current) => ({
+            ...current,
+            [pendingImage.roomId]: 'failed',
+          }));
+          console.error(`Room ${pendingImage.roomId} photo upload failed:`, uploadError);
+        }
+      }
+
+      if (readyToSave.length) {
+        const items = readyToSave.map(({ pendingImage, asset }) => ({
+          roomId: Number(pendingImage.roomId),
+          url: asset.secure_url,
+          publicId: asset.public_id,
+        }));
+        try {
+          await ApiService.createRoomImages(items);
+          const savedIds = new Set(readyToSave.map(({ pendingImage }) => pendingImage.id));
+          readyToSave.forEach(({ pendingImage }) => {
+            URL.revokeObjectURL(pendingImage.preview);
+            previewUrls.current.delete(pendingImage.preview);
+          });
+          setPendingRoomImages((current) => current.filter((image) => !savedIds.has(image.id)));
+
+          const savedRoomIds = [...new Set(readyToSave.map(({ pendingImage }) => pendingImage.roomId))];
+          savedRoomIds.forEach((roomId) => {
+            setRoomUploadStatuses((current) => ({
+              ...current,
+              [roomId]: failedRoomIds.has(String(roomId)) ? 'failed' : 'done',
+            }));
+          });
+
+          try {
+            const updatedGuesthouse = await ApiService.getMyGuesthouse();
+            if (updatedGuesthouse) {
+              setExistingGuesthouse(updatedGuesthouse);
+              setRoomImageRecords(
+                (updatedGuesthouse.rooms || []).flatMap((room) =>
+                  (room.images || []).map((image) => ({
+                    ...image,
+                    roomId: room.id,
+                    roomNumber: room.roomNumber,
+                  }))
+                )
+              );
+            }
+          } catch (refreshError) {
+            console.warn('Room photos saved, but owner data could not be refreshed:', refreshError);
+          }
+        } catch (saveError) {
+          failedCount += readyToSave.length;
+          setPendingRoomImages((current) => current.map((image) =>
+            readyToSave.some(({ pendingImage }) => pendingImage.id === image.id)
+              ? { ...image, asset: readyToSave.find(({ pendingImage }) => pendingImage.id === image.id).asset, status: 'failed' }
+              : image
+          ));
+          readyToSave.forEach(({ pendingImage }) => {
+            failedRoomIds.add(String(pendingImage.roomId));
+            setRoomUploadStatuses((current) => ({
+              ...current,
+              [pendingImage.roomId]: 'failed',
+            }));
+          });
+          throw saveError;
+        }
+      }
+
+      setRoomUploadProgress(100);
+      if (failedCount) {
+        setRoomMediaError('Some room photos failed. Retry failed rooms.');
+      } else {
+        setRoomMediaMessage('Room photos uploaded successfully.');
+      }
+    } catch (uploadError) {
+      console.error('Room photo batch could not be saved:', uploadError);
+      setRoomMediaError(
+        uploadError?.response?.data?.message ||
+          uploadError?.message ||
+          'Room photos could not be uploaded.'
+      );
+    } finally {
+      setUploadingRoomImages(false);
+    }
+  };
+
+  const handleDeleteRoomImage = async (image) => {
+    setDeletingRoomImageId(image.id);
+    setRoomMediaError('');
+    setRoomMediaMessage('');
+    try {
+      await ApiService.deleteRoomImage(image.id);
+      setRoomImageRecords((current) =>
+        current.filter((record) => record.id !== image.id)
+      );
+      setExistingGuesthouse((current) => current ? ({
+        ...current,
+        rooms: (current.rooms || []).map((room) => ({
+          ...room,
+          images: (room.images || []).filter(
+            (record) => record.id !== image.id
+          ),
+        })),
+      }) : current);
+      setRoomMediaMessage('Room photo deleted successfully.');
+    } catch (deleteError) {
+      console.error('Room photo deletion failed:', deleteError);
+      setRoomMediaError(
+        deleteError?.response?.data?.message ||
+          deleteError?.message ||
+          'Room photo could not be deleted.'
+      );
+    } finally {
+      setDeletingRoomImageId(null);
+    }
+  };
+
+  const handleVideoSelection = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    setVideoError('');
+    setVideoMessage('');
+
+    if (!file) {
+      return;
+    }
+
+    setVideoFile(null);
+
+    if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
+      setVideoError('Select an MP4, WEBM, or MOV video.');
+      return;
+    }
+
+    if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
+      setVideoError(`Guesthouse video must be ${MAX_VIDEO_MB}MB or smaller.`);
+      return;
+    }
+
+    setVideoFile(file);
+    setVideoProgress(0);
+  };
+
+  const handleUploadVideo = async () => {
+    if (!videoFile) {
+      setVideoError('Select a video file to upload.');
+      return;
+    }
+
+    setUploadingVideo(true);
+    setVideoError('');
+    setVideoMessage('');
+    setVideoProgress(0);
+    const controller = new AbortController();
+    videoUploadController.current = controller;
+    try {
+      const uploaded = await ApiService.uploadVideoToCloudinaryInChunks(
+        videoFile,
+        setVideoProgress,
+        controller.signal
+      );
+      const savedVideo = await ApiService.updateGuesthouseVideo({
+        url: uploaded.secure_url,
+        publicId: uploaded.public_id,
+      });
+      setExistingGuesthouse((current) => ({
+        ...current,
+        videoUrl: savedVideo?.videoUrl || uploaded.secure_url,
+        videoPublicId: savedVideo?.videoPublicId || uploaded.public_id,
+      }));
+      setVideoFile(null);
+      setVideoProgress(100);
+      setVideoMessage('Guesthouse video uploaded successfully.');
+    } catch (uploadError) {
+      if (controller.signal.aborted || uploadError?.code === 'ERR_CANCELED') {
+        setVideoError('Video upload cancelled.');
+        return;
+      }
+      console.error('Guesthouse video upload failed:', uploadError);
+      setVideoError(
+        uploadError?.response?.data?.message ||
+          uploadError?.message ||
+          'Guesthouse video could not be uploaded.'
+      );
+    } finally {
+      videoUploadController.current = null;
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleCancelVideoUpload = () => {
+    videoUploadController.current?.abort();
   };
 
   /*
@@ -1525,6 +1556,374 @@ export function GuesthouseManage() {
             </section>
 
             {/* ==================================================
+                ROOM PHOTOS
+            ================================================== */}
+            <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#063e60] text-[#ffbd08]">
+                  <ImageIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-[#063e60]">
+                    {t('Room Photos')}
+                  </h2>
+                  <p className="text-xs font-medium text-slate-500">
+                    {t('Add up to 10 photos for each room.')}
+                  </p>
+                </div>
+              </div>
+
+              {!rooms.length ? (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                  {t('Add rooms to your guesthouse before uploading room photos.')}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-[10px] font-semibold text-slate-400">
+                      {t('JPEG, PNG or WEBP • Maximum 5MB per image • 10 photos per room')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleUploadRoomImages()}
+                      disabled={uploadingRoomImages || pendingRoomImages.length === 0}
+                      className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ffbd08] px-4 text-xs font-black text-[#063e60] transition hover:bg-[#f7b500] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {uploadingRoomImages ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      {t('Upload all rooms')}
+                    </button>
+                  </div>
+
+                  {pendingRoomImages.length > 0 && (
+                    <div
+                      className="h-2 overflow-hidden rounded-full bg-slate-100"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={roomUploadProgress}
+                    >
+                      <div
+                        className="h-full rounded-full bg-[#ffbd08] transition-all"
+                        style={{ width: `${roomUploadProgress}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {rooms.map((room) => {
+                      const savedImages = getSortedRoomImages(room.id);
+                      const mainImage = savedImages[0];
+                      const roomPending = pendingRoomImages.filter(
+                        (image) => String(image.roomId) === String(room.id)
+                      );
+                      const pendingMain = roomPending.find((image) => image.kind === 'main');
+                      const pendingExtras = roomPending.filter((image) => image.kind === 'extra');
+                      const status = roomUploadStatuses[room.id];
+                      const roomType = room.type || room.roomType || 'ROOM';
+                      const statusStyle = {
+                        pending: 'bg-amber-100 text-amber-800',
+                        uploading: 'bg-sky-100 text-sky-800',
+                        done: 'bg-emerald-100 text-emerald-800',
+                        failed: 'bg-red-100 text-red-800',
+                      }[status];
+
+                      return (
+                        <article key={room.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                          <div className="flex flex-col gap-4 sm:flex-row">
+                            <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-lg bg-slate-100 sm:h-24 sm:w-36">
+                              {pendingMain ? (
+                                <img src={pendingMain.preview} alt={pendingMain.file.name} className="h-full w-full object-cover" />
+                              ) : mainImage ? (
+                                <img src={getImageUrl(mainImage.url)} alt={`Room ${room.roomNumber} main photo`} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-xs font-semibold text-slate-400">
+                                  {t('No room photo')}
+                                </div>
+                              )}
+                              {pendingMain && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePendingRoomImage(pendingMain.id)}
+                                  disabled={uploadingRoomImages}
+                                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow disabled:opacity-50"
+                                  aria-label={t('Remove pending room photo')}
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-sm font-black text-[#063e60]">
+                                  {`Room ${room.roomNumber} (${roomType})`}
+                                </h3>
+                                {status && (
+                                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${statusStyle}`}>
+                                    {t(status)}
+                                  </span>
+                                )}
+                              </div>
+                              {pendingMain && (
+                                <p className="mt-1 truncate text-[10px] font-semibold text-slate-500">
+                                  {pendingMain.file.name} ({pendingMain.status})
+                                </p>
+                              )}
+                              <label className="mt-3 inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#063e60] px-3 text-xs font-bold text-[#063e60] transition hover:bg-slate-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                                <Upload className="h-3.5 w-3.5" />
+                                {mainImage ? t('Replace photo') : t('Choose photo')}
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  onChange={(event) => handleRoomImageSelection(room, 'main', event)}
+                                  disabled={uploadingRoomImages}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              <details className="mt-4 border-t border-slate-100 pt-3">
+                                <summary className="cursor-pointer text-xs font-bold text-[#063e60]">
+                                  {t('More photos')} ({Math.max(0, savedImages.length - 1) + pendingExtras.length})
+                                </summary>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {savedImages.map((image, index) => (
+                                    <div key={image.id} className="group relative h-16 w-20 overflow-hidden rounded-lg bg-slate-100">
+                                      <img
+                                        src={getImageUrl(image.url)}
+                                        alt={`Room ${room.roomNumber} photo ${index + 1}`}
+                                        className="h-full w-full object-cover"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteRoomImage(image)}
+                                        disabled={deletingRoomImageId === image.id || uploadingRoomImages}
+                                        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white shadow disabled:opacity-50"
+                                        aria-label={t('Delete room photo')}
+                                      >
+                                        {deletingRoomImageId === image.id ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <X className="h-3.5 w-3.5" />
+                                        )}
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {pendingExtras.map((image) => (
+                                    <div key={image.id} className="relative h-16 w-20 overflow-hidden rounded-lg bg-slate-100">
+                                      <img src={image.preview} alt={image.file.name} className="h-full w-full object-cover" />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemovePendingRoomImage(image.id)}
+                                        disabled={uploadingRoomImages}
+                                        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white shadow disabled:opacity-50"
+                                        aria-label={t('Remove pending room photo')}
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <label className="mt-3 inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#063e60] px-3 text-xs font-bold text-white transition hover:bg-[#052f4a] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                                  <Upload className="h-3.5 w-3.5" />
+                                  {t('Add extra photos')}
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    multiple
+                                    onChange={(event) => handleRoomImageSelection(room, 'extra', event)}
+                                    disabled={uploadingRoomImages || savedImages.length + roomPending.length >= 10}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </details>
+                            </div>
+                          </div>
+                          {status === 'failed' && (
+                            <button
+                              type="button"
+                              onClick={() => handleUploadRoomImages(room.id)}
+                              disabled={uploadingRoomImages}
+                              className="mt-3 h-9 rounded-lg border border-red-200 px-3 text-xs font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {t('Retry failed room')}
+                            </button>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {roomMediaError && (
+                <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-800">
+                  {t(roomMediaError)}
+                </p>
+              )}
+              {roomMediaMessage && (
+                <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
+                  {t(roomMediaMessage)}
+                </p>
+              )}
+
+              <div className="mt-6 space-y-5">
+                {rooms.map((room) => {
+                  const images = roomImageRecords.filter(
+                    (image) => String(image.roomId) === String(room.id)
+                  );
+                  return (
+                    <div key={room.id}>
+                      <h3 className="mb-3 text-xs font-black uppercase tracking-wide text-[#063e60]">
+                        {`Room ${room.roomNumber}`}
+                      </h3>
+                      {images.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                          {images.map((image) => (
+                            <div
+                              key={image.id}
+                              className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+                            >
+                              <img
+                                src={getImageUrl(image.url)}
+                                alt={`Room ${room.roomNumber}`}
+                                className="h-32 w-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteRoomImage(image)}
+                                disabled={deletingRoomImageId === image.id}
+                                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow transition hover:bg-red-700 disabled:opacity-60"
+                                aria-label={t('Delete room photo')}
+                                title={t('Delete room photo')}
+                              >
+                                {deletingRoomImageId === image.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <X className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs font-medium text-slate-400">
+                          {t('No photos saved for this room yet.')}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* ==================================================
+                GUESTHOUSE VIDEO
+            ================================================== */}
+            <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#063e60] text-[#ffbd08]">
+                  <Upload className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-[#063e60]">
+                    {t('Guesthouse Video')}
+                  </h2>
+                  <p className="text-xs font-medium text-slate-500">
+                    {t('Upload a short video of your guesthouse.')}
+                  </p>
+                </div>
+              </div>
+
+              {existingGuesthouse?.videoUrl && (
+                <video
+                  src={getImageUrl(existingGuesthouse.videoUrl)}
+                  controls
+                  preload="metadata"
+                  className="mb-4 max-h-80 w-full rounded-xl bg-slate-950"
+                />
+              )}
+
+              {videoFile && (
+                <p className="mb-3 truncate rounded-xl bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-700">
+                  {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              )}
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-[#063e60] bg-white px-4 text-xs font-black text-[#063e60] transition hover:bg-[#063e60] hover:text-white">
+                  <Upload className="h-4 w-4" />
+                  {existingGuesthouse?.videoUrl
+                    ? t('Replace video')
+                    : t('Choose video')}
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime,.mov"
+                    onChange={handleVideoSelection}
+                    disabled={uploadingVideo}
+                    className="hidden"
+                  />
+                </label>
+                {videoFile && (
+                  <button
+                    type="button"
+                    onClick={handleUploadVideo}
+                    disabled={uploadingVideo}
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ffbd08] px-4 text-xs font-black text-[#063e60] transition hover:bg-[#f7b500] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {uploadingVideo && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    {uploadingVideo
+                      ? `${t('Uploading')} ${videoProgress}%`
+                      : t('Upload video')}
+                  </button>
+                )}
+                {uploadingVideo && (
+                  <button
+                    type="button"
+                    onClick={handleCancelVideoUpload}
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 px-4 text-xs font-black text-red-700 transition hover:bg-red-50"
+                  >
+                    <X className="h-4 w-4" />
+                    {t('Cancel')}
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 text-[10px] font-semibold text-slate-400">
+                {t(`MP4, WEBM or MOV • Maximum ${MAX_VIDEO_MB}MB`)}
+              </p>
+
+              {uploadingVideo && (
+                <div
+                  className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={videoProgress}
+                >
+                  <div
+                    className="h-full rounded-full bg-[#ffbd08] transition-all"
+                    style={{ width: `${videoProgress}%` }}
+                  />
+                </div>
+              )}
+              {videoError && (
+                <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-800">
+                  {t(videoError)}
+                </p>
+              )}
+              {videoMessage && (
+                <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
+                  {t(videoMessage)}
+                </p>
+              )}
+            </section>
+
+            {/* ==================================================
                 IMPORTANT: NO ADDITIONAL PHOTOS SECTION
             ================================================== */}
 
@@ -1587,252 +1986,6 @@ export function GuesthouseManage() {
             </div>
           </form>
 
-          {existingGuesthouse && (
-            <section className="space-y-6 border-t border-slate-200 px-5 py-6 sm:px-8">
-              <div>
-                <h2 className="text-lg font-black text-[#063e60]">
-                  {t('Room images and guesthouse video')}
-                </h2>
-                <p className="mt-1 text-xs font-medium text-slate-500">
-                  {t('Upload room images directly to Cloudinary and assign each image to a room.')}
-                </p>
-              </div>
-
-              {(roomMediaError || roomMediaMessage) && (
-                <p
-                  role={roomMediaError ? 'alert' : 'status'}
-                  className={`rounded-xl px-4 py-3 text-sm font-semibold ${
-                    roomMediaError
-                      ? 'border border-red-200 bg-red-50 text-red-700'
-                      : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-                  }`}
-                >
-                  {t(roomMediaError || roomMediaMessage)}
-                </p>
-              )}
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-sm font-black text-[#063e60]">
-                      {t('Room image library')}
-                    </h3>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {t('Maximum 5MB per image, 10 images per room, and 30 images per upload.')}
-                    </p>
-                  </div>
-                  <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#063e60] px-4 text-xs font-black text-white transition hover:bg-[#052f4a]">
-                    <Upload className="h-4 w-4" />
-                    {t('Select room images')}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      disabled={!existingGuesthouse.rooms?.length || uploadingRoomImages}
-                      onChange={handleRoomImageSelection}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {pendingRoomImages.length > 0 && (
-                  <div className="mt-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                      {pendingRoomImages.map((image) => (
-                        <div key={image.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                          <div className="relative aspect-square bg-slate-100">
-                            <img
-                              src={image.preview}
-                              alt={image.file.name}
-                              className="h-full w-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              disabled={uploadingRoomImages}
-                              onClick={() => removePendingRoomImage(image.id)}
-                              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow disabled:opacity-50"
-                              aria-label={t('Remove selected image')}
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <div className="space-y-2 p-3">
-                            <p className="truncate text-[11px] font-bold text-slate-700">
-                              {image.file.name}
-                            </p>
-                            <select
-                              value={image.roomId}
-                              disabled={uploadingRoomImages}
-                              onChange={(event) =>
-                                handleRoomAssignment(image.id, event.target.value)
-                              }
-                              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"
-                            >
-                              <option value="">{t('Choose a room')}</option>
-                              {(existingGuesthouse.rooms || []).map((room) => (
-                                <option
-                                  key={room.id}
-                                  value={room.id}
-                                  disabled={
-                                    getRoomImageCount(room.id, image.id) >= 10 &&
-                                    String(room.id) !== String(image.roomId)
-                                  }
-                                >
-                                  {t('Room')} {room.roomNumber || room.id} ({getRoomImageCount(room.id, image.id)}/10)
-                                </option>
-                              ))}
-                            </select>
-                            {image.status && (
-                              <p className="truncate text-[10px] font-semibold text-slate-500">
-                                {image.status}
-                              </p>
-                            )}
-                            {image.progress > 0 && image.progress < 100 && (
-                              <progress
-                                className="h-2 w-full accent-[#063e60]"
-                                max="100"
-                                value={image.progress}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={uploadingRoomImages}
-                      onClick={handleUploadRoomImages}
-                      className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ffbd08] px-5 text-xs font-black text-[#063e60] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {uploadingRoomImages && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {uploadingRoomImages ? t('Uploading images...') : t('Upload all')}
-                    </button>
-                  </div>
-                )}
-
-                {(!existingGuesthouse.rooms || existingGuesthouse.rooms.length === 0) && (
-                  <p className="mt-4 rounded-xl bg-white px-4 py-3 text-xs font-semibold text-slate-500">
-                    {t('Add rooms before uploading room images.')}
-                  </p>
-                )}
-
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {(existingGuesthouse.rooms || []).map((room) => {
-                    const images = roomImageRecords.filter(
-                      (image) => String(image.roomId) === String(room.id)
-                    );
-
-                    return (
-                      <div key={room.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                        <h4 className="text-xs font-black text-[#063e60]">
-                          {t('Room')} {room.roomNumber || room.id} · {images.length}/10
-                        </h4>
-                        {images.length > 0 ? (
-                          <div className="mt-3 grid grid-cols-3 gap-2">
-                            {images.map((image) => (
-                              <div key={image.id} className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
-                                <img
-                                  src={getImageUrl(image.url)}
-                                  alt={`${t('Room')} ${room.roomNumber || room.id}`}
-                                  loading="lazy"
-                                  className="h-full w-full object-cover"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={deletingRoomImageId === image.id}
-                                  onClick={() => handleDeleteRoomImage(image)}
-                                  className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow disabled:opacity-50"
-                                  aria-label={t('Delete room image')}
-                                >
-                                  {deletingRoomImageId === image.id
-                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    : <X className="h-3.5 w-3.5" />}
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="mt-2 text-[11px] text-slate-400">
-                            {t('No images uploaded for this room yet.')}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {(videoError || videoMessage) && (
-                <p
-                  role={videoError ? 'alert' : 'status'}
-                  className={`rounded-xl px-4 py-3 text-sm font-semibold ${
-                    videoError
-                      ? 'border border-red-200 bg-red-50 text-red-700'
-                      : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-                  }`}
-                >
-                  {t(videoError || videoMessage)}
-                </p>
-              )}
-
-              <div className="grid grid-cols-1 gap-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 sm:p-5">
-                <div>
-                  <h3 className="text-sm font-black text-[#063e60]">
-                    {t('Guesthouse video')}
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {t('One video per guesthouse · MP4 or WebM · Maximum 50MB')}
-                  </p>
-                  <label className="mt-4 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#063e60] px-4 text-xs font-black text-white transition hover:bg-[#052f4a]">
-                    <Upload className="h-4 w-4" />
-                    {existingGuesthouse.videoUrl ? t('Replace video') : t('Choose video')}
-                    <input
-                      type="file"
-                      accept="video/mp4,video/webm,.mp4,.webm"
-                      disabled={uploadingVideo}
-                      onChange={handleVideoSelection}
-                      className="hidden"
-                    />
-                  </label>
-                  {videoFile && (
-                    <p className="mt-3 truncate text-xs font-semibold text-slate-600">
-                      {videoFile.name} · {(videoFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  )}
-                  {uploadingVideo && (
-                    <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-600">
-                      <progress className="h-2 flex-1 accent-[#063e60]" max="100" value={videoProgress} />
-                      {videoProgress}%
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    disabled={!videoFile || uploadingVideo}
-                    onClick={handleUploadVideo}
-                    className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#ffbd08] px-4 text-xs font-black text-[#063e60] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {uploadingVideo && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {uploadingVideo ? t('Uploading video...') : t('Upload video')}
-                  </button>
-                </div>
-                <div className="flex min-h-40 items-center justify-center overflow-hidden rounded-xl bg-slate-900">
-                  {(videoPreview || existingGuesthouse.videoUrl) ? (
-                    <video
-                      src={videoPreview || existingGuesthouse.videoUrl}
-                      controls
-                      preload="metadata"
-                      className="max-h-72 w-full"
-                    />
-                  ) : (
-                    <p className="px-4 text-center text-xs font-semibold text-white/60">
-                      {t('No guesthouse video uploaded.')}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import {
@@ -17,7 +17,7 @@ import {
   Mail,
   ShieldCheck,
   ChevronLeft,
-  X,
+  ChevronRight,
 } from "lucide-react";
 
 export function GuesthouseDetail() {
@@ -43,7 +43,6 @@ export function GuesthouseDetail() {
   const loadRequestRef = useRef(0);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedRoomImage, setSelectedRoomImage] = useState(null);
 
   const selectGuesthouse = () => {
     if (!guesthouse?.id) return;
@@ -102,6 +101,44 @@ export function GuesthouseDetail() {
     // Relative path such as:
     // uploads/guesthouses/image.jpg
     return `${cleanApiUrl}/${value}`;
+  };
+
+  const getCloudinaryImageUrl = (image, width) => {
+    const imageUrl = getImageUrl(image);
+    const uploadPath = "/upload/";
+    const uploadIndex = imageUrl.indexOf(uploadPath);
+
+    if (
+      !/^https?:\/\/res\.cloudinary\.com\//i.test(imageUrl) ||
+      uploadIndex === -1
+    ) {
+      return imageUrl;
+    }
+
+    const uploadPathEnd = uploadIndex + uploadPath.length;
+    const transformation = typeof width === 'string' ? width : `w_${width}`;
+    return `${imageUrl.slice(0, uploadPathEnd)}f_auto,q_auto,${transformation}/${imageUrl.slice(uploadPathEnd)}`;
+  };
+
+  const getCloudinaryVideoUrls = (videoPath) => {
+    const videoUrl = getImageUrl(videoPath);
+    const uploadPath = '/video/upload/';
+    const uploadIndex = videoUrl.indexOf(uploadPath);
+
+    if (
+      !/^https?:\/\/res\.cloudinary\.com\//i.test(videoUrl) ||
+      uploadIndex === -1
+    ) {
+      return { src: videoUrl, poster: undefined };
+    }
+
+    const uploadPathEnd = uploadIndex + uploadPath.length;
+    const urlBeforeAsset = videoUrl.slice(0, uploadPathEnd);
+    const assetPath = videoUrl.slice(uploadPathEnd).replace(/\.(mp4|webm|mov)(\?.*)?$/i, '');
+    return {
+      src: `${urlBeforeAsset}f_auto,q_auto/${videoUrl.slice(uploadPathEnd)}`,
+      poster: `${urlBeforeAsset}so_0,f_jpg,w_1200/${assetPath}.jpg`,
+    };
   };
 
   // ============================================================
@@ -229,6 +266,18 @@ export function GuesthouseDetail() {
           if (!Array.isArray(roomList)) {
             roomList = [];
           }
+
+          roomList = roomList.map((room) => {
+            const guesthouseRoom = (gh.rooms || []).find(
+              (item) => String(item.id) === String(room.id)
+            );
+            return {
+              ...room,
+              images: room.images?.length
+                ? room.images
+                : guesthouseRoom?.images || [],
+            };
+          });
 
           console.log(
             "Guesthouse rooms:",
@@ -773,47 +822,52 @@ export function GuesthouseDetail() {
 
         <div className="lg:col-span-2 space-y-3">
           <div className="h-80 sm:h-96 rounded-3xl overflow-hidden bg-stone-100">
+            {activeImage ? (
+              <img
+                src={activeImage}
+                alt={
+                  guesthouse.name ||
+                  "Guesthouse"
+                }
+                className="w-full h-full object-cover"
+                onError={(event) => {
+                  console.error(
+                    "Guesthouse image failed to load:",
+                    event.currentTarget.src
+                  );
 
-          {activeImage ? (
-            <img
-              src={activeImage}
-              alt={
-                guesthouse.name ||
-                "Guesthouse"
-              }
-              className="w-full h-full object-cover"
-              onError={(event) => {
-                console.error(
-                  "Guesthouse image failed to load:",
-                  event.currentTarget.src
-                );
+                  event.currentTarget.style.display =
+                    "none";
+                }}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <div className="text-center">
+                  <Building2 className="h-16 w-16 text-stone-300 mx-auto" />
 
-                event.currentTarget.style.display =
-                  "none";
-              }}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-center">
-                <Building2 className="h-16 w-16 text-stone-300 mx-auto" />
-
-                <p className="text-xs text-stone-400 mt-3">
-                  {t('No guesthouse image available')}
-                </p>
+                  <p className="text-xs text-stone-400 mt-3">
+                    {t('No guesthouse image available')}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
           </div>
 
           {guesthouse.videoUrl && (
-            <video
-              src={guesthouse.videoUrl}
-              controls
-              preload="metadata"
-              className="w-full max-h-[28rem] rounded-3xl bg-black"
-            />
+            (() => {
+              const video = getCloudinaryVideoUrls(guesthouse.videoUrl);
+              return (
+                <video
+                  src={video.src}
+                  poster={video.poster}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="w-full max-h-[28rem] rounded-3xl bg-black"
+                />
+              );
+            })()
           )}
-
         </div>
 
         {/* THUMBNAILS */}
@@ -1016,19 +1070,60 @@ export function GuesthouseDetail() {
                             t('Room');
                   const roomImages = Array.isArray(room.images)
                     ? room.images
+                        .map((image, sourceIndex) => ({
+                          ...image,
+                          sourceIndex,
+                          url: getImageUrl(image.url),
+                        }))
+                        .filter((image) => image.url)
+                        .sort((first, second) =>
+                          Number(first.sortOrder ?? first.sourceIndex) -
+                          Number(second.sortOrder ?? second.sourceIndex)
+                        )
                     : [];
+                  const roomNumber = room.roomNumber || room.number || room.id;
+                  const roomDetailPath = `/guesthouses/${guesthouse.id}/rooms/${room.id}${
+                    checkInDate && checkOutDate
+                      ? `?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}`
+                      : ''
+                  }`;
 
                   return (
                     <div
                       key={room.id}
-                      className={`bg-white p-5 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                      className={`bg-white p-5 rounded-3xl border ${
+                        roomImages.length > 0
+                          ? 'grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)_max-content] md:items-center'
+                          : 'flex flex-col sm:flex-row sm:items-center justify-between gap-4'
+                      } ${
                         !isAvailable
                           ? "bg-stone-50"
                           : ""
                       }`}
                     >
 
-                      <div>
+                      {roomImages.length > 0 && (
+                        <Link
+                          to={roomDetailPath}
+                          state={{ fromGuesthouse: true }}
+                          className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-2xl bg-stone-100 md:aspect-auto md:h-[150px] md:w-[220px]"
+                          aria-label={`${t('View details')} for Room ${roomNumber}`}
+                        >
+                          <img
+                            src={getCloudinaryImageUrl(roomImages[0].url, 'w_600,h_400,c_fill')}
+                            alt={`${t('Room')} ${roomNumber} photo 1`}
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                          {roomImages.length > 1 && (
+                            <span className="absolute bottom-3 left-3 rounded-lg bg-stone-950/80 px-2.5 py-1.5 text-xs font-bold text-white">
+                              +{roomImages.length - 1} photos
+                            </span>
+                          )}
+                        </Link>
+                      )}
+
+                      <div className={roomImages.length > 0 ? 'min-w-0' : ''}>
 
                         <div className="flex items-center gap-3 flex-wrap">
 
@@ -1059,32 +1154,6 @@ export function GuesthouseDetail() {
                           )}
 
                         </div>
-
-                        {roomImages.length > 0 && (
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                            {roomImages.map((image) => {
-                              const imageUrl = getImageUrl(image.url);
-                              if (!imageUrl) return null;
-
-                              return (
-                                <button
-                                  key={image.id}
-                                  type="button"
-                                  onClick={() => setSelectedRoomImage(imageUrl)}
-                                  className="overflow-hidden rounded-xl bg-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                  aria-label={t('View larger room image')}
-                                >
-                                  <img
-                                    src={imageUrl}
-                                    alt={`${t('Room')} ${room.roomNumber || room.id}`}
-                                    loading="lazy"
-                                    className="h-28 w-full object-cover transition-transform hover:scale-105"
-                                  />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
 
                         <div className="flex items-center gap-4 text-xs text-stone-500 mt-2">
 
@@ -1117,13 +1186,24 @@ export function GuesthouseDetail() {
                           </p>
                         )}
 
+                        <Link
+                          to={roomDetailPath}
+                          state={{ fromGuesthouse: true }}
+                          className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#063e60] hover:text-amber-700"
+                        >
+                          {t('View details')}
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+
                       </div>
 
-                      <div className="flex items-center justify-between gap-4">
+                      <div className={roomImages.length > 0
+                        ? 'flex flex-row items-center justify-between gap-4 md:min-w-[172px] md:flex-col md:items-end md:justify-center'
+                        : 'flex items-center justify-between gap-4'}>
 
-                        <div>
+                        <div className={roomImages.length > 0 ? 'shrink-0' : ''}>
 
-                          <b className="text-base">
+                          <b className={roomImages.length > 0 ? 'whitespace-nowrap text-base' : 'text-base'}>
                             {roomPrice.toLocaleString()}{" "}
                             ETB
                           </b>
@@ -1142,7 +1222,9 @@ export function GuesthouseDetail() {
                                 room
                               )
                             }
-                            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-colors"
+                            className={`px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-colors ${
+                              roomImages.length > 0 ? 'whitespace-nowrap' : ''
+                            }`}
                           >
                             {t('Select & Book')}
                           </button>
@@ -1175,6 +1257,7 @@ export function GuesthouseDetail() {
                 })}
 
               </div>
+
             )}
 
           </div>
@@ -1259,31 +1342,6 @@ export function GuesthouseDetail() {
         </aside>
 
       </div>
-
-      {selectedRoomImage && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('Room image')}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
-          onClick={() => setSelectedRoomImage(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setSelectedRoomImage(null)}
-            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
-            aria-label={t('Close image')}
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img
-            src={selectedRoomImage}
-            alt={t('Room')}
-            className="max-h-full max-w-full rounded-xl object-contain"
-            onClick={(event) => event.stopPropagation()}
-          />
-        </div>
-      )}
 
     </div>
   );

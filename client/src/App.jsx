@@ -29,6 +29,7 @@ import { GuesthouseSearch } from "./pages/Guest/Search.jsx";
 import { PublicSearch } from "./pages/Guest/PublicSearch.jsx";
 import AllGuesthouses from "./pages/Guest/AllGuesthouses.jsx";
 import { GuesthouseDetail } from "./pages/Guest/GuesthouseDetail.jsx";
+import { RoomDetail } from "./pages/RoomDetail.jsx";
 import { Booking } from "./pages/Guest/Booking.jsx";
 import { GuestBookings } from "./pages/Guest/Reservations.jsx";
 import GuestDashboard from "./pages/Guest/Dashboard.jsx";
@@ -184,6 +185,11 @@ export default function App() {
             {/* ===================================================
                 GUESTHOUSE DETAILS - PUBLIC (NO SIDEBAR)
             =================================================== */}
+
+            <Route
+              path="/guesthouses/:guesthouseId/rooms/:roomId"
+              element={<RoomDetail />}
+            />
 
             <Route
               path="/guesthouse/:id"

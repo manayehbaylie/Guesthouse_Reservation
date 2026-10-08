@@ -8,9 +8,6 @@ import {
   getReceptionists,
   assignReceptionistToGuesthouse,
   removeReceptionistFromGuesthouse,
-  createRoomImages as createRoomImagesService,
-  deleteRoomImage as deleteRoomImageService,
-  replaceGuesthouseVideo,
 } from "../services/owner.service.js";
 
 import {
@@ -21,10 +18,266 @@ import { successResponse } from "../utils/response.js";
 
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
-import {
-  cloudinary,
-  uploadToCloudinary,
-} from "../config/cloudinary.js";
+import { cloudinary, uploadToCloudinary } from "../config/cloudinary.js";
+
+const isCloudinaryAsset = (url, publicId, folder) => {
+  if (
+    typeof url !== "string" ||
+    typeof publicId !== "string" ||
+    !publicId.startsWith(`${folder}/`)
+  ) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    const cloudName = cloudinary.config().cloud_name;
+
+    return (
+      parsedUrl.protocol === "https:" &&
+      parsedUrl.hostname === "res.cloudinary.com" &&
+      parsedUrl.pathname.startsWith(`/${cloudName}/`)
+    );
+  } catch {
+    return false;
+  }
+};
+
+export const getMediaSignature = async (req, res, next) => {
+  try {
+    const resourceType = req.query.resourceType;
+
+    if (!["image", "video"].includes(resourceType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Resource type must be image or video.",
+      });
+    }
+
+    const config = cloudinary.config();
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (!config.cloud_name || !config.api_key || !apiSecret) {
+      return res.status(503).json({
+        success: false,
+        message: "Cloudinary is not configured.",
+      });
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const mediaFolder = resourceType === "image" ? "rooms" : "videos";
+    const folder = `guesthouses/${req.user.id}/${mediaFolder}`;
+    const signature = cloudinary.utils.api_sign_request(
+      { timestamp, folder },
+      apiSecret
+    );
+
+    return successResponse(res, {
+      cloudName: config.cloud_name,
+      apiKey: config.api_key,
+      timestamp,
+      signature,
+      folder,
+    }, "Cloudinary upload signature created.");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createRoomImages = async (req, res, next) => {
+  try {
+    const items = req.body?.items;
+
+    if (!Array.isArray(items) || items.length === 0 || items.length > 30) {
+      return res.status(400).json({
+        success: false,
+        message: "Provide between 1 and 30 room images.",
+      });
+    }
+
+    const normalizedItems = [];
+
+    for (const item of items) {
+      const roomId = Number(item?.roomId);
+      const url = typeof item?.url === "string" ? item.url.trim() : "";
+      const publicId = typeof item?.publicId === "string"
+        ? item.publicId.trim()
+        : "";
+
+      if (
+        !Number.isInteger(roomId) ||
+        roomId <= 0 ||
+        !isCloudinaryAsset(
+          url,
+          publicId,
+          `guesthouses/${req.user.id}/rooms`
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Each image must include an owned room and Cloudinary asset.",
+        });
+      }
+
+      normalizedItems.push({ roomId, url, publicId });
+    }
+
+    const roomIds = [...new Set(normalizedItems.map((item) => item.roomId))];
+    const rooms = await prisma.room.findMany({
+      where: {
+        id: { in: roomIds },
+        guesthouse: { ownerId: req.user.id },
+      },
+      select: { id: true },
+    });
+
+    if (rooms.length !== roomIds.length) {
+      return res.status(403).json({
+        success: false,
+        message: "One or more rooms do not belong to your guesthouse.",
+      });
+    }
+
+    const existingImages = await prisma.roomImage.groupBy({
+      by: ["roomId"],
+      where: { roomId: { in: roomIds } },
+      _count: { _all: true },
+    });
+    const imageCounts = new Map(
+      existingImages.map((entry) => [entry.roomId, entry._count._all])
+    );
+    const batchCounts = new Map();
+
+    for (const item of normalizedItems) {
+      batchCounts.set(item.roomId, (batchCounts.get(item.roomId) || 0) + 1);
+    }
+
+    for (const [roomId, batchCount] of batchCounts) {
+      if ((imageCounts.get(roomId) || 0) + batchCount > 10) {
+        return res.status(400).json({
+          success: false,
+          message: "A room cannot have more than 10 images.",
+        });
+      }
+    }
+
+    const nextSortOrder = new Map(imageCounts);
+    const result = await prisma.roomImage.createMany({
+      data: normalizedItems.map((item) => {
+        const sortOrder = nextSortOrder.get(item.roomId) || 0;
+        nextSortOrder.set(item.roomId, sortOrder + 1);
+        return { ...item, sortOrder };
+      }),
+    });
+
+    return successResponse(
+      res,
+      { count: result.count },
+      "Room images saved successfully.",
+      201
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteRoomImage = async (req, res, next) => {
+  try {
+    const imageId = Number(req.params.id);
+
+    if (!Number.isInteger(imageId) || imageId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid room image ID is required.",
+      });
+    }
+
+    const image = await prisma.roomImage.findFirst({
+      where: {
+        id: imageId,
+        room: { guesthouse: { ownerId: req.user.id } },
+      },
+    });
+
+    if (!image) {
+      return res.status(404).json({
+        success: false,
+        message: "Room image not found.",
+      });
+    }
+
+    const result = await cloudinary.uploader.destroy(image.publicId, {
+      resource_type: "image",
+    });
+
+    if (!["ok", "not found"].includes(result.result)) {
+      throw new Error("Cloudinary could not delete the room image.");
+    }
+
+    await prisma.roomImage.delete({ where: { id: image.id } });
+
+    return successResponse(res, null, "Room image deleted successfully.");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateGuesthouseVideo = async (req, res, next) => {
+  try {
+    const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+    const publicId = typeof req.body?.publicId === "string"
+      ? req.body.publicId.trim()
+      : "";
+
+    if (!isCloudinaryAsset(
+      url,
+      publicId,
+      `guesthouses/${req.user.id}/videos`
+    )) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid Cloudinary video URL and public ID are required.",
+      });
+    }
+
+    const guesthouse = await prisma.guesthouse.findFirst({
+      where: { ownerId: req.user.id },
+      select: { id: true, videoPublicId: true },
+    });
+
+    if (!guesthouse) {
+      return res.status(404).json({
+        success: false,
+        message: "Guesthouse not found.",
+      });
+    }
+
+    if (guesthouse.videoPublicId && guesthouse.videoPublicId !== publicId) {
+      const result = await cloudinary.uploader.destroy(
+        guesthouse.videoPublicId,
+        { resource_type: "video" }
+      );
+
+      if (!["ok", "not found"].includes(result.result)) {
+        throw new Error("Cloudinary could not delete the existing video.");
+      }
+    }
+
+    const updatedGuesthouse = await prisma.guesthouse.update({
+      where: { id: guesthouse.id },
+      data: { videoUrl: url, videoPublicId: publicId },
+      select: { id: true, videoUrl: true, videoPublicId: true },
+    });
+
+    return successResponse(
+      res,
+      updatedGuesthouse,
+      "Guesthouse video updated successfully."
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
 // ============================================================
 // OWNER GUESTHOUSE PAYLOAD
@@ -103,107 +356,6 @@ export const getGuesthouse = async (
       res,
       guesthouse,
       "Guesthouse fetched successfully"
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getMediaSignature = async (req, res, next) => {
-  try {
-    const resourceType = req.query.resourceType;
-
-    if (!["image", "video"].includes(resourceType)) {
-      return res.status(400).json({
-        success: false,
-        message: "Resource type must be image or video.",
-      });
-    }
-
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-    if (!cloudName || !apiKey || !apiSecret) {
-      const error = new Error("Cloudinary credentials are not configured.");
-      error.statusCode = 503;
-      throw error;
-    }
-
-    const mediaFolder = resourceType === "image" ? "rooms" : "videos";
-    const folder = `guesthouses/${req.user.id}/${mediaFolder}`;
-    const timestamp = Math.floor(Date.now() / 1000);
-    const signature = cloudinary.utils.api_sign_request(
-      { folder, timestamp },
-      apiSecret
-    );
-
-    return successResponse(
-      res,
-      { cloudName, apiKey, folder, timestamp, signature },
-      "Upload signature created successfully"
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const createRoomImages = async (req, res, next) => {
-  try {
-    const result = await createRoomImagesService(
-      req.user.id,
-      req.body?.items
-    );
-
-    return successResponse(
-      res,
-      result,
-      "Room images saved successfully",
-      201
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteRoomImage = async (req, res, next) => {
-  try {
-    await deleteRoomImageService(
-      req.user.id,
-      req.params.id
-    );
-
-    return successResponse(
-      res,
-      null,
-      "Room image deleted successfully"
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateGuesthouseVideo = async (req, res, next) => {
-  try {
-    const { url, publicId } = req.body || {};
-
-    if (typeof url !== "string" || typeof publicId !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "A video URL and public ID are required.",
-      });
-    }
-
-    const guesthouse = await replaceGuesthouseVideo(
-      req.user.id,
-      url,
-      publicId
-    );
-
-    return successResponse(
-      res,
-      guesthouse,
-      "Guesthouse video updated successfully"
     );
   } catch (error) {
     next(error);

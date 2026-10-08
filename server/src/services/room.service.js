@@ -86,11 +86,6 @@ export const getAllRooms = async (
         take: 1,
       },
 
-      images: {
-        orderBy: {
-          sortOrder: "asc",
-        },
-      },
     },
 
     orderBy: {

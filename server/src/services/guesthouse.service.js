@@ -152,13 +152,7 @@ export const createGuesthouse = async (data, ownerId) => {
 
     include: {
       owner: true,
-      rooms: {
-        include: {
-          images: {
-            orderBy: { sortOrder: "asc" },
-          },
-        },
-      },
+      rooms: true,
     },
   });
 };
@@ -192,13 +186,7 @@ export const getAllGuesthouses = async () => {
         },
       },
 
-      rooms: {
-        include: {
-          images: {
-            orderBy: { sortOrder: "asc" },
-          },
-        },
-      },
+      rooms: true,
       reviews: {
         select: {
           rating: true,
@@ -372,7 +360,10 @@ export const getGuesthouseById = async (id) => {
       rooms: {
         include: {
           images: {
-            orderBy: { sortOrder: "asc" },
+            orderBy: [
+              { sortOrder: "asc" },
+              { id: "asc" },
+            ],
           },
         },
       },

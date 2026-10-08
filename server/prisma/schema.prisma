@@ -37,6 +37,8 @@ model Guesthouse {
   city            String
   description     String
   image           String?
+  videoUrl        String?
+  videoPublicId   String?
   subCity         String?
   woreda          String?
   phone           String?
@@ -45,8 +47,6 @@ model Guesthouse {
   photos          String[]         @default([])
   licenseNumber   String?
   licenseDocument String?
-  videoUrl        String?
-  videoPublicId   String?
   ownerId         Int
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -76,8 +76,8 @@ model Room {
   maintenanceStatus RoomMaintenanceStatus @default(AVAILABLE)
 
   reservations Reservation[]
-  guesthouse   Guesthouse    @relation(fields: [guesthouseId], references: [id])
   images       RoomImage[]
+  guesthouse   Guesthouse    @relation(fields: [guesthouseId], references: [id])
 
   @@unique([guesthouseId, roomNumber])
   @@index([guesthouseId])

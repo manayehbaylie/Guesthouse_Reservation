@@ -196,6 +196,81 @@ async function uploadSignedMedia(file, resourceType, onUploadProgress) {
   return response.data;
 }
 
+async function uploadSignedVideoInChunks(file, onUploadProgress, signal) {
+  const signature = unwrap(
+    await api.get('/owner/media/signature', {
+      params: { resourceType: 'video' },
+      signal,
+    })
+  );
+  const chunkSize = 20 * 1024 * 1024;
+  const uploadId = globalThis.crypto?.randomUUID?.() ||
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${encodeURIComponent(signature.cloudName)}/video/upload`;
+  let uploadedBytes = 0;
+  let uploadedAsset;
+
+  for (let start = 0; start < file.size; start += chunkSize) {
+    const end = Math.min(start + chunkSize, file.size);
+    const chunk = file.slice(start, end);
+    let lastError;
+
+    for (let attempt = 0; attempt <= 3; attempt += 1) {
+      const formData = new FormData();
+      formData.append('file', chunk, file.name);
+      formData.append('api_key', signature.apiKey);
+      formData.append('timestamp', String(signature.timestamp));
+      formData.append('folder', signature.folder);
+      formData.append('signature', signature.signature);
+
+      try {
+        const response = await axios.post(uploadUrl, formData, {
+          signal,
+          headers: {
+            'X-Unique-Upload-Id': uploadId,
+            'Content-Range': `bytes ${start}-${end - 1}/${file.size}`,
+          },
+          onUploadProgress: (event) => {
+            const sentBytes = Math.min(event.loaded, chunk.size);
+            onUploadProgress?.(
+              Math.round(((uploadedBytes + sentBytes) / file.size) * 100)
+            );
+          },
+        });
+        uploadedAsset = response.data;
+        uploadedBytes = end;
+        onUploadProgress?.(Math.round((uploadedBytes / file.size) * 100));
+        lastError = null;
+        break;
+      } catch (error) {
+        if (signal?.aborted || error?.code === 'ERR_CANCELED') {
+          throw error;
+        }
+
+        const cloudinaryMessage = String(
+          error?.response?.data?.error?.message || error?.message || ''
+        );
+        if (
+          error?.response?.status === 413 ||
+          /file size|too large|maximum.{0,20}(size|allowed)|size.{0,20}(limit|maximum)/i.test(cloudinaryMessage)
+        ) {
+          throw new Error(
+            "This video is larger than your Cloudinary plan allows. Compress it or upgrade the plan."
+          );
+        }
+
+        lastError = error;
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+  }
+
+  return uploadedAsset;
+}
+
 // ============================================================
 // ROLE HELPERS
 // ============================================================
@@ -612,6 +687,12 @@ function mapGuesthouseFromBackend(
       guesthouse.name ||
       '',
 
+    videoUrl:
+      guesthouse.videoUrl || '',
+
+    videoPublicId:
+      guesthouse.videoPublicId || '',
+
     description:
       guesthouse.description ||
       '',
@@ -664,12 +745,6 @@ function mapGuesthouseFromBackend(
       )
         ? guesthouse.photos
         : [],
-
-    videoUrl:
-      guesthouse.videoUrl || '',
-
-    videoPublicId:
-      guesthouse.videoPublicId || '',
 
     rejectionReason:
       guesthouse.rejectionReason ||
@@ -795,6 +870,11 @@ function mapRoomFromBackend(room) {
       room.type ||
       '',
 
+    images:
+      Array.isArray(room.images)
+        ? room.images
+        : [],
+
     capacity:
       Number(
         room.capacity ?? 0
@@ -839,10 +919,6 @@ function mapRoomFromBackend(room) {
     updatedAt:
       room.updatedAt,
 
-    images:
-      Array.isArray(room.images)
-        ? room.images
-        : [],
   };
 }
 
@@ -3573,30 +3649,34 @@ async resubmitGuesthouse(data) {
   // OWNER
   // ==========================================================
 
+  async uploadMediaToCloudinary(file, resourceType, onUploadProgress) {
+    return uploadSignedMedia(file, resourceType, onUploadProgress);
+  },
+
+  async uploadVideoToCloudinaryInChunks(file, onUploadProgress, signal) {
+    return uploadSignedVideoInChunks(file, onUploadProgress, signal);
+  },
+
+  async createRoomImages(items) {
+    const response = await api.post('/owner/guesthouse/room-images', {
+      items,
+    });
+    return unwrap(response);
+  },
+
+  async deleteRoomImage(imageId) {
+    const response = await api.delete(`/owner/room-images/${imageId}`);
+    return unwrap(response);
+  },
+
+  async updateGuesthouseVideo(asset) {
+    const response = await api.put('/owner/guesthouse/video', asset);
+    return unwrap(response);
+  },
+
   // ==========================================================
 // GET MY GUESTHOUSE
 // ==========================================================
-
-async uploadMediaToCloudinary(file, resourceType, onUploadProgress) {
-  return uploadSignedMedia(file, resourceType, onUploadProgress);
-},
-
-async createRoomImages(items) {
-  const response = await api.post('/owner/guesthouse/room-images', {
-    items,
-  });
-  return unwrap(response);
-},
-
-async deleteRoomImage(imageId) {
-  const response = await api.delete(`/owner/room-images/${imageId}`);
-  return unwrap(response);
-},
-
-async updateGuesthouseVideo(asset) {
-  const response = await api.put('/owner/guesthouse/video', asset);
-  return unwrap(response);
-},
 
 async getMyGuesthouse() {
   try {
