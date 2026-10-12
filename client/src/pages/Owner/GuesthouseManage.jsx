@@ -400,6 +400,11 @@ export function GuesthouseManage() {
     setLoading(true);
     setSuccess('');
     setError('');
+    const hasPendingRoomPhotos = pendingRoomImages.length > 0;
+    if (hasPendingRoomPhotos) {
+      setRoomMediaError('');
+      setRoomMediaMessage('Saving details...');
+    }
 
     try {
       const data = buildGuesthouseData();
@@ -456,9 +461,24 @@ export function GuesthouseManage() {
         }
       }
 
-      setSuccess(
-        'Guesthouse submitted for administrator review successfully.'
-      );
+      if (hasPendingRoomPhotos) {
+        const photoResult = await handleUploadRoomImages(undefined, setRoomMediaMessage);
+        if (photoResult.failedRoomNames.length) {
+          const failedRooms = photoResult.failedRoomNames.join(', ');
+          const photoError = `Guesthouse details were saved, but room photos failed for ${failedRooms}. Press Update Property to retry.`;
+          setError(photoError);
+          setRoomMediaError('');
+          setRoomMediaMessage('');
+          return;
+        }
+        setRoomMediaError('');
+        setRoomMediaMessage('');
+        setSuccess('Guesthouse details and room photos saved successfully.');
+      } else {
+        setSuccess(
+          'Guesthouse submitted for administrator review successfully.'
+        );
+      }
 
       /*
        * Keep your existing dashboard workflow.
@@ -468,6 +488,7 @@ export function GuesthouseManage() {
       }, 1500);
     } catch (err) {
       console.error('Submit guesthouse error:', err);
+      if (hasPendingRoomPhotos) setRoomMediaMessage('');
 
       setError(
         err?.message ||
@@ -666,25 +687,32 @@ export function GuesthouseManage() {
     });
   };
 
-  const handleUploadRoomImages = async (onlyRoomId) => {
+  const handleUploadRoomImages = async (onlyRoomId, onProgressStatus) => {
     const candidates = pendingRoomImages.filter((image) =>
       image.status !== 'uploading' &&
       (onlyRoomId === undefined || String(image.roomId) === String(onlyRoomId))
     );
-    if (!candidates.length) return;
+    if (!candidates.length) return { failedRoomNames: [], error: null };
 
     setUploadingRoomImages(true);
     setRoomUploadProgress(0);
-    setRoomMediaError('');
-    setRoomMediaMessage('');
+    if (!onProgressStatus) {
+      setRoomMediaError('');
+      setRoomMediaMessage('');
+    }
     const totalBytes = candidates.reduce((total, image) => total + image.file.size, 0);
     let completedBytes = 0;
     let failedCount = 0;
+    let batchError = null;
     const failedRoomIds = new Set();
     const readyToSave = [];
 
     try {
-      for (const pendingImage of candidates) {
+      for (let index = 0; index < candidates.length; index += 1) {
+        const pendingImage = candidates[index];
+        const progressMessage = `Uploading room photos ${index + 1}/${candidates.length}...`;
+        setRoomMediaMessage(progressMessage);
+        onProgressStatus?.(progressMessage);
         setRoomUploadStatuses((current) => ({
           ...current,
           [pendingImage.roomId]: 'uploading',
@@ -714,6 +742,7 @@ export function GuesthouseManage() {
           ));
         } catch (uploadError) {
           failedCount += 1;
+          batchError ||= uploadError;
           failedRoomIds.add(String(pendingImage.roomId));
           setPendingRoomImages((current) => current.map((image) =>
             image.id === pendingImage.id ? { ...image, status: 'failed' } : image
@@ -768,6 +797,7 @@ export function GuesthouseManage() {
           }
         } catch (saveError) {
           failedCount += readyToSave.length;
+          batchError = saveError;
           setPendingRoomImages((current) => current.map((image) =>
             readyToSave.some(({ pendingImage }) => pendingImage.id === image.id)
               ? { ...image, asset: readyToSave.find(({ pendingImage }) => pendingImage.id === image.id).asset, status: 'failed' }
@@ -780,23 +810,22 @@ export function GuesthouseManage() {
               [pendingImage.roomId]: 'failed',
             }));
           });
-          throw saveError;
         }
       }
 
       setRoomUploadProgress(100);
-      if (failedCount) {
-        setRoomMediaError('Some room photos failed. Retry failed rooms.');
-      } else {
-        setRoomMediaMessage('Room photos uploaded successfully.');
+      const failedRoomNames = rooms
+        .filter((room) => failedRoomIds.has(String(room.id)))
+        .map((room) => `Room ${room.roomNumber || room.id}`);
+      if (!onProgressStatus) {
+        if (failedCount) {
+          setRoomMediaError(`Room photos failed for ${failedRoomNames.join(', ')}. Press Update Property to retry.`);
+        } else {
+          setRoomMediaError('');
+          setRoomMediaMessage('Room photos uploaded successfully.');
+        }
       }
-    } catch (uploadError) {
-      console.error('Room photo batch could not be saved:', uploadError);
-      setRoomMediaError(
-        uploadError?.response?.data?.message ||
-          uploadError?.message ||
-          'Room photos could not be uploaded.'
-      );
+      return { failedRoomNames, error: batchError };
     } finally {
       setUploadingRoomImages(false);
     }
@@ -1579,24 +1608,9 @@ export function GuesthouseManage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-[10px] font-semibold text-slate-400">
-                      {t('JPEG, PNG or WEBP • Maximum 5MB per image • 10 photos per room')}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleUploadRoomImages()}
-                      disabled={uploadingRoomImages || pendingRoomImages.length === 0}
-                      className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ffbd08] px-4 text-xs font-black text-[#063e60] transition hover:bg-[#f7b500] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {uploadingRoomImages ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
-                      )}
-                      {t('Upload all rooms')}
-                    </button>
-                  </div>
+                  <p className="text-[10px] font-semibold text-slate-400">
+                    {t('JPEG, PNG or WEBP • Maximum 5MB per image • 10 photos per room')}
+                  </p>
 
                   {pendingRoomImages.length > 0 && (
                     <div
@@ -1613,7 +1627,7 @@ export function GuesthouseManage() {
                     </div>
                   )}
 
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 min-[1100px]:grid-cols-3">
                     {rooms.map((room) => {
                       const savedImages = getSortedRoomImages(room.id);
                       const mainImage = savedImages[0];
@@ -1632,9 +1646,9 @@ export function GuesthouseManage() {
                       }[status];
 
                       return (
-                        <article key={room.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                          <div className="flex flex-col gap-4 sm:flex-row">
-                            <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-lg bg-slate-100 sm:h-24 sm:w-36">
+                        <article key={room.id} className="w-full min-w-0 self-start rounded-xl border border-slate-200 bg-white p-4">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                               {pendingMain ? (
                                 <img src={pendingMain.preview} alt={pendingMain.file.name} className="h-full w-full object-cover" />
                               ) : mainImage ? (
@@ -1659,7 +1673,7 @@ export function GuesthouseManage() {
 
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-sm font-black text-[#063e60]">
+                                <h3 className="min-w-0 break-words text-sm font-black text-[#063e60]">
                                   {`Room ${room.roomNumber} (${roomType})`}
                                 </h3>
                                 {status && (
@@ -1684,10 +1698,12 @@ export function GuesthouseManage() {
                                   className="hidden"
                                 />
                               </label>
+                            </div>
+                          </div>
 
-                              <details className="mt-4 border-t border-slate-100 pt-3">
+                          <details className="mt-4 min-w-0 border-t border-slate-100 pt-3">
                                 <summary className="cursor-pointer text-xs font-bold text-[#063e60]">
-                                  {t('More photos')} ({Math.max(0, savedImages.length - 1) + pendingExtras.length})
+                                  {t('More photos')} ({savedImages.length + roomPending.length})
                                 </summary>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                   {savedImages.map((image, index) => (
@@ -1740,18 +1756,6 @@ export function GuesthouseManage() {
                                   />
                                 </label>
                               </details>
-                            </div>
-                          </div>
-                          {status === 'failed' && (
-                            <button
-                              type="button"
-                              onClick={() => handleUploadRoomImages(room.id)}
-                              disabled={uploadingRoomImages}
-                              className="mt-3 h-9 rounded-lg border border-red-200 px-3 text-xs font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-                            >
-                              {t('Retry failed room')}
-                            </button>
-                          )}
                         </article>
                       );
                     })}
@@ -1770,54 +1774,6 @@ export function GuesthouseManage() {
                 </p>
               )}
 
-              <div className="mt-6 space-y-5">
-                {rooms.map((room) => {
-                  const images = roomImageRecords.filter(
-                    (image) => String(image.roomId) === String(room.id)
-                  );
-                  return (
-                    <div key={room.id}>
-                      <h3 className="mb-3 text-xs font-black uppercase tracking-wide text-[#063e60]">
-                        {`Room ${room.roomNumber}`}
-                      </h3>
-                      {images.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                          {images.map((image) => (
-                            <div
-                              key={image.id}
-                              className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
-                            >
-                              <img
-                                src={getImageUrl(image.url)}
-                                alt={`Room ${room.roomNumber}`}
-                                className="h-32 w-full object-cover"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteRoomImage(image)}
-                                disabled={deletingRoomImageId === image.id}
-                                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow transition hover:bg-red-700 disabled:opacity-60"
-                                aria-label={t('Delete room photo')}
-                                title={t('Delete room photo')}
-                              >
-                                {deletingRoomImageId === image.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <X className="h-4 w-4" />
-                                )}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs font-medium text-slate-400">
-                          {t('No photos saved for this room yet.')}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             </section>
 
             {/* ==================================================
@@ -1952,7 +1908,7 @@ export function GuesthouseManage() {
               {/* SUBMIT */}
               <button
                 type="button"
-                disabled={loading || isPending}
+                disabled={loading || uploadingRoomImages || isPending}
                 onClick={handleSubmitForReview}
                 className="flex h-14 items-center justify-center gap-2 rounded-xl bg-[#ffbd08] px-5 text-sm font-black text-[#063e60] shadow-lg transition hover:bg-[#f7b500] disabled:cursor-not-allowed disabled:opacity-60"
               >
