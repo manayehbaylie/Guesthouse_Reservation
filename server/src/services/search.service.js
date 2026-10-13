@@ -1,6 +1,7 @@
 import prisma from "../config/prisma.js";
 import { parseDateOnly } from "../utils/date.utils.js";
 import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
+import { parseOptionalCoordinates } from "../utils/geo.utils.js";
 
 const invalidSearchInput = (message) =>
   Object.assign(new Error(message), { statusCode: 400 });
@@ -130,6 +131,124 @@ export const searchGuesthouses = async (query) => {
       createdAt: "desc",
     },
   });
+};
+
+const EARTH_RADIUS_KM = 6371.0088;
+const ALLOWED_RADII_KM = new Set([1, 5, 10, 25, 50]);
+
+export const calculateDistanceKm = (from, to) => {
+  const radians = (degrees) => (degrees * Math.PI) / 180;
+  const latitudeDelta = radians(to.latitude - from.latitude);
+  const longitudeDelta = radians(to.longitude - from.longitude);
+  const fromLatitude = radians(from.latitude);
+  const toLatitude = radians(to.latitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(fromLatitude) *
+      Math.cos(toLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  const boundedHaversine = Math.min(1, Math.max(0, haversine));
+
+  return (
+    EARTH_RADIUS_KM *
+    2 *
+    Math.atan2(
+      Math.sqrt(boundedHaversine),
+      Math.sqrt(1 - boundedHaversine)
+    )
+  );
+};
+
+export const validateNearbySearchQuery = (query = {}) => {
+  const coordinates = parseOptionalCoordinates({
+    latitude: query.latitude,
+    longitude: query.longitude,
+  });
+  const hasCoordinates = Number.isFinite(coordinates.latitude);
+  const place = String(query.place || "").trim();
+
+  if (!hasCoordinates && !place) {
+    throw invalidSearchInput("Provide GPS coordinates or a city or place.");
+  }
+  if (place.length > 120) {
+    throw invalidSearchInput("City or place must be 120 characters or fewer.");
+  }
+
+  const radiusKm = query.radiusKm === undefined ? 5 : Number(query.radiusKm);
+  if (!ALLOWED_RADII_KM.has(radiusKm)) {
+    throw invalidSearchInput("Radius must be 1, 5, 10, 25, or 50 kilometers.");
+  }
+
+  return { ...coordinates, place, radiusKm, hasCoordinates };
+};
+
+export const rankNearbyGuesthouses = (guesthouses, criteria) =>
+  guesthouses
+    .map((guesthouse) => {
+      const latitude = Number(guesthouse.latitude);
+      const longitude = Number(guesthouse.longitude);
+      const hasValidCoordinates =
+        guesthouse.latitude !== null &&
+        guesthouse.longitude !== null &&
+        Number.isFinite(latitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        Number.isFinite(longitude) &&
+        longitude >= -180 &&
+        longitude <= 180;
+      const distanceKm =
+        criteria.hasCoordinates && hasValidCoordinates
+          ? calculateDistanceKm(
+              criteria,
+              { latitude, longitude }
+            )
+          : null;
+
+      return { ...guesthouse, distanceKm };
+    })
+    .filter(
+      (guesthouse) =>
+        !criteria.hasCoordinates ||
+        (guesthouse.distanceKm !== null &&
+          guesthouse.distanceKm <= criteria.radiusKm)
+    )
+    .sort((first, second) => {
+      if (first.distanceKm === null) return second.distanceKm === null ? 0 : 1;
+      if (second.distanceKm === null) return -1;
+      return first.distanceKm - second.distanceKm;
+    });
+
+export const searchNearbyGuesthouses = async (query = {}) => {
+  const criteria = validateNearbySearchQuery(query);
+  const where = {
+    status: "APPROVED",
+    ...(criteria.hasCoordinates
+      ? { latitude: { not: null }, longitude: { not: null } }
+      : {
+          OR: ["city", "address", "subCity", "woreda"].map((field) => ({
+            [field]: { contains: criteria.place, mode: "insensitive" },
+          })),
+        }),
+  };
+
+  const guesthouses = await prisma.guesthouse.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      city: true,
+      subCity: true,
+      woreda: true,
+      image: true,
+      photos: true,
+      latitude: true,
+      longitude: true,
+      status: true,
+    },
+  });
+
+  return rankNearbyGuesthouses(guesthouses, criteria);
 };
 // ========================================
 // Search Rooms

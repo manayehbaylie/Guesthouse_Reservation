@@ -166,18 +166,9 @@ export function RoomDetail() {
     });
   };
 
-  const backControl = location.state?.fromGuesthouse ? (
-    <button
-      type="button"
-      onClick={() => navigate(-1)}
-      className="inline-flex items-center gap-2 text-sm font-bold text-[#063e60] hover:text-amber-700"
-    >
-      <ArrowLeft className="h-4 w-4" />
-      {t('Back to guesthouse')}
-    </button>
-  ) : (
+  const backControl = (
     <Link
-      to={`/guesthouses/${guesthouseId}`}
+      to={`/guesthouses/${guesthouseId}${location.search}`}
       className="inline-flex items-center gap-2 text-sm font-bold text-[#063e60] hover:text-amber-700"
     >
       <ArrowLeft className="h-4 w-4" />

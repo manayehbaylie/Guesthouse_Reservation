@@ -19,6 +19,7 @@ import { successResponse } from "../utils/response.js";
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
 import { cloudinary, uploadToCloudinary } from "../config/cloudinary.js";
+import { parseOptionalCoordinates } from "../utils/geo.utils.js";
 
 const isCloudinaryAsset = (url, publicId, folder) => {
   if (
@@ -287,6 +288,7 @@ const ownerGuesthousePayload = async (req) => {
   const payload = {
     ...req.body,
   };
+  Object.assign(payload, parseOptionalCoordinates(payload));
 
   // MAIN GUESTHOUSE IMAGE
   const imageFile = req.files?.image?.[0];

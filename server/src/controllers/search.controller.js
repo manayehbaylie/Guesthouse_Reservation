@@ -1,4 +1,4 @@
-import { searchGuesthouses ,  searchRooms,  searchReservations,
+import { searchGuesthouses, searchNearbyGuesthouses, searchRooms, searchReservations,
 } from "../services/search.service.js";
 import { successResponse } from "../utils/response.js";
 
@@ -17,6 +17,15 @@ export const search = async (
       "Guesthouses fetched successfully"
     );
 
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const nearbySearch = async (req, res, next) => {
+  try {
+    const result = await searchNearbyGuesthouses(req.query);
+    successResponse(res, result, "Nearby guesthouses fetched successfully");
   } catch (error) {
     next(error);
   }

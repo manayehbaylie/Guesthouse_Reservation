@@ -18,7 +18,10 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  Navigation,
 } from "lucide-react";
+import GuesthouseNearbyPanel from "../../components/guest/NearbyGuesthouses.jsx";
+import GuesthouseLocationMap from "../../components/common/GuesthouseLocationMap.jsx";
 
 export function GuesthouseDetail() {
   const { id } = useParams();
@@ -731,6 +734,22 @@ export function GuesthouseDetail() {
 
   const guesthouseDescription =
     guesthouse.description || "";
+  const hasGuesthouseCoordinates =
+    guesthouse.latitude !== null &&
+    guesthouse.latitude !== undefined &&
+    guesthouse.latitude !== "" &&
+    guesthouse.longitude !== null &&
+    guesthouse.longitude !== undefined &&
+    guesthouse.longitude !== "" &&
+    Number.isFinite(Number(guesthouse.latitude)) &&
+    Number.isFinite(Number(guesthouse.longitude)) &&
+    Number(guesthouse.latitude) >= -90 &&
+    Number(guesthouse.latitude) <= 90 &&
+    Number(guesthouse.longitude) >= -180 &&
+    Number(guesthouse.longitude) <= 180;
+  const directionsDestination = hasGuesthouseCoordinates
+    ? `${guesthouse.latitude},${guesthouse.longitude}`
+    : [guesthouseAddress, guesthouseCity].filter(Boolean).join(", ");
 
   // ============================================================
   // RENDER
@@ -810,7 +829,42 @@ export function GuesthouseDetail() {
           <Building2 className="h-4 w-4" />
           {t('Use this guesthouse')}
         </button>
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(directionsDestination)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="ml-2 mt-4 inline-flex items-center gap-2 rounded-xl border border-[#043658] px-4 py-2.5 text-xs font-bold text-[#043658] transition-colors hover:bg-slate-50"
+        >
+          <Navigation className="h-4 w-4" />
+          {t('Get Directions')}
+        </a>
       </div>
+
+      {hasGuesthouseCoordinates && (
+        <section className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+          <div>
+            <h2 className="text-xl font-black text-[#043658]">
+              {t('Guesthouse location')}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {Number(guesthouse.latitude).toFixed(6)},{" "}
+              {Number(guesthouse.longitude).toFixed(6)}
+            </p>
+          </div>
+          <GuesthouseLocationMap
+            markers={[
+              {
+                id: guesthouse.id,
+                name: guesthouse.name,
+                latitude: guesthouse.latitude,
+                longitude: guesthouse.longitude,
+              },
+            ]}
+            height="min(55vh, 440px)"
+            zoom={15}
+          />
+        </section>
+      )}
 
       {/* ======================================================
           IMAGE GALLERY
@@ -974,7 +1028,7 @@ export function GuesthouseDetail() {
 
               </div>
 
-            </div>
+                </div>
 
             <div
               ref={datesRef}
@@ -1342,6 +1396,12 @@ export function GuesthouseDetail() {
         </aside>
 
       </div>
+
+      <GuesthouseNearbyPanel
+        onSelectGuesthouse={(nearbyGuesthouse) =>
+          navigate(`/guesthouses/${nearbyGuesthouse.id}`)
+        }
+      />
 
     </div>
   );

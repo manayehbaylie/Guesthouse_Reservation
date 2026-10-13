@@ -133,6 +133,8 @@ export const createGuesthouse = async (data, ownerId) => {
       subCity: data.subCity || null,
 
       city: data.city,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
 
       description: data.description || null,
 
@@ -242,6 +244,14 @@ export const updateGuesthouse = async (id, data) => {
 
   if (data.city !== undefined) {
     updateData.city = data.city;
+  }
+
+  if (data.latitude !== undefined) {
+    updateData.latitude = data.latitude;
+  }
+
+  if (data.longitude !== undefined) {
+    updateData.longitude = data.longitude;
   }
 
   if (data.description !== undefined) {

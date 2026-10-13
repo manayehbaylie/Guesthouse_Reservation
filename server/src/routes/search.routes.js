@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   search,
+  nearbySearch,
   roomSearch,
   reservationSearch,
 } from "../controllers/search.controller.js";
@@ -45,6 +46,43 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
+/**
+ * @swagger
+ * /api/search/nearby:
+ *   get:
+ *     summary: Find nearby approved guesthouses
+ *     tags:
+ *       - Search
+ *     parameters:
+ *       - in: query
+ *         name: latitude
+ *         schema:
+ *           type: number
+ *         description: Current latitude; required together with longitude.
+ *       - in: query
+ *         name: longitude
+ *         schema:
+ *           type: number
+ *         description: Current longitude; required together with latitude.
+ *       - in: query
+ *         name: radiusKm
+ *         schema:
+ *           type: integer
+ *           enum: [1, 5, 10, 25, 50]
+ *           default: 5
+ *       - in: query
+ *         name: place
+ *         schema:
+ *           type: string
+ *         description: City, neighborhood, or place to search without GPS.
+ *     responses:
+ *       200:
+ *         description: Approved guesthouses ordered by distance when GPS is supplied.
+ *       400:
+ *         description: Invalid coordinates, radius, or missing search location.
+ */
+router.get("/nearby", nearbySearch);
+
 router.get(
   "/guesthouses",
   search

@@ -58,6 +58,8 @@ model Guesthouse {
   updatedAt       DateTime         @updatedAt
   rejectionReason String?
   status          GuesthouseStatus @default(PENDING)
+  latitude        Float?
+  longitude       Float?
 
   owner            User              @relation("OwnerGuesthouses", fields: [ownerId], references: [id])
   reviews          Review[]          @relation("GuesthouseReviews")

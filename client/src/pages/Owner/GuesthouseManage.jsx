@@ -21,7 +21,9 @@ import {
   Send,
   Loader2,
   X,
+  LocateFixed,
 } from 'lucide-react';
+import GuesthouseLocationMap from '../../components/common/GuesthouseLocationMap.jsx';
 
 const MAX_VIDEO_MB = 100;
 
@@ -33,6 +35,9 @@ export function GuesthouseManage() {
   const [name, setName] = useState('');
   const [city, setCity] = useState('Addis Ababa');
   const [location, setLocation] = useState('');
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [locationError, setLocationError] = useState('');
   const [subCity, setSubCity] = useState('');
   const [woreda, setWoreda] = useState('');
   const [guesthousePhone, setGuesthousePhone] = useState('');
@@ -178,6 +183,16 @@ export function GuesthouseManage() {
          * Keep compatibility with location if available.
          */
         setLocation(gh.address || gh.location || '');
+        setLatitude(
+          gh.latitude === null || gh.latitude === undefined
+            ? null
+            : Number(gh.latitude)
+        );
+        setLongitude(
+          gh.longitude === null || gh.longitude === undefined
+            ? null
+            : Number(gh.longitude)
+        );
 
         setSubCity(gh.subCity || '');
         setWoreda(gh.woreda || '');
@@ -264,6 +279,8 @@ export function GuesthouseManage() {
       name: name.trim(),
       city: city.trim(),
       address: location.trim(),
+      latitude,
+      longitude,
 
       image:
         mainImage instanceof File
@@ -549,6 +566,40 @@ export function GuesthouseManage() {
 
     setError('');
     setMainImage(file);
+  };
+
+  const useCurrentLocation = () => {
+    setLocationError('');
+    if (!navigator.geolocation) {
+      setLocationError('This browser does not support GPS location.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLatitude(Number(coords.latitude.toFixed(6)));
+        setLongitude(Number(coords.longitude.toFixed(6)));
+        setLocationError('');
+      },
+      (geoError) => {
+        const messages = {
+          1: 'Location permission was denied. Allow location access in your browser or select the point on the map.',
+          2: 'Your current location is unavailable. Try again or select the point on the map.',
+          3: 'Finding your location timed out. Try again or select the point on the map.',
+        };
+        setLocationError(
+          messages[geoError.code] ||
+            'Could not determine your location. Select the point on the map instead.'
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  };
+
+  const selectMapLocation = (coordinates) => {
+    setLatitude(coordinates.latitude);
+    setLongitude(coordinates.longitude);
+    setLocationError('');
   };
 
   const handleLicenseChange = (event) => {
@@ -1198,6 +1249,34 @@ export function GuesthouseManage() {
                       className={`${inputClass} pl-11`}
                     />
                   </div>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-slate-500">
+                      {latitude !== null && longitude !== null
+                        ? `Pinned coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+                        : 'Add a precise map pin so guests can find this property.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={useCurrentLocation}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#063e60] px-3 py-2 text-xs font-bold text-[#063e60] hover:bg-slate-50"
+                    >
+                      <LocateFixed className="h-4 w-4" />
+                      Use my current location
+                    </button>
+                  </div>
+                  {locationError && (
+                    <p role="alert" className="mt-2 text-sm text-rose-700">
+                      {locationError}
+                    </p>
+                  )}
+                  <p className="mb-2 mt-3 text-xs text-slate-500">
+                    Or select the exact guesthouse location on the map.
+                  </p>
+                  <GuesthouseLocationMap
+                    value={{ latitude, longitude }}
+                    onLocationSelect={selectMapLocation}
+                    height="320px"
+                  />
                 </div>
 
                 {/* SUB CITY */}

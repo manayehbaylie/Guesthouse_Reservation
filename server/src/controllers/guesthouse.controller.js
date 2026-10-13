@@ -14,6 +14,7 @@ import {
 
 import { successResponse } from "../utils/response.js";
 import { uploadToCloudinary } from "../config/cloudinary.js";
+import { parseOptionalCoordinates } from "../utils/geo.utils.js";
 
 // ============================================================
 // CREATE GUESTHOUSE
@@ -24,6 +25,7 @@ export const create = async (req, res, next) => {
     const rawBody = {
       ...req.body,
     };
+    Object.assign(rawBody, parseOptionalCoordinates(rawBody));
 
     // ==========================================================
     // MAIN GUESTHOUSE IMAGE
@@ -157,6 +159,7 @@ export const update = async (req, res, next) => {
     const rawBody = {
       ...req.body,
     };
+    Object.assign(rawBody, parseOptionalCoordinates(rawBody));
 
     // ==========================================================
     // MAIN GUESTHOUSE IMAGE

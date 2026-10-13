@@ -190,6 +190,8 @@ export const registerGuesthouse = async (ownerId, data) => {
       address: String(data.address).trim(),
 
       city: String(data.city).trim(),
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
 
       subCity: data.subCity
         ? String(data.subCity).trim()
@@ -358,6 +360,14 @@ export const resubmitGuesthouse = async (ownerId, data) => {
           city: String(data.city).trim(),
         }),
 
+        ...(data.latitude !== undefined && {
+          latitude: data.latitude,
+        }),
+
+        ...(data.longitude !== undefined && {
+          longitude: data.longitude,
+        }),
+
         ...(data.description !== undefined && {
           description: String(data.description).trim(),
         }),
@@ -455,6 +465,14 @@ export const resubmitGuesthouse = async (ownerId, data) => {
 
       ...(data.city !== undefined && {
         city: String(data.city).trim(),
+      }),
+
+      ...(data.latitude !== undefined && {
+        latitude: data.latitude,
+      }),
+
+      ...(data.longitude !== undefined && {
+        longitude: data.longitude,
       }),
 
       ...(data.description !== undefined && {
@@ -624,6 +642,14 @@ export const updateMyGuesthouse = async (
         city: data.city,
       }),
 
+      ...(data.latitude !== undefined && {
+        latitude: data.latitude,
+      }),
+
+      ...(data.longitude !== undefined && {
+        longitude: data.longitude,
+      }),
+
       ...(data.subCity !== undefined && {
         subCity: data.subCity,
       }),
@@ -739,6 +765,9 @@ export const submitGuesthouseForReview = async (
           city: String(
             data.city || ""
           ).trim(),
+
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
 
           subCity: data.subCity
             ? String(data.subCity).trim()
@@ -937,6 +966,14 @@ export const submitGuesthouseForReview = async (
         city: String(
           merged.city
         ).trim(),
+
+        ...(merged.latitude !== undefined && {
+          latitude: merged.latitude,
+        }),
+
+        ...(merged.longitude !== undefined && {
+          longitude: merged.longitude,
+        }),
 
         subCity: merged.subCity
           ? String(

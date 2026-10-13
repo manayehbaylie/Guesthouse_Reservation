@@ -494,6 +494,8 @@ function guesthouseFormData(
     'numberOfRooms',
     'description',
     'licenseNumber',
+    'latitude',
+    'longitude',
   ];
 
   fields.forEach((field) => {
@@ -726,6 +728,16 @@ function mapGuesthouseFromBackend(
       guesthouse.address ||
       guesthouse.location ||
       '',
+
+    latitude:
+      guesthouse.latitude === null || guesthouse.latitude === undefined
+        ? null
+        : Number(guesthouse.latitude),
+
+    longitude:
+      guesthouse.longitude === null || guesthouse.longitude === undefined
+        ? null
+        : Number(guesthouse.longitude),
 
     phone:
       guesthouse.phone ||
@@ -2225,6 +2237,14 @@ export const ApiService = {
 
       return [];
     }
+  },
+
+  async getNearbyGuesthouses(criteria = {}) {
+    const response = await api.get('/search/nearby', {
+      params: criteria,
+    });
+    const results = unwrap(response);
+    return Array.isArray(results) ? results : [];
   },
 
   // ==========================================================
