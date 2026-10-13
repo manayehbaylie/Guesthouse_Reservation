@@ -128,6 +128,14 @@ api.interceptors.response.use(
       'Request failed';
 
     error.message = message;
+    if (error?.response?.data?.code === 'SYSTEM_LOCKED' || error?.response?.data?.systemLocked) {
+      window.dispatchEvent(new CustomEvent('system-locked', {
+        detail: {
+          message: error?.response?.data?.message || 'System locked by system admin',
+          lockMessage: error?.response?.data?.lockMessage || '',
+        },
+      }));
+    }
 
     return Promise.reject(error);
   }
@@ -1446,7 +1454,7 @@ function setCurrentUser(
   );
 }
 
-function logoutUser() {
+function clearLocalSession() {
   localStorage.removeItem(
     CURRENT_USER_KEY
   );
@@ -1466,6 +1474,13 @@ function logoutUser() {
       }
     )
   );
+}
+
+function logoutUser() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  clearLocalSession();
+  if (!token) return Promise.resolve();
+  return api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
 }
 
 // ============================================================
@@ -1508,6 +1523,31 @@ export const ApiService = {
 
   async chatWithAssistant({ message, history = [], language = 'en' }) {
     const response = await api.post('/ai/chat', { message, history, language });
+    return unwrap(response);
+  },
+
+  async getCommunicationContacts() {
+    const response = await api.get('/communications/contacts');
+    return unwrap(response) || [];
+  },
+
+  async getCommunicationMessages(userId) {
+    const response = await api.get(`/communications/${userId}/messages`);
+    return unwrap(response) || [];
+  },
+
+  async sendCommunicationMessage(userId, content) {
+    const response = await api.post(`/communications/${userId}/messages`, { content });
+    return unwrap(response);
+  },
+
+  async editCommunicationMessage(messageId, content) {
+    const response = await api.patch(`/communications/messages/${messageId}`, { content });
+    return unwrap(response);
+  },
+
+  async deleteCommunicationMessage(messageId) {
+    const response = await api.delete(`/communications/messages/${messageId}`);
     return unwrap(response);
   },
 
@@ -1612,14 +1652,17 @@ export const ApiService = {
         error
       );
 
-      logoutUser();
+      clearLocalSession();
 
-      throw new Error(
-        error?.response?.data
-          ?.message ||
+      const responseData = error?.response?.data || {};
+      const loginError = new Error(
+        responseData.message ||
         error?.message ||
         'Login failed. Please check your credentials.'
       );
+      loginError.code = responseData.code;
+      loginError.lockMessage = responseData.lockMessage;
+      throw loginError;
     }
   },
 
@@ -4797,6 +4840,73 @@ async getMyGuesthouse() {
           0
         ),
     };
+  },
+
+  async getAdminSettings() {
+    const response = await api.get('/admin/settings');
+    return unwrap(response);
+  },
+
+  async getSystemLockStatus() {
+    const response = await api.get('/system/status');
+    const status = unwrap(response);
+    return {
+      systemLocked: Boolean(status?.locked ?? status?.systemLocked),
+      systemLockMessage: status?.message ?? status?.systemLockMessage ?? '',
+    };
+  },
+
+  async updateAdminSystemLock({ locked, message, password }) {
+    const response = await api.put('/admin/system-lock', { locked, message, password });
+    return unwrap(response);
+  },
+
+  async updateAdminSettings(settings) {
+    const response = await api.put('/admin/settings', settings);
+    return unwrap(response);
+  },
+
+  async getAdminLoginAttempts(params = {}) {
+    const response = await api.get('/admin/security/login-attempts', { params });
+    return unwrap(response);
+  },
+
+  async getAdminActiveSessions() {
+    const response = await api.get('/admin/security/sessions');
+    return unwrap(response) || [];
+  },
+
+  async getAdminBlockedIps() {
+    const response = await api.get('/admin/security/blocked-ips');
+    return unwrap(response) || [];
+  },
+
+  async blockAdminIp(ipAddress, reason) {
+    const response = await api.post('/admin/security/blocked-ips', { ipAddress, reason });
+    return unwrap(response);
+  },
+
+  async unblockAdminIp(ipAddress) {
+    const response = await api.delete(`/admin/security/blocked-ips/${encodeURIComponent(ipAddress)}`);
+    return unwrap(response);
+  },
+
+  async getAdminAuditLogs(params = {}) {
+    const response = await api.get('/admin/security/audit-logs', { params });
+    return unwrap(response);
+  },
+
+  async exportAdminAuditLogs(format = 'json', params = {}) {
+    const response = await api.get('/admin/security/audit-logs/export', {
+      params: { ...params, format },
+      responseType: 'blob',
+    });
+    const blobUrl = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `security-audit.${format === 'csv' ? 'csv' : 'json'}`;
+    link.click();
+    URL.revokeObjectURL(blobUrl);
   },
 
   async downloadAdminBackup() {

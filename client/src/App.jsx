@@ -1,6 +1,6 @@
 import { useLanguage } from "./context/LanguageContext.jsx";
-import React, { useState } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 // Components
 import Navbar from "./components/Navbar.jsx";
@@ -54,12 +54,66 @@ import { ReceptionistDashboard } from "./pages/Receptionist/Dashboard.jsx";
 
 // Admin
 import AdminDashboard from "./pages/Admin/Dashboard.jsx";
+import { Communication } from "./pages/Communication.jsx";
+import { ShieldAlert } from "lucide-react";
+import { useAuth } from "./context/AuthContext.jsx";
+import { ApiService } from "./services/api.js";
 
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [systemLock, setSystemLock] = useState({ systemLocked: false, systemLockMessage: '' });
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useLanguage();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    let active = true;
+    const refreshLockStatus = async () => {
+      try {
+        const status = await ApiService.getSystemLockStatus();
+        if (active) {
+          setSystemLock(status);
+          if (status.systemLocked && user && String(user.role || '').toUpperCase() !== 'ADMIN') {
+            window.dispatchEvent(new CustomEvent('system-locked', {
+              detail: {
+                message: t('System locked by system admin'),
+                lockMessage: status.systemLockMessage,
+              },
+            }));
+            navigate('/login', {
+              replace: true,
+              state: { systemLockError: t('System locked by system admin') },
+            });
+          }
+        }
+      } catch {
+        // Keep the current screen available when the status service is temporarily unavailable.
+      }
+    };
+    const handleLockEvent = (event) => {
+      setSystemLock({ systemLocked: true, systemLockMessage: event.detail?.lockMessage || '' });
+      if (user && String(user.role || '').toUpperCase() !== 'ADMIN') {
+        navigate('/login', {
+          replace: true,
+          state: { systemLockError: t('System locked by system admin') },
+        });
+      }
+    };
+    const handleLockChange = (event) => setSystemLock(event.detail);
+
+    refreshLockStatus();
+    const intervalId = window.setInterval(refreshLockStatus, 30000);
+    window.addEventListener('system-locked', handleLockEvent);
+    window.addEventListener('system-lock-changed', handleLockChange);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('system-locked', handleLockEvent);
+      window.removeEventListener('system-lock-changed', handleLockChange);
+    };
+  }, [navigate, t, user]);
 
   /*
    * ==========================================================
@@ -82,6 +136,7 @@ export default function App() {
     location.pathname === "/guest/search" ||
     location.pathname === "/assistant" ||
     location.pathname === "/reservations" ||
+    location.pathname === "/communication" ||
     location.pathname === "/guest/reviews" ||
     location.pathname === "/booking" ||
     location.pathname.startsWith("/booking/") ||
@@ -93,6 +148,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-stone-900 flex flex-col font-sans">
+
+      {systemLock.systemLocked && String(user?.role || '').toUpperCase() === 'ADMIN' && (
+        <div role="status" className="flex items-center justify-center gap-2 bg-rose-700 px-4 py-2 text-center text-xs font-black uppercase tracking-wide text-white sm:text-sm">
+          <ShieldAlert className="h-4 w-4" /> {t('System is LOCKED')}
+          <span className="hidden font-medium normal-case tracking-normal text-white/85 sm:inline">{systemLock.systemLockMessage}</span>
+        </div>
+      )}
 
       {/* =========================================================
           NAVBAR
@@ -249,6 +311,10 @@ export default function App() {
               path="/login"
               element={<Login />}
             />
+
+            <Route path="/admin-login" element={<Login />} />
+
+            <Route path="/system-locked" element={<Navigate to="/login" replace />} />
 
             <Route
               path="/register"
@@ -455,6 +521,15 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={["ADMIN"]}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/communication"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                  <Communication />
                 </ProtectedRoute>
               }
             />

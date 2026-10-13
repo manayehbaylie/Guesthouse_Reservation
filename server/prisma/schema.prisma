@@ -28,6 +28,12 @@ model User {
   reservations     Reservation[]     @relation("GuestReservations")
   reviews          Review[]          @relation("GuestReviews")
   staffAssignments StaffAssignment[]
+  communicationsSent     CommunicationMessage[] @relation("CommunicationSender")
+  communicationsReceived CommunicationMessage[] @relation("CommunicationRecipient")
+  auditLogs              AuditLog[]
+  systemLocks            SystemLock[] @relation("SystemLockActor")
+  activeSessions         ActiveSession[]
+  blockedIpEntries       BlockedIp[]   @relation("BlockedIpActor")
 }
 
 model Guesthouse {
@@ -150,6 +156,113 @@ model Notification {
   @@index([guesthouseId])
   @@index([type])
   @@index([category])
+}
+
+model CommunicationMessage {
+  id          Int      @id @default(autoincrement())
+  senderId    Int
+  recipientId Int
+  content     String
+  readAt      DateTime?
+  editedAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  sender    User @relation("CommunicationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("CommunicationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, readAt])
+}
+
+model SystemSetting {
+  id                       Int      @id @default(1)
+  ownerRegistrationEnabled Boolean  @default(true)
+  guestBookingEnabled      Boolean  @default(true)
+  commissionRate           Float    @default(10)
+  systemLocked             Boolean  @default(false)
+  systemLockMessage        String   @default("Under maintenance, please come back later")
+  updatedAt                DateTime @updatedAt
+}
+
+model SystemLock {
+  id        Int      @id @default(1)
+  isLocked  Boolean  @default(false) @map("is_locked")
+  message   String   @default("Under maintenance, please come back later")
+  lockedBy  Int?     @map("locked_by")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  actor User? @relation("SystemLockActor", fields: [lockedBy], references: [id], onDelete: SetNull)
+
+  @@map("system_lock")
+}
+
+model LoginAttempt {
+  id        Int      @id @default(autoincrement())
+  email     String?
+  identifier String
+  role      String?
+  ipAddress String?
+  device    String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([success, createdAt])
+  @@map("login_attempts")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  actorName String
+  actorEmail String?
+  eventCode String   @default("setting_changed")
+  action    String
+  setting   String
+  oldValue  String
+  newValue  String
+  method    String   @default("SYSTEM")
+  path      String   @default("/api/admin/settings")
+  ipAddress String?
+  statusCode Int     @default(200)
+  severity  String   @default("INFO")
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([setting, createdAt])
+  @@map("audit_logs")
+}
+
+model ActiveSession {
+  id           String    @id @default(uuid())
+  tokenId      String    @unique
+  userId       Int
+  ipAddress    String?
+  device       String?
+  lastActivity DateTime  @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([lastActivity])
+  @@map("active_sessions")
+}
+
+model BlockedIp {
+  ipAddress String   @id
+  reason    String?
+  blockedBy Int?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("BlockedIpActor", fields: [blockedBy], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("blocked_ips")
 }
 
 model StaffAssignment {

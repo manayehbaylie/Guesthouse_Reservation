@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { getSystemSettings } from "./system-settings.service.js";
 
 // ================= Dashboard Statistics =================
 export const getDashboardStats = async () => {
@@ -21,10 +22,7 @@ export const getDashboardStats = async () => {
     },
   });
 
-  const commissionRate = Math.min(
-    100,
-    Math.max(0, Number(process.env.COMMISSION_RATE ?? 10))
-  );
+  const { commissionRate } = await getSystemSettings();
   const totalRevenue = revenue._sum.amount ?? 0;
   const commissionRevenue = (totalRevenue * commissionRate) / 100;
 

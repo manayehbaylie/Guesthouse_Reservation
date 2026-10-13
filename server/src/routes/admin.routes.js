@@ -14,10 +14,20 @@ import {
   getActivity,
   downloadBackup,
   restoreBackup,
+  getSettings,
+  saveSettings,
+  getSecurityLoginAttempts,
+  getSecurityAuditLogs,
+  getSecurityActiveSessions,
+  getSecurityBlockedIps,
+  blockSecurityIp,
+  unblockSecurityIp,
+  exportSecurityAuditLogs,
 } from "../controllers/admin.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
+import { updateLock } from "../controllers/system.controller.js";
 
 const router = express.Router();
 
@@ -245,6 +255,16 @@ router.get(
 );
 router.get("/backup", authenticate, authorize("ADMIN"), downloadBackup);
 router.post("/backup/restore", authenticate, authorize("ADMIN"), restoreBackup);
+router.get("/settings", authenticate, authorize("ADMIN"), getSettings);
+router.put("/settings", authenticate, authorize("ADMIN"), saveSettings);
+router.put("/system-lock", authenticate, authorize("ADMIN"), updateLock);
+router.get("/security/login-attempts", authenticate, authorize("ADMIN"), getSecurityLoginAttempts);
+router.get("/security/sessions", authenticate, authorize("ADMIN"), getSecurityActiveSessions);
+router.get("/security/blocked-ips", authenticate, authorize("ADMIN"), getSecurityBlockedIps);
+router.post("/security/blocked-ips", authenticate, authorize("ADMIN"), blockSecurityIp);
+router.delete("/security/blocked-ips/:ipAddress", authenticate, authorize("ADMIN"), unblockSecurityIp);
+router.get("/security/audit-logs/export", authenticate, authorize("ADMIN"), exportSecurityAuditLogs);
+router.get("/security/audit-logs", authenticate, authorize("ADMIN"), getSecurityAuditLogs);
 router.put(
   "/profile",
   authenticate,

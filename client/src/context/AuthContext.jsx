@@ -51,6 +51,30 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    const syncUserFromStorage = (event) => {
+      const nextUser = event?.detail?.user ?? ApiService.getCurrentUser();
+      setUser(nextUser || null);
+      setAuthError(null);
+    };
+
+    const handleSystemLock = (event) => {
+      if (String(user?.role || '').toUpperCase() === 'ADMIN') return;
+      ApiService.logoutUser();
+      setUser(null);
+      setAuthError(event.detail?.message || 'The system is temporarily locked.');
+      window.dispatchEvent(new CustomEvent('auth-logout'));
+    };
+
+    window.addEventListener('auth-state-change', syncUserFromStorage);
+    window.addEventListener('system-locked', handleSystemLock);
+
+    return () => {
+      window.removeEventListener('auth-state-change', syncUserFromStorage);
+      window.removeEventListener('system-locked', handleSystemLock);
+    };
+  }, [user?.role]);
+
   // ============================================================
   // LOGIN
   // ============================================================

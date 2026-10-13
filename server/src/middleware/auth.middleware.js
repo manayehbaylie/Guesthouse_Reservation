@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
+import prisma from "../config/prisma.js";
 
-export const authenticate = (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -24,6 +25,17 @@ export const authenticate = (req, res, next) => {
       token,
       process.env.JWT_SECRET
     );
+
+    if (decoded.jti) {
+      const session = await prisma.activeSession.findUnique({ where: { tokenId: decoded.jti } });
+      if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+        return res.status(401).json({ success: false, message: "Session expired or signed out." });
+      }
+      await prisma.activeSession.update({
+        where: { tokenId: decoded.jti },
+        data: { lastActivity: new Date() },
+      });
+    }
 
     req.user = decoded;
 

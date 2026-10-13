@@ -65,6 +65,11 @@ export const errorHandler = (
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
     success: false,
+    ...(err.code === "SYSTEM_LOCKED" ? {
+      code: "SYSTEM_LOCKED",
+      systemLocked: true,
+      lockMessage: err.systemLockMessage || "",
+    } : {}),
     message: err.message || 'Something went wrong',
   });
 };

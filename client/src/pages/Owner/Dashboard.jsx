@@ -846,6 +846,16 @@ export function OwnerDashboard() {
             </button>
 
             <button
+              onClick={() => navigate('/communication')}
+              className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all text-stone-300 hover:bg-amber-500/20 hover:text-amber-300 hover:ring-1 hover:ring-amber-400/40"
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-4 h-4" />
+                <span>{t('Communication')}</span>
+              </div>
+            </button>
+
+            <button
               onClick={() => handleTabChange('reviews')}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 activeTab === 'reviews'

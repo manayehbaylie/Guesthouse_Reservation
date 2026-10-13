@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { ApiService } from "../../services/api.js";
 
 import {
   Mail,
@@ -35,6 +36,7 @@ export function Login() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [systemLocked, setSystemLocked] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -58,6 +60,17 @@ export function Login() {
 
   const returnTo = location.state?.returnTo || null;
   const fromPath = location.state?.from || null;
+
+  useEffect(() => {
+    let active = true;
+    if (location.state?.systemLockError) {
+      setError(t('System locked by system admin'));
+    }
+    ApiService.getSystemLockStatus()
+      .then((status) => { if (active) setSystemLocked(status.systemLocked); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [location.state, t]);
 
   // ---------------------------------------------------------
   // CHECK PENDING BOOKING
@@ -408,6 +421,11 @@ export function Login() {
     } catch (err) {
       console.error("Login error:", err);
 
+      if (err?.code === "SYSTEM_LOCKED") {
+        setError(t("System locked by system admin"));
+        return;
+      }
+
       const message =
         err?.response?.data?.message ||
         err?.message ||
@@ -640,6 +658,12 @@ export function Login() {
               {/* =================================================
                   LOGIN FORM
               ================================================= */}
+
+              {systemLocked && (
+                <p role="status" className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                  {t('System locked by system admin')}
+                </p>
+              )}
 
               <form
                 onSubmit={handleSubmit}

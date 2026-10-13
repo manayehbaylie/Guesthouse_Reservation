@@ -1,14 +1,51 @@
 
 import express from "express";
+import rateLimit from "express-rate-limit";
+import { recordAuditEvent, recordLoginAttempt } from "../services/security-audit.service.js";
+import { authenticate } from "../middleware/auth.middleware.js";
+import { enforceLoginIpBlock, enforceSystemLockOnLogin } from "../middleware/login-security.middleware.js";
 
 import {
   register,
   login,
   forgotPassword,
   resetPassword,
+  logout,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: async (req, res) => {
+    const { email, phone } = req.body || {};
+    const attempt = await recordLoginAttempt({
+      identifier: email || phone || "",
+      ipAddress: req.ip,
+      device: req.get("user-agent") || "Unknown device",
+      success: false,
+    }).catch((error) => { console.error("Failed to record rate-limited login:", error); return {}; });
+    await recordAuditEvent({
+      actorId: attempt.actorId,
+      actorName: attempt.actorName || String(email || phone || "Unknown"),
+      actorEmail: attempt.actorEmail,
+      eventCode: "login_rate_limited",
+      method: req.method,
+      path: req.originalUrl,
+      ipAddress: req.ip,
+      statusCode: 429,
+      severity: "WARNING",
+      action: "login_rate_limited",
+      setting: "authentication",
+    }).catch((error) => console.error("Failed to record rate-limit audit:", error));
+    return res.status(429).json({
+      success: false,
+      message: "Too many login attempts. Try again in 15 minutes.",
+    });
+  },
+});
 
 /**
  * @swagger
@@ -115,7 +152,8 @@ router.post("/register", register);
  *       400:
  *         description: Invalid request data.
  */
-router.post("/login", login);
+router.post("/login", enforceSystemLockOnLogin, loginRateLimit, enforceLoginIpBlock, login);
+router.post("/logout", authenticate, logout);
 
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);

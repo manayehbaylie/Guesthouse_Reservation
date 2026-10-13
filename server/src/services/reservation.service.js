@@ -3,12 +3,20 @@ import { createNotification } from "./notification.service.js";
 import { parseDateOnly } from "../utils/date.utils.js";
 import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
 import { buildReservationAccessWhere } from "../utils/reservation-access.utils.js";
+import { getSystemSettings } from "./system-settings.service.js";
 
 // ============================================================
 // CREATE RESERVATION
 // ============================================================
 
 export const createReservation = async (data, guestId) => {
+  const settings = await getSystemSettings();
+  if (!settings.guestBookingEnabled) {
+    const error = new Error("Guest bookings are temporarily disabled.");
+    error.statusCode = 403;
+    throw error;
+  }
+
   if (!guestId) {
     throw new Error("Authentication required.");
   }

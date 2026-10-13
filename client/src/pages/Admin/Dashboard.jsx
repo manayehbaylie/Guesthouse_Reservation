@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { ApiService, getApiUrl } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { SecuritySettingsPage } from './SecuritySettingsPage.jsx';
 
 import {
   LayoutDashboard,
@@ -51,9 +52,10 @@ import {
   ToggleRight,
   Eye,
   EyeOff,
+  MessageSquare,
+  LoaderCircle,
+  LockKeyhole,
 } from 'lucide-react';
-
-const COMMISSION_RATE_KEY = 'gh_admin_commission_rate';
 
 // ============================================================
 // ADMIN DASHBOARD
@@ -796,6 +798,7 @@ export default function AdminDashboard() {
         <AdminSidebar
           activePage={activePage}
           onPageChange={handlePageChange}
+          onOpenCommunication={() => navigate('/communication')}
           mobileOpen={mobileSidebarOpen}
           user={user}
           onLogout={handleLogout}
@@ -878,8 +881,8 @@ export default function AdminDashboard() {
               stats={stats}
               loading={loading}
               onRefresh={loadAdminData}
-              onRateChange={(commissionRate) => {
-                localStorage.setItem(COMMISSION_RATE_KEY, String(commissionRate));
+              onSettingsUpdated={(settings) => {
+                const commissionRate = Number(settings.commissionRate);
                 setStats((previous) => ({
                   ...previous,
                   commissionRate,
@@ -888,6 +891,10 @@ export default function AdminDashboard() {
                 }));
               }}
             />
+          )}
+
+          {activePage === 'settings' && (
+            <SecuritySettingsPage />
           )}
 
           {activePage === 'backup' && (
@@ -1065,6 +1072,9 @@ function getPageTitle(page) {
     commission:
       'Commission Management',
 
+    settings:
+      'System Settings',
+
     backup:
       'System Backup',
   };
@@ -1083,6 +1093,7 @@ function getPageTitle(page) {
 function AdminSidebar({
   activePage,
   onPageChange,
+  onOpenCommunication,
   mobileOpen,
   user,
   onLogout,
@@ -1094,7 +1105,9 @@ function AdminSidebar({
     { id: 'guesthouses', label: 'Guesthouses', icon: Building2 },
     { id: 'pending', label: 'Pending Verification', icon: Clock3 },
     { id: 'owners', label: 'Manage Owners', icon: UserCog },
+    { id: 'communication', label: 'Communication', icon: MessageSquare },
     { id: 'commission', label: 'Commission', icon: Percent },
+    { id: 'settings', label: 'System Settings', icon: Settings },
     { id: 'backup', label: 'System Backup', icon: DatabaseBackup },
   ];
 
@@ -1130,7 +1143,7 @@ function AdminSidebar({
             <button
               key={item.id}
               type="button"
-              onClick={() => onPageChange(item.id)}
+              onClick={() => item.id === 'communication' ? onOpenCommunication() : onPageChange(item.id)}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all ${
                 active
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20'
@@ -2494,11 +2507,41 @@ function CommissionPage({
   stats,
   loading,
   onRefresh,
-  onRateChange,
+  onSettingsUpdated,
 }) {
   const { t } = useLanguage();
   const [rateInput, setRateInput] = useState(String(stats.commissionRate));
   const [rateError, setRateError] = useState('');
+  const [platformSettings, setPlatformSettings] = useState(null);
+  const [savedAvailability, setSavedAvailability] = useState(null);
+  const [savedLockState, setSavedLockState] = useState(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState('');
+  const [pendingSettings, setPendingSettings] = useState(null);
+  const [password, setPassword] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [savingAvailability, setSavingAvailability] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    ApiService.getAdminSettings()
+      .then((settings) => {
+        if (!active) return;
+        setPlatformSettings(settings);
+        setSavedAvailability({
+          ownerRegistrationEnabled: settings.ownerRegistrationEnabled,
+          guestBookingEnabled: settings.guestBookingEnabled,
+        });
+        setSavedLockState({
+          systemLocked: Boolean(settings.systemLocked),
+          systemLockMessage: String(settings.systemLockMessage || '').trim(),
+        });
+      })
+      .catch((error) => { if (active) setSettingsError(error.message || t('Could not load platform settings.')); })
+      .finally(() => { if (active) setSettingsLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     setRateInput(String(stats.commissionRate));
@@ -2511,9 +2554,148 @@ function CommissionPage({
       setRateError(t('Enter a commission rate between 0 and 100%.'));
       return;
     }
+    if (nextRate === Number(platformSettings?.commissionRate)) return;
     setRateError('');
-    onRateChange(nextRate);
+    openConfirmation({ commissionRate: nextRate });
   };
+
+  const openConfirmation = (changes) => {
+    setPendingSettings(changes);
+    setPassword('');
+    setConfirmError('');
+  };
+
+  const closeConfirmation = () => {
+    if (confirming) return;
+    setPendingSettings(null);
+    setPassword('');
+    setConfirmError('');
+  };
+
+  const handleConfirmSettings = async (event) => {
+    event.preventDefault();
+    setConfirming(true);
+    setConfirmError('');
+    try {
+      const currentSettings = await ApiService.getAdminSettings();
+      const isLockUpdate = Object.keys(pendingSettings || {}).length > 0 &&
+        Object.keys(pendingSettings).every((key) => key === 'systemLocked' || key === 'systemLockMessage');
+      let updated;
+      if (isLockUpdate) {
+        const lockState = await ApiService.updateAdminSystemLock({
+          locked: Boolean(pendingSettings.systemLocked),
+          message: String(pendingSettings.systemLockMessage || ''),
+          password,
+        });
+        updated = {
+          ...currentSettings,
+          systemLocked: Boolean(lockState.locked),
+          systemLockMessage: lockState.message || '',
+        };
+      } else {
+        updated = await ApiService.updateAdminSettings({ ...currentSettings, ...pendingSettings, password });
+      }
+      setPlatformSettings(updated);
+      setSavedAvailability({
+        ownerRegistrationEnabled: updated.ownerRegistrationEnabled,
+        guestBookingEnabled: updated.guestBookingEnabled,
+      });
+      setSavedLockState({
+        systemLocked: Boolean(updated.systemLocked),
+        systemLockMessage: String(updated.systemLockMessage || '').trim(),
+      });
+      setRateInput(String(updated.commissionRate));
+      setPendingSettings(null);
+      setPassword('');
+      window.dispatchEvent(new CustomEvent('system-lock-changed', {
+        detail: {
+          systemLocked: Boolean(updated.systemLocked),
+          systemLockMessage: updated.systemLockMessage || 'Under maintenance, please come back later',
+        },
+      }));
+      if (updated.systemLocked) {
+        window.dispatchEvent(new CustomEvent('system-locked', {
+          detail: { message: updated.systemLockMessage || 'Under maintenance, please come back later' },
+        }));
+      }
+      onSettingsUpdated?.(updated);
+    } catch (error) {
+      setConfirmError(error.message || t('Could not confirm your password.'));
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const saveAvailability = async () => {
+    const changes = {
+      ownerRegistrationEnabled: platformSettings.ownerRegistrationEnabled,
+      guestBookingEnabled: platformSettings.guestBookingEnabled,
+    };
+    const requiresPassword =
+      (savedAvailability.ownerRegistrationEnabled && !changes.ownerRegistrationEnabled) ||
+      (savedAvailability.guestBookingEnabled && !changes.guestBookingEnabled);
+    if (requiresPassword) {
+      openConfirmation(changes);
+      return;
+    }
+
+    setSavingAvailability(true);
+    setSettingsError('');
+    try {
+      const currentSettings = await ApiService.getAdminSettings();
+      const updated = await ApiService.updateAdminSettings({ ...currentSettings, ...changes });
+      setPlatformSettings(updated);
+      setSavedAvailability(changes);
+      onSettingsUpdated?.(updated);
+    } catch (error) {
+      setSettingsError(error.message || t('Could not save platform settings.'));
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
+
+  const saveSystemLock = async () => {
+    if (!platformSettings) return;
+    const nextLockState = {
+      systemLocked: Boolean(platformSettings.systemLocked),
+      systemLockMessage: String(platformSettings.systemLockMessage || '').trim(),
+    };
+    const changed = !savedLockState ||
+      savedLockState.systemLocked !== nextLockState.systemLocked ||
+      savedLockState.systemLockMessage !== nextLockState.systemLockMessage;
+
+    if (!changed) return;
+    if (nextLockState.systemLocked && !nextLockState.systemLockMessage) {
+      setSettingsError(t('A custom lock message is required when the system is locked.'));
+      return;
+    }
+    setSettingsError('');
+    openConfirmation(nextLockState);
+  };
+
+  const pendingLabels = pendingSettings ? Object.entries(pendingSettings).map(([key, value]) => {
+    const label = key === 'ownerRegistrationEnabled'
+      ? t('Owner registration')
+      : key === 'guestBookingEnabled'
+        ? t('Guest bookings')
+        : key === 'systemLocked'
+          ? t('Lock entire system')
+          : key === 'systemLockMessage'
+            ? t('Lock message')
+            : t('Commission rate');
+    const valueLabel = key === 'commissionRate'
+      ? `${value}%`
+      : key === 'systemLocked'
+        ? value ? t('LOCKED') : t('UNLOCKED')
+        : key === 'systemLockMessage'
+          ? value || t('No message set')
+          : value ? t('ON') : t('OFF');
+    return `${label}: ${valueLabel}`;
+  }) : [];
+
+  const isSystemLockDirty = Boolean(platformSettings) && (!savedLockState ||
+    savedLockState.systemLocked !== Boolean(platformSettings.systemLocked) ||
+    savedLockState.systemLockMessage !== String(platformSettings.systemLockMessage || '').trim());
 
   return (
     <div className="space-y-6">
@@ -2607,6 +2789,100 @@ function CommissionPage({
 
       </div>
 
+      <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-black text-[#073957]">{t('Platform availability')}</h3>
+            <p className="mt-1 text-sm text-stone-500">{t('Control owner sign-ups and guest reservations.')}</p>
+          </div>
+          {platformSettings && (
+            <button
+              type="button"
+              onClick={saveAvailability}
+              disabled={settingsLoading || savingAvailability || Boolean(settingsError) || (
+                platformSettings.ownerRegistrationEnabled === savedAvailability?.ownerRegistrationEnabled &&
+                platformSettings.guestBookingEnabled === savedAvailability?.guestBookingEnabled
+              )}
+              className="rounded-lg bg-[#073957] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0b4b73] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {savingAvailability ? t('Saving...') : t('Save availability')}
+            </button>
+          )}
+        </div>
+        {settingsError && <p role="alert" className="mt-3 text-sm text-rose-700">{settingsError}</p>}
+        {settingsLoading ? (
+          <div className="mt-4 flex items-center gap-2 text-sm text-stone-500"><LoaderCircle className="h-4 w-4 animate-spin" />{t('Loading platform settings...')}</div>
+        ) : platformSettings && (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {[
+              ['ownerRegistrationEnabled', t('Owner registration'), t('Allow new owners to create platform accounts.')],
+              ['guestBookingEnabled', t('Guest bookings'), t('Allow guests to submit new reservations.')],
+            ].map(([key, label, description]) => (
+              <label key={key} className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                <span><span className="block text-sm font-bold text-stone-900">{label}</span><span className="mt-1 block text-xs text-stone-500">{description}</span></span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={Boolean(platformSettings[key])}
+                  onChange={(event) => setPlatformSettings((current) => ({ ...current, [key]: event.target.checked }))}
+                  className="h-5 w-9 shrink-0 cursor-pointer accent-emerald-700"
+                />
+              </label>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-rose-200 bg-gradient-to-r from-rose-50 via-white to-orange-50 p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-black text-[#073957]">{t('System Lock')}</h3>
+            <p className="mt-1 text-sm text-slate-500">{t('Block non-admin access while the platform is under maintenance.')}</p>
+          </div>
+          {platformSettings && (
+            <button
+              type="button"
+              onClick={saveSystemLock}
+              disabled={settingsLoading || !isSystemLockDirty}
+              className="rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {platformSettings.systemLocked ? t('Save unlock') : t('Save lock')}
+            </button>
+          )}
+        </div>
+        {settingsLoading ? (
+          <div className="mt-4 flex items-center gap-2 text-sm text-stone-500"><LoaderCircle className="h-4 w-4 animate-spin" />{t('Loading system lock settings...')}</div>
+        ) : platformSettings && (
+          <div className="mt-4 space-y-4">
+            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-rose-200 bg-white p-4">
+              <span>
+                <span className="block text-sm font-bold text-stone-900">{t('Lock entire system')}</span>
+                <span className="mt-1 block text-xs text-stone-500">{t('Only administrators can access the platform while locked.')}</span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={Boolean(platformSettings.systemLocked)}
+                onChange={(event) => setPlatformSettings((current) => ({ ...current, systemLocked: event.target.checked }))}
+                className="h-5 w-9 shrink-0 cursor-pointer accent-rose-700"
+              />
+            </label>
+
+            <label className="block text-sm font-bold text-stone-800">
+              {t('Custom lock message')}
+              <textarea
+                rows="3"
+                value={platformSettings.systemLockMessage || ''}
+                onChange={(event) => setPlatformSettings((current) => ({ ...current, systemLockMessage: event.target.value }))}
+                placeholder={t('Under maintenance, please come back later')}
+                className="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-sm text-stone-700 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+              />
+            </label>
+            <p className="text-xs text-stone-500">{t('Blocked users will see this message until an administrator unlocks the platform.')}</p>
+          </div>
+        )}
+      </section>
+
       <div className="rounded-3xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-orange-50 p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -2621,6 +2897,7 @@ function CommissionPage({
                 min="0"
                 max="100"
                 step="0.1"
+                required
                 value={rateInput}
                 onChange={(event) => setRateInput(event.target.value)}
                 className="mt-1 block w-28 rounded-xl border border-amber-300 bg-white px-3 py-2.5 text-sm font-bold text-[#073957] outline-none focus:ring-2 focus:ring-amber-400"
@@ -2633,6 +2910,41 @@ function CommissionPage({
         </div>
         {rateError && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{rateError}</p>}
       </div>
+
+      {pendingSettings && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/60 p-4" role="presentation">
+          <form onSubmit={handleConfirmSettings} className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <span className="rounded-xl bg-amber-100 p-2 text-amber-800"><LockKeyhole className="h-5 w-5" /></span>
+              <div>
+                <h2 className="text-lg font-black text-stone-900">{t('Confirm your password')}</h2>
+                <p className="mt-1 text-sm text-stone-500">{t('Enter your administrator password to apply these changes.')}</p>
+              </div>
+            </div>
+            <ul className="my-4 space-y-1 rounded-lg bg-stone-50 p-3 text-sm text-stone-700">
+              {pendingLabels.map((label) => <li key={label}>{label}</li>)}
+            </ul>
+            <label className="block text-xs font-bold text-stone-700">
+              {t('Administrator password')}
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-sm font-normal outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              />
+            </label>
+            {confirmError && <p role="alert" className="mt-3 text-sm text-rose-700">{confirmError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={closeConfirmation} disabled={confirming} className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50">{t('Cancel')}</button>
+              <button type="submit" disabled={confirming || !password} className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-stone-950 hover:bg-amber-400 disabled:opacity-50">
+                {confirming && <LoaderCircle className="h-4 w-4 animate-spin" />}{t('Confirm and save')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* ====================================================
           COMMISSION CALCULATION

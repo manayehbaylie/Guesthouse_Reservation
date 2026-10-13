@@ -20,6 +20,9 @@ import adminRoutes from "./routes/admin.routes.js";
 import guestRoutes from "./routes/guest.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import telegramRoutes from "./routes/telegram.routes.js";
+import communicationRoutes from "./routes/communication.routes.js";
+import systemRoutes from "./routes/system.routes.js";
+import { enforceSystemLock } from "./middleware/system-lock.middleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -36,6 +39,7 @@ app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177', 'http://localhost:5178', 'http://localhost:5179', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', 'http://127.0.0.1:5175', 'http://127.0.0.1:5176', 'http://127.0.0.1:5177', 'http://127.0.0.1:5178', 'http://127.0.0.1:5179'],
   credentials: true,
 }));
+app.use("/api", enforceSystemLock);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -59,6 +63,8 @@ app.use("/api/reports", reportRoutes);
  app.use("/api/guest", guestRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/telegram", telegramRoutes);
+app.use("/api/communications", communicationRoutes);
+app.use("/api/system", systemRoutes);
 // Error Handler (Always last)
 app.use(errorHandler);
 

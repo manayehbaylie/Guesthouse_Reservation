@@ -163,3 +163,7 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #043658;
 }
+
+html[lang="am-ET"] body {
+  font-family: "Noto Sans Ethiopic", Inter, system-ui, sans-serif;
+}

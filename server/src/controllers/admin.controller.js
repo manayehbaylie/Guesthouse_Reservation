@@ -15,6 +15,15 @@ import {
 } from "../services/admin.service.js";
 
 import { successResponse } from "../utils/response.js";
+import { getSystemSettings, updateSystemSettings } from "../services/system-settings.service.js";
+import {
+  blockIpAddress,
+  getActiveSessions,
+  getAuditLogs,
+  getLoginAttempts,
+  listBlockedIps,
+  unblockIpAddress,
+} from "../services/security-audit.service.js";
 
 /*
 ==================================================
@@ -224,6 +233,97 @@ export const downloadBackup = async (req, res, next) => {
 export const restoreBackup = async (req, res, next) => {
   try {
     return successResponse(res, await restoreSystemBackup(req.body), "System restored successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSettings = async (req, res, next) => {
+  try {
+    return successResponse(res, await getSystemSettings(), "System settings fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const saveSettings = async (req, res, next) => {
+  try {
+    const settings = await updateSystemSettings(req.body, {
+      adminId: req.user.id,
+      password: req.body?.password,
+      ipAddress: req.ip,
+      method: req.method,
+      path: req.originalUrl,
+    });
+    return successResponse(res, settings, "System settings saved successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSecurityLoginAttempts = async (req, res, next) => {
+  try {
+    return successResponse(res, await getLoginAttempts(req.query), "Login attempts fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSecurityAuditLogs = async (req, res, next) => {
+  try {
+    return successResponse(res, await getAuditLogs(req.query), "Audit logs fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSecurityActiveSessions = async (req, res, next) => {
+  try {
+    return successResponse(res, await getActiveSessions(), "Active sessions fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSecurityBlockedIps = async (req, res, next) => {
+  try {
+    return successResponse(res, await listBlockedIps(), "Blocked IPs fetched successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const blockSecurityIp = async (req, res, next) => {
+  try {
+    const record = await blockIpAddress({ ipAddress: req.body?.ipAddress, reason: req.body?.reason, admin: req.user, request: req });
+    return successResponse(res, record, "IP address blocked successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const unblockSecurityIp = async (req, res, next) => {
+  try {
+    const record = await unblockIpAddress({ ipAddress: req.params.ipAddress, admin: req.user, request: req });
+    return successResponse(res, record, "IP address unblocked successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportSecurityAuditLogs = async (req, res, next) => {
+  try {
+    const { items } = await getAuditLogs(req.query, { all: true });
+    if (String(req.query.format || "json").toLowerCase() === "csv") {
+      const columns = ["createdAt", "actorName", "actorEmail", "eventCode", "method", "path", "ipAddress", "statusCode", "severity"];
+      const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+      const rows = [columns, ...items.map((item) => columns.map((key) => item[key]))]
+        .map((row) => row.map(escapeCsv).join(","));
+      res.type("text/csv").set("Content-Disposition", 'attachment; filename="security-audit.csv"');
+      return res.send(rows.join("\r\n"));
+    }
+    res.type("application/json").set("Content-Disposition", 'attachment; filename="security-audit.json"');
+    return res.send(JSON.stringify(items, null, 2));
   } catch (error) {
     next(error);
   }

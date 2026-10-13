@@ -1,6 +1,7 @@
 import prisma from "../config/prisma.js";
 import { hashPassword } from "../utils/hash.js";
 import { createNotification } from "./notification.service.js";
+import { getSystemSettings } from "./system-settings.service.js";
 
 /*
 ==================================================
@@ -539,10 +540,7 @@ export const getPlatformReport = async () => {
     });
 
   const totalRevenue = paidPayments._sum.amount || 0;
-  const commissionRate = Math.min(
-    100,
-    Math.max(0, Number(process.env.COMMISSION_RATE ?? 10))
-  );
+  const { commissionRate } = await getSystemSettings();
   const commissionRevenue = (totalRevenue * commissionRate) / 100;
 
   return {

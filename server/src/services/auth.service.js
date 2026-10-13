@@ -5,6 +5,7 @@ import {
   generatePasswordResetToken,
   verifyPasswordResetToken,
 } from "../utils/jwt.js";
+import { getSystemSettings } from "./system-settings.service.js";
 
 function requireField(value, label) {
   if (value === undefined || value === null || String(value).trim() === "") {
@@ -71,6 +72,15 @@ export const registerUser = async (data) => {
     throw new Error(
       "Invalid registration role. Only GUEST and OWNER can register publicly."
     );
+  }
+
+  if (role === "OWNER") {
+    const settings = await getSystemSettings();
+    if (!settings.ownerRegistrationEnabled) {
+      const error = new Error("New owner registrations are temporarily disabled.");
+      error.statusCode = 403;
+      throw error;
+    }
   }
 
   // ==========================
@@ -211,6 +221,15 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
         : "Invalid email address."
     );
     error.statusCode = 401;
+    throw error;
+  }
+
+  const systemSettings = await getSystemSettings();
+  if (systemSettings.systemLocked && user.role !== "ADMIN") {
+    const error = new Error("System locked by system admin");
+    error.statusCode = 403;
+    error.code = "SYSTEM_LOCKED";
+    error.systemLockMessage = systemSettings.systemLockMessage;
     throw error;
   }
 
