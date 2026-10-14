@@ -1399,7 +1399,7 @@ export function GuesthouseDetail() {
 
       <GuesthouseNearbyPanel
         onSelectGuesthouse={(nearbyGuesthouse) =>
-          navigate(`/guesthouses/${nearbyGuesthouse.id}`)
+          navigate(`/guesthouse/${nearbyGuesthouse.id}`)
         }
       />
 

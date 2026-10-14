@@ -816,14 +816,6 @@ export function ProfileModal({
               </div>
             )}
 
-            {/* Error */}
-
-            {profileError && (
-              <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-semibold">
-                {t(profileError)}
-              </div>
-            )}
-
             {/* Full Name */}
 
             <div>
@@ -948,6 +940,12 @@ export function ProfileModal({
         ====================================================== */}
 
         <div className="shrink-0 border-t border-stone-200 bg-stone-50 px-6 py-5 sm:px-8">
+
+          {profileError && (
+            <div role="alert" aria-live="assertive" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {t(profileError)}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3">
 

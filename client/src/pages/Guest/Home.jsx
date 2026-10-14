@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiService } from "../../services/api.js";
 import { useLanguage } from "../../context/LanguageContext.jsx";
-import GuesthouseNearbyPanel from "../../components/guest/NearbyGuesthouses.jsx";
 import {
   MapPin,
   ShieldCheck,
@@ -890,12 +889,6 @@ export function Home() {
         >
           <ChevronDown className="h-7 w-7 animate-bounce" />
         </button>
-      </section>
-
-      <section className="bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <GuesthouseNearbyPanel onSelectGuesthouse={handleViewAndBook} />
-        </div>
       </section>
 
       {/* ======================================================

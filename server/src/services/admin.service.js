@@ -161,7 +161,13 @@ export const getAllGuesthousesForAdmin = async () => {
           createdAt: true,
         },
       },
-      rooms: true,
+      rooms: {
+        include: {
+          images: {
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+      },
     },
   });
 };

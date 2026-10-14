@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Building2,
 } from "lucide-react";
+import GuesthouseNearbyPanel from "../../components/guest/NearbyGuesthouses.jsx";
 
 const DEFAULT_MAX_PRICE = 15000;
 
@@ -306,6 +307,8 @@ export function PublicSearch() {
 
          
         </form>
+
+        <GuesthouseNearbyPanel />
 
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>

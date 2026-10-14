@@ -1623,6 +1623,120 @@ function QuickAction({
 // GUESTHOUSE PAGE
 // ============================================================
 
+function adminMediaUrl(value) {
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const path = value.startsWith('/') ? value : `/${value}`;
+  const apiUrl = getApiUrl();
+
+  if (/^https?:\/\//i.test(apiUrl)) {
+    return `${apiUrl.replace(/\/api\/?$/, '')}${path}`;
+  }
+
+  return path;
+}
+
+function AdminGuesthouseMedia({ guesthouse, t }) {
+  const guesthousePhotos = Array.from(
+    new Set([
+      guesthouse.image,
+      ...(guesthouse.photos || []),
+      ...(guesthouse.images || []),
+    ].filter(Boolean))
+  );
+  const rooms = Array.isArray(guesthouse.rooms) ? guesthouse.rooms : [];
+
+  return (
+    <div className="grid gap-5 md:grid-cols-2">
+      <section className="space-y-2">
+        <h4 className="font-black text-[#073957]">{t('Guesthouse photos')}</h4>
+        {guesthousePhotos.length ? (
+          <div className="flex flex-wrap gap-3">
+            {guesthousePhotos.map((photo, index) => (
+              <a
+                key={`${photo}-${index}`}
+                href={adminMediaUrl(photo)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <img
+                  src={adminMediaUrl(photo)}
+                  alt={t('Guesthouse photo {{count}}', { count: index + 1 })}
+                  className="h-24 w-32 rounded-xl border border-slate-200 object-cover"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">{t('No photos submitted')}</p>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h4 className="font-black text-[#073957]">{t('Guesthouse video')}</h4>
+        {guesthouse.videoUrl ? (
+          <video
+            controls
+            preload="metadata"
+            className="max-h-64 w-full rounded-xl border border-slate-200 bg-black"
+          >
+            <source src={adminMediaUrl(guesthouse.videoUrl)} />
+            {t('Your browser does not support video playback.')}
+          </video>
+        ) : (
+          <p className="text-sm text-slate-500">{t('No video submitted')}</p>
+        )}
+      </section>
+
+      <section className="space-y-3 md:col-span-2">
+        <h4 className="font-black text-[#073957]">{t('Room images')}</h4>
+        {rooms.some((room) => room.images?.length) ? (
+          <div className="space-y-3">
+            {rooms.filter((room) => room.images?.length).map((room) => (
+              <div key={room.id} className="space-y-2">
+                <p className="text-sm font-semibold text-slate-700">
+                  {t('Room')} {room.roomNumber || room.id}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {room.images.map((image, index) => {
+                    const imageUrl = typeof image === 'string'
+                      ? image
+                      : image?.url || image?.imageUrl;
+                    if (!imageUrl) return null;
+
+                    return (
+                      <a
+                        key={`${room.id}-${imageUrl}-${index}`}
+                        href={adminMediaUrl(imageUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={adminMediaUrl(imageUrl)}
+                          alt={t('Room {{room}} image {{count}}', {
+                            room: room.roomNumber || room.id,
+                            count: index + 1,
+                          })}
+                          className="h-24 w-32 rounded-xl border border-slate-200 object-cover"
+                          loading="lazy"
+                        />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">{t('No room images submitted')}</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function GuesthousePage({
   guesthouses,
   search,
@@ -1633,6 +1747,7 @@ function GuesthousePage({
   onToggleActive,
 }) {
   const { t } = useLanguage();
+  const [expandedGuesthouseId, setExpandedGuesthouseId] = useState(null);
 
   return (
     <div className="space-y-5">
@@ -1711,10 +1826,8 @@ function GuesthousePage({
                   const isActive = status === 'approved';
 
                   return (
-                    <tr
-                      key={gh.id}
-                      className="hover:bg-slate-50"
-                    >
+                    <React.Fragment key={gh.id}>
+                    <tr className="hover:bg-slate-50">
 
                       <td className="px-5 py-5">
 
@@ -1780,6 +1893,18 @@ function GuesthousePage({
                       <td className="px-5 py-5">
 
                         <div className="flex justify-end gap-2">
+
+                          <button
+                            type="button"
+                            onClick={() => setExpandedGuesthouseId(
+                              expandedGuesthouseId === gh.id ? null : gh.id
+                            )}
+                            aria-expanded={expandedGuesthouseId === gh.id}
+                            className="px-3 py-2 rounded-lg border border-slate-200 text-[#073957] text-xs font-bold hover:bg-slate-100"
+                          >
+                            <Eye className="mr-1 inline h-3 w-3" />
+                            {t(expandedGuesthouseId === gh.id ? 'Hide media' : 'View media')}
+                          </button>
 
                           {[
                             'pending',
@@ -1851,6 +1976,14 @@ function GuesthousePage({
                       </td>
 
                     </tr>
+                    {expandedGuesthouseId === gh.id && (
+                      <tr>
+                        <td colSpan={5} className="bg-slate-50 px-5 py-5">
+                          <AdminGuesthouseMedia guesthouse={gh} t={t} />
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
 
@@ -1882,22 +2015,7 @@ function PendingPage({
   const [expandedId, setExpandedId] =
     useState(null);
 
-  const fileUrl = (value) => {
-  if (!value) return '';
-
-  // Cloudinary / Unsplash full URLs work as they are
-  if (/^https?:\/\//i.test(value)) return value;
-
-  // Old local paths like /uploads/... -> backend URL
-  const path = value.startsWith('/') ? value : `/${value}`;
-  const apiUrl = getApiUrl();
-
-  if (/^https?:\/\//i.test(apiUrl)) {
-    return `${apiUrl.replace(/\/api\/?$/, '')}${path}`;
-  }
-
-  return path;
-};
+  const fileUrl = adminMediaUrl;
 const openLicense = async (id) => {
   try {
     const url = await ApiService.getGuesthouseLicenseUrl(id);
@@ -2203,54 +2321,8 @@ const openLicense = async (id) => {
 
                         </div>
 
-                        <div className="space-y-2 md:col-span-2">
-
-                          <h4 className="font-black text-[#073957]">
-                            {t('Guesthouse photos')}
-                          </h4>
-
-                          {gh.image ||
-                          gh.photos?.length ||
-                          gh.images?.length ? (
-                            <div className="flex flex-wrap gap-3">
-
-                              {Array.from(
-                                new Set([
-                                  gh.image,
-                                  ...(gh.photos || []),
-                                  ...(gh.images || []),
-                                ].filter(Boolean))
-                              ).map(
-                                (
-                                  photo,
-                                  index
-                                ) => (
-                                  <a
-                                    key={`${photo}-${index}`}
-                                    href={fileUrl(
-                                      photo
-                                    )}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    <img
-                                      src={fileUrl(
-                                        photo
-                                      )}
-                                      alt={t('Guesthouse photo {{count}}', { count: index + 1 })}
-                                      className="w-28 h-20 object-cover rounded-xl border border-slate-200"
-                                    />
-                                  </a>
-                                )
-                              )}
-
-                            </div>
-                          ) : (
-                            <p className="text-slate-500">
-                              {t('No photos submitted')}
-                            </p>
-                          )}
-
+                        <div className="md:col-span-2">
+                          <AdminGuesthouseMedia guesthouse={gh} t={t} />
                         </div>
 
                       </div>
@@ -3561,16 +3633,11 @@ function UpdateProfileModal({
 
         <form
           onSubmit={handleSubmit}
-          className="min-h-0 flex-1 overflow-y-auto p-6"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
 
-          <div className="space-y-4">
-
-          {error && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
-              {t(error)}
-            </div>
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <div className="space-y-4">
 
           <ProfileInput
             label={t('Full Name')}
@@ -3619,7 +3686,17 @@ function UpdateProfileModal({
             </div>
           </div>
 
-            <div className="flex gap-3 pt-3">
+            </div>
+          </div>
+
+          <div className="shrink-0 border-t border-slate-200 bg-white p-6">
+            {error && (
+              <div role="alert" aria-live="assertive" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                {t(error)}
+              </div>
+            )}
+
+            <div className="flex gap-3">
 
             <button
               type="button"
@@ -3640,8 +3717,7 @@ function UpdateProfileModal({
                 : t('Save Changes')}
             </button>
 
-            </div>
-
+          </div>
           </div>
 
         </form>

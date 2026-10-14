@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Building2,
 } from "lucide-react";
+import GuesthouseNearbyPanel from "../../components/guest/NearbyGuesthouses.jsx";
 
 export function Explore() {
   const navigate = useNavigate();
@@ -34,6 +35,12 @@ export function Explore() {
           <p className="mt-6 max-w-3xl text-base leading-8 text-white/80">
             {t('Discover verified guesthouses across Ethiopia and find a comfortable place for your next stay.')}
           </p>
+        </div>
+      </section>
+
+      <section className="bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <GuesthouseNearbyPanel />
         </div>
       </section>
 

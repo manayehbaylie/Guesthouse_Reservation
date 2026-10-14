@@ -154,7 +154,13 @@ export const createGuesthouse = async (data, ownerId) => {
 
     include: {
       owner: true,
-      rooms: true,
+      rooms: {
+        include: {
+          images: {
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+      },
     },
   });
 };
