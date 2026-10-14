@@ -261,6 +261,16 @@ export const startTelegramBot = () => {
 const pollTelegramUpdates = async () => {
   let offset;
   try {
+    await callTelegramApi("setMyCommands", {
+      commands: [
+        { command: "start", description: "Start the guesthouse assistant or link your account" },
+        { command: "help", description: "Show available commands" },
+        { command: "search", description: "Find guesthouses and available rooms" },
+        { command: "reservations", description: "View reservations for your account" },
+        { command: "payments", description: "View your guest payment history" },
+        { command: "unlink", description: "Disconnect your Telegram account" },
+      ],
+    });
     await callTelegramApi("deleteWebhook", { drop_pending_updates: false });
     console.log("Telegram bot polling started.");
   } catch (error) {

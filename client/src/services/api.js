@@ -1568,6 +1568,11 @@ export const ApiService = {
     return unwrap(response);
   },
 
+  async getTelegramBotInfo() {
+    const response = await api.get('/telegram/bot-info');
+    return unwrap(response);
+  },
+
   async createTelegramLinkCode() {
     const response = await api.post('/telegram/link-code');
     return unwrap(response);

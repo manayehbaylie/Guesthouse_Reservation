@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { ApiService } from "../../services/api.js";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import {
   Mail,
@@ -9,6 +10,23 @@ import {
 
 export function Contact() {
   const { t } = useLanguage();
+  const [telegramBotInfo, setTelegramBotInfo] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    ApiService.getTelegramBotInfo()
+      .then((info) => {
+        if (!cancelled) setTelegramBotInfo(info);
+      })
+      .catch(() => {
+        if (!cancelled) setTelegramBotInfo({ configured: false });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#043658] text-white">
       <section className="px-4 py-16 sm:px-6 lg:px-8">
@@ -64,19 +82,28 @@ export function Contact() {
             </a>
 
             <a
-              href="https://t.me/+251924392994"
+              href={telegramBotInfo?.url || undefined}
               target="_blank"
               rel="noreferrer"
-              className="group relative rounded-2xl border border-white/10 bg-white/5 p-5 text-center shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-[#FFC107]/70 hover:bg-white/10 hover:shadow-xl focus-visible:-translate-y-1.5 focus-visible:border-[#FFC107] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107] focus-visible:ring-offset-2 focus-visible:ring-offset-[#043658] motion-reduce:transform-none motion-reduce:transition-none sm:p-6"
+              aria-disabled={!telegramBotInfo?.configured}
+              className={`group relative rounded-2xl border border-white/10 bg-white/5 p-5 text-center shadow-sm backdrop-blur-sm transition-all duration-300 sm:p-6 ${telegramBotInfo?.configured
+                ? 'hover:-translate-y-1.5 hover:border-[#FFC107]/70 hover:bg-white/10 hover:shadow-xl focus-visible:-translate-y-1.5 focus-visible:border-[#FFC107] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC107] focus-visible:ring-offset-2 focus-visible:ring-offset-[#043658]'
+                : 'cursor-not-allowed opacity-60'} motion-reduce:transform-none motion-reduce:transition-none`}
             >
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FFC107]/20 transition-all duration-300 group-hover:scale-110 group-hover:bg-[#FFC107] group-focus-visible:scale-110 group-focus-visible:bg-[#FFC107]">
                 <Send className="h-6 w-6 text-[#FFC107] transition-colors group-hover:text-[#043658] group-focus-visible:text-[#043658]" />
               </div>
               <p className="mt-3 text-sm text-white/60">{t('Telegram')}</p>
               <p className="mt-1 text-sm font-bold text-white transition-colors group-hover:text-[#FFC107] group-focus-visible:text-[#FFC107]">
-                +251 924392994
+                {telegramBotInfo?.username
+                  ? `@${telegramBotInfo.username}`
+                  : t('Telegram bot unavailable')}
               </p>
-              <span className="mt-2 inline-block text-xs font-semibold text-white/50 transition-colors group-hover:text-white/80 group-focus-visible:text-white/80">{t('Message us on Telegram')}</span>
+              <span className="mt-2 inline-block text-xs font-semibold text-white/50 transition-colors group-hover:text-white/80 group-focus-visible:text-white/80">
+                {telegramBotInfo?.configured
+                  ? t('Message us on Telegram')
+                  : t('Phone support is available above')}
+              </span>
             </a>
 
             <a

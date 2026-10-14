@@ -158,6 +158,7 @@ export const getAllGuesthousesForAdmin = async () => {
           email: true,
           phone: true,
           role: true,
+          residentialAddress: true,
           createdAt: true,
         },
       },

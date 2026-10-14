@@ -1638,6 +1638,7 @@ function adminMediaUrl(value) {
 }
 
 function AdminGuesthouseMedia({ guesthouse, t }) {
+  const [failedGuesthousePhotos, setFailedGuesthousePhotos] = useState(() => new Set());
   const guesthousePhotos = Array.from(
     new Set([
       guesthouse.image,
@@ -1645,29 +1646,70 @@ function AdminGuesthouseMedia({ guesthouse, t }) {
       ...(guesthouse.images || []),
     ].filter(Boolean))
   );
+  const visibleGuesthousePhotos = guesthousePhotos
+    .map((photo, index) => ({ photo, index }))
+    .filter(({ photo }) => !failedGuesthousePhotos.has(photo));
   const rooms = Array.isArray(guesthouse.rooms) ? guesthouse.rooms : [];
+  const roomImages = rooms.flatMap((room) =>
+    (Array.isArray(room.images) ? room.images : []).flatMap((image, index) => {
+      const imageUrl = typeof image === 'string'
+        ? image
+        : image?.url || image?.imageUrl;
+
+      return imageUrl ? [{ room, imageUrl, index }] : [];
+    })
+  );
 
   return (
     <div className="grid gap-5 md:grid-cols-2">
       <section className="space-y-2">
         <h4 className="font-black text-[#073957]">{t('Guesthouse photos')}</h4>
-        {guesthousePhotos.length ? (
-          <div className="flex flex-wrap gap-3">
-            {guesthousePhotos.map((photo, index) => (
+        {visibleGuesthousePhotos.length ? (
+          <div className="space-y-3">
+            {visibleGuesthousePhotos[0] && (
               <a
-                key={`${photo}-${index}`}
-                href={adminMediaUrl(photo)}
+                key={`${visibleGuesthousePhotos[0].photo}-${visibleGuesthousePhotos[0].index}`}
+                href={adminMediaUrl(visibleGuesthousePhotos[0].photo)}
                 target="_blank"
                 rel="noreferrer"
+                className="block overflow-hidden rounded-xl border border-slate-200"
               >
                 <img
-                  src={adminMediaUrl(photo)}
-                  alt={t('Guesthouse photo {{count}}', { count: index + 1 })}
-                  className="h-24 w-32 rounded-xl border border-slate-200 object-cover"
+                  src={adminMediaUrl(visibleGuesthousePhotos[0].photo)}
+                  alt={t('Guesthouse photo {{count}}', {
+                    count: visibleGuesthousePhotos[0].index + 1,
+                  })}
+                  className="aspect-video max-h-64 w-full object-cover"
                   loading="lazy"
+                  onError={() => setFailedGuesthousePhotos((current) =>
+                    new Set(current).add(visibleGuesthousePhotos[0].photo)
+                  )}
                 />
               </a>
-            ))}
+            )}
+            {visibleGuesthousePhotos.length > 1 && (
+              <div className="grid grid-cols-3 gap-2">
+                {visibleGuesthousePhotos.slice(1).map(({ photo, index }) => (
+                  <a
+                    key={`${photo}-${index}`}
+                    href={adminMediaUrl(photo)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="overflow-hidden rounded-lg border border-slate-200"
+                  >
+                    <img
+                      src={adminMediaUrl(photo)}
+                      alt={t('Guesthouse photo {{count}}', { count: index + 1 })}
+                      className="aspect-video w-full object-cover"
+                      loading="lazy"
+                      onError={() => setFailedGuesthousePhotos((current) =>
+                        new Set(current).add(photo)
+                      )}
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-slate-500">{t('No photos submitted')}</p>
@@ -1692,41 +1734,29 @@ function AdminGuesthouseMedia({ guesthouse, t }) {
 
       <section className="space-y-3 md:col-span-2">
         <h4 className="font-black text-[#073957]">{t('Room images')}</h4>
-        {rooms.some((room) => room.images?.length) ? (
-          <div className="space-y-3">
-            {rooms.filter((room) => room.images?.length).map((room) => (
-              <div key={room.id} className="space-y-2">
-                <p className="text-sm font-semibold text-slate-700">
+        {roomImages.length ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {roomImages.map(({ room, imageUrl, index }) => (
+              <a
+                key={`${room.id}-${imageUrl}-${index}`}
+                href={adminMediaUrl(imageUrl)}
+                target="_blank"
+                rel="noreferrer"
+                className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+              >
+                <div className="truncate bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700">
                   {t('Room')} {room.roomNumber || room.id}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {room.images.map((image, index) => {
-                    const imageUrl = typeof image === 'string'
-                      ? image
-                      : image?.url || image?.imageUrl;
-                    if (!imageUrl) return null;
-
-                    return (
-                      <a
-                        key={`${room.id}-${imageUrl}-${index}`}
-                        href={adminMediaUrl(imageUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <img
-                          src={adminMediaUrl(imageUrl)}
-                          alt={t('Room {{room}} image {{count}}', {
-                            room: room.roomNumber || room.id,
-                            count: index + 1,
-                          })}
-                          className="h-24 w-32 rounded-xl border border-slate-200 object-cover"
-                          loading="lazy"
-                        />
-                      </a>
-                    );
-                  })}
                 </div>
-              </div>
+                <img
+                  src={adminMediaUrl(imageUrl)}
+                  alt={t('Room {{room}} image {{count}}', {
+                    room: room.roomNumber || room.id,
+                    count: index + 1,
+                  })}
+                  className="aspect-[4/3] w-full object-cover"
+                  loading="lazy"
+                />
+              </a>
             ))}
           </div>
         ) : (
@@ -2149,8 +2179,9 @@ const openLicense = async (id) => {
                           </p>
 
                           <p>
-                            <strong>{t('Address:')}</strong>{' '}
+                            <strong>{t('Residential Address')}:</strong>{' '}
                             {gh.owner?.residentialAddress ||
+                              gh.owner?.address ||
                               'Not provided'}
                           </p>
 
