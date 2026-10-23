@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { api } from "../../services/api.js";
+import { REGISTRATION_ID_TYPES } from "../../../../shared/registration-options.mjs";
 
 import {
   User,
@@ -19,6 +21,20 @@ import {
   BriefcaseBusiness,
   ChevronDown,
 } from "lucide-react";
+
+const isValidGmailAddress = (value) => {
+  if (value !== value.trim() || /\s/.test(value)) return false;
+  const [local, domain, ...extra] = value.split("@");
+  if (extra.length || !domain) return false;
+  const [mailbox, tag, ...invalidTags] = local.split("+");
+  return (
+    invalidTags.length === 0 &&
+    mailbox.length >= 6 && mailbox.length <= 30 &&
+    /^[a-z0-9]+(?:\.[a-z0-9]+)*$/i.test(mailbox) &&
+    (tag === undefined || /^[a-z0-9]+(?:\.[a-z0-9]+)*$/i.test(tag)) &&
+    /^(gmail\.com|googlemail\.com)$/i.test(domain)
+  );
+};
 
 // ============================================================
 // MAIN REGISTER COMPONENT
@@ -56,20 +72,28 @@ export function Register() {
 
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const errorRef = useRef(null);
-  const lastErrorCountRef = useRef(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fieldErrorCount = Object.values(fieldErrors).filter(Boolean).length;
-    const totalErrorCount = fieldErrorCount + (error ? 1 : 0);
+    const value = email.trim();
+    if (!value || !isValidGmailAddress(value)) return undefined;
 
-    if (totalErrorCount > 0 && totalErrorCount > lastErrorCountRef.current) {
-      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        await api.validateRegistrationEmail(value);
+        if (active) setFieldErrors((previous) => ({ ...previous, email: undefined }));
+      } catch (validationError) {
+        const message = validationError?.response?.data?.message || validationError?.message;
+        if (active && message) setFieldErrors((previous) => ({ ...previous, email: t(message) }));
+      }
+    }, 500);
 
-    lastErrorCountRef.current = totalErrorCount;
-  }, [error, fieldErrors]);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [email, t]);
 
   // ==========================================================
   // VALIDATE PERSONAL INFORMATION
@@ -89,12 +113,13 @@ export function Register() {
       return { field: "name", message: t("Full name must be at least 3 characters.") };
     }
 
-    // Email is OPTIONAL
-    if (trimmedEmail) {
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (accountType === "Owner" && !trimmedEmail) {
+      return { field: "email", message: t("Email is required for owner accounts.") };
+    }
 
-      if (!emailPattern.test(trimmedEmail)) {
-        return { field: "email", message: t("Please enter a valid email address.") };
+    if (trimmedEmail) {
+      if (!isValidGmailAddress(trimmedEmail)) {
+        return { field: "email", message: t("Please enter a valid Gmail address.") };
       }
     }
 
@@ -103,10 +128,10 @@ export function Register() {
       return { field: "phone", message: t("Phone number is required.") };
     }
 
-    const phoneDigits = trimmedPhone.replace(/\D/g, "");
-
-    if (phoneDigits.length < 9) {
-      return { field: "phone", message: t("Please enter a valid phone number.") };
+    const phoneDigits = trimmedPhone.replace(/[\s\-()]/g, "");
+    const validPhone = /^(?:\+2519\d{8}|2519\d{8}|09\d{8}|9\d{8})$/.test(phoneDigits);
+    if (!validPhone) {
+      return { field: "phone", message: t("Please enter a valid Ethiopian phone number.") };
     }
 
     return null;
@@ -121,8 +146,8 @@ export function Register() {
       return { field: "password", message: t("Password is required.") };
     }
 
-    if (password.length < 6) {
-      return { field: "password", message: t("Password must be at least 6 characters.") };
+    if (password.length < 8) {
+      return { field: "password", message: t("Password must be at least 8 characters.") };
     }
 
     if (!confirmPassword) {
@@ -300,20 +325,12 @@ export function Register() {
         idType: accountType === "Owner" ? idType : "",
         idNumber: accountType === "Owner" ? idNumber.trim() : "",
         password,
+        confirmPassword,
+        agreedToTerms,
         role,
       };
 
-      console.log(
-        "Submitting registration:",
-        registrationData
-      );
-
-      const newUser = await register(registrationData);
-
-      console.log(
-        "Registration successful:",
-        newUser
-      );
+      await register(registrationData);
 
       // ------------------------------------------------------
       // RESET
@@ -322,26 +339,11 @@ export function Register() {
       resetForm();
 
       // ------------------------------------------------------
-      // SUCCESS MESSAGE
-      // ------------------------------------------------------
-
-      const successMessage =
-        role === "OWNER"
-          ? "Owner account created successfully. Please login to access your owner dashboard."
-          : "Guest account created successfully. Please login to continue.";
-
-      navigate("/login", {
+      navigate(role === "OWNER" ? "/owner" : "/guest/dashboard", {
         replace: true,
-        state: {
-          message: successMessage,
-        },
+        state: { registrationSuccess: true },
       });
     } catch (err) {
-      console.error(
-        "Registration error:",
-        err
-      );
-
       const message =
         err?.response?.data?.message ||
         err?.response?.data?.error?.message ||
@@ -358,6 +360,10 @@ export function Register() {
             ])
           )
         );
+        setError("");
+      } else if (err?.field || err?.response?.data?.field) {
+        const field = err.field || err.response.data.field;
+        setFieldErrors({ [field]: t(message) });
         setError("");
       } else {
         setError(message);
@@ -439,7 +445,11 @@ export function Register() {
                 value={accountType}
                 onChange={(value) => {
                   setAccountType(value);
-                  setFieldErrors((previous) => ({ ...previous, accountType: undefined }));
+                  setFieldErrors((previous) => ({
+                    ...previous,
+                    accountType: undefined,
+                    email: undefined,
+                  }));
                 }}
                 error={fieldErrors.accountType}
                 required
@@ -471,10 +481,14 @@ export function Register() {
                 value={email}
                 onChange={(value) => {
                   setEmail(value);
-                  setFieldErrors((previous) => ({ ...previous, email: undefined }));
+                  const emailFormatError = value.trim() && !isValidGmailAddress(value)
+                    ? t("Please enter a valid Gmail address.")
+                    : undefined;
+                  setFieldErrors((previous) => ({ ...previous, email: emailFormatError }));
                 }}
                 error={fieldErrors.email}
-                placeholder={t('Enter your email address (optional)')}
+                placeholder={accountType === "Owner" ? t('Enter your email address') : t('Enter your email address (optional)')}
+                required={accountType === "Owner"}
                 autoComplete="email"
                 icon={
                   <Mail className="h-4 w-4" />
@@ -537,9 +551,9 @@ export function Register() {
                         className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-11 text-sm text-[#082F49] outline-none transition focus:border-[#D8A000] focus:ring-4 focus:ring-[#E0A800]/10"
                       >
                         <option value="">{t('Select ID type')}</option>
-                        <option value="National ID">{t('National ID')}</option>
-                        <option value="Passport">{t('Passport')}</option>
-                        <option value="Driver License">{t('Driver License')}</option>
+                        {REGISTRATION_ID_TYPES.map((option) => (
+                          <option key={option} value={option}>{t(option)}</option>
+                        ))}
                       </select>
 
 
@@ -573,7 +587,7 @@ export function Register() {
                   setFieldErrors((previous) => ({ ...previous, password: undefined }));
                 }}
                 error={fieldErrors.password}
-                placeholder={t('Minimum 6 characters')}
+                placeholder={t('Minimum 8 characters')}
                 show={showPassword}
                 onToggle={() =>
                   setShowPassword(
@@ -641,7 +655,7 @@ export function Register() {
           </div>
 
           {(error || Object.values(fieldErrors).some(Boolean)) && (
-            <div ref={errorRef}>
+            <div>
               <FieldError>
               {error || Object.values(fieldErrors).find(Boolean)}
               </FieldError>

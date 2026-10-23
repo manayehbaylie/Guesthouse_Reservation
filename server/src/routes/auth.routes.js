@@ -2,15 +2,21 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { recordAuditEvent, recordLoginAttempt } from "../services/security-audit.service.js";
-import { authenticate } from "../middleware/auth.middleware.js";
 import { enforceLoginIpBlock, enforceSystemLockOnLogin } from "../middleware/login-security.middleware.js";
 
 import {
   register,
+  validateRegistrationEmailAddress,
   login,
   forgotPassword,
   resetPassword,
   logout,
+  refresh,
+  resendPasswordReset,
+  verifyResetCode,
+  createTelegramNonce,
+  verifyTelegramIdentity,
+  telegramLogin,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
@@ -42,10 +48,25 @@ const loginRateLimit = rateLimit({
     }).catch((error) => console.error("Failed to record rate-limit audit:", error));
     return res.status(429).json({
       success: false,
-      message: "Too many login attempts. Try again in 15 minutes.",
+      message: "Too many attempts, try again later.",
     });
   },
 });
+const authRateLimit = (limit, windowMs = 15 * 60 * 1000) => rateLimit({
+  windowMs,
+  limit,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({
+    success: false,
+    message: "Too many attempts, try again later.",
+  }),
+});
+const requireFrontendOrigin = (req, res, next) => {
+  const expectedOrigin = new URL(process.env.FRONTEND_URL || "http://localhost:5175").origin;
+  if (req.get("origin") === expectedOrigin) return next();
+  return res.status(403).json({ success: false, message: "Request origin is not allowed." });
+};
 
 /**
  * @swagger
@@ -114,7 +135,8 @@ const loginRateLimit = rateLimit({
  *       409:
  *         description: Email or phone already exists.
  */
-router.post("/register", register);
+router.post("/register", authRateLimit(5, 60 * 60 * 1000), register);
+router.post("/validate-email", authRateLimit(10), validateRegistrationEmailAddress);
 
 /**
  * @swagger
@@ -153,9 +175,20 @@ router.post("/register", register);
  *         description: Invalid request data.
  */
 router.post("/login", enforceSystemLockOnLogin, loginRateLimit, enforceLoginIpBlock, login);
-router.post("/logout", authenticate, logout);
+const telegramNonceRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.post("/telegram-login/nonce", telegramNonceRateLimit, createTelegramNonce);
+router.post("/telegram-login", loginRateLimit, verifyTelegramIdentity, enforceSystemLockOnLogin, enforceLoginIpBlock, telegramLogin);
+router.post("/refresh", authRateLimit(30), requireFrontendOrigin, refresh);
+router.post("/logout", requireFrontendOrigin, logout);
 
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+router.post("/forgot-password", authRateLimit(5), forgotPassword);
+router.post("/forgot-password/resend", authRateLimit(5), resendPasswordReset);
+router.post("/forgot-password/verify", authRateLimit(10), verifyResetCode);
+router.post("/reset-password", authRateLimit(5), resetPassword);
 
 export default router;

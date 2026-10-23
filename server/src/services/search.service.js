@@ -79,10 +79,13 @@ export const buildSearchRoomWhere = ({
 export const buildGuesthouseSearchWhere = (query = {}) => {
   const where = { status: "APPROVED" };
   const { name, location, city, roomType, minPrice, maxPrice, minCapacity } = query;
-  const searchLocation = location || city;
+  const searchName = String(name || "").trim();
+  const searchLocation = [location, city]
+    .map((value) => String(value || "").trim())
+    .find(Boolean);
 
-  if (name) {
-    where.name = { contains: String(name), mode: "insensitive" };
+  if (searchName) {
+    where.name = { contains: searchName, mode: "insensitive" };
   }
 
   if (searchLocation) {

@@ -1,8 +1,31 @@
 import prisma from "../config/prisma.js";
 
-const peerRoleFor = (role) => {
-  if (role === "ADMIN") return "OWNER";
-  if (role === "OWNER") return "ADMIN";
+const peerRolesFor = (role) => {
+  if (role === "ADMIN") return ["OWNER"];
+  if (role === "OWNER") return ["ADMIN", "RECEPTIONIST"];
+  if (role === "RECEPTIONIST") return ["OWNER"];
+  return null;
+};
+
+const contactFilterFor = (user) => {
+  if (user.role === "ADMIN") return { role: "OWNER" };
+  if (user.role === "OWNER") {
+    return {
+      OR: [
+        { role: "ADMIN" },
+        {
+          role: "RECEPTIONIST",
+          staffAssignments: { some: { guesthouse: { ownerId: user.id } } },
+        },
+      ],
+    };
+  }
+  if (user.role === "RECEPTIONIST") {
+    return {
+      role: "OWNER",
+      guesthouses: { some: { staffAssignments: { some: { staffId: user.id } } } },
+    };
+  }
   return null;
 };
 
@@ -14,13 +37,31 @@ const publicUser = {
 };
 
 export const getCommunicationContacts = async (user) => {
-  const peerRole = peerRoleFor(user.role);
-  if (!peerRole) return [];
+  const peerRoles = peerRolesFor(user.role);
+  const where = contactFilterFor(user);
+  if (!peerRoles || !where) return [];
+
+  const propertySelection = user.role === "OWNER"
+    ? {
+      staffAssignments: {
+        where: { guesthouse: { ownerId: user.id } },
+        select: { guesthouse: { select: { id: true, name: true } } },
+      },
+    }
+    : user.role === "RECEPTIONIST"
+      ? {
+        guesthouses: {
+          where: { staffAssignments: { some: { staffId: user.id } } },
+          select: { id: true, name: true },
+        },
+      }
+      : {};
 
   return prisma.user.findMany({
-    where: { role: peerRole },
+    where,
     select: {
       ...publicUser,
+      ...propertySelection,
       communicationsSent: {
         where: { recipientId: user.id },
         orderBy: { createdAt: "desc" },
@@ -48,12 +89,16 @@ export const getCommunicationContacts = async (user) => {
       ...contact.communicationsReceived,
     ].sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))[0] || null;
     const unreadCount = contact._count.communicationsSent;
+    const guesthouses = user.role === "OWNER"
+      ? contact.staffAssignments.map((assignment) => assignment.guesthouse)
+      : contact.guesthouses || [];
 
     return {
       id: contact.id,
       fullName: contact.fullName,
       email: contact.email,
       role: contact.role,
+      guesthouses,
       latestMessage,
       unreadCount,
     };
@@ -61,15 +106,15 @@ export const getCommunicationContacts = async (user) => {
 };
 
 const assertPeer = async (user, peerId) => {
-  const peerRole = peerRoleFor(user.role);
-  if (!peerRole) {
-    const error = new Error("Only administrators and owners can use communication.");
+  const peerRoles = peerRolesFor(user.role);
+  if (!peerRoles) {
+    const error = new Error("This account cannot use communication.");
     error.statusCode = 403;
     throw error;
   }
 
   const peer = await prisma.user.findFirst({
-    where: { id: Number(peerId), role: peerRole },
+    where: { id: Number(peerId), role: { in: peerRoles } },
     select: publicUser,
   });
   if (!peer) {
@@ -77,6 +122,24 @@ const assertPeer = async (user, peerId) => {
     error.statusCode = 404;
     throw error;
   }
+
+  const isOwnerReceptionistPair =
+    (user.role === "OWNER" && peer.role === "RECEPTIONIST") ||
+    (user.role === "RECEPTIONIST" && peer.role === "OWNER");
+  if (isOwnerReceptionistPair) {
+    const ownerId = user.role === "OWNER" ? user.id : peer.id;
+    const staffId = user.role === "OWNER" ? peer.id : user.id;
+    const assignment = await prisma.staffAssignment.findFirst({
+      where: { staffId, guesthouse: { ownerId } },
+      select: { id: true },
+    });
+    if (!assignment) {
+      const error = new Error("You can only communicate with owners and receptionists connected to your guesthouse.");
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
   return peer;
 };
 
@@ -125,8 +188,9 @@ export const sendCommunicationMessage = async (user, peerId, content) => {
 };
 
 const findOwnedMessage = async (user, messageId) => {
-  if (!peerRoleFor(user.role)) {
-    const error = new Error("Only administrators and owners can use communication.");
+  const peerRoles = peerRolesFor(user.role);
+  if (!peerRoles) {
+    const error = new Error("This account cannot use communication.");
     error.statusCode = 403;
     throw error;
   }
@@ -136,7 +200,7 @@ const findOwnedMessage = async (user, messageId) => {
       id: Number(messageId),
       senderId: user.id,
       sender: { role: user.role },
-      recipient: { role: peerRoleFor(user.role) },
+      recipient: { role: { in: peerRoles } },
     },
   });
   if (!message) {
@@ -144,6 +208,7 @@ const findOwnedMessage = async (user, messageId) => {
     error.statusCode = 404;
     throw error;
   }
+  await assertPeer(user, message.recipientId);
   return message;
 };
 

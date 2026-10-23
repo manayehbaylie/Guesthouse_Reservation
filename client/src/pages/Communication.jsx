@@ -14,10 +14,36 @@ const formatTime = (date) => new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 }).format(new Date(date));
 
+function ContactPreview({ contact, t }) {
+  return (
+    <span className="flex items-start justify-between gap-3">
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-bold text-stone-900">{displayName(contact)}</span>
+        <span className="mt-0.5 block truncate text-xs text-stone-500">
+          {contact.guesthouses?.length
+            ? contact.guesthouses.map((guesthouse) => guesthouse.name).join(', ')
+            : [contact.email, t(contact.role)].filter(Boolean).join(' • ')}
+        </span>
+        <span className="mt-1 block truncate text-xs text-stone-600">{contact.latestMessage?.content || t('Start a conversation')}</span>
+      </span>
+      {contact.unreadCount > 0 && (
+        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-emerald-700 px-1.5 text-[10px] font-bold text-white">
+          {contact.unreadCount}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function Communication() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const role = String(user?.role || '').toUpperCase();
+  const isAdmin = role === 'ADMIN';
+  const isOwner = role === 'OWNER';
+  const isReceptionist = role === 'RECEPTIONIST';
+  const [contactGroup, setContactGroup] = useState('ALL');
   const [contacts, setContacts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -36,11 +62,20 @@ export function Communication() {
   const selectedContact = contacts.find((contact) => contact.id === selectedId);
   const visibleContacts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return contacts;
-    return contacts.filter((contact) =>
-      `${displayName(contact)} ${contact.email || ''}`.toLowerCase().includes(query)
-    );
-  }, [contacts, search]);
+    return contacts.filter((contact) => {
+      const matchesGroup = contactGroup === 'ALL' || contact.role === contactGroup;
+      const matchesQuery = !query ||
+        `${displayName(contact)} ${contact.email || ''} ${(contact.guesthouses || []).map((guesthouse) => guesthouse.name).join(' ')}`.toLowerCase().includes(query);
+      return matchesGroup && matchesQuery;
+    });
+  }, [contacts, contactGroup, search]);
+
+  const handleContactGroupChange = (groupId) => {
+    setContactGroup(groupId);
+    if (groupId === 'ALL' || selectedContact?.role === groupId) return;
+    const firstContact = contacts.find((contact) => contact.role === groupId);
+    setSelectedId(firstContact?.id || null);
+  };
 
   const loadContacts = async () => {
     try {
@@ -165,16 +200,20 @@ export function Communication() {
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase text-amber-700">
               <MessageSquare className="h-4 w-4" />
-              {t(user?.role === 'ADMIN' ? 'Administrator workspace' : 'Owner workspace')}
+              {t(isAdmin ? 'Administrator workspace' : isReceptionist ? 'Receptionist workspace' : 'Owner workspace')}
             </div>
             <h1 className="text-2xl font-black text-stone-900">{t('Communication')}</h1>
             <p className="mt-1 text-sm text-stone-600">
-              {t(user?.role === 'ADMIN' ? 'Private conversations with guesthouse owners' : 'Private conversations with platform administrators')}
+              {t(isAdmin
+                ? 'Private conversations with guesthouse owners'
+                : isReceptionist
+                  ? 'Private conversations with your guesthouse owner'
+                  : 'Private conversations with your assigned receptionists and platform administrators')}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => navigate(user?.role === 'ADMIN' ? '/admin' : '/owner')}
+            onClick={() => navigate(isAdmin ? '/admin' : isReceptionist ? '/receptionist' : '/owner')}
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -191,7 +230,32 @@ export function Communication() {
         <section className="grid min-h-[min(720px,calc(100vh-190px))] overflow-hidden rounded-xl border border-stone-300 bg-white shadow-sm lg:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="flex max-h-64 flex-col border-b border-stone-200 bg-stone-50 lg:max-h-none lg:border-b-0 lg:border-r">
             <div className="border-b border-stone-200 px-4 py-4">
-              <h2 className="text-sm font-bold text-stone-900">{t(user?.role === 'ADMIN' ? 'Owners' : 'Administrators')}</h2>
+              <h2 className="text-sm font-bold text-stone-900">
+                {isAdmin ? t('Owner conversations') : isReceptionist ? t('Your owner') : t('Your conversations')}
+              </h2>
+              {isOwner && (
+                <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-stone-200 p-1" aria-label={t('Filter conversations')}>
+                  {[
+                    { id: 'ALL', label: 'All' },
+                    { id: 'RECEPTIONIST', label: 'Receptionists' },
+                    { id: 'ADMIN', label: 'Platform admin' },
+                  ].map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      aria-pressed={contactGroup === group.id}
+                      onClick={() => handleContactGroupChange(group.id)}
+                      className={`rounded-md px-2 py-2 text-xs font-semibold transition-colors ${
+                        contactGroup === group.id
+                          ? 'bg-white text-stone-900 shadow-sm'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      {t(group.label)}
+                    </button>
+                  ))}
+                </div>
+              )}
               <label className="mt-3 flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2">
                 <Search className="h-4 w-4 shrink-0 text-stone-500" />
                 <input
@@ -207,29 +271,53 @@ export function Communication() {
                 <div className="flex items-center gap-2 px-4 py-6 text-sm text-stone-500">
                   <LoaderCircle className="h-4 w-4 animate-spin" /> {t('Loading contacts...')}
                 </div>
-              ) : visibleContacts.length ? visibleContacts.map((contact) => (
-                <button
-                  type="button"
-                  key={contact.id}
-                  onClick={() => setSelectedId(contact.id)}
-                  className={`w-full border-b border-stone-200 px-4 py-3 text-left transition-colors ${selectedId === contact.id ? 'bg-amber-50' : 'hover:bg-white'}`}
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold text-stone-900">{displayName(contact)}</span>
-                      <span className="mt-0.5 block truncate text-xs text-stone-500">{contact.email || t(contact.role)}</span>
-                      <span className="mt-1 block truncate text-xs text-stone-600">{contact.latestMessage?.content || t('Start a conversation')}</span>
-                    </span>
-                    {contact.unreadCount > 0 && (
-                      <span className="grid h-5 min-w-5 place-items-center rounded-full bg-emerald-700 px-1.5 text-[10px] font-bold text-white">
-                        {contact.unreadCount}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              )) : (
+              ) : visibleContacts.length ? (
+                <>
+                  {isOwner && contactGroup === 'ALL' && ['RECEPTIONIST', 'ADMIN'].map((groupRole) => {
+                    const groupContacts = visibleContacts.filter((contact) => contact.role === groupRole);
+                    if (!groupContacts.length) return null;
+                    return (
+                      <div key={groupRole}>
+                        <h3 className="sticky top-0 border-b border-stone-200 bg-stone-100 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-stone-500">
+                          {t(groupRole === 'ADMIN' ? 'Platform administrators' : 'Your receptionists')}
+                        </h3>
+                        {groupContacts.map((contact) => (
+                          <button
+                            type="button"
+                            key={contact.id}
+                            onClick={() => setSelectedId(contact.id)}
+                            className={`w-full border-b border-stone-200 px-4 py-3 text-left transition-colors ${selectedId === contact.id ? 'bg-amber-50' : 'hover:bg-white'}`}
+                          >
+                            <ContactPreview contact={contact} t={t} />
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
+                  {(isOwner && contactGroup === 'ALL' ? [] : visibleContacts).map((contact) => (
+                    <button
+                      type="button"
+                      key={contact.id}
+                      onClick={() => setSelectedId(contact.id)}
+                      className={`w-full border-b border-stone-200 px-4 py-3 text-left transition-colors ${selectedId === contact.id ? 'bg-amber-50' : 'hover:bg-white'}`}
+                    >
+                      <ContactPreview contact={contact} t={t} />
+                    </button>
+                  ))}
+                </>
+              ) : (
                 <p className="px-4 py-6 text-sm text-stone-500">
-                  {contacts.length ? t('No matching contacts.') : t(user?.role === 'ADMIN' ? 'No owners are available yet.' : 'No administrators are available yet.')}
+                  {contacts.length && !(isOwner && contactGroup !== 'ALL')
+                    ? t('No matching contacts.')
+                    : isOwner && contactGroup === 'ADMIN'
+                      ? t('No platform administrators found.')
+                      : isOwner && contactGroup === 'RECEPTIONIST'
+                        ? t('No receptionists are assigned to your guesthouse yet.')
+                        : t(isAdmin
+                    ? 'No owners are available yet.'
+                    : isReceptionist
+                      ? 'No owner is assigned to your guesthouse yet.'
+                      : 'No receptionists are assigned to your guesthouse yet.')}
                 </p>
               )}
             </div>
@@ -253,7 +341,7 @@ export function Communication() {
                       <LoaderCircle className="h-4 w-4 animate-spin" /> {t('Loading conversation...')}
                     </div>
                   ) : messages.length ? messages.map((message) => {
-                    const isMine = message.senderId === user?.id;
+                    const isMine = String(message.senderId) === String(user?.id);
                     return (
                       <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[min(90%,560px)] rounded-2xl px-4 py-3 shadow-sm ${isMine ? 'rounded-br-md bg-[#164e63] text-white' : 'rounded-bl-md border border-stone-200 bg-white text-stone-900'}`}>
@@ -359,7 +447,7 @@ export function Communication() {
               <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-stone-500">
                 <MessageSquare className="mb-3 h-9 w-9 text-stone-300" />
                 <p className="font-semibold text-stone-700">{t('Choose a contact')}</p>
-                <p className="mt-1 text-sm">{t('Select an owner or administrator to view the conversation.')}</p>
+                <p className="mt-1 text-sm">{t(`Select ${isAdmin ? 'an owner' : isReceptionist ? 'your owner' : 'a receptionist'} to view the conversation.`)}</p>
               </div>
             )}
           </div>

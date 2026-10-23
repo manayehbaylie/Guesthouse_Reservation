@@ -11,8 +11,10 @@ model User {
   id                    Int       @id @default(autoincrement())
   fullName              String
   email                 String?   @unique
+  normalizedEmail       String?   @unique
   password              String
   phone                 String    @unique
+  normalizedPhone       String?   @unique
   role                  Role
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -22,6 +24,9 @@ model User {
   telegramChatId        String?   @unique
   telegramLinkCodeHash  String?   @unique
   telegramLinkExpiresAt DateTime?
+  language              String?
+  termsAcceptedAt       DateTime?
+  privacyPolicyAcceptedAt DateTime?
 
   guesthouses      Guesthouse[]      @relation("OwnerGuesthouses")
   notifications    Notification[]
@@ -33,7 +38,11 @@ model User {
   auditLogs              AuditLog[]
   systemLocks            SystemLock[] @relation("SystemLockActor")
   activeSessions         ActiveSession[]
+  refreshTokens          RefreshToken[]
+  passwordResetCodes     PasswordResetCode[]
   blockedIpEntries       BlockedIp[]   @relation("BlockedIpActor")
+  telegramAccount        TelegramAccount?
+  bookingDrafts          BookingDraft[]
 }
 
 model Guesthouse {
@@ -84,6 +93,7 @@ model Room {
   maintenanceStatus RoomMaintenanceStatus @default(AVAILABLE)
 
   reservations Reservation[]
+  bookingDrafts BookingDraft[]
   images       RoomImage[]
   guesthouse   Guesthouse    @relation(fields: [guesthouseId], references: [id])
 
@@ -108,6 +118,7 @@ model Reservation {
   id        Int               @id @default(autoincrement())
   checkIn   DateTime
   checkOut  DateTime
+  numberOfGuests Int         @default(1)
   status    ReservationStatus
   guestId   Int
   roomId    Int
@@ -129,14 +140,43 @@ model Payment {
   amount        Float
   method        PaymentMethod
   status        PaymentStatus
-  reservationId Int           @unique
+  reservationId Int?          @unique
+  bookingDraftId Int?         @unique
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   accountNumber String?
+  telegramNotifiedAt DateTime? @map("telegram_notified_at")
+  chapaTxRef    String?       @unique
 
-  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  bookingDraft BookingDraft? @relation(fields: [bookingDraftId], references: [id], onDelete: SetNull)
 
   @@index([status])
+}
+
+model BookingDraft {
+  id        Int               @id @default(autoincrement())
+  userId    Int
+  roomId    Int
+  checkIn   DateTime
+  checkOut  DateTime
+  guests    Int
+  amount    Float
+  txRef     String            @unique
+  method    PaymentMethod?
+  status    BookingDraftStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room    Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  payment Payment?
+
+  @@index([userId, status])
+  @@index([roomId, checkIn, checkOut])
+  @@index([status, expiresAt])
+  @@map("booking_drafts")
 }
 
 model Notification {
@@ -158,6 +198,28 @@ model Notification {
   @@index([guesthouseId])
   @@index([type])
   @@index([category])
+}
+
+model TelegramConversation {
+  chatId    String   @id @map("chat_id")
+  state     Json
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("telegram_conversations")
+}
+
+model TelegramAccount {
+  telegramId String   @id @map("telegram_id")
+  userId     Int      @unique @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_accounts")
 }
 
 model CommunicationMessage {
@@ -210,6 +272,7 @@ model LoginAttempt {
 
   @@index([email, createdAt])
   @@index([success, createdAt])
+  @@index([identifier, ipAddress, success, createdAt])
   @@map("login_attempts")
 }
 
@@ -253,6 +316,41 @@ model ActiveSession {
   @@index([userId, revokedAt, expiresAt])
   @@index([lastActivity])
   @@map("active_sessions")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    Int
+  accessTokenId String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetCode {
+  id              String    @id @default(uuid())
+  challengeId     String    @unique
+  userId          Int
+  deliveryMethod  String    @default("email")
+  codeHash        String
+  attempts        Int       @default(0)
+  expiresAt       DateTime
+  resendAvailableAt DateTime
+  verifiedAt      DateTime?
+  resetTokenHash  String?   @unique
+  consumedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consumedAt, expiresAt])
+  @@map("password_reset_codes")
 }
 
 model BlockedIp {
@@ -342,11 +440,24 @@ enum PaymentStatus {
   PENDING
   PAID
   FAILED
+  REFUND_REQUIRED
+}
+
+enum BookingDraftStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  FAILED
+  REFUND_REQUIRED
 }
 
 enum PaymentMethod {
   TELEBIRR
+  CBE_BIRR
+  EBIRR
+  MPESA
   BANK_TRANSFER
+  BANK_CARD
   CARD
   CHAPA
 }

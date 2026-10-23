@@ -17,6 +17,8 @@ import {
   Printer,
   AlertCircle,
   Menu,
+  MessageSquare,
+  User,
 } from 'lucide-react';
 
 export function ReceptionistDashboard() {
@@ -549,6 +551,32 @@ export function ReceptionistDashboard() {
                 {rooms.length} {t('rooms')}
               </div>
             </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSidebarOpen(false);
+              navigate('/communication');
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-stone-300 bg-stone-800/50 border-2 border-stone-700 transition-all duration-200 hover:bg-stone-800 hover:text-white hover:border-amber-500/50"
+          >
+            <MessageSquare className="w-5 h-5 text-stone-400" />
+            <div className="flex-1 text-left">
+              <div className="font-bold">{t('Owner Messages')}</div>
+              <div className="text-xs text-stone-400">{t('Private owner channel')}</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSidebarOpen(false);
+              navigate('/profile');
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-stone-300 bg-stone-800/50 border-2 border-stone-700 transition-all duration-200 hover:bg-stone-800 hover:text-white hover:border-amber-500/50"
+          >
+            <User className="w-5 h-5 text-stone-400" />
+            <span>{t('Profile / Telegram')}</span>
           </button>
         </nav>
 

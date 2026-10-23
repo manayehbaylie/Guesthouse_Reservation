@@ -158,13 +158,13 @@ export const createNotification = async ({
 
     if (["reservation", "payment"].includes(notification.category)) {
       try {
-        const user = await prisma.user.findUnique({
-          where: { id: uid },
-          select: { telegramChatId: true },
+        const account = await prisma.telegramAccount.findUnique({
+          where: { userId: uid },
+          select: { telegramId: true },
         });
-        if (user?.telegramChatId) {
+        if (account?.telegramId) {
           await sendTelegramMessage(
-            user.telegramChatId,
+            account.telegramId,
             `${notification.title}\n\n${notification.message}`
           );
         }

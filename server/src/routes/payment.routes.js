@@ -8,6 +8,7 @@ import {
   initiate,
   getHistory,
     chapaCallback,
+    chapaWebhook,
     chapaStatus,
 } from "../controllers/payment.controller.js";
 
@@ -54,6 +55,7 @@ router.post(
 
 router.get("/chapa/callback", chapaCallback);
 router.post("/chapa/callback", chapaCallback);
+router.post("/chapa/webhook", chapaWebhook);
 router.get("/chapa/status", authenticate, chapaStatus);
 
 

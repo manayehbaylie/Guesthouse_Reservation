@@ -4,7 +4,7 @@ export const errorHandler = (
   res,
   next
 ) => {
-  console.error(err);
+  console.error("API request failed:", err?.name || "Error", err?.code || "");
 
   const message = err.message || "Something went wrong";
   const isDbConnectionError =
@@ -23,10 +23,11 @@ export const errorHandler = (
 
   // Handle Zod validation errors
   if (err.name === 'ZodError') {
+  const errors = Object.fromEntries((err.issues || []).map((issue) => [issue.path?.[0] || 'form', issue.message]));
   return res.status(400).json({
     success: false,
     message: err.issues?.[0]?.message || 'Validation error',
-    errors: err.issues || [],
+    errors,
   });
 }
   // Handle JWT errors
@@ -49,14 +50,15 @@ export const errorHandler = (
     const fields = Array.isArray(err.meta?.target)
       ? err.meta.target
       : [];
-    const message = fields.includes('phone')
-      ? 'This phone number is already in use.'
-      : fields.includes('email')
-        ? 'This email address is already in use.'
+    const message = fields.includes('phone') || fields.includes('normalizedPhone')
+      ? 'This phone number is already registered.'
+      : fields.includes('email') || fields.includes('normalizedEmail')
+        ? 'This email is already registered.'
         : 'A record with this information already exists';
 
     return res.status(409).json({
       success: false,
+      field: fields.includes('phone') || fields.includes('normalizedPhone') ? 'phone' : 'email',
       message,
     });
   }
@@ -70,6 +72,7 @@ export const errorHandler = (
       systemLocked: true,
       lockMessage: err.systemLockMessage || "",
     } : {}),
+    ...(err.field ? { field: err.field } : {}),
     message: err.message || 'Something went wrong',
   });
 };

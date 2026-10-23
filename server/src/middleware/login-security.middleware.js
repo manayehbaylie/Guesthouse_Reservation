@@ -10,17 +10,24 @@ const normalizePhone = (value) => {
   return phone;
 };
 
-const findLoginUser = ({ email, phone }) => email
-  ? prisma.user.findUnique({
+const findLoginUser = async ({ email, phone, telegramId }) => {
+  if (email) return prisma.user.findUnique({
     where: { email: String(email).trim().toLowerCase() },
     select: { id: true, fullName: true, email: true, role: true },
-  })
-  : phone
-    ? prisma.user.findUnique({
-      where: { phone: normalizePhone(phone) },
-      select: { id: true, fullName: true, email: true, role: true },
-    })
-    : null;
+  });
+  if (phone) return prisma.user.findUnique({
+    where: { phone: normalizePhone(phone) },
+    select: { id: true, fullName: true, email: true, role: true },
+  });
+  if (telegramId) {
+    const account = await prisma.telegramAccount.findUnique({
+      where: { telegramId: String(telegramId) },
+      select: { user: { select: { id: true, fullName: true, email: true, role: true } } },
+    });
+    return account?.user || null;
+  }
+  return null;
+};
 
 export const enforceSystemLockOnLogin = async (req, res, next) => {
   try {
@@ -28,7 +35,7 @@ export const enforceSystemLockOnLogin = async (req, res, next) => {
     if (!lockState.systemLocked) return next();
 
     const { email, phone } = req.body || {};
-    const user = await findLoginUser({ email, phone });
+    const user = await findLoginUser({ email, phone, telegramId: req.telegramClaims?.id });
 
     if (!user || user.role === "ADMIN") return next();
 
@@ -71,7 +78,7 @@ export const enforceLoginIpBlock = async (req, res, next) => {
     if (!(await isIpBlocked(req.ip))) return next();
 
     const { email, phone } = req.body || {};
-    const user = await findLoginUser({ email, phone });
+    const user = await findLoginUser({ email, phone, telegramId: req.telegramClaims?.id });
     if (user?.role === "ADMIN") return next();
 
     const attempt = await recordLoginAttempt({

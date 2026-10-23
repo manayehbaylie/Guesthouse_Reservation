@@ -18,4 +18,5 @@ export const reservationSchema = z.object({
     }),
 
   roomId: z.number().int().positive(),
+  numberOfGuests: z.number().int().positive().optional(),
 });

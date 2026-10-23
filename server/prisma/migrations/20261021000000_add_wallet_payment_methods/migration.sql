@@ -1,0 +1,4 @@
+ALTER TYPE "PaymentMethod" ADD VALUE 'CBE_BIRR';
+ALTER TYPE "PaymentMethod" ADD VALUE 'EBIRR';
+ALTER TYPE "PaymentMethod" ADD VALUE 'MPESA';
+ALTER TYPE "PaymentMethod" ADD VALUE 'BANK_CARD';

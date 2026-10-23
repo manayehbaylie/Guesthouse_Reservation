@@ -9,6 +9,18 @@ import { getSystemSettings } from "./system-settings.service.js";
 // CREATE RESERVATION
 // ============================================================
 
+export const notifyReservationOwner = async (reservation) => {
+  const guesthouse = reservation.room?.guesthouse;
+  if (!guesthouse?.ownerId) return;
+  await createNotification({
+    title: "New Reservation",
+    message: `${reservation.guest?.fullName || "A guest"} requested ${reservation.room.roomType} at ${guesthouse.name}, ${guesthouse.city} for ${reservation.checkIn.toISOString().slice(0, 10)} to ${reservation.checkOut.toISOString().slice(0, 10)}.`,
+    userId: guesthouse.ownerId,
+    guesthouseId: guesthouse.id,
+    category: "reservation",
+  });
+};
+
 export const createReservation = async (data, guestId) => {
   const settings = await getSystemSettings();
   if (!settings.guestBookingEnabled) {
@@ -44,6 +56,7 @@ export const createReservation = async (data, guestId) => {
   }
 
   const reservation = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id" = ${roomId} FOR UPDATE`;
     const room = await tx.room.findUnique({
       where: {
         id: roomId,
@@ -69,10 +82,19 @@ export const createReservation = async (data, guestId) => {
       );
     }
 
+    if (!room.available) {
+      throw new Error("This room is not available for reservations.");
+    }
+
     if (room.maintenanceStatus !== "AVAILABLE") {
       throw new Error(
         "This room is currently unavailable for maintenance."
       );
+    }
+
+    const numberOfGuests = Number(data.numberOfGuests || 1);
+    if (!Number.isInteger(numberOfGuests) || numberOfGuests < 1 || numberOfGuests > room.capacity) {
+      throw new Error(`Number of guests must be between 1 and ${room.capacity}.`);
     }
 
     const overlappingReservation = await tx.reservation.findFirst({
@@ -89,6 +111,7 @@ export const createReservation = async (data, guestId) => {
       data: {
         checkIn,
         checkOut,
+        numberOfGuests,
         status: "PENDING",
         guestId: Number(guestId),
         roomId,
@@ -114,6 +137,14 @@ export const createReservation = async (data, guestId) => {
             available: true,
             maintenanceStatus: true,
             guesthouseId: true,
+            guesthouse: {
+              select: {
+                id: true,
+                name: true,
+                city: true,
+                ownerId: true,
+              },
+            },
           },
         },
 
@@ -121,6 +152,8 @@ export const createReservation = async (data, guestId) => {
       },
     });
   });
+
+  await notifyReservationOwner(reservation);
 
   return reservation;
 };

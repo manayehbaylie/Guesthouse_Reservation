@@ -23,19 +23,16 @@ export function AuthProvider({ children }) {
 
     const initAuth = async () => {
       try {
-        // Check if user is already logged in (from localStorage)
-        const currentUser = ApiService.getCurrentUser();
+        const currentUser = await ApiService.refreshSession();
         
         if (mounted) {
           setUser(currentUser || null);
           setAuthError(null);
         }
-      } catch (error) {
-        console.error("Auth initialization failed:", error);
-        
+      } catch {
         if (mounted) {
           setUser(null);
-          setAuthError(error.message);
+          setAuthError(null);
         }
       } finally {
         if (mounted) {
@@ -81,7 +78,6 @@ export function AuthProvider({ children }) {
 
   const login = async (identifier, password, loginMethod = 'email') => {
     setAuthError(null);
-    setLoading(true);
 
     try {
       if (!identifier || !password) {
@@ -113,11 +109,8 @@ export function AuthProvider({ children }) {
       return loggedUser;
 
     } catch (error) {
-      console.error("Login error:", error);
       setAuthError(error.message || "Login failed. Please try again.");
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -127,7 +120,6 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     setAuthError(null);
-    setLoading(true);
 
     try {
       if (!userData) {
@@ -158,11 +150,8 @@ export function AuthProvider({ children }) {
       return result;
 
     } catch (error) {
-      console.error("Registration error:", error);
       setAuthError(error.message || "Registration failed. Please try again.");
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -170,9 +159,9 @@ export function AuthProvider({ children }) {
   // LOGOUT
   // ============================================================
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      ApiService.logoutUser();
+      await ApiService.logoutUser();
       setUser(null);
       setAuthError(null);
       
@@ -180,7 +169,7 @@ export function AuthProvider({ children }) {
       window.dispatchEvent(new CustomEvent("auth-logout"));
       
     } catch (error) {
-      console.error("Logout error:", error);
+      setAuthError(error.message || "Logout failed.");
     }
   };
 

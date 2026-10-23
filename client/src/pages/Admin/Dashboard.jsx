@@ -799,6 +799,7 @@ export default function AdminDashboard() {
           activePage={activePage}
           onPageChange={handlePageChange}
           onOpenCommunication={() => navigate('/communication')}
+          onOpenProfile={() => navigate('/profile')}
           mobileOpen={mobileSidebarOpen}
           user={user}
           onLogout={handleLogout}
@@ -1094,6 +1095,7 @@ function AdminSidebar({
   activePage,
   onPageChange,
   onOpenCommunication,
+  onOpenProfile,
   mobileOpen,
   user,
   onLogout,
@@ -1105,7 +1107,7 @@ function AdminSidebar({
     { id: 'guesthouses', label: 'Guesthouses', icon: Building2 },
     { id: 'pending', label: 'Pending Verification', icon: Clock3 },
     { id: 'owners', label: 'Manage Owners', icon: UserCog },
-    { id: 'communication', label: 'Communication', icon: MessageSquare },
+    { id: 'communication', label: 'Owner Messages', icon: MessageSquare },
     { id: 'commission', label: 'Commission', icon: Percent },
     { id: 'settings', label: 'System Settings', icon: Settings },
     { id: 'backup', label: 'System Backup', icon: DatabaseBackup },
@@ -1163,6 +1165,15 @@ function AdminSidebar({
           );
         })}
       </nav>
+
+      <button
+        type="button"
+        onClick={onOpenProfile}
+        className="w-full flex items-center gap-3 rounded-xl px-3.5 py-3 text-left text-xs font-bold text-stone-300 transition-all hover:bg-stone-900 hover:text-white"
+      >
+        <Settings className="h-4 w-4" />
+        <span>{t('Profile / Telegram')}</span>
+      </button>
 
       <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 overflow-hidden">

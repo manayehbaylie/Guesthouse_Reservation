@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { NotificationBell } from './common/NotificationBell.jsx';
 import { LanguageSelector } from './common/LanguageSelector.jsx';
+import { TelegramLinkCard } from './common/TelegramLinkCard.jsx';
 import { ApiService } from '../services/api.js';
 
 import {
@@ -27,6 +28,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  MessageCircle,
 } from 'lucide-react';
 
 /* ============================================================
@@ -385,6 +387,15 @@ export function Navbar({ onToggleSidebar }) {
                       </span>
                     </div>
 
+                    <Link
+                      to="/profile?telegram=link"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      {t('Telegram')}
+                    </Link>
+
                     <button
                       type="button"
                       onClick={openUpdateProfile}
@@ -583,6 +594,14 @@ export function Navbar({ onToggleSidebar }) {
 
                       </div>
 
+                      <Link
+                        to="/profile?telegram=link"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4" /> {t('Telegram')}
+                      </Link>
+
                       <button onClick={openUpdateProfile} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
                         <Settings className="w-4 h-4" /> {t('Update Profile')}
                       </button>
@@ -657,6 +676,17 @@ export function Navbar({ onToggleSidebar }) {
                   >
                     <Home className="w-4 h-4" />
                     <span className="font-semibold text-amber-600">{t('Dashboard')}</span>
+                  </Link>
+                )}
+
+                {isAuthenticated() && (
+                  <Link
+                    to="/profile?telegram=link"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-700"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="font-semibold">{t('Telegram')}</span>
                   </Link>
                 )}
 
@@ -930,6 +960,8 @@ export function ProfileModal({
               </p>
 
             </div>
+
+            <TelegramLinkCard />
 
           </div>
 

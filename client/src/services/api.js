@@ -51,24 +51,33 @@ export function setBackendMode(
 
 export const api = axios.create({
   baseURL: DEFAULT_API_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-api.forgotPassword = async function forgotPassword(email) {
-  if (!email) {
-    throw new Error('Email is required.');
-  }
-
-  const response = await api.post('/auth/forgot-password', {
-    email: String(email).trim(),
-  });
+api.forgotPassword = async function forgotPassword(identifier, method = 'email') {
+  const response = await api.post('/auth/forgot-password', method === 'phone'
+    ? { phone: String(identifier).trim() }
+    : { email: String(identifier).trim() });
 
   return unwrap(response);
 };
 
-api.resetPassword = async function resetPassword(token, newPassword) {
+api.verifyPasswordResetCode = async function verifyPasswordResetCode(challengeId, code) {
+  return unwrap(await api.post('/auth/forgot-password/verify', { challengeId, code }));
+};
+
+api.resendPasswordResetCode = async function resendPasswordResetCode(challengeId) {
+  return unwrap(await api.post('/auth/forgot-password/resend', { challengeId }));
+};
+
+api.validateRegistrationEmail = async function validateRegistrationEmail(email) {
+  return unwrap(await api.post('/auth/validate-email', { email }));
+};
+
+api.resetPassword = async function resetPassword(token, newPassword, confirmPassword) {
   if (!token || !newPassword) {
     throw new Error('Token and new password are required.');
   }
@@ -76,6 +85,7 @@ api.resetPassword = async function resetPassword(token, newPassword) {
   const response = await api.post('/auth/reset-password', {
     token,
     newPassword,
+    confirmPassword,
   });
 
   return unwrap(response);
@@ -120,7 +130,24 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
 
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    const authEndpoint = /\/auth\/(login|register|refresh|logout|forgot-password|reset-password)/.test(originalRequest?.url || '');
+    if (error.response?.status === 401 && originalRequest && !originalRequest._refreshAttempted && !authEndpoint) {
+      originalRequest._refreshAttempted = true;
+      try {
+        const refreshed = unwrap(await api.post('/auth/refresh'));
+        if (refreshed?.token && refreshed?.user) {
+          setCurrentUser(mapUserFromBackend(refreshed.user), refreshed.token);
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${refreshed.token}`;
+          return api(originalRequest);
+        }
+      } catch {
+        clearLocalSession();
+      }
+    }
+
     const message =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
@@ -1490,9 +1517,8 @@ function clearLocalSession() {
 
 function logoutUser() {
   const token = localStorage.getItem(TOKEN_KEY);
-  clearLocalSession();
-  if (!token) return Promise.resolve();
-  return api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return api.post('/auth/logout', {}, { headers }).catch(() => {}).finally(clearLocalSession);
 }
 
 // ============================================================
@@ -1564,13 +1590,34 @@ export const ApiService = {
   },
 
   async getTelegramLinkStatus() {
-    const response = await api.get('/telegram/link');
+    const response = await api.get('/telegram/status');
     return unwrap(response);
   },
 
   async getTelegramBotInfo() {
     const response = await api.get('/telegram/bot-info');
     return unwrap(response);
+  },
+
+  async getTelegramLoginInfo() {
+    const response = await api.get('/telegram/login-info');
+    return unwrap(response);
+  },
+
+  async createTelegramLoginNonce() {
+    const response = await api.post('/auth/telegram-login/nonce');
+    return unwrap(response);
+  },
+
+  async loginWithTelegram(idToken, nonce) {
+    const response = await api.post('/auth/telegram-login', { idToken, nonce });
+    const payload = unwrap(response) || {};
+    if (!payload.user) throw new Error('Invalid Telegram login response.');
+
+    const user = mapUserFromBackend(payload.user);
+    if (!user) throw new Error('Failed to process Telegram login.');
+    setCurrentUser(user, payload.token);
+    return user;
   },
 
   async createTelegramLinkCode() {
@@ -1602,7 +1649,15 @@ export const ApiService = {
   },
 
   logoutUser() {
-    logoutUser();
+    return logoutUser();
+  },
+
+  async refreshSession() {
+    const payload = unwrap(await api.post('/auth/refresh')) || {};
+    if (!payload.user || !payload.token) throw new Error('Session expired. Please sign in again.');
+    const user = mapUserFromBackend(payload.user);
+    setCurrentUser(user, payload.token);
+    return user;
   },
 
   // ==========================================================
@@ -1664,19 +1719,19 @@ export const ApiService = {
 
       return user;
     } catch (error) {
-      console.error(
-        'Login error:',
-        error
-      );
-
       clearLocalSession();
 
       const responseData = error?.response?.data || {};
       const loginError = new Error(
         responseData.message ||
+        responseData.error?.message ||
+        (error?.response?.status === 401
+          ? 'Email/phone or password is incorrect. Please check your credentials.'
+          : null) ||
         error?.message ||
         'Login failed. Please check your credentials.'
       );
+      loginError.status = error?.response?.status;
       loginError.code = responseData.code;
       loginError.lockMessage = responseData.lockMessage;
       throw loginError;
@@ -1741,6 +1796,12 @@ export const ApiService = {
         password:
           payload.password ||
           '',
+
+        confirmPassword:
+          payload.confirmPassword || '',
+
+        agreedToTerms:
+          payload.agreedToTerms === true,
 
         role,
       };
@@ -1833,17 +1894,8 @@ export const ApiService = {
 
       return user;
     } catch (error) {
-      console.error(
-        'Registration error:',
-        error
-      );
-
-      throw new Error(
-        error?.response?.data
-          ?.message ||
-        error?.message ||
-        'Registration failed. Please try again.'
-      );
+      error.message = error?.response?.data?.message || error?.message || 'Registration failed. Please try again.';
+      throw error;
     }
   },
 

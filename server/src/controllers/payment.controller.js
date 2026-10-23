@@ -10,6 +10,7 @@ import {
   processChapaCallback,
   getChapaPaymentStatus,
   cancelPendingReservation,
+  verifyChapaWebhookSignature,
 } from "../services/payment.service.js";
 
 import { successResponse } from "../utils/response.js";
@@ -136,5 +137,21 @@ export const chapaStatus = async (req, res, next) => {
     return successResponse(res, payment, "Chapa payment status fetched successfully");
   } catch (error) {
     next(error);
+  }
+};
+
+export const chapaWebhook = async (req, res) => {
+  const secret = process.env.CHAPA_WEBHOOK_SECRET?.trim();
+  if (!secret) {
+    return res.status(503).json({ success: false, message: "Chapa webhooks are not configured." });
+  }
+  if (!verifyChapaWebhookSignature({ rawBody: req.rawBody, headers: req.headers, secret })) {
+    return res.status(401).json({ success: false, message: "Invalid Chapa webhook signature." });
+  }
+  try {
+    await processChapaCallback(req.body || {});
+    return res.sendStatus(200);
+  } catch {
+    return res.status(400).json({ success: false, message: "Chapa webhook transaction could not be verified." });
   }
 };

@@ -24,6 +24,20 @@ test("guesthouse search covers city, address, sub-city, and woreda without a cit
   assert.equal(where.rooms.some.maintenanceStatus, "AVAILABLE");
 });
 
+test("guesthouse search trims location and name terms and remains case-insensitive", () => {
+  const where = buildGuesthouseSearchWhere({
+    city: "  AdDiS AbAbA  ",
+    name: "  Blue Nile  ",
+  });
+
+  assert.equal(where.name.contains, "Blue Nile");
+  assert.equal(where.name.mode, "insensitive");
+  assert.ok(where.OR.every((condition) =>
+    Object.values(condition)[0].contains === "AdDiS AbAbA" &&
+    Object.values(condition)[0].mode === "insensitive"
+  ));
+});
+
 test("date filters exclude overlapping paid confirmations and check-ins", () => {
   const where = buildSearchRoomWhere({
     checkIn: "2026-11-10",

@@ -19,6 +19,7 @@ import {
   X,
   Building2,
   ChevronDown,
+  MessageCircle,
   MessageSquare,
   Sparkles,
   MapPin,
@@ -246,6 +247,11 @@ export function DashboardLayout({ children, showHeader = true }) {
       icon: <MessageSquare className="w-5 h-5" />, 
       label: t('Reviews')
     },
+    {
+      path: '/profile',
+      icon: <User className="w-5 h-5" />,
+      label: t('Profile / Telegram')
+    },
   ];
 
   return (
@@ -421,6 +427,11 @@ export function DashboardLayout({ children, showHeader = true }) {
                         {t('Guest')}
                       </span>
                     </div>
+
+                    <Link to="/profile?telegram=link" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
+                      <MessageCircle className="w-4 h-4" />
+                      {t('Telegram')}
+                    </Link>
 
                     <button type="button" onClick={openUpdateProfile} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#647b8a] hover:bg-[#f5f8fa] transition">
                       <User className="w-4 h-4" />

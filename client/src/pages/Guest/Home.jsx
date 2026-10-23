@@ -42,22 +42,10 @@ const HERO_IMAGES = [
     title: "Lucy Heritage",
   },
   {
-    image: "/uploads/guesthouses/1789565289882-9836f2b9-bfb3-462d-83a5-efed8284eba3.jpg",
+    image: "/uploads/guesthouses/1789565289882-9836f2b9-f76e-48ba-9993-04aff915e1a3.jpg",
     title: "National Guesthouse",
   },
 ];
-
-/*
- * IMPORTANT:
- * Do not put fake guesthouse IDs such as:
- *
- * "demo-lalibela-1"
- *
- * Guesthouses must come from the database through the API.
- *
- * Lalibela Heritage Guesthouse should therefore use its
- * real database ID, which is expected to be 14.
- */
 
 /*
  * ============================================================
@@ -538,43 +526,6 @@ export function Home() {
          * id: 14
          * name: Lalibela Heritage Guesthouse
          */
-        const lalibela =
-          uniqueGuesthouses.find(
-            (guesthouse) =>
-              guesthouse.name
-                ?.toLowerCase()
-                .includes("lalibela")
-          );
-
-        if (lalibela) {
-          console.log(
-            "✅ Lalibela found from DATABASE:",
-            lalibela
-          );
-
-          console.log(
-            "🆔 Lalibela database ID:",
-            lalibela.id
-          );
-
-          if (
-            Number(lalibela.id) === 14
-          ) {
-            console.log(
-              "✅ Correct Lalibela ID 14 detected."
-            );
-          } else {
-            console.warn(
-              "⚠️ Lalibela was found, but its ID is not 14:",
-              lalibela.id
-            );
-          }
-        } else {
-          console.warn(
-            "⚠️ Lalibela Heritage Guesthouse was NOT returned by the API."
-          );
-        }
-
         /*
          * Only approved / verified guesthouses
          * should be displayed.

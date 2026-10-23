@@ -45,7 +45,7 @@ export function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await api.resetPassword(token, newPassword);
+      const response = await api.resetPassword(token, newPassword, confirmPassword);
       setSuccess(response?.message || "Password reset successfully.");
 
       setTimeout(() => {

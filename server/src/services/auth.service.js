@@ -1,11 +1,19 @@
 import prisma from "../config/prisma.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
-import {
-  generateToken,
-  generatePasswordResetToken,
-  verifyPasswordResetToken,
-} from "../utils/jwt.js";
+import { generateToken } from "../utils/jwt.js";
 import { getSystemSettings } from "./system-settings.service.js";
+import { getEthiopianPhoneLookupCandidates, normalizeGmailAddress } from "../utils/auth-normalization.js";
+import {
+  normalizeRegistrationPhone,
+  validateRegistrationAddress,
+  validateRegistrationConsent,
+  validateRegistrationEmail,
+  validateRegistrationIdNumber,
+  validateRegistrationIdType,
+  validateRegistrationName,
+  validateRegistrationPassword,
+  validateRegistrationPasswordConfirmation,
+} from "./auth-validation.service.js";
 
 function requireField(value, label) {
   if (value === undefined || value === null || String(value).trim() === "") {
@@ -18,7 +26,9 @@ function removePassword(user) {
 
   const {
     password: _,
-    telegramChatId: __,
+    normalizedEmail: _normalizedEmail,
+    normalizedPhone: _normalizedPhone,
+    telegramChatId: _telegramChatId,
     ...userWithoutPassword
   } = user;
   return userWithoutPassword;
@@ -28,39 +38,48 @@ function removePassword(user) {
 // Register User
 // ==========================
 export const registerUser = async (data) => {
-  requireField(data.fullName, "Full name");
-  requireField(data.password, "Password");
+  const fullName = validateRegistrationName(data.fullName);
+  const password = validateRegistrationPassword(data.password);
+  validateRegistrationPasswordConfirmation(password, data.confirmPassword);
+  validateRegistrationConsent(data.agreedToTerms);
   requireField(data.phone, "Phone");
   requireField(data.role, "Role");
 
-  const email = data.email
-    ? String(data.email).trim().toLowerCase()
-    : null;
-  const phone = String(data.phone).trim();
   const role = String(data.role).toUpperCase();
+  const { email, normalizedEmail } = await validateRegistrationEmail(data.email, role);
+  const phone = normalizeRegistrationPhone(data.phone);
 
   // ==========================
   // Check email
   // ==========================
   if (email) {
-    const existingEmail = await prisma.user.findUnique({
-      where: { email },
+    const existingEmail = await prisma.user.findFirst({
+      where: { OR: [{ normalizedEmail }, { email }] },
     });
 
     if (existingEmail) {
-      throw new Error("Email already exists");
+      const error = new Error("This email is already registered.");
+      error.statusCode = 409;
+      error.field = "email";
+      throw error;
     }
   }
 
   // ==========================
   // Check phone
   // ==========================
-  const existingPhone = await prisma.user.findUnique({
-    where: { phone },
+  const existingPhone = await prisma.user.findFirst({
+    where: { OR: [
+      { normalizedPhone: phone },
+      { phone: { in: getEthiopianPhoneLookupCandidates(phone) } },
+    ] },
   });
 
   if (existingPhone) {
-    throw new Error("Phone already exists");
+    const error = new Error("This phone number is already registered.");
+    error.statusCode = 409;
+    error.field = "phone";
+    throw error;
   }
 
   // ==========================
@@ -86,7 +105,11 @@ export const registerUser = async (data) => {
   // ==========================
   // Hash password
   // ==========================
-  const hashedPassword = await hashPassword(data.password);
+  const hashedPassword = await hashPassword(password);
+  const consentFields = {
+    termsAcceptedAt: new Date(),
+    privacyPolicyAcceptedAt: new Date(),
+  };
 
   // ============================================================
   // GUEST REGISTRATION
@@ -94,11 +117,14 @@ export const registerUser = async (data) => {
   if (role === "GUEST") {
     const user = await prisma.user.create({
       data: {
-        fullName: String(data.fullName).trim(),
+        fullName,
         ...(email ? { email } : {}),
+        ...(normalizedEmail ? { normalizedEmail } : {}),
         password: hashedPassword,
         phone,
+        normalizedPhone: phone,
         role: "GUEST",
+        ...consentFields,
       },
     });
 
@@ -128,20 +154,23 @@ export const registerUser = async (data) => {
   // ============================================================
 
   if (role === "OWNER") {
-    requireField(data.residentialAddress, "Residential address");
-    requireField(data.idType, "ID type");
-    requireField(data.idNumber, "ID number");
+    const residentialAddress = validateRegistrationAddress(data.residentialAddress);
+    const idType = validateRegistrationIdType(data.idType);
+    const idNumber = validateRegistrationIdNumber(data.idNumber);
 
     const owner = await prisma.user.create({
       data: {
-        fullName: String(data.fullName).trim(),
+        fullName,
         ...(email ? { email } : {}),
+        ...(normalizedEmail ? { normalizedEmail } : {}),
         password: hashedPassword,
         phone,
+        normalizedPhone: phone,
         role: "OWNER",
-        residentialAddress: String(data.residentialAddress).trim(),
-        idType: String(data.idType).trim(),
-        idNumber: String(data.idNumber).trim(),
+        residentialAddress,
+        idType,
+        idNumber,
+        ...consentFields,
       },
     });
 
@@ -162,52 +191,47 @@ export const registerUser = async (data) => {
 // ==========================
 // Login User
 // ==========================
-export const loginUser = async (identifier, password, loginMethod = 'email') => {
+export const loginUser = async (identifier, password, loginMethod = 'email', ipAddress = null) => {
   requireField(identifier, loginMethod === 'phone' ? "Phone" : "Email");
   requireField(password, "Password");
 
   // ==========================
   // Normalize and find user
   // ==========================
+  const normalizedIdentifier = loginMethod === "phone"
+    ? normalizeRegistrationPhone(identifier)
+    : (normalizeGmailAddress(String(identifier)) || String(identifier).trim().toLowerCase());
+  const recentFailures = await prisma.loginAttempt.count({
+    where: {
+      identifier: normalizedIdentifier,
+      ipAddress,
+      success: false,
+      createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+    },
+  });
+  if (recentFailures >= 5) {
+    const error = new Error("Too many attempts, try again later.");
+    error.statusCode = 429;
+    throw error;
+  }
+
   let user;
   
   if (loginMethod === 'phone') {
     // Normalize phone number with same logic as frontend
-    let normalizedPhone = String(identifier).trim();
-    normalizedPhone = normalizedPhone.replace(/[\s\-()]/g, "");
-
-    // 09XXXXXXXX -> +2519XXXXXXXX
-    if (/^09\d{8}$/.test(normalizedPhone)) {
-      normalizedPhone = `+251${normalizedPhone.substring(1)}`;
-    }
-    // 9XXXXXXXX -> +2519XXXXXXXX
-    else if (/^9\d{8}$/.test(normalizedPhone)) {
-      normalizedPhone = `+251${normalizedPhone}`;
-    }
-    // 2519XXXXXXXX -> +2519XXXXXXXX
-    else if (/^2519\d{8}$/.test(normalizedPhone)) {
-      normalizedPhone = `+${normalizedPhone}`;
-    }
-    // +2519XXXXXXXX (already correct)
-    else if (!/^\+2519\d{8}$/.test(normalizedPhone)) {
-      // If it doesn't match any pattern, keep as-is and try
-    }
-
-    user = await prisma.user.findUnique({
-      where: {
-        phone: normalizedPhone,
-      },
+    user = await prisma.user.findFirst({
+      where: { OR: [
+        { normalizedPhone: normalizedIdentifier },
+        { phone: { in: getEthiopianPhoneLookupCandidates(normalizedIdentifier) } },
+      ] },
       include: {
         guesthouses: true,
       },
     });
   } else {
     // Email login - normalize to lowercase
-    const normalizedEmail = String(identifier).trim().toLowerCase();
-    user = await prisma.user.findUnique({
-      where: {
-        email: normalizedEmail,
-      },
+    user = await prisma.user.findFirst({
+      where: { OR: [{ normalizedEmail: normalizedIdentifier }, { email: normalizedIdentifier }] },
       include: {
         guesthouses: true,
       },
@@ -217,8 +241,8 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
   if (!user) {
     const error = new Error(
       loginMethod === 'phone'
-        ? "Invalid phone number."
-        : "Invalid email address."
+        ? "This account is not registered."
+        : "This account is not registered."
     );
     error.statusCode = 401;
     throw error;
@@ -239,7 +263,7 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
   const isMatch = await comparePassword(password, user.password);
 
   if (!isMatch) {
-    const error = new Error("Invalid password.");
+    const error = new Error("Incorrect password.");
     error.statusCode = 401;
     throw error;
   }
@@ -263,70 +287,31 @@ export const loginUser = async (identifier, password, loginMethod = 'email') => 
     requiresApproval: false,
   };
 };
-
-// ==========================
-// Password Reset
-// ==========================
-export const requestPasswordReset = async (email) => {
-  requireField(email, "Email");
-
-  const normalizedEmail = String(email).trim().toLowerCase();
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
+export const loginUserWithTelegramId = async (telegramId) => {
+  const account = await prisma.telegramAccount.findUnique({
+    where: { telegramId: String(telegramId) },
+    include: { user: { include: { guesthouses: true } } },
   });
+  const user = account?.user;
 
   if (!user) {
-    return {
-      sent: false,
-      message: "If an account exists for that email, a password reset link has been sent.",
-    };
+    const error = new Error("Log in to Telegram in the bot before using Telegram login.");
+    error.statusCode = 401;
+    throw error;
   }
 
-  const resetToken = generatePasswordResetToken(user.email);
-  const frontendBaseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const resetUrl = `${frontendBaseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(resetToken)}`;
+  const systemSettings = await getSystemSettings();
+  if (systemSettings.systemLocked && user.role !== "ADMIN") {
+    const error = new Error("System locked by system admin");
+    error.statusCode = 403;
+    error.code = "SYSTEM_LOCKED";
+    error.systemLockMessage = systemSettings.systemLockMessage;
+    throw error;
+  }
 
   return {
-    sent: true,
-    message: "A password reset link has been sent to your email.",
-    email: user.email,
-    resetToken,
-    resetUrl,
-  };
-};
-
-export const resetUserPassword = async (token, newPassword) => {
-  requireField(token, "Reset token");
-  requireField(newPassword, "New password");
-
-  if (String(newPassword).trim().length < 8) {
-    throw new Error("Password must be at least 8 characters long.");
-  }
-
-  const decoded = verifyPasswordResetToken(token);
-
-  if (!decoded || decoded.purpose !== "password-reset" || !decoded.email) {
-    throw new Error("Invalid or expired reset token.");
-  }
-
-  const normalizedEmail = String(decoded.email).trim().toLowerCase();
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-  });
-
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  const hashedPassword = await hashPassword(String(newPassword));
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { password: hashedPassword },
-  });
-
-  return {
-    success: true,
-    message: "Password reset successfully. You can now sign in with your new password.",
+    user: removePassword(user),
+    token: generateToken(user),
+    requiresApproval: false,
   };
 };

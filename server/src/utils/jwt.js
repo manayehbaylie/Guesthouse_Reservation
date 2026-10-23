@@ -9,7 +9,7 @@ export const generateToken = (user) => {
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: "7d",
+      expiresIn: "15m",
       jwtid: randomUUID(),
     }
   );

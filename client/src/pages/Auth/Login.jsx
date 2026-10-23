@@ -17,6 +17,7 @@ import {
   MapPin,
   ShieldCheck,
   BedDouble,
+  Send,
 } from "lucide-react";
 
 export function Login() {
@@ -39,6 +40,9 @@ export function Login() {
   const [systemLocked, setSystemLocked] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [telegramLoginInfo, setTelegramLoginInfo] = useState(null);
+  const [telegramNonce, setTelegramNonce] = useState("");
+  const [telegramLoading, setTelegramLoading] = useState(false);
 
   const [hasPendingReservation, setHasPendingReservation] =
     useState(false);
@@ -59,7 +63,14 @@ export function Login() {
     location.state?.pendingReservation || false;
 
   const returnTo = location.state?.returnTo || null;
+  const registrationSuccess = location.state?.registrationSuccess === true;
   const fromPath = location.state?.from || null;
+  const profileReturnTarget = typeof fromPath === "string"
+    ? (fromPath.startsWith("/profile") ? fromPath : null)
+    : fromPath?.pathname === "/profile"
+      ? `${fromPath.pathname}${fromPath.search || ""}`
+      : from === "/profile" ? "/profile" : null;
+  const returnToProfile = Boolean(profileReturnTarget);
 
   useEffect(() => {
     let active = true;
@@ -93,6 +104,62 @@ export function Login() {
 
       sessionStorage.removeItem("pendingReservation");
     }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let refreshTimer;
+
+    const prepareTelegramLogin = async () => {
+      try {
+        const info = await ApiService.getTelegramLoginInfo();
+        if (!active) return;
+        setTelegramLoginInfo(info);
+        if (!info?.configured) return;
+
+        const challenge = await ApiService.createTelegramLoginNonce();
+        if (active) setTelegramNonce(challenge.nonce);
+      } catch {
+        if (active) setTelegramLoginInfo({ configured: false });
+      }
+    };
+
+    const loadTelegramSdk = () => {
+      if (window.Telegram?.Login?.auth) return Promise.resolve();
+
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://oauth.telegram.org/js/telegram-login.js?version=1";
+        script.async = true;
+        script.onload = () => window.Telegram?.Login?.auth
+          ? resolve()
+          : reject(new Error("Telegram login could not be loaded."));
+        script.onerror = () => reject(new Error("Telegram login could not be loaded."));
+        document.head.appendChild(script);
+      });
+    };
+
+    void (async () => {
+      try {
+        const info = await ApiService.getTelegramLoginInfo();
+        if (!active) return;
+        setTelegramLoginInfo(info);
+        if (!info?.configured) return;
+        await loadTelegramSdk();
+        if (!active) return;
+        await prepareTelegramLogin();
+        refreshTimer = window.setInterval(() => {
+          void prepareTelegramLogin();
+        }, 3 * 60 * 1000);
+      } catch {
+        if (active) setTelegramLoginInfo({ configured: false });
+      }
+    })();
+
+    return () => {
+      active = false;
+      if (refreshTimer) window.clearInterval(refreshTimer);
+    };
   }, []);
 
   // ---------------------------------------------------------
@@ -224,8 +291,85 @@ export function Login() {
   // HANDLE LOGIN
   // ---------------------------------------------------------
 
+  const handleTelegramLogin = () => {
+    if (!telegramLoginInfo?.clientId || !telegramNonce || !window.Telegram?.Login?.auth) {
+      setError("Telegram login is not ready. Please try again in a moment.");
+      return;
+    }
+
+    const nonce = telegramNonce;
+    setTelegramNonce("");
+    setError("");
+    setTelegramLoading(true);
+
+    try {
+      window.Telegram.Login.auth({
+        client_id: telegramLoginInfo.clientId,
+        scope: ["openid", "profile"],
+        nonce,
+      }, async (result) => {
+        try {
+          if (result?.error) throw new Error(result.error);
+          if (!result?.id_token) throw new Error("Telegram did not return a login token.");
+
+          const user = await ApiService.loginWithTelegram(result.id_token, nonce);
+          if (returnToProfile) {
+            navigate(profileReturnTarget, { replace: true });
+            return;
+          }
+          const pendingData = sessionStorage.getItem("pendingReservation");
+          let booking = reservationData || bookingData;
+          if (pendingData) {
+            try {
+              booking = JSON.parse(pendingData);
+              sessionStorage.removeItem("pendingReservation");
+            } catch {
+              sessionStorage.removeItem("pendingReservation");
+            }
+          }
+
+          const role = String(user.role || "").toUpperCase();
+          if (role === "GUEST" && booking?.guesthouseId && booking?.roomId) {
+            navigate("/guest/dashboard", {
+              replace: true,
+              state: { bookingData: booking, fromLogin: true, user, showPayment: true },
+            });
+          } else if (role === "ADMIN") {
+            navigate("/admin", { replace: true });
+          } else if (role === "OWNER") {
+            navigate("/owner", { replace: true });
+          } else if (role === "RECEPTIONIST") {
+            navigate("/receptionist", { replace: true });
+          } else if (role === "GUEST") {
+            navigate("/guest/dashboard", {
+              replace: true,
+              state: { fromLogin: true, user },
+            });
+          } else {
+            navigate(from, { replace: true });
+          }
+        } catch (loginError) {
+          setError(loginError?.message || "Telegram login failed. Please try again.");
+        } finally {
+          setTelegramLoading(false);
+          ApiService.createTelegramLoginNonce()
+            .then((challenge) => setTelegramNonce(challenge.nonce))
+            .catch(() => setTelegramNonce(""));
+        }
+      });
+    } catch (loginError) {
+      setTelegramLoading(false);
+      setError(loginError?.message || "Telegram login could not be started.");
+      ApiService.createTelegramLoginNonce()
+        .then((challenge) => setTelegramNonce(challenge.nonce))
+        .catch(() => setTelegramNonce(""));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
 
     setError("");
     setFieldErrors({});
@@ -386,6 +530,11 @@ export function Login() {
         return;
       }
 
+      if (returnToProfile) {
+        navigate(profileReturnTarget, { replace: true });
+        return;
+      }
+
       // ========================================================
       // ✅ STEP 5: ROLE BASED REDIRECTION
       // ========================================================
@@ -419,17 +568,17 @@ export function Login() {
           navigate(from, { replace: true });
       }
     } catch (err) {
-      console.error("Login error:", err);
-
       if (err?.code === "SYSTEM_LOCKED") {
         setError(t("System locked by system admin"));
         return;
       }
 
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Login failed. Please check your credentials.";
+      const message = err?.status === 429 || err?.response?.status === 429
+        ? t("Too many login attempts. Please wait 15 minutes before trying again.")
+        : err?.response?.data?.message ||
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          t("Login failed. Please check your credentials.");
 
       setError(message);
 
@@ -665,10 +814,22 @@ export function Login() {
                 </p>
               )}
 
+              {registrationSuccess && (
+                <p role="status" className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                  {t('Registration successful. Please sign in with your new account.')}
+                </p>
+              )}
+
               <form
                 onSubmit={handleSubmit}
                 className="space-y-5"
               >
+
+                {(error || fieldErrors.identifier || fieldErrors.password) && (
+                  <FieldError>
+                    {error || fieldErrors.identifier || fieldErrors.password}
+                  </FieldError>
+                )}
 
                 {/* Identifier */}
 
@@ -839,13 +1000,30 @@ export function Login() {
 
                 </button>
 
-                {(error || fieldErrors.identifier || fieldErrors.password) && (
-                  <FieldError>
-                    {error || fieldErrors.identifier || fieldErrors.password}
-                  </FieldError>
-                )}
-
               </form>
+
+              {telegramLoginInfo?.configured && (
+                <div className="mt-6">
+                  <div className="mb-4 flex items-center gap-3 text-xs font-semibold uppercase text-stone-400">
+                    <span className="h-px flex-1 bg-stone-200" />
+                    <span>{t("Or continue with")}</span>
+                    <span className="h-px flex-1 bg-stone-200" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTelegramLogin}
+                    disabled={loading || telegramLoading || !telegramNonce}
+                    className="flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-stone-300 bg-white font-bold text-stone-800 transition hover:border-sky-500 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {telegramLoading ? (
+                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" />
+                    ) : (
+                      <Send className="h-5 w-5 text-sky-600" />
+                    )}
+                    {telegramLoading ? t("Connecting to Telegram...") : t("Continue with Telegram")}
+                  </button>
+                </div>
+              )}
 
               {/* Register */}
 

@@ -5,7 +5,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 // Components
 import Navbar from "./components/Navbar.jsx";
 import { Sidebar } from "./components/Sidebar.jsx";
-import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
+import { ProtectedRoute, PublicOnlyRoute } from "./components/ProtectedRoute.jsx";
 import { NotificationToastContainer } from "./components/common/NotificationToastContainer.jsx";
 import { DashboardLayout } from "./components/DashboardLayout.jsx";
 import { LanguageSelector } from "./components/common/LanguageSelector.jsx";
@@ -309,7 +309,7 @@ export default function App() {
 
             <Route
               path="/login"
-              element={<Login />}
+              element={<PublicOnlyRoute><Login /></PublicOnlyRoute>}
             />
 
             <Route path="/admin-login" element={<Login />} />
@@ -318,7 +318,7 @@ export default function App() {
 
             <Route
               path="/register"
-              element={<Register />}
+              element={<PublicOnlyRoute><Register /></PublicOnlyRoute>}
             />
 
             <Route
@@ -412,14 +412,7 @@ export default function App() {
             <Route
               path="/profile"
               element={
-                <ProtectedRoute
-                  allowedRoles={[
-                    "GUEST",
-                    "OWNER",
-                    "RECEPTIONIST",
-                    "ADMIN",
-                  ]}
-                >
+                <ProtectedRoute>
                   <Profile />
                 </ProtectedRoute>
               }
@@ -528,7 +521,7 @@ export default function App() {
             <Route
               path="/communication"
               element={
-                <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                <ProtectedRoute allowedRoles={["ADMIN", "OWNER", "RECEPTIONIST"]}>
                   <Communication />
                 </ProtectedRoute>
               }

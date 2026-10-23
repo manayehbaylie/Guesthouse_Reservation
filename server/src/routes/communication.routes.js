@@ -4,7 +4,7 @@ import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
 
 const router = express.Router();
-router.use(authenticate, authorize("ADMIN", "OWNER"));
+router.use(authenticate, authorize("ADMIN", "OWNER", "RECEPTIONIST"));
 router.get("/contacts", contacts);
 router.get("/:userId/messages", conversation);
 router.post("/:userId/messages", sendMessage);
