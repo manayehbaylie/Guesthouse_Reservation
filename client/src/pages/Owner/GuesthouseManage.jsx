@@ -940,6 +940,11 @@ export function GuesthouseManage() {
   };
 
   const handleUploadVideo = async () => {
+    if (!existingGuesthouse?.id) {
+      setVideoError('Save your guesthouse details before uploading a video.');
+      return;
+    }
+
     if (!videoFile) {
       setVideoError('Select a video file to upload.');
       return;
@@ -1681,10 +1686,27 @@ export function GuesthouseManage() {
                 </div>
               </div>
 
-              {!rooms.length ? (
+              {!existingGuesthouse ? (
                 <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                  {t('Add rooms to your guesthouse before uploading room photos.')}
+                  {t('Save your guesthouse details before adding rooms and uploading room photos.')}
                 </p>
+              ) : !rooms.length ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                  <p>
+                    {status === 'APPROVED'
+                      ? t('Add a room before uploading room photos.')
+                      : t('Room management becomes available after your guesthouse is approved.')}
+                  </p>
+                  {status === 'APPROVED' && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/owner/rooms')}
+                      className="mt-3 rounded-lg bg-[#063e60] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#052f4a]"
+                    >
+                      {t('Manage rooms')}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-[10px] font-semibold text-slate-400">
@@ -1873,6 +1895,12 @@ export function GuesthouseManage() {
                 </div>
               </div>
 
+              {!existingGuesthouse && (
+                <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                  {t('Save your guesthouse details before uploading a video.')}
+                </p>
+              )}
+
               {existingGuesthouse?.videoUrl && (
                 <video
                   src={getImageUrl(existingGuesthouse.videoUrl)}
@@ -1889,7 +1917,7 @@ export function GuesthouseManage() {
               )}
 
               <div className="flex flex-col gap-3 sm:flex-row">
-                <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-[#063e60] bg-white px-4 text-xs font-black text-[#063e60] transition hover:bg-[#063e60] hover:text-white">
+                <label className={`flex h-11 items-center justify-center gap-2 rounded-xl border-2 border-[#063e60] bg-white px-4 text-xs font-black text-[#063e60] transition ${existingGuesthouse ? 'cursor-pointer hover:bg-[#063e60] hover:text-white' : 'cursor-not-allowed opacity-50'}`}>
                   <Upload className="h-4 w-4" />
                   {existingGuesthouse?.videoUrl
                     ? t('Replace video')
@@ -1898,7 +1926,7 @@ export function GuesthouseManage() {
                     type="file"
                     accept="video/mp4,video/webm,video/quicktime,.mov"
                     onChange={handleVideoSelection}
-                    disabled={uploadingVideo}
+                    disabled={uploadingVideo || !existingGuesthouse}
                     className="hidden"
                   />
                 </label>
@@ -1906,7 +1934,7 @@ export function GuesthouseManage() {
                   <button
                     type="button"
                     onClick={handleUploadVideo}
-                    disabled={uploadingVideo}
+                    disabled={uploadingVideo || !existingGuesthouse}
                     className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ffbd08] px-4 text-xs font-black text-[#063e60] transition hover:bg-[#f7b500] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {uploadingVideo && (

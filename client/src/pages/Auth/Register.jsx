@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useLanguage } from "../../context/LanguageContext.jsx";
-import { api } from "../../services/api.js";
 import { REGISTRATION_ID_TYPES } from "../../../../shared/registration-options.mjs";
 
 import {
@@ -73,27 +72,6 @@ export function Register() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const value = email.trim();
-    if (!value || !isValidGmailAddress(value)) return undefined;
-
-    let active = true;
-    const timer = window.setTimeout(async () => {
-      try {
-        await api.validateRegistrationEmail(value);
-        if (active) setFieldErrors((previous) => ({ ...previous, email: undefined }));
-      } catch (validationError) {
-        const message = validationError?.response?.data?.message || validationError?.message;
-        if (active && message) setFieldErrors((previous) => ({ ...previous, email: t(message) }));
-      }
-    }, 500);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [email, t]);
 
   // ==========================================================
   // VALIDATE PERSONAL INFORMATION
@@ -423,6 +401,7 @@ export function Register() {
 
         <form
           onSubmit={handleSubmit}
+          noValidate
           className="space-y-6"
         >
 
@@ -481,10 +460,7 @@ export function Register() {
                 value={email}
                 onChange={(value) => {
                   setEmail(value);
-                  const emailFormatError = value.trim() && !isValidGmailAddress(value)
-                    ? t("Please enter a valid Gmail address.")
-                    : undefined;
-                  setFieldErrors((previous) => ({ ...previous, email: emailFormatError }));
+                  setFieldErrors((previous) => ({ ...previous, email: undefined }));
                 }}
                 error={fieldErrors.email}
                 placeholder={accountType === "Owner" ? t('Enter your email address') : t('Enter your email address (optional)')}

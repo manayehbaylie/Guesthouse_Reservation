@@ -28,6 +28,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
+app.set("trust proxy", 1);
 const frontendOrigin = new URL(process.env.FRONTEND_URL || "http://localhost:5175").origin;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
