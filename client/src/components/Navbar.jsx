@@ -338,6 +338,7 @@ export function Navbar({ onToggleSidebar }) {
             <div className="flex items-center justify-end gap-3 h-16">
 
             <LanguageSelector />
+            {isAuthenticated() && <NotificationBell variant="navbar" />}
 
             {isAuthenticated() ? (
               <div className="relative">

@@ -7,6 +7,7 @@ import {
   createReceptionist,
   getReceptionists,
   assignReceptionistToGuesthouse,
+  updateReceptionist,
   removeReceptionistFromGuesthouse,
 } from "../services/owner.service.js";
 
@@ -538,6 +539,32 @@ export const assignStaff = async (
       res,
       assignment,
       "Receptionist assigned successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// UPDATE RECEPTIONIST
+// ============================================================
+
+export const updateReceptionistInfo = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const receptionist = await updateReceptionist(
+      req.user.id,
+      req.params.staffId,
+      req.body
+    );
+
+    return successResponse(
+      res,
+      receptionist,
+      "Receptionist updated successfully"
     );
   } catch (error) {
     next(error);

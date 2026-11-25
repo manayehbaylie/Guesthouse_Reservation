@@ -31,11 +31,14 @@ export function RevenueReports() {
           setPayments(paymentsData);
           setRevenueReport({
             totalRevenue: revenueData.totalRevenue || 0,
+            commissionRevenue: revenueData.commissionRevenue || 0,
+            ownerNetRevenue: revenueData.ownerNetRevenue ?? Math.max((revenueData.totalRevenue || 0) - (revenueData.commissionRevenue || 0), 0),
             totalTransactions: dashboardStats.totalReservations || 0,
             paymentMethodBreakdown: {
-              telebirr: revenueData.totalRevenue || 0, // Backend doesn't break down by method yet
-              chapa: 0,
-              cbe_birr: 0,
+              telebirr: revenueData.breakdown?.telebirr || 0,
+              chapa: revenueData.breakdown?.chapa || 0,
+              card: revenueData.breakdown?.card || 0,
+              bank_transfer: revenueData.breakdown?.bank_transfer || 0,
             },
           });
         } else {
@@ -72,36 +75,21 @@ export function RevenueReports() {
 
       {/* Breakdown Cards */}
       {revenueReport && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-2">
-            <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
-              <Smartphone className="w-4 h-4" />
-              <span>{t('Telebirr Collections')}</span>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {[
+            { label: 'Telebirr Collections', amount: revenueReport.paymentMethodBreakdown.telebirr, icon: Smartphone, tone: 'text-blue-700' },
+            { label: 'Chapa Online Cards', amount: revenueReport.paymentMethodBreakdown.chapa, icon: CreditCard, tone: 'text-emerald-700' },
+            { label: 'Card Payments', amount: revenueReport.paymentMethodBreakdown.card, icon: CreditCard, tone: 'text-blue-700' },
+            { label: 'Bank Transfers', amount: revenueReport.paymentMethodBreakdown.bank_transfer, icon: DollarSign, tone: 'text-stone-700' },
+            { label: 'Total Gross Revenue', amount: revenueReport.totalRevenue, icon: DollarSign, tone: 'text-stone-900' },
+            { label: 'Platform Commission', amount: revenueReport.commissionRevenue, icon: DollarSign, tone: 'text-amber-700' },
+            { label: 'Owner Net Revenue', amount: revenueReport.ownerNetRevenue, icon: ArrowUpRight, tone: 'text-emerald-700' },
+          ].map(({ label, amount, icon: Icon, tone }) => (
+            <div key={label} className="space-y-2 rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+              <div className={`flex items-center gap-2 text-xs font-bold ${tone}`}><Icon className="h-4 w-4" /><span>{t(label)}</span></div>
+              <div className={`text-2xl font-black ${tone}`}>{Number(amount || 0).toLocaleString()} ETB</div>
             </div>
-            <div className="text-2xl font-black text-stone-900">
-              {revenueReport.paymentMethodBreakdown.telebirr.toLocaleString()} ETB
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-2">
-            <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs">
-              <CreditCard className="w-4 h-4" />
-              <span>{t('Chapa Online Cards')}</span>
-            </div>
-            <div className="text-2xl font-black text-stone-900">
-              {revenueReport.paymentMethodBreakdown.chapa.toLocaleString()} ETB
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-2">
-            <div className="flex items-center gap-2 text-purple-600 font-bold text-xs">
-              <DollarSign className="w-4 h-4" />
-              <span>{t('Total Gross Revenue')}</span>
-            </div>
-            <div className="text-2xl font-black text-stone-900">
-              {revenueReport.totalRevenue.toLocaleString()} ETB
-            </div>
-          </div>
+          ))}
         </div>
       )}
 
@@ -118,7 +106,9 @@ export function RevenueReports() {
                 <th className="px-6 py-3.5">{t('Payment Ref')}</th>
                 <th className="px-6 py-3.5">{t('Guest')}</th>
                 <th className="px-6 py-3.5">{t('Gateway')}</th>
-                <th className="px-6 py-3.5">{t('Amount')}</th>
+                <th className="px-6 py-3.5 text-right">{t('Guest Payment')}</th>
+                <th className="px-6 py-3.5 text-right">{t('Platform Commission')}</th>
+                <th className="px-6 py-3.5 text-right">{t('Owner Net')}</th>
                 <th className="px-6 py-3.5">{t('Status')}</th>
                 <th className="px-6 py-3.5">{t('Date')}</th>
               </tr>
@@ -129,7 +119,9 @@ export function RevenueReports() {
                   <td className="px-6 py-4 font-mono font-bold text-stone-900">{p.referenceNumber}</td>
                   <td className="px-6 py-4">{p.guestName}</td>
                   <td className="px-6 py-4 uppercase font-bold text-stone-700">{p.method}</td>
-                  <td className="px-6 py-4 font-black text-emerald-700">{p.amount.toLocaleString()} ETB</td>
+                  <td className="px-6 py-4 text-right font-bold text-stone-800">{Number(p.amount || 0).toLocaleString()} ETB</td>
+                  <td className="px-6 py-4 text-right font-semibold text-amber-700">{Number(p.commissionAmount || 0).toLocaleString()} ETB <span className="text-[10px] text-stone-500">({Number(p.commissionRate || 0)}%)</span></td>
+                  <td className="px-6 py-4 text-right font-black text-emerald-700">{Number(p.ownerNetAmount ?? (Number(p.amount || 0) - Number(p.commissionAmount || 0))).toLocaleString()} ETB</td>
                   <td className="px-6 py-4">
                     <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase">
                       {p.status}

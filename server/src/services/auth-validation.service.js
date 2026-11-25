@@ -1,3 +1,4 @@
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { normalizeGmailAddress, normalizeEthiopianPhone, validateGmailAddress } from "../utils/auth-normalization.js";
 import { REGISTRATION_ID_TYPES } from "../../../shared/registration-options.mjs";
 
@@ -39,9 +40,13 @@ export const validateRegistrationEmail = async (email, role) => {
 };
 
 export const normalizeRegistrationPhone = (phone) => {
-  const normalizedPhone = normalizeEthiopianPhone(phone);
+  const value = String(phone || "").trim();
+  const parsedPhone = parsePhoneNumberFromString(value);
+  const normalizedPhone = parsedPhone?.isValid()
+    ? parsedPhone.number
+    : normalizeEthiopianPhone(value);
   if (!normalizedPhone) {
-    const error = new Error("Please enter a valid Ethiopian phone number.");
+    const error = new Error("Please enter a valid international phone number.");
     error.statusCode = 400;
     error.field = "phone";
     throw error;

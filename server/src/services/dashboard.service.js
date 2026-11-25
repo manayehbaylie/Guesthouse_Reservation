@@ -19,12 +19,13 @@ export const getDashboardStats = async () => {
     },
     _sum: {
       amount: true,
+      commissionAmount: true,
     },
   });
 
   const { commissionRate } = await getSystemSettings();
   const totalRevenue = revenue._sum.amount ?? 0;
-  const commissionRevenue = (totalRevenue * commissionRate) / 100;
+  const commissionRevenue = revenue._sum.commissionAmount ?? 0;
 
   const availableRooms = await prisma.room.count({
     where: {
@@ -181,6 +182,7 @@ export const getOwnerRevenue = async (ownerId) => {
     },
     _sum: {
       amount: true,
+      commissionAmount: true,
     },
   });
 
@@ -239,7 +241,7 @@ export const getOwnerRevenue = async (ownerId) => {
     where: {
       status: "PAID",
       method: {
-        in: ["CARD", "CHAPA"],
+        in: ["CARD", "BANK_CARD"],
       },
       reservation: {
         room: {
@@ -254,12 +256,18 @@ export const getOwnerRevenue = async (ownerId) => {
     },
   });
 
+  const totalRevenue = revenue._sum.amount ?? 0;
+  const commissionRevenue = revenue._sum.commissionAmount ?? 0;
+
   return {
-    totalRevenue: revenue._sum.amount ?? 0,
+    totalRevenue,
+    commissionRevenue,
+    ownerNetRevenue: totalRevenue - commissionRevenue,
     breakdown: {
       telebirr: telebirr._sum.amount ?? 0,
       bank_transfer: cbe._sum.amount ?? 0,
-      card: (card._sum.amount ?? 0) + (chapa._sum.amount ?? 0),
+      chapa: chapa._sum.amount ?? 0,
+      card: card._sum.amount ?? 0,
     },
   };
 };

@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import authRoutes from "./routes/auth.routes.js";
+import bookingIntentRoutes from "./routes/booking-intent.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import guesthouseRoutes from "./routes/guesthouse.routes.js";
 import roomRoutes from "./routes/room.routes.js";
@@ -65,6 +66,7 @@ app.get('/api/health', (req, res) => {
 });
 // Authentication Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/booking-intents", bookingIntentRoutes);
 
 app.use("/api/guesthouses", guesthouseRoutes);
 app.use("/api/rooms", roomRoutes);

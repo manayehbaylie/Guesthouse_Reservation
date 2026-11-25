@@ -4,10 +4,29 @@ import { parseDateOnly } from "../utils/date.utils.js";
 import { reservationOverlapWhere } from "../utils/reservation-overlap.utils.js";
 import { buildReservationAccessWhere } from "../utils/reservation-access.utils.js";
 import { getSystemSettings } from "./system-settings.service.js";
+import { findClaimedBookingIntent } from "./booking-intent.service.js";
 
 // ============================================================
 // CREATE RESERVATION
 // ============================================================
+
+const reservationInclude = {
+  guest: { select: { id: true, fullName: true, email: true, phone: true } },
+  room: {
+    select: {
+      id: true,
+      roomNumber: true,
+      roomType: true,
+      price: true,
+      capacity: true,
+      available: true,
+      maintenanceStatus: true,
+      guesthouseId: true,
+      guesthouse: { select: { id: true, name: true, city: true, ownerId: true } },
+    },
+  },
+  payment: true,
+};
 
 export const notifyReservationOwner = async (reservation) => {
   const guesthouse = reservation.room?.guesthouse;
@@ -33,29 +52,29 @@ export const createReservation = async (data, guestId) => {
     throw new Error("Authentication required.");
   }
 
-  const roomId = Number(data.roomId);
+  const result = await prisma.$transaction(async (tx) => {
+    let intent = null;
+    if (data.bookingIntentToken) {
+      intent = await findClaimedBookingIntent(data.bookingIntentToken, guestId, tx, { lock: true });
+      if (intent.reservationId) {
+        const existingReservation = await tx.reservation.findUnique({
+          where: { id: intent.reservationId },
+          include: reservationInclude,
+        });
+        if (existingReservation) return { reservation: existingReservation, created: false };
+      }
+    }
 
-  if (!roomId || Number.isNaN(roomId)) {
-    throw new Error("Invalid room ID.");
-  }
+    const roomId = Number(intent?.roomId ?? data.roomId);
+    if (!roomId || Number.isNaN(roomId)) throw new Error("Invalid room ID.");
 
-  const checkIn = parseDateOnly(data.checkIn);
-  const checkOut = parseDateOnly(data.checkOut);
+    const checkIn = parseDateOnly(intent?.checkIn ?? data.checkIn);
+    const checkOut = parseDateOnly(intent?.checkOut ?? data.checkOut);
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+      throw new Error("Invalid check-in or check-out date.");
+    }
+    if (checkOut <= checkIn) throw new Error("Check-out date must be after check-in date.");
 
-  if (
-    Number.isNaN(checkIn.getTime()) ||
-    Number.isNaN(checkOut.getTime())
-  ) {
-    throw new Error("Invalid check-in or check-out date.");
-  }
-
-  if (checkOut <= checkIn) {
-    throw new Error(
-      "Check-out date must be after check-in date."
-    );
-  }
-
-  const reservation = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id" = ${roomId} FOR UPDATE`;
     const room = await tx.room.findUnique({
       where: {
@@ -92,7 +111,7 @@ export const createReservation = async (data, guestId) => {
       );
     }
 
-    const numberOfGuests = Number(data.numberOfGuests || 1);
+    const numberOfGuests = Number(intent?.guests ?? data.numberOfGuests ?? 1);
     if (!Number.isInteger(numberOfGuests) || numberOfGuests < 1 || numberOfGuests > room.capacity) {
       throw new Error(`Number of guests must be between 1 and ${room.capacity}.`);
     }
@@ -107,7 +126,7 @@ export const createReservation = async (data, guestId) => {
       );
     }
 
-    return await tx.reservation.create({
+    const reservation = await tx.reservation.create({
       data: {
         checkIn,
         checkOut,
@@ -117,45 +136,17 @@ export const createReservation = async (data, guestId) => {
         roomId,
       },
 
-      include: {
-        guest: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-          },
-        },
-
-        room: {
-          select: {
-            id: true,
-            roomNumber: true,
-            roomType: true,
-            price: true,
-            capacity: true,
-            available: true,
-            maintenanceStatus: true,
-            guesthouseId: true,
-            guesthouse: {
-              select: {
-                id: true,
-                name: true,
-                city: true,
-                ownerId: true,
-              },
-            },
-          },
-        },
-
-        payment: true,
-      },
+      include: reservationInclude,
     });
+    if (intent) {
+      await tx.$executeRaw`UPDATE "BookingIntent" SET "reservationId" = ${reservation.id} WHERE "id" = ${intent.id}`;
+    }
+    return { reservation, created: true };
   });
 
-  await notifyReservationOwner(reservation);
+  if (result.created) await notifyReservationOwner(result.reservation);
 
-  return reservation;
+  return result.reservation;
 };
 
 // ============================================================

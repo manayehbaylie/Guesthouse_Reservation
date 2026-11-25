@@ -1269,6 +1269,15 @@ function mapPaymentFromBackend(
         payment.amount ?? 0
       ),
 
+    commissionRate:
+      payment.commissionRate == null ? null : Number(payment.commissionRate),
+
+    commissionAmount:
+      Number(payment.commissionAmount ?? 0),
+
+    ownerNetAmount:
+      Math.max(Number(payment.amount ?? 0) - Number(payment.commissionAmount ?? 0), 0),
+
     method:
       String(
         payment.method ||
@@ -2851,9 +2860,26 @@ async resubmitGuesthouse(data) {
   // RESERVATIONS
   // ==========================================================
 
+  async createBookingIntent({ guesthouseId, roomId, checkIn, checkOut, guests = 1 }) {
+    const response = await api.post('/booking-intents', {
+      guesthouseId: Number(guesthouseId),
+      roomId: Number(roomId),
+      checkIn,
+      checkOut,
+      guests: Number(guests),
+    });
+    return unwrap(response);
+  },
+
+  async claimBookingIntent(token) {
+    const response = await api.post('/booking-intents/claim', { token });
+    return unwrap(response);
+  },
+
   async createReservation({
     guesthouseId,
     roomId,
+    bookingIntentToken,
     checkIn,
     checkOut,
     checkInDate,
@@ -2863,7 +2889,7 @@ async resubmitGuesthouse(data) {
     totalPrice,
     pricePerNight,
   }) {
-    if (!roomId) {
+    if (!bookingIntentToken && !roomId) {
       throw new Error(
         "Room ID is required."
       );
@@ -2875,13 +2901,13 @@ async resubmitGuesthouse(data) {
     const finalCheckOut =
       checkOutDate || checkOut;
 
-    if (!finalCheckIn) {
+    if (!bookingIntentToken && !finalCheckIn) {
       throw new Error(
         "Check-in date is required."
       );
     }
 
-    if (!finalCheckOut) {
+    if (!bookingIntentToken && !finalCheckOut) {
       throw new Error(
         "Check-out date is required."
       );
@@ -2892,13 +2918,13 @@ async resubmitGuesthouse(data) {
         numberOfGuests || 1
       );
 
-    if (guestCount < 1) {
+    if (!bookingIntentToken && guestCount < 1) {
       throw new Error(
         "Number of guests must be at least 1."
       );
     }
 
-    const payload = {
+    const payload = bookingIntentToken ? { bookingIntentToken } : {
       roomId:
         Number(roomId),
 
@@ -2912,8 +2938,7 @@ async resubmitGuesthouse(data) {
           finalCheckOut
         ),
 
-      numberOfGuests:
-        guestCount,
+      numberOfGuests: guestCount,
     };
 
     console.log(
@@ -3310,6 +3335,7 @@ async resubmitGuesthouse(data) {
   // ==========================================================
 
   async createBookingAndPay({
+    bookingIntentToken,
     guesthouseId,
     roomId,
     checkInDate,
@@ -3323,6 +3349,7 @@ async resubmitGuesthouse(data) {
   }) {
     const reservation =
       await this.createReservation({
+        ...(bookingIntentToken ? { bookingIntentToken } : {}),
         guesthouseId,
         roomId,
         checkInDate,
@@ -3964,6 +3991,24 @@ async getMyGuesthouse() {
     );
   },
 
+  async updateReceptionist(staffId, staffData) {
+    if (!staffId) {
+      throw new Error("Staff ID is required.");
+    }
+
+    const response = await api.put(
+      `/owner/receptionists/${staffId}`,
+      {
+        fullName: staffData.fullName || staffData.name,
+        name: staffData.fullName || staffData.name,
+        email: staffData.email,
+        phone: staffData.phone,
+      }
+    );
+
+    return mapUserFromBackend(unwrap(response));
+  },
+
   async removeReceptionistFromGuesthouse(
     staffId
   ) {
@@ -4030,6 +4075,12 @@ async getMyGuesthouse() {
           data.totalRevenue ?? 0
         ),
 
+      commissionRevenue:
+        Number(data.commissionRevenue ?? 0),
+
+      ownerNetRevenue:
+        Number(data.ownerNetRevenue ?? data.totalRevenue ?? 0),
+
       breakdown: {
         telebirr:
           Number(
@@ -4040,6 +4091,12 @@ async getMyGuesthouse() {
         chapa:
           Number(
             data.breakdown?.chapa ??
+            0
+          ),
+
+        card:
+          Number(
+            data.breakdown?.card ??
             0
           ),
 
@@ -4255,11 +4312,14 @@ async getMyGuesthouse() {
 
       return {
         totalRevenue: 0,
+        commissionRevenue: 0,
+        ownerNetRevenue: 0,
 
         totalTransactions: 0,
 
         paymentMethodBreakdown: {
           telebirr: 0,
+          chapa: 0,
           bank_transfer: 0,
           card: 0,
         },
@@ -4301,13 +4361,12 @@ async getMyGuesthouse() {
             )
         );
 
-      const card =
+      const chapa =
         Number(
-          data.breakdown?.card ??
+          data.breakdown?.chapa ??
           payments
             .filter(
               (p) =>
-                p.method === "card" ||
                 p.method === "chapa"
             )
             .reduce(
@@ -4318,6 +4377,14 @@ async getMyGuesthouse() {
                 ),
               0
             )
+        );
+
+      const card =
+        Number(
+          data.breakdown?.card ??
+          payments
+            .filter((p) => p.method === "card" || p.method === "bank_card")
+            .reduce((sum, p) => sum + Number(p.amount || 0), 0)
         );
 
       const bankTransfer =
@@ -4343,21 +4410,27 @@ async getMyGuesthouse() {
 
       const calculatedRevenue =
         telebirr +
+        chapa +
         bankTransfer +
         card;
 
+      const totalRevenue = Number(data.totalRevenue ?? calculatedRevenue);
+      const commissionRevenue = Number(
+        data.commissionRevenue ??
+        payments.reduce((total, payment) => total + Number(payment.commissionAmount || 0), 0)
+      );
+
       return {
-        totalRevenue:
-          Number(
-            data.totalRevenue ??
-            calculatedRevenue
-          ),
+        totalRevenue,
+        commissionRevenue,
+        ownerNetRevenue: Number(data.ownerNetRevenue ?? Math.max(totalRevenue - commissionRevenue, 0)),
 
         totalTransactions:
           payments.length,
 
         paymentMethodBreakdown: {
           telebirr,
+          chapa,
 
           bank_transfer:
             bankTransfer,
@@ -4379,11 +4452,14 @@ async getMyGuesthouse() {
 
       return {
         totalRevenue: 0,
+        commissionRevenue: 0,
+        ownerNetRevenue: 0,
 
         totalTransactions: 0,
 
         paymentMethodBreakdown: {
           telebirr: 0,
+          chapa: 0,
           bank_transfer: 0,
           card: 0,
         },

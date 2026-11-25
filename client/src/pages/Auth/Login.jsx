@@ -317,20 +317,29 @@ export function Login() {
             navigate(profileReturnTarget, { replace: true });
             return;
           }
+          const bookingIntentToken = location.state?.bookingIntentToken || sessionStorage.getItem("pendingBookingIntentToken");
+          const role = String(user.role || "").toUpperCase();
+          if (role === "GUEST" && bookingIntentToken) {
+            navigate("/guest/dashboard", {
+              replace: true,
+              state: { bookingIntentToken, fromLogin: true, user, showPayment: true },
+            });
+            return;
+          }
+
           const pendingData = sessionStorage.getItem("pendingReservation");
           let booking = reservationData || bookingData;
           if (pendingData) {
             try {
               booking = JSON.parse(pendingData);
-              sessionStorage.removeItem("pendingReservation");
             } catch {
               sessionStorage.removeItem("pendingReservation");
             }
           }
 
-          const role = String(user.role || "").toUpperCase();
           if (role === "GUEST" && booking?.guesthouseId && booking?.roomId) {
-            navigate("/guest/dashboard", {
+            localStorage.setItem(`selectedGuesthouseId:${user.id}`, String(booking.guesthouseId));
+            navigate(`/guest/dashboard?guesthouseId=${encodeURIComponent(booking.guesthouseId)}`, {
               replace: true,
               state: { bookingData: booking, fromLogin: true, user, showPayment: true },
             });
@@ -397,6 +406,20 @@ export function Login() {
         throw new Error("Login failed. User information was not returned.");
       }
 
+      const bookingIntentToken = location.state?.bookingIntentToken || sessionStorage.getItem("pendingBookingIntentToken");
+      if (String(user.role || "").toUpperCase() === "GUEST" && bookingIntentToken) {
+        navigate("/guest/dashboard", {
+          replace: true,
+          state: {
+            bookingIntentToken,
+            fromLogin: true,
+            user,
+            showPayment: true,
+          },
+        });
+        return;
+      }
+
       // ========================================================
       // ✅ STEP 1: CHECK FOR PENDING RESERVATION IN SESSION STORAGE
       // ========================================================
@@ -406,14 +429,14 @@ export function Login() {
       if (pendingData) {
         try {
           const data = JSON.parse(pendingData);
-          sessionStorage.removeItem("pendingReservation");
 
           if (!data.guesthouseId || !data.roomId) {
             throw new Error("Invalid pending reservation data.");
           }
 
           // ✅ Redirect to Guest Dashboard with booking data and showPayment flag
-          navigate("/guest/dashboard", {
+          localStorage.setItem(`selectedGuesthouseId:${user.id}`, String(data.guesthouseId));
+          navigate(`/guest/dashboard?guesthouseId=${encodeURIComponent(data.guesthouseId)}`, {
             replace: true,
             state: {
               bookingData: data,
@@ -444,10 +467,10 @@ export function Login() {
         if (storedData) {
           try {
             const data = JSON.parse(storedData);
-            sessionStorage.removeItem("pendingReservation");
             
             // Navigate to Guest Dashboard with payment flag
-            navigate("/guest/dashboard", {
+            localStorage.setItem(`selectedGuesthouseId:${user.id}`, String(data.guesthouseId));
+            navigate(`/guest/dashboard?guesthouseId=${encodeURIComponent(data.guesthouseId)}`, {
               replace: true,
               state: {
                 bookingData: data,

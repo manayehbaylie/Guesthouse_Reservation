@@ -3,6 +3,7 @@ import { ApiService } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { NotificationToastContainer } from '../../components/common/NotificationToastContainer.jsx';
 
 import {
   BedDouble,
@@ -602,22 +603,25 @@ export function ReceptionistDashboard() {
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto lg:ml-72">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between gap-3 mb-6">
+          {/* MOBILE HAMBURGER MENU - visible only on small screens */}
+          <div className="flex min-w-0 items-center">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 bg-stone-900 text-white rounded-xl shadow-lg shadow-stone-900/30 hover:bg-stone-800 transition-all duration-200 lg:hidden"
+              aria-label={t('Open menu')}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <span className="ml-3 truncate font-bold text-stone-900 text-sm lg:ml-0">
+              {guesthouse?.name || t('Guesthouse')} {t('Dashboard')}
+            </span>
+          </div>
 
-        {/* MOBILE HAMBURGER MENU - visible only on small screens */}
-        <div className="lg:hidden flex items-center mb-4">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 bg-stone-900 text-white rounded-xl shadow-lg shadow-stone-900/30 hover:bg-stone-800 transition-all duration-200"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <span className="ml-3 font-bold text-stone-900 text-sm">
-            {guesthouse?.name || t('Guesthouse')} {t('Dashboard')}
-          </span>
+          <div className="hidden lg:block shrink-0" aria-hidden="true" />
         </div>
 
-        </div>
+        <NotificationToastContainer />
 
         {/* ====================================================
             KPI CARDS - BRAND COLORS

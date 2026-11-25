@@ -29,6 +29,16 @@ const BACKEND_URL =
 const FRONTEND_URL =
   process.env.FRONTEND_URL?.trim();
 
+const getCommissionSnapshot = async (tx, amount) => {
+  const settings = await tx.systemSetting.findUnique({ where: { id: 1 } });
+  const configuredRate = Number(settings?.commissionRate ?? process.env.COMMISSION_RATE ?? 10);
+  const commissionRate = Number.isFinite(configuredRate) && configuredRate >= 0 && configuredRate <= 100
+    ? configuredRate
+    : 10;
+  const commissionAmount = Math.round((Number(amount) * commissionRate / 100 + Number.EPSILON) * 100) / 100;
+  return { commissionRate, commissionAmount };
+};
+
 // ============================================================
 // SUPPORTED PAYMENT METHODS
 // ============================================================
@@ -1733,6 +1743,7 @@ export const markPaymentAsPaid =
             );
           }
 
+          const commissionSnapshot = await getCommissionSnapshot(tx, payment.amount);
           const updatedPayment =
             await tx.payment.update({
               where: {
@@ -1741,6 +1752,7 @@ export const markPaymentAsPaid =
 
               data: {
                 status: "PAID",
+                ...commissionSnapshot,
               },
             });
 
@@ -1896,6 +1908,7 @@ const completeVerifiedBookingDraft = async (draft, forceRefund = false) => {
         reservationId: reservation.id,
         bookingDraftId: current.id,
         amount: current.amount,
+        ...(await getCommissionSnapshot(tx, current.amount)),
         method: current.method || "CHAPA",
         status: "PAID",
         chapaTxRef: current.txRef,

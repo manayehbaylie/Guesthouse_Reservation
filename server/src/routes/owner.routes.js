@@ -9,6 +9,7 @@ import {
   addReceptionist,
   getStaff,
   assignStaff,
+  updateReceptionistInfo,
   removeReceptionist,
   updateOwnerProfile,
   getPayments,
@@ -312,6 +313,13 @@ router.put(
  *       200:
  *         description: Receptionist removed successfully
  */
+router.put(
+  "/receptionists/:staffId",
+  authenticate,
+  authorize("OWNER"),
+  updateReceptionistInfo
+);
+
 router.delete(
   "/receptionists/:staffId",
   authenticate,

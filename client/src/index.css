@@ -97,6 +97,17 @@ body {
    BUTTONS
    ========================================================= */
 
+button svg.lucide-arrow-right,
+button svg.lucide-arrow-left,
+button svg.lucide-chevron-right,
+button svg.lucide-chevron-left,
+a[role="button"] svg.lucide-arrow-right,
+a[role="button"] svg.lucide-arrow-left,
+a[role="button"] svg.lucide-chevron-right,
+a[role="button"] svg.lucide-chevron-left {
+  display: none;
+}
+
 .btn-primary {
   background-color: #ffc107;
   color: #043658;

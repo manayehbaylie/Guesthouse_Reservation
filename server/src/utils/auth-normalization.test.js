@@ -6,6 +6,7 @@ import {
   normalizeGmailAddress,
   validateGmailAddress,
 } from "./auth-normalization.js";
+import { normalizeRegistrationPhone } from "../services/auth-validation.service.js";
 
 test("normalizes Gmail aliases to one mailbox", () => {
   assert.equal(normalizeGmailAddress("First.Last+booking@googlemail.com"), "firstlast@gmail.com");
@@ -32,4 +33,12 @@ test("normalizes supported Ethiopian phone formats to E.164", () => {
     "912345678",
     "251912345678",
   ]);
+});
+
+test("normalizes international registration numbers and preserves Ethiopian local input", () => {
+  assert.equal(normalizeRegistrationPhone("+1 202 555 0125"), "+12025550125");
+  assert.equal(normalizeRegistrationPhone("0912345678"), "+251912345678");
+  assert.throws(() => normalizeRegistrationPhone("12345"), {
+    message: "Please enter a valid international phone number.",
+  });
 });

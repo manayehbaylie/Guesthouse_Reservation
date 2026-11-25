@@ -146,6 +146,7 @@ test("finalizes verified drafts atomically and idempotently, or records refund-r
   let paymentCreates = 0;
   const transaction = {
     $queryRaw: async () => [],
+    systemSetting: { findUnique: async () => ({ commissionRate: 10 }) },
     bookingDraft: {
       findUnique: async () => structuredClone(draft),
       update: async ({ data }) => Object.assign(draft, data),
@@ -178,6 +179,8 @@ test("finalizes verified drafts atomically and idempotently, or records refund-r
   assert.equal(paid.reservation.status, "CONFIRMED");
   assert.equal(paid.payment.reservationId, 91);
   assert.equal(paid.payment.bookingDraftId, draft.id);
+  assert.equal(paid.payment.commissionRate, 10);
+  assert.equal(paid.payment.commissionAmount, 50);
   assert.equal(draft.status, "COMPLETED");
   const duplicate = await finalizeVerifiedTelegramBookingDraft(draft);
   assert.equal(duplicate.payment.id, paid.payment.id);

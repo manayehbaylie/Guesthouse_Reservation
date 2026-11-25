@@ -67,13 +67,38 @@ const BANK_ACCOUNT_RULES = {
   },
 };
 
+const normalizePendingBooking = (booking) => {
+  if (!booking || typeof booking !== 'object') return null;
+
+  const guesthouseId = Number(booking.guesthouseId || booking.guesthouse?.id);
+  const roomId = Number(booking.roomId || booking.room?.id);
+  const checkInDate = booking.checkInDate || booking.checkIn;
+  const checkOutDate = booking.checkOutDate || booking.checkOut;
+  if (!Number.isInteger(guesthouseId) || guesthouseId <= 0 || !Number.isInteger(roomId) || roomId <= 0 || !checkInDate || !checkOutDate) return null;
+
+  const nightsCount = Number(booking.nightsCount || booking.nights || 0);
+  const totalPrice = Number(booking.totalPrice ?? booking.amount ?? 0);
+  return {
+    ...booking,
+    guesthouseId,
+    roomId,
+    checkInDate: String(checkInDate),
+    checkOutDate: String(checkOutDate),
+    nightsCount,
+    nights: nightsCount,
+    numberOfGuests: Number(booking.numberOfGuests || 1),
+    totalPrice: Number.isFinite(totalPrice) ? totalPrice : 0,
+  };
+};
+
 export default function GuestDashboard() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const selectedGuesthouseId = searchParams.get('guesthouseId') || localStorage.getItem(`selectedGuesthouseId:${user?.id}`);
+  const guesthouseIdFromUrl = searchParams.get('guesthouseId');
+  const [selectedGuesthouseId, setSelectedGuesthouseId] = useState(() => guesthouseIdFromUrl || localStorage.getItem(`selectedGuesthouseId:${user?.id}`));
   
   const [bookings, setBookings] = useState([]);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
@@ -98,28 +123,70 @@ export default function GuestDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
-
-  // ============================================================
-  // CHECK FOR SHOW PAYMENT FROM LOGIN
-  // ============================================================
+  const [restoringBooking, setRestoringBooking] = useState(false);
 
   useEffect(() => {
-    const bookingData = location.state?.bookingData;
-    const hasValidBooking = Boolean(
-      bookingData?.guesthouseId && bookingData?.roomId
-    );
+    if (guesthouseIdFromUrl) setSelectedGuesthouseId(guesthouseIdFromUrl);
+  }, [guesthouseIdFromUrl]);
 
-    // Payment is available only when room selection supplied booking data.
-    if (location.state?.showPayment && hasValidBooking) {
+  useEffect(() => {
+    let active = true;
+    const intentToken = location.state?.bookingIntentToken || sessionStorage.getItem('pendingBookingIntentToken');
+
+    if (intentToken && user?.id) {
+      setRestoringBooking(true);
+      setPaymentError('');
+      ApiService.claimBookingIntent(intentToken)
+        .then((booking) => {
+          if (!active) return;
+          const restored = normalizePendingBooking({ ...booking, bookingIntentToken: intentToken });
+          if (!restored) throw new Error(t('Could not restore your selected booking. Please select a room again.'));
+          setPendingBooking(restored);
+          setShowPayment(true);
+          setSelectedGuesthouseId(String(restored.guesthouseId));
+          localStorage.setItem(`selectedGuesthouseId:${user.id}`, String(restored.guesthouseId));
+        })
+        .catch((error) => {
+          if (active) {
+            setPendingBooking(null);
+            setShowPayment(false);
+            setPaymentError(error?.response?.data?.message || error.message || t('Could not restore your selected booking. Please select a room again.'));
+            sessionStorage.removeItem('pendingBookingIntentToken');
+          }
+        })
+        .finally(() => { if (active) setRestoringBooking(false); });
+
+      return () => { active = false; };
+    }
+
+    const stateBooking = normalizePendingBooking(location.state?.bookingData || location.state?.reservationData);
+    let storedBooking = null;
+    try {
+      const pendingData = sessionStorage.getItem('pendingReservation');
+      const selectedData = sessionStorage.getItem('selectedBooking');
+      if (pendingData) storedBooking = normalizePendingBooking(JSON.parse(pendingData));
+      else if (selectedData) storedBooking = normalizePendingBooking(JSON.parse(selectedData));
+    } catch {
+      sessionStorage.removeItem('pendingReservation');
+      sessionStorage.removeItem('selectedBooking');
+    }
+
+    const legacyBooking = stateBooking || storedBooking;
+    if (legacyBooking && (location.state?.showPayment || storedBooking)) {
+      setPendingBooking(legacyBooking);
       setShowPayment(true);
-      setPendingBooking(bookingData);
+      localStorage.setItem(`selectedGuesthouseId:${user?.id}`, String(legacyBooking.guesthouseId));
     } else {
       setShowPayment(false);
       setPendingBooking(null);
     }
-    
-    loadDashboardData();
-  }, [location.state, selectedGuesthouseId]);
+
+    return () => { active = false; };
+  }, [location.state, user?.id, t]);
+
+  useEffect(() => {
+    if (user?.id) loadDashboardData();
+  }, [selectedGuesthouseId, user?.id]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -217,6 +284,7 @@ export default function GuestDashboard() {
 
     try {
       const result = await ApiService.createBookingAndPay({
+        bookingIntentToken: pendingBooking.bookingIntentToken,
         guesthouseId: pendingBooking.guesthouseId || pendingBooking.guesthouse?.id,
         roomId: pendingBooking.roomId || pendingBooking.room?.id,
         checkInDate: pendingBooking.checkInDate,
@@ -231,6 +299,8 @@ export default function GuestDashboard() {
 
       if (result?.checkoutUrl) {
         sessionStorage.removeItem('pendingReservation');
+        sessionStorage.removeItem('selectedBooking');
+        sessionStorage.removeItem('pendingBookingIntentToken');
         window.location.href = result.checkoutUrl;
         return;
       }
@@ -250,6 +320,8 @@ export default function GuestDashboard() {
   // Cancel pending booking
   const handleCancelBooking = () => {
     sessionStorage.removeItem('pendingReservation');
+    sessionStorage.removeItem('selectedBooking');
+    sessionStorage.removeItem('pendingBookingIntentToken');
     setShowPayment(false);
     setPendingBooking(null);
   };
@@ -293,7 +365,7 @@ export default function GuestDashboard() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-stone-200 border-t-amber-500 rounded-full animate-spin mx-auto" />
-            <p className="mt-4 text-base text-stone-500">{t('Loading your dashboard...')}</p>
+            <p className="mt-4 text-base text-stone-500">{restoringBooking ? t('Restoring your booking...') : t('Loading your dashboard...')}</p>
           </div>
         </div>
       </DashboardLayout>
@@ -344,7 +416,7 @@ export default function GuestDashboard() {
                 <div>
                   <p className="text-xs text-stone-500">{t('Dates')}</p>
                   <p className="font-bold text-stone-900 text-sm">
-                    {pendingBooking.checkInDate} → {pendingBooking.checkOutDate}
+                    {pendingBooking.checkInDate || pendingBooking.checkIn} → {pendingBooking.checkOutDate || pendingBooking.checkOut}
                   </p>
                 </div>
                 <div>
@@ -357,7 +429,7 @@ export default function GuestDashboard() {
               <div className="mt-3 pt-3 border-t border-stone-200 flex justify-between">
                 <span className="text-stone-500">{t('Total Amount')}</span>
                 <span className="text-xl font-black text-amber-500">
-                  {pendingBooking.totalPrice?.toLocaleString() || 0} ETB
+                  {Number(pendingBooking.totalPrice ?? pendingBooking.amount ?? 0).toLocaleString()} ETB
                 </span>
               </div>
             </div>
@@ -655,90 +727,6 @@ export default function GuestDashboard() {
               </Link>
             </div>
 
-            {/* UPCOMING STAYS */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-black text-stone-900">{t('Upcoming Stays')}</h2>
-                {upcomingBookings.length > 0 && (
-                  <Link to="/reservations" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                    {t('View All')} →
-                  </Link>
-                )}
-              </div>
-
-              {upcomingBookings.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center shadow-sm">
-                  <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="w-8 h-8 text-stone-400" />
-                  </div>
-                  <p className="text-stone-500 font-medium">{t('No upcoming stays')}</p>
-                  <p className="text-sm text-stone-400 mt-1">{t('Book a guesthouse to start your journey')}</p>
-                  <Link
-                    to="/guest/search"
-                    className="mt-4 inline-block px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl text-sm transition"
-                  >
-                    {t('Start Exploring')}
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {upcomingBookings.slice(0, 4).map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="bg-white rounded-2xl border border-stone-200 p-5 hover:shadow-md transition shadow-sm"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h4 className="font-bold text-stone-900">{booking.guesthouseName}</h4>
-                          <p className="text-sm text-stone-500 flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" />
-                            {booking.guesthouseLocation || 'Ethiopia'}
-                          </p>
-                        </div>
-                        <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadge(booking.status)}`}>
-                          {getStatusIcon(booking.status)}
-                          {getStatusText(booking.status)}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-stone-500">{t('Room')}</p>
-                          <p className="font-semibold text-stone-900">
-                            {booking.roomNumber} ({booking.roomType})
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-stone-500">{t('Nights')}</p>
-                          <p className="font-semibold text-stone-900">{booking.nightsCount}</p>
-                        </div>
-                        <div>
-                          <p className="text-stone-500">{t('Check-in')}</p>
-                          <p className="font-semibold text-stone-900">{booking.checkInDate}</p>
-                        </div>
-                        <div>
-                          <p className="text-stone-500">{t('Check-out')}</p>
-                          <p className="font-semibold text-stone-900">{booking.checkOutDate}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 pt-3 border-t border-stone-200 flex items-center justify-between">
-                        <span className="text-lg font-black text-amber-600">
-                          {booking.totalPrice?.toLocaleString()} ETB
-                        </span>
-                        <Link
-                          to={`/reservations/${booking.id}`}
-                          className="text-sm font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1"
-                        >
-                          {t('Details')} <ChevronRight className="w-4 h-4" />
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* SELECTED GUESTHOUSE */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -789,101 +777,9 @@ export default function GuestDashboard() {
               )}
             </div>
 
-            {/* RECENT BOOKINGS HISTORY */}
-            <div className="mb-8 rounded-2xl border border-stone-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
-                <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-amber-500" />
-                  <h2 className="font-bold text-stone-900">{t('Your Reviews')}</h2>
-                </div>
-                <Link to="/guest/reviews" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                  {t('Write a Review')}
-                </Link>
-              </div>
-              <div className="space-y-3 p-6">
-                {myReviews.length === 0 ? (
-                  <p className="text-sm text-stone-500">{t('You have not submitted a review yet.')}</p>
-                ) : (
-                  myReviews.slice(0, 3).map((review) => (
-                    <div key={review.id} className="rounded-xl border border-stone-100 bg-stone-50 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-bold text-stone-900">
-                          {review.guesthouse?.name || 'Guesthouse'}
-                        </p>
-                        <div className="flex items-center gap-1 text-amber-500" aria-label={`${review.rating} out of 5 stars`}>
-                          {Array.from({ length: 5 }, (_, index) => (
-                            <Star key={index} className={`h-4 w-4 ${index < review.rating ? 'fill-amber-400 text-amber-400' : 'text-stone-300'}`} />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-stone-600">{review.comment}</p>
-                      <p className="mt-2 text-xs text-stone-400">
-                        {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* RECENT BOOKINGS HISTORY */}
-            <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-              <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-amber-500" />
-                  <h2 className="font-bold text-stone-900">{t('Recent Bookings History')}</h2>
-                </div>
-                <Link to="/reservations" className="text-sm font-semibold text-amber-600 hover:text-amber-700">
-                  {t('View All')} →
-                </Link>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-stone-50">
-                    <tr className="text-left">
-                      <th className="px-6 py-3 font-semibold text-stone-500">Guesthouse</th>
-                      <th className="px-6 py-3 font-semibold text-stone-500">Room</th>
-                      <th className="px-6 py-3 font-semibold text-stone-500">Check-in</th>
-                      <th className="px-6 py-3 font-semibold text-stone-500">Check-out</th>
-                      <th className="px-6 py-3 font-semibold text-stone-500">Amount</th>
-                      <th className="px-6 py-3 font-semibold text-stone-500">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.slice(0, 5).map((booking) => (
-                      <tr key={booking.id} className="border-t border-stone-100 hover:bg-stone-50">
-                        <td className="px-6 py-3 font-medium text-stone-900">{booking.guesthouseName}</td>
-                        <td className="px-6 py-3 text-stone-500">{booking.roomNumber}</td>
-                        <td className="px-6 py-3 text-stone-500">{booking.checkInDate}</td>
-                        <td className="px-6 py-3 text-stone-500">{booking.checkOutDate}</td>
-                        <td className="px-6 py-3 font-semibold text-stone-900">{booking.totalPrice?.toLocaleString()} ETB</td>
-                        <td className="px-6 py-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadge(booking.status)}`}>
-                            {getStatusText(booking.status)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {bookings.length === 0 && (
-                      <tr>
-                        <td colSpan="6" className="px-6 py-8 text-center text-stone-500">
-                          {t('No bookings found')}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </>
         )}
 
-        {/* Footer */}
-        <footer className="mt-8 pt-6 border-t border-stone-200 text-center">
-          <p className="text-sm text-stone-400">
-            © 2026 {t('Guesthouse Platform')}. {t('All rights reserved.')}
-          </p>
-        </footer>
       </div>
     </DashboardLayout>
   );

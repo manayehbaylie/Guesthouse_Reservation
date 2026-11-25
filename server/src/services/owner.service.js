@@ -1300,7 +1300,63 @@ export const assignReceptionistToGuesthouse =
 
 /*
 ==================================================
-7. REMOVE RECEPTIONIST
+7. UPDATE RECEPTIONIST
+==================================================
+*/
+
+export const updateReceptionist = async (
+  ownerId,
+  staffId,
+  data
+) => {
+  const guesthouse = await prisma.guesthouse.findFirst({
+    where: { ownerId },
+  });
+
+  if (!guesthouse) {
+    throw new Error("Guesthouse not found");
+  }
+
+  const assignment = await prisma.staffAssignment.findUnique({
+    where: {
+      guesthouseId_staffId: {
+        guesthouseId: guesthouse.id,
+        staffId: Number(staffId),
+      },
+    },
+  });
+
+  if (!assignment) {
+    throw new Error("Receptionist is not assigned to this guesthouse");
+  }
+
+  const fullName = String(data.fullName || data.name || '').trim();
+  const email = String(data.email || '').trim().toLowerCase();
+  const phone = String(data.phone || '').replace(/\s/g, '').replace(/-/g, '').trim();
+
+  if (!fullName) throw new Error("Full name is required");
+  if (!email) throw new Error("Email is required");
+  if (!phone) throw new Error("Phone number is required");
+
+  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingEmail && existingEmail.id !== Number(staffId)) {
+    throw new Error("Email already exists");
+  }
+
+  const existingPhone = await prisma.user.findUnique({ where: { phone } });
+  if (existingPhone && existingPhone.id !== Number(staffId)) {
+    throw new Error("Phone already exists");
+  }
+
+  return prisma.user.update({
+    where: { id: Number(staffId) },
+    data: { fullName, email, phone },
+  });
+};
+
+/*
+==================================================
+8. REMOVE RECEPTIONIST
 ==================================================
 */
 

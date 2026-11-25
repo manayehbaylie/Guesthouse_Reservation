@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { getCountries, getCountryCallingCode, parsePhoneNumberFromString } from "libphonenumber-js";
+import "flag-icons/css/flag-icons.min.css";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { REGISTRATION_ID_TYPES } from "../../../../shared/registration-options.mjs";
@@ -19,6 +21,7 @@ import {
   X,
   BriefcaseBusiness,
   ChevronDown,
+  Search,
 } from "lucide-react";
 
 const isValidGmailAddress = (value) => {
@@ -34,6 +37,13 @@ const isValidGmailAddress = (value) => {
     /^(gmail\.com|googlemail\.com)$/i.test(domain)
   );
 };
+
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+const countryOptions = getCountries().map((country) => ({
+  country,
+  name: regionNames.of(country),
+  callingCode: getCountryCallingCode(country),
+})).sort((first, second) => first.name.localeCompare(second.name));
 
 // ============================================================
 // MAIN REGISTER COMPONENT
@@ -51,6 +61,11 @@ export function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState("ET");
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+  const [countryPickerPosition, setCountryPickerPosition] = useState(null);
+  const [countrySearch, setCountrySearch] = useState("");
+  const countryPickerRef = useRef(null);
   const [residentialAddress, setResidentialAddress] = useState("");
   const [idType, setIdType] = useState("");
   const [idNumber, setIdNumber] = useState("");
@@ -72,6 +87,24 @@ export function Register() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const selectedPhoneCountry = countryOptions.find(({ country }) => country === phoneCountry);
+  const visibleCountryOptions = countryOptions.filter(({ name, callingCode, country }) =>
+    `${name} +${callingCode} ${country}`.toLowerCase().includes(countrySearch.trim().toLowerCase())
+  );
+
+  useEffect(() => {
+    if (!countryPickerOpen) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!countryPickerRef.current?.contains(event.target)) {
+        setCountryPickerOpen(false);
+        setCountrySearch("");
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [countryPickerOpen]);
 
   // ==========================================================
   // VALIDATE PERSONAL INFORMATION
@@ -80,7 +113,7 @@ export function Register() {
   const validatePersonalInformation = () => {
     const trimmedName = name.trim();
     const trimmedEmail = email.trim();
-    const trimmedPhone = phone.trim();
+    const parsedPhone = parsePhoneNumberFromString(phone.trim(), phoneCountry);
 
     // Full name
     if (!trimmedName) {
@@ -102,14 +135,12 @@ export function Register() {
     }
 
     // Phone
-    if (!trimmedPhone) {
+    if (!phone.trim()) {
       return { field: "phone", message: t("Phone number is required.") };
     }
 
-    const phoneDigits = trimmedPhone.replace(/[\s\-()]/g, "");
-    const validPhone = /^(?:\+2519\d{8}|2519\d{8}|09\d{8}|9\d{8})$/.test(phoneDigits);
-    if (!validPhone) {
-      return { field: "phone", message: t("Please enter a valid Ethiopian phone number.") };
+    if (!parsedPhone?.isValid()) {
+      return { field: "phone", message: t("Please enter a valid phone number for the selected country.") };
     }
 
     return null;
@@ -183,6 +214,7 @@ export function Register() {
     setName("");
     setEmail("");
     setPhone("");
+    setPhoneCountry("ET");
     setResidentialAddress("");
     setIdType("");
     setIdNumber("");
@@ -295,7 +327,7 @@ export function Register() {
         name: name.trim(),
         fullName: name.trim(),
         ...(email.trim() ? { email: email.trim() } : {}),
-        phone: phone.trim(),
+        phone: parsePhoneNumberFromString(phone.trim(), phoneCountry).number,
         residentialAddress:
           accountType === "Owner"
             ? residentialAddress.trim()
@@ -473,22 +505,117 @@ export function Register() {
 
               {/* PHONE */}
 
-              <InputField
-                label={t('Phone Number')}
-                type="tel"
-                value={phone}
-                onChange={(value) => {
-                  setPhone(value);
-                  setFieldErrors((previous) => ({ ...previous, phone: undefined }));
-                }}
-                error={fieldErrors.phone}
-                placeholder="+251 9XX XXX XXX"
-                required
-                autoComplete="tel"
-                icon={
-                  <Phone className="h-4 w-4" />
-                }
-              />
+              <div>
+                <label className="mb-2 block text-sm font-bold text-[#173B53]">
+                  {t('Phone Number')}<span className="ml-1 text-red-500">*</span>
+                </label>
+                <div ref={countryPickerRef} className="relative">
+                  <div className={`flex w-full overflow-hidden rounded-xl border bg-white transition focus-within:border-[#D8A000] focus-within:ring-4 focus-within:ring-[#E0A800]/10 ${fieldErrors.phone ? "border-red-400" : "border-slate-200"}`}>
+                    <button
+                      id="register-phone-country"
+                      type="button"
+                      aria-label={`Select country, ${selectedPhoneCountry.name} +${selectedPhoneCountry.callingCode}`}
+                      aria-expanded={countryPickerOpen}
+                      aria-haspopup="listbox"
+                      onClick={(event) => {
+                        if (countryPickerOpen) {
+                          setCountryPickerOpen(false);
+                          setCountrySearch("");
+                          return;
+                        }
+
+                        const bounds = event.currentTarget.getBoundingClientRect();
+                        const spaceBelow = window.innerHeight - bounds.bottom;
+                        const spaceAbove = bounds.top;
+                        const openAbove = spaceBelow < 320 && spaceAbove > spaceBelow;
+                        const availableSpace = openAbove ? spaceAbove : spaceBelow;
+                        const maxHeight = Math.max(120, Math.min(360, availableSpace - 8));
+                        const left = Math.max(8, Math.min(bounds.left, window.innerWidth - 296));
+                        const top = openAbove
+                          ? Math.max(8, bounds.top - maxHeight - 8)
+                          : Math.min(bounds.bottom + 8, window.innerHeight - maxHeight - 8);
+
+                        setCountryPickerPosition({ left, top, maxHeight });
+                        setCountryPickerOpen(true);
+                      }}
+                      className="flex shrink-0 cursor-pointer items-center gap-2 border-r border-slate-200 bg-slate-50 px-3 py-3.5 text-sm font-semibold text-[#082F49] outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#D8A000]"
+                    >
+                      <span className={`fi fi-${phoneCountry.toLowerCase()} inline-block h-4 w-6 rounded-sm`} aria-hidden="true" />
+                      <span>+{selectedPhoneCountry.callingCode}</span>
+                      <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition-transform ${countryPickerOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                    </button>
+                  <span className="flex shrink-0 items-center pl-3 text-slate-400" aria-hidden="true">
+                    <Phone className="h-4 w-4" />
+                  </span>
+                  <input
+                    id="register-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(event) => {
+                      setPhone(event.target.value);
+                      setFieldErrors((previous) => ({ ...previous, phone: undefined }));
+                    }}
+                    placeholder="9XX XXX XXX"
+                    required
+                    autoComplete="tel-national"
+                    aria-label={t('Phone Number')}
+                    aria-invalid={Boolean(fieldErrors.phone)}
+                    className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm text-[#082F49] outline-none placeholder:text-slate-400"
+                  />
+                  </div>
+                  {countryPickerOpen && (
+                    <div
+                      className="fixed z-[100] w-72 max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/15"
+                      style={{ left: countryPickerPosition.left, top: countryPickerPosition.top, maxHeight: countryPickerPosition.maxHeight }}
+                    >
+                      <div className="border-b border-slate-100 p-2.5">
+                        <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 focus-within:border-[#D8A000] focus-within:ring-2 focus-within:ring-[#E0A800]/15">
+                          <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                          <input
+                            type="search"
+                            value={countrySearch}
+                            onChange={(event) => setCountrySearch(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                setCountryPickerOpen(false);
+                                setCountrySearch("");
+                              }
+                            }}
+                            placeholder="Search country or code"
+                            aria-label="Search countries"
+                            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#082F49] outline-none placeholder:text-slate-400"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div role="listbox" aria-label="Countries" className="overflow-y-auto p-1" style={{ maxHeight: Math.max(80, countryPickerPosition.maxHeight - 58) }}>
+                        {visibleCountryOptions.length ? visibleCountryOptions.map(({ country, name, callingCode }) => (
+                          <button
+                            key={country}
+                            type="button"
+                            role="option"
+                            aria-selected={phoneCountry === country}
+                            onClick={() => {
+                              setPhoneCountry(country);
+                              setCountryPickerOpen(false);
+                              setCountrySearch("");
+                              setFieldErrors((previous) => ({ ...previous, phone: undefined }));
+                            }}
+                            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-slate-50 ${phoneCountry === country ? "bg-amber-50 text-[#082F49]" : "text-slate-700"}`}
+                          >
+                            <span className={`fi fi-${country.toLowerCase()} inline-block h-4 w-6 shrink-0 rounded-sm`} aria-hidden="true" />
+                            <span className="min-w-0 flex-1 truncate">{name}</span>
+                            <span className="shrink-0 text-xs font-semibold text-slate-500">+{callingCode}</span>
+                          </button>
+                        )) : (
+                          <p className="px-3 py-5 text-center text-sm text-slate-500">No countries found.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {fieldErrors.phone && <p className="mt-1.5 text-sm text-red-600">{fieldErrors.phone}</p>}
+              </div>
 
               {accountType === "Owner" && (
                 <>
@@ -710,17 +837,6 @@ function RegisterLayout({ children }) {
             {/* MAIN IMAGE CONTENT */}
 
             <div className="max-w-xl">
-
-              <div className="mb-4 flex items-center gap-2">
-
-                <span className="h-1 w-10 rounded-full bg-[#E0A800]" />
-
-                <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#E0A800]">
-                  Guesthouse Reservation
-                </span>
-
-              </div>
-
               <h2 className="text-4xl font-extrabold leading-tight text-white xl:text-5xl">
 
                 Find a comfortable place

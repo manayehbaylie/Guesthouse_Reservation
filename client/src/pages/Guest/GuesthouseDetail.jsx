@@ -21,7 +21,6 @@ import {
   Navigation,
 } from "lucide-react";
 import GuesthouseNearbyPanel from "../../components/guest/NearbyGuesthouses.jsx";
-import GuesthouseLocationMap from "../../components/common/GuesthouseLocationMap.jsx";
 
 export function GuesthouseDetail() {
   const { id } = useParams();
@@ -449,7 +448,7 @@ export function GuesthouseDetail() {
   // BOOK ROOM - UPDATED
   // ============================================================
 
-  const handleBookRoom = (room) => {
+  const handleBookRoom = async (room) => {
     if (!guesthouse || !room) {
       return;
     }
@@ -468,117 +467,42 @@ export function GuesthouseDetail() {
 
     setDateError("");
 
-    const roomPrice = Number(
-      room.pricePerNight ??
-        room.price ??
-        room.roomPrice ??
-        room.price_per_night ??
-        room.amount ??
-        0
-    );
-
-    const nightsCount = calculateCalendarNights(
-      checkInDate,
-      checkOutDate
-    );
-
-    if (!roomPrice || roomPrice <= 0) {
-      console.error(
-        "Room price is missing or invalid:",
-        room
-      );
-
-      alert(
-        "The price for this room is not available."
-      );
-
-      return;
-    }
-
-    const bookingData = {
-      guesthouseId: Number(guesthouse.id),
-      roomId: Number(room.id),
-      guesthouse,
-      room,
-      roomPrice,
-      pricePerNight: roomPrice,
-      checkIn: checkInDate,
-      checkOut: checkOutDate,
-      checkInDate,
-      checkOutDate,
-      nights: nightsCount,
-      nightsCount,
-      amount: roomPrice * nightsCount,
-      totalPrice: roomPrice * nightsCount,
-      numberOfGuests: 1,
-      paymentMethod: "CARD",
-      telebirrPhone: "",
-      selectedBank: "",
-      accountNumber: "",
-    };
-
-    console.log("========================================");
-    console.log("GUESTHOUSE DETAIL - SELECTED ROOM");
-    console.log("guesthouseId:", bookingData.guesthouseId);
-    console.log("roomId:", bookingData.roomId);
-    console.log("roomPrice:", bookingData.roomPrice);
-    console.log("bookingData:", bookingData);
-    console.log("========================================");
-
-    // ========================================================
-    // ✅ CHECK IF USER IS LOGGED IN
-    // ========================================================
-
-    const token = localStorage.getItem("token");
-    const currentUser = ApiService.getCurrentUser();
-
-    if (!token || !currentUser) {
-      // Save booking data to sessionStorage
-      sessionStorage.setItem(
-        "pendingReservation",
-        JSON.stringify(bookingData)
-      );
-
-      // Redirect to login with booking data
-      navigate("/login", {
-        state: {
-          from: `/guesthouse/${guesthouse.id}`,
-          bookingData: bookingData,
-          reservationData: bookingData,
-          pendingReservation: true,
-          returnTo: "payment",
-          returnUrl: `/booking?guesthouseId=${guesthouse.id}&roomId=${room.id}`,
-        },
-      });
-
-      return;
-    }
-
-    // ✅ USER LOGGED IN - OPEN PAYMENT IN THE GUEST DASHBOARD
     try {
-      sessionStorage.setItem(
-        "selectedBooking",
-        JSON.stringify(bookingData)
-      );
+      const intent = await ApiService.createBookingIntent({
+        guesthouseId: guesthouse.id,
+        roomId: room.id,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+        guests: 1,
+      });
+      const bookingIntentToken = intent?.token;
+      if (!bookingIntentToken) throw new Error("Could not securely save your booking selection.");
+
+      const authToken = localStorage.getItem("token");
+      const currentUser = ApiService.getCurrentUser();
+      sessionStorage.setItem("pendingBookingIntentToken", bookingIntentToken);
+
+      if (!authToken || !currentUser) {
+        navigate("/login", {
+          state: {
+            from: `/guesthouse/${guesthouse.id}`,
+            bookingIntentToken,
+            returnTo: "payment",
+          },
+        });
+        return;
+      }
+
+      const booking = await ApiService.claimBookingIntent(bookingIntentToken);
+      localStorage.setItem(`selectedGuesthouseId:${currentUser.id}`, String(booking.guesthouseId));
+      navigate(`/guest/dashboard?guesthouseId=${booking.guesthouseId}`, {
+        replace: true,
+        state: { bookingIntentToken, showPayment: true },
+      });
     } catch (storageError) {
-      console.warn(
-        "Could not save selected booking:",
-        storageError
-      );
+      setDateError(storageError.message || "Could not continue with this booking.");
+      datesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-
-    localStorage.setItem(
-      `selectedGuesthouseId:${currentUser.id}`,
-      String(guesthouse.id)
-    );
-
-    navigate(`/guest/dashboard?guesthouseId=${guesthouse.id}`, {
-      replace: true,
-      state: {
-        bookingData,
-        showPayment: true,
-      },
-    });
   };
 
   // ============================================================
@@ -827,32 +751,6 @@ export function GuesthouseDetail() {
           </a>
         </div>
       </div>
-
-      {hasGuesthouseCoordinates && (
-        <section className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-          <div>
-            <h2 className="text-xl font-black text-[#043658]">
-              {t('Guesthouse location')}
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              {Number(guesthouse.latitude).toFixed(6)},{" "}
-              {Number(guesthouse.longitude).toFixed(6)}
-            </p>
-          </div>
-          <GuesthouseLocationMap
-            markers={[
-              {
-                id: guesthouse.id,
-                name: guesthouse.name,
-                latitude: guesthouse.latitude,
-                longitude: guesthouse.longitude,
-              },
-            ]}
-            height="min(55vh, 440px)"
-            zoom={15}
-          />
-        </section>
-      )}
 
       {/* ======================================================
           IMAGE GALLERY

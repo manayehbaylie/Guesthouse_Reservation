@@ -108,6 +108,8 @@ export function OwnerDashboard() {
   const [payments, setPayments] = useState([]);
   const [revenueReport, setRevenueReport] = useState({
     totalRevenue: 0,
+    commissionRevenue: 0,
+    ownerNetRevenue: 0,
     totalTransactions: 0,
     paymentMethodBreakdown: { telebirr: 0, bank_transfer: 0, card: 0 },
     occupancyRate: 0,
@@ -129,6 +131,7 @@ export function OwnerDashboard() {
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [editingStaffId, setEditingStaffId] = useState(null);
 
   // Room Form State
   const [roomNumber, setRoomNumber] = useState('');
@@ -234,6 +237,8 @@ export function OwnerDashboard() {
           if (rev) {
             setRevenueReport({
               totalRevenue: rev.totalRevenue || 0,
+              commissionRevenue: rev.commissionRevenue || 0,
+              ownerNetRevenue: rev.ownerNetRevenue ?? Math.max((rev.totalRevenue || 0) - (rev.commissionRevenue || 0), 0),
               totalTransactions: rev.totalTransactions || 0,
               paymentMethodBreakdown: {
                 telebirr: rev.paymentMethodBreakdown?.telebirr || 0,
@@ -247,6 +252,8 @@ export function OwnerDashboard() {
           console.error('❌ Error fetching revenue:', error);
           setRevenueReport({
             totalRevenue: 0,
+            commissionRevenue: 0,
+            ownerNetRevenue: 0,
             totalTransactions: 0,
             paymentMethodBreakdown: { telebirr: 0, bank_transfer: 0, card: 0 },
             occupancyRate: 0,
@@ -294,6 +301,8 @@ export function OwnerDashboard() {
         setPayments([]);
         setRevenueReport({
           totalRevenue: 0,
+          commissionRevenue: 0,
+          ownerNetRevenue: 0,
           totalTransactions: 0,
           paymentMethodBreakdown: { telebirr: 0, bank_transfer: 0, card: 0 },
           occupancyRate: 0,
@@ -442,15 +451,26 @@ export function OwnerDashboard() {
     }
 
     try {
-      await ApiService.registerReceptionist({
-        fullName: staffName,
-        name: staffName,
-        email: staffEmail,
-        phone: staffPhone,
-        password: staffPassword || 'Reception@123',
-      });
-      showToast(t('Receptionist {{name}} successfully registered and assigned!', { name: staffName }));
+      if (editingStaffId) {
+        await ApiService.updateReceptionist(editingStaffId, {
+          fullName: staffName,
+          name: staffName,
+          email: staffEmail,
+          phone: staffPhone,
+        });
+        showToast(t('Receptionist {{name}} updated successfully!', { name: staffName }));
+      } else {
+        await ApiService.registerReceptionist({
+          fullName: staffName,
+          name: staffName,
+          email: staffEmail,
+          phone: staffPhone,
+          password: staffPassword || 'Reception@123',
+        });
+        showToast(t('Receptionist {{name}} successfully registered and assigned!', { name: staffName }));
+      }
       setShowAddStaffModal(false);
+      setEditingStaffId(null);
       setStaffName('');
       setStaffEmail('');
       setStaffPhone('+251 9');
@@ -462,6 +482,24 @@ export function OwnerDashboard() {
 
   const handleOpenStaffModal = () => {
     setStaffFormError('');
+    setEditingStaffId(null);
+    setStaffName('');
+    setStaffEmail('');
+    setStaffPhone('+251 9');
+    setStaffPassword('Reception@123');
+    setShowAddStaffModal(true);
+  };
+
+  const handleEditStaff = (staffMember) => {
+    if (String(guesthouse?.status || '').toUpperCase() !== 'APPROVED') {
+      showToast('Your guesthouse is still pending approval. Staff management is locked until approval is complete.', 'info');
+      return;
+    }
+    setStaffFormError('');
+    setEditingStaffId(staffMember.id);
+    setStaffName(staffMember.fullName || staffMember.name || '');
+    setStaffEmail(staffMember.email || '');
+    setStaffPhone(staffMember.phone || '+251 9');
     setShowAddStaffModal(true);
   };
 
@@ -617,8 +655,9 @@ export function OwnerDashboard() {
   const paidRevenueByPeriod = ['day', 'week', 'month', 'year'].reduce((totals, period) => {
     const periodStart = getPeriodStart(period);
     totals[period] = payments.reduce((total, payment) => {
+      if (payment.status !== 'paid') return total;
       const paymentDate = new Date(payment.createdAt);
-      return paymentDate >= periodStart ? total + Number(payment.amount || 0) : total;
+      return paymentDate >= periodStart ? total + Number(payment.ownerNetAmount ?? payment.amount ?? 0) : total;
     }, 0);
     return totals;
   }, {});
@@ -817,7 +856,7 @@ export function OwnerDashboard() {
                 <span>{t('Revenue & Audit')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-stone-800 text-emerald-400">
-                {revenueReport?.totalRevenue ? `${(revenueReport.totalRevenue / 1000).toFixed(0)}k` : '0k'}
+                {revenueReport?.ownerNetRevenue ? `${(revenueReport.ownerNetRevenue / 1000).toFixed(0)}k` : '0k'}
               </span>
             </button>
 
@@ -999,15 +1038,15 @@ export function OwnerDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <button type="button" onClick={() => handleTabChange('revenue')} className="group w-full text-left bg-white p-5 rounded-3xl border border-stone-200 shadow-sm space-y-2 transition-all hover:-translate-y-0.5 hover:border-[#0b3b5b] hover:bg-[#0b3b5b] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500/40">
                   <div className="flex items-center justify-between text-stone-400 group-hover:text-amber-300 text-xs font-semibold">
-                    <span>{t('Verified Gross Revenue')}</span>
+                    <span>{t('Owner Net Revenue')}</span>
                     <DollarSign className="w-4 h-4 text-amber-500" />
                   </div>
                   <div className="text-2xl font-black text-stone-900 group-hover:text-white">
-                    {revenueReport?.totalRevenue ? `${revenueReport.totalRevenue.toLocaleString()} ETB` : '0 ETB'}
+                    {revenueReport?.ownerNetRevenue ? `${revenueReport.ownerNetRevenue.toLocaleString()} ETB` : '0 ETB'}
                   </div>
                   <div className="text-[11px] text-emerald-600 group-hover:text-amber-300 font-bold flex items-center gap-1">
                     <ArrowUpRight className="w-3.5 h-3.5" />
-                    <span>{t('Total Revenue')}</span>
+                    <span>{t('After platform commission')}</span>
                   </div>
                 </button>
 
@@ -1300,9 +1339,14 @@ export function OwnerDashboard() {
                             <td className="px-5 py-4 text-stone-600">{st.email || '-'}</td>
                             <td className="px-5 py-4 text-stone-600">{st.phone || '-'}</td>
                             <td className="px-5 py-4 text-right">
-                              <button onClick={() => handleRemoveStaff(st)} aria-label={t('Remove {{name}}', { name: st.name || st.fullName || t('Receptionist') })} className="p-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button onClick={() => handleEditStaff(st)} aria-label={t('Edit {{name}}', { name: st.name || st.fullName || t('Receptionist') })} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl">
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleRemoveStaff(st)} aria-label={t('Remove {{name}}', { name: st.name || st.fullName || t('Receptionist') })} className="p-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1317,12 +1361,25 @@ export function OwnerDashboard() {
           {/* TAB 4: REVENUE */}
           {activeTab === 'revenue' && (
             <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {[
+                  { label: 'Gross Guest Payments', amount: revenueReport.totalRevenue, color: 'text-stone-900' },
+                  { label: 'Platform Commission', amount: revenueReport.commissionRevenue, color: 'text-amber-700' },
+                  { label: 'Owner Net Revenue', amount: revenueReport.ownerNetRevenue, color: 'text-emerald-700' },
+                ].map(({ label, amount, color }) => (
+                  <div key={label} className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-stone-500">{t(label)}</p>
+                    <p className={`mt-2 text-xl font-black ${color}`}>{Number(amount || 0).toLocaleString()} ETB</p>
+                  </div>
+                ))}
+              </div>
+
               <div className="grid w-full max-w-4xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                 {[
-                  { key: 'day', label: 'Paid Today', icon: Calendar, colorClass: 'text-blue-600', hoverClass: 'hover:border-blue-300 hover:bg-blue-50/60' },
-                  { key: 'week', label: 'Paid This Week', icon: Calendar, colorClass: 'text-emerald-600', hoverClass: 'hover:border-emerald-300 hover:bg-emerald-50/60' },
-                  { key: 'month', label: 'Paid This Month', icon: Calendar, colorClass: 'text-violet-600', hoverClass: 'hover:border-violet-300 hover:bg-violet-50/60' },
-                  { key: 'year', label: 'Paid This Year', icon: Calendar, colorClass: 'text-amber-600', hoverClass: 'hover:border-amber-300 hover:bg-amber-50/60' },
+                  { key: 'day', label: 'Owner Net Today', icon: Calendar, colorClass: 'text-blue-600', hoverClass: 'hover:border-blue-300 hover:bg-blue-50/60' },
+                  { key: 'week', label: 'Owner Net This Week', icon: Calendar, colorClass: 'text-emerald-600', hoverClass: 'hover:border-emerald-300 hover:bg-emerald-50/60' },
+                  { key: 'month', label: 'Owner Net This Month', icon: Calendar, colorClass: 'text-violet-600', hoverClass: 'hover:border-violet-300 hover:bg-violet-50/60' },
+                  { key: 'year', label: 'Owner Net This Year', icon: Calendar, colorClass: 'text-amber-600', hoverClass: 'hover:border-amber-300 hover:bg-amber-50/60' },
                 ].map(({ key, label, icon: PeriodIcon, colorClass, hoverClass }) => (
                   <button
                     key={key}
@@ -1368,6 +1425,8 @@ export function OwnerDashboard() {
                           <th className="px-5 py-3 font-bold">{t('Status')}</th>
                           <th className="px-5 py-3 font-bold">{t('Paid Date')}</th>
                           <th className="px-5 py-3 font-bold text-right">{t('Amount')}</th>
+                          <th className="px-5 py-3 font-bold text-right">{t('Platform Commission')}</th>
+                          <th className="px-5 py-3 font-bold text-right">{t('Owner Net')}</th>
                           <th className="px-5 py-3 font-bold text-right">{t('Action')}</th>
                         </tr>
                       </thead>
@@ -1384,6 +1443,8 @@ export function OwnerDashboard() {
                             </td>
                             <td className="px-5 py-4 text-stone-600">{formatPaymentDate(payment.createdAt)}</td>
                             <td className="px-5 py-4 text-right font-black text-stone-900">{Number(payment.amount || 0).toLocaleString()} ETB</td>
+                            <td className="px-5 py-4 text-right font-semibold text-amber-700">{payment.status === 'paid' ? `${Number(payment.commissionAmount || 0).toLocaleString()} ETB` : '—'}</td>
+                            <td className="px-5 py-4 text-right font-black text-emerald-700">{payment.status === 'paid' ? `${Number(payment.ownerNetAmount ?? (Number(payment.amount || 0) - Number(payment.commissionAmount || 0))).toLocaleString()} ETB` : '—'}</td>
                             <td className="px-5 py-4 text-right">
                               <button
                                 type="button"
@@ -1532,8 +1593,8 @@ export function OwnerDashboard() {
         <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-stone-200 shadow-2xl space-y-5 text-xs font-semibold">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <h3 className="text-base font-black text-stone-900">{t('Register Receptionist')}</h3>
-              <button onClick={() => setShowAddStaffModal(false)} className="p-1 rounded-lg text-stone-400 hover:text-stone-700"><X className="w-5 h-5" /></button>
+              <h3 className="text-base font-black text-stone-900">{editingStaffId ? t('Edit Receptionist') : t('Register Receptionist')}</h3>
+              <button onClick={() => { setShowAddStaffModal(false); setEditingStaffId(null); }} className="p-1 rounded-lg text-stone-400 hover:text-stone-700"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleAddStaffSubmit} className="space-y-4">
               <div>
@@ -1548,10 +1609,12 @@ export function OwnerDashboard() {
                 <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Phone *')}</label>
                 <input type="text" required placeholder="+251 911 234567" value={staffPhone} onChange={(e) => setStaffPhone(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500" />
               </div>
-              <div>
-                <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Password')}</label>
-                <input type="text" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 font-mono" />
-              </div>
+              {!editingStaffId && (
+                <div>
+                  <label className="block text-stone-700 uppercase mb-1 font-bold">{t('Password')}</label>
+                  <input type="text" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500 font-mono" />
+                </div>
+              )}
               {staffFormError && (
                 <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm font-semibold text-red-700">
                   <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -1559,8 +1622,8 @@ export function OwnerDashboard() {
                 </div>
               )}
               <div className="flex gap-2 justify-end pt-3 border-t border-stone-100">
-                <button type="button" onClick={() => setShowAddStaffModal(false)} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">{t('Cancel')}</button>
-                <button type="submit" className="px-5 py-2.5 bg-stone-950 hover:bg-stone-800 text-white font-black rounded-xl">{t('Register')}</button>
+                <button type="button" onClick={() => { setShowAddStaffModal(false); setEditingStaffId(null); }} className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl">{t('Cancel')}</button>
+                <button type="submit" className="px-5 py-2.5 bg-stone-950 hover:bg-stone-800 text-white font-black rounded-xl">{editingStaffId ? t('Save Changes') : t('Register')}</button>
               </div>
             </form>
           </div>

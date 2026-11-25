@@ -543,12 +543,13 @@ export const getPlatformReport = async () => {
       },
       _sum: {
         amount: true,
+        commissionAmount: true,
       },
     });
 
   const totalRevenue = paidPayments._sum.amount || 0;
   const { commissionRate } = await getSystemSettings();
-  const commissionRevenue = (totalRevenue * commissionRate) / 100;
+  const commissionRevenue = paidPayments._sum.commissionAmount || 0;
 
   return {
     totalUsers,
